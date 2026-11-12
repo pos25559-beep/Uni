@@ -1,0 +1,30 @@
+import type { AssessmentKind, CourseColor, MaterialProvider, TopicStatus } from '../types';
+
+// Classes completas e estáticas (o Tailwind precisa de as ver por extenso).
+export const courseColors: Record<CourseColor, { dot: string; soft: string; text: string; border: string; hex: string }> = {
+  violet: { dot: 'bg-violet-500', soft: 'bg-violet-500/12 text-violet-700 dark:text-violet-300', text: 'text-violet-600 dark:text-violet-300', border: 'border-violet-500/40', hex: '#8b5cf6' },
+  sky: { dot: 'bg-sky-500', soft: 'bg-sky-500/12 text-sky-700 dark:text-sky-300', text: 'text-sky-600 dark:text-sky-300', border: 'border-sky-500/40', hex: '#0ea5e9' },
+  emerald: { dot: 'bg-emerald-500', soft: 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300', text: 'text-emerald-600 dark:text-emerald-300', border: 'border-emerald-500/40', hex: '#10b981' },
+  amber: { dot: 'bg-amber-500', soft: 'bg-amber-500/12 text-amber-700 dark:text-amber-300', text: 'text-amber-600 dark:text-amber-300', border: 'border-amber-500/40', hex: '#f59e0b' },
+  rose: { dot: 'bg-rose-500', soft: 'bg-rose-500/12 text-rose-700 dark:text-rose-300', text: 'text-rose-600 dark:text-rose-300', border: 'border-rose-500/40', hex: '#f43f5e' },
+  cyan: { dot: 'bg-cyan-500', soft: 'bg-cyan-500/12 text-cyan-700 dark:text-cyan-300', text: 'text-cyan-600 dark:text-cyan-300', border: 'border-cyan-500/40', hex: '#06b6d4' },
+  orange: { dot: 'bg-orange-500', soft: 'bg-orange-500/12 text-orange-700 dark:text-orange-300', text: 'text-orange-600 dark:text-orange-300', border: 'border-orange-500/40', hex: '#f97316' },
+  lime: { dot: 'bg-lime-500', soft: 'bg-lime-500/12 text-lime-700 dark:text-lime-300', text: 'text-lime-600 dark:text-lime-300', border: 'border-lime-500/40', hex: '#84cc16' },
+};
+
+export const colorNames = Object.keys(courseColors) as CourseColor[];
+
+export const kindLabel: Record<AssessmentKind, string> = {
+  exame: 'Exame', teste: 'Teste', trabalho: 'Trabalho', projeto: 'Projeto', quiz: 'Quiz',
+};
+
+export const statusLabel: Record<TopicStatus, string> = {
+  todo: 'Por estudar', learning: 'A aprender', review: 'Em revisão', done: 'Dominado',
+};
+
+export const providerLabel: Record<MaterialProvider, string> = {
+  gdrive: 'Google Drive', onedrive: 'OneDrive', notebooklm: 'NotebookLM', clip: 'CLIP', link: 'Link',
+};
+
+export const weekdayShort = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+export const weekdayLong = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
