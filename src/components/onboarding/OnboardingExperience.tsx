@@ -24,7 +24,15 @@ import {
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useMemo, useState } from 'react';
 import { useAcademicEmails } from '../../hooks/useGoogleData';
-import { parseAcademicHistoryFromScreenshot } from '../../integrations/gemini';
+import { matchCourse } from '../../integrations/clip';
+import {
+  parseAcademicHistoryFromScreenshot,
+  parseTimetableFromScreenshot,
+  type ExtractedHistoryItem,
+  type ExtractedScheduleAssessment,
+  type ExtractedScheduleSlot,
+} from '../../integrations/gemini';
+import { colorNames } from '../../lib/colors';
 import { parseCurriculumFromText } from '../../lib/curriculumParser';
 import { auth } from '../../lib/firebase';
 import {
@@ -42,8 +50,15 @@ import {
   mergeCurriculumCatalog,
   PORTUGAL_CURRICULA,
 } from '../../lib/portugalCurriculum';
-import { useStore } from '../../store/useStore';
-import type { AcademicProfile, CompletedCourseRecord } from '../../types';
+import { newId, useStore } from '../../store/useStore';
+import type {
+  AcademicProfile,
+  Assessment,
+  ClassSlot,
+  CompletedCourseRecord,
+  Course,
+  CourseColor,
+} from '../../types';
 import { UniBuddy, UnipediaLogoMark } from '../brand/UnipediaMarks';
 import SmartScheduleImportModal, {
   type SmartImportInitialMode,
@@ -417,33 +432,78 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     void hapticSuccess();
   };
 
-  const handleScreenshotUpload = async (file: File | undefined) => {
-    if (!file) return;
+  const handleScreenshotUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
     if (!aiConsent) {
-      setOcrError('Ativa a permissão do Uni (IA) no Passo 3 antes de analisar pautas por imagem.');
-      return;
+      setAiConsent(true);
     }
+    updateSettings({ aiConsent: true });
     setOcrBusy(true);
     setOcrError(null);
     setOcrFeedback(null);
 
     try {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result ?? ''));
-        reader.onerror = () => reject(new Error('Não foi possível ler a imagem selecionada.'));
-        reader.readAsDataURL(file);
-      });
+      const fileList = Array.from(files);
+      const historyItems: ExtractedHistoryItem[] = [];
+      const scheduleSlots: ExtractedScheduleSlot[] = [];
+      const scheduleAssessments: ExtractedScheduleAssessment[] = [];
+      let firstError: Error | null = null;
+      let anySucceeded = false;
 
-      const extracted = await parseAcademicHistoryFromScreenshot(base64, file.type || 'image/png');
-      if (extracted.length === 0) {
-        setOcrError('Nenhuma disciplina foi reconhecida. Tenta um print mais nítido da pauta.');
+      for (const file of fileList) {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result ?? ''));
+          reader.onerror = () => reject(new Error(`Não foi possível ler "${file.name}".`));
+          reader.readAsDataURL(file);
+        });
+        const mimeType = file.type || 'image/png';
+
+        const [historyRes, scheduleRes] = await Promise.allSettled([
+          parseAcademicHistoryFromScreenshot(base64, mimeType),
+          parseTimetableFromScreenshot(base64, mimeType),
+        ]);
+
+        if (historyRes.status === 'fulfilled') {
+          anySucceeded = true;
+          historyItems.push(...historyRes.value);
+        } else if (!firstError) {
+          firstError =
+            historyRes.reason instanceof Error
+              ? historyRes.reason
+              : new Error(String(historyRes.reason));
+        }
+
+        if (scheduleRes.status === 'fulfilled') {
+          anySucceeded = true;
+          scheduleSlots.push(...scheduleRes.value.slots);
+          scheduleAssessments.push(...scheduleRes.value.assessments);
+        } else if (!firstError) {
+          firstError =
+            scheduleRes.reason instanceof Error
+              ? scheduleRes.reason
+              : new Error(String(scheduleRes.reason));
+        }
+      }
+
+      if (!anySucceeded && firstError) {
+        throw firstError;
+      }
+
+      if (
+        historyItems.length === 0 &&
+        scheduleSlots.length === 0 &&
+        scheduleAssessments.length === 0
+      ) {
+        setOcrError(
+          'Não consegui reconhecer cadeiras nem aulas nessas imagens. Tenta um print mais nítido da pauta ou do horário semanal.',
+        );
         return;
       }
 
       setRecords((prev) => {
         const next = [...prev];
-        for (const item of extracted) {
+        const mergeCourseItem = (item: ExtractedHistoryItem) => {
           const itemNameNorm = item.name.toLowerCase();
           const itemCodeNorm = item.code?.toLowerCase();
           const idx = next.findIndex(
@@ -471,11 +531,85 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
               status: item.status,
             });
           }
+        };
+
+        for (const item of historyItems) {
+          mergeCourseItem(item);
         }
+
+        for (const slot of scheduleSlots) {
+          mergeCourseItem({
+            code: slot.courseCode,
+            name: slot.courseName,
+            ects: isSecondarySchool ? 4 : 6,
+            status: 'a_fazer',
+          });
+        }
+
         return next;
       });
 
-      setOcrFeedback(`${extracted.length} disciplinas atualizadas pelo print.`);
+      if (scheduleSlots.length > 0 || scheduleAssessments.length > 0) {
+        const state = useStore.getState();
+        const currentCourses = [...state.courses];
+        const createdCourses: Course[] = [];
+        let colorIdx = currentCourses.length;
+        const palette =
+          colorNames.length > 0 ? colorNames : (['emerald', 'sky', 'amber'] as CourseColor[]);
+
+        const ensureCourseId = (courseName: string, courseCode?: string): string => {
+          const matched =
+            matchCourse(courseName, [...currentCourses, ...createdCourses]) ||
+            (courseCode ? matchCourse(courseCode, [...currentCourses, ...createdCourses]) : undefined);
+          if (matched) return matched.id;
+
+          const code = (courseCode || courseName.slice(0, 6)).trim();
+          const created: Course = {
+            id: newId(),
+            code,
+            name: courseName,
+            shortName: code.slice(0, 12),
+            ects: isSecondarySchool ? 4 : 6,
+            color: palette[colorIdx++ % palette.length] ?? 'emerald',
+            targetGrade: 14,
+            topics: [],
+          };
+          createdCourses.push(created);
+          return created.id;
+        };
+
+        const importedClasses: ClassSlot[] = scheduleSlots.map((s) => ({
+          id: newId(),
+          courseId: ensureCourseId(s.courseName, s.courseCode),
+          type: s.type,
+          weekday: s.weekday,
+          start: s.start,
+          end: s.end,
+          room: s.room,
+          source: 'local',
+        }));
+
+        const importedAssessments: Assessment[] = scheduleAssessments.map((a) => ({
+          id: newId(),
+          courseId: ensureCourseId(a.courseName),
+          kind: a.kind,
+          title: a.title,
+          date: a.date,
+          weight: 30,
+          topicIds: [],
+          source: 'local',
+        }));
+
+        if (createdCourses.length > 0) state.upsertMany('courses', createdCourses);
+        if (importedClasses.length > 0) state.upsertMany('classes', importedClasses);
+        if (importedAssessments.length > 0) state.upsertMany('assessments', importedAssessments);
+      }
+
+      const parts: string[] = [];
+      if (historyItems.length > 0) parts.push(`${historyItems.length} cadeira(s)`);
+      if (scheduleSlots.length > 0) parts.push(`${scheduleSlots.length} aula(s) no horário`);
+      if (scheduleAssessments.length > 0) parts.push(`${scheduleAssessments.length} avaliação(ões)`);
+      setOcrFeedback(`Importado com sucesso: ${parts.join(', ')}.`);
       void hapticSuccess();
     } catch (err) {
       setOcrError(err instanceof Error ? err.message : 'Erro ao analisar o print com Gemini Vision.');
@@ -994,16 +1128,17 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                   </Button>
                   <label className="inline-flex min-h-[36px] cursor-pointer items-center gap-1.5 rounded-xl bg-accent px-3 py-1.5 text-xs font-semibold text-accent-fg shadow-sm transition hover:opacity-90">
                     {ocrBusy ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
-                    {ocrBusy ? 'A ler print…' : 'Print Horário / Pauta'}
+                    {ocrBusy ? 'A ler prints…' : 'Print Horário / Pauta'}
                     <input
                       type="file"
+                      multiple
                       accept="image/*"
                       className="hidden"
                       disabled={ocrBusy}
                       onChange={(e) => {
-                        const file = e.target.files?.[0];
+                        const files = e.target.files;
                         e.target.value = '';
-                        void handleScreenshotUpload(file);
+                        void handleScreenshotUpload(files);
                       }}
                     />
                   </label>
@@ -1160,7 +1295,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                     <div
                       key={r.id}
                       className={cx(
-                        'flex flex-wrap items-center justify-between gap-2 rounded-2xl border px-3.5 py-2.5 text-xs transition',
+                        'flex flex-col gap-2.5 rounded-2xl border px-3.5 py-2.5 text-xs transition sm:flex-row sm:items-center sm:justify-between',
                         r.status === 'a_fazer'
                           ? 'border-accent/45 bg-accent-soft/35'
                           : r.status === 'aprovada'
@@ -1168,14 +1303,14 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                             : 'border-line/70 bg-bg/70 opacity-75',
                       )}
                     >
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-0 w-full sm:flex-1">
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="rounded-md bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] font-bold text-accent">
+                          <span className="shrink-0 rounded-md bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] font-bold text-accent">
                             {r.code}
                           </span>
-                          <span className="font-semibold text-fg">{r.name}</span>
+                          <span className="break-words font-semibold text-fg">{r.name}</span>
                           {r.isOptional && (
-                            <span className="rounded-md bg-surface-2/80 px-1.5 py-0.5 text-[10px] font-medium text-muted">
+                            <span className="shrink-0 rounded-md bg-surface-2/80 px-1.5 py-0.5 text-[10px] font-medium text-muted">
                               Opcional
                             </span>
                           )}
@@ -1185,7 +1320,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                         </p>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-1.5">
+                      <div className="flex flex-wrap items-center gap-1.5 sm:shrink-0">
                         {(
                           [
                             { value: 'a_fazer', label: 'Ativa agora' },
@@ -1665,10 +1800,19 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
             const storeCourses = useStore.getState().courses;
             if (storeCourses.length > 0) {
               setRecords((prev) => {
-                const map = new Map(prev.map((r) => [r.name.toLowerCase(), r]));
+                const next = [...prev];
                 for (const c of storeCourses) {
-                  if (!map.has(c.name.toLowerCase())) {
-                    map.set(c.name.toLowerCase(), {
+                  const idx = next.findIndex(
+                    (r) =>
+                      r.code.toLowerCase() === c.code.toLowerCase() ||
+                      r.name.toLowerCase() === c.name.toLowerCase(),
+                  );
+                  if (idx >= 0) {
+                    if (next[idx].status === 'por_fazer') {
+                      next[idx] = { ...next[idx], status: 'a_fazer' };
+                    }
+                  } else {
+                    next.unshift({
                       id: c.id,
                       code: c.code,
                       name: c.name,
@@ -1679,7 +1823,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                     });
                   }
                 }
-                return [...map.values()];
+                return next;
               });
             }
           }}

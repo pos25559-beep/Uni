@@ -11,6 +11,7 @@ import {
 import { defaultSettings } from '../src/lib/seed';
 import { computeNextSrsState, isTopicReviewDue } from '../src/lib/spacedRepetition';
 import { getUniCollectibleStates } from '../src/lib/uniCollectibles';
+import { parseHistoryJsonText, parseScheduleJsonText } from '../src/lib/visionParsers';
 import type { CalendarEvent, Course, Topic } from '../src/types';
 
 test('computeNextSrsState avanca 1 -> 3 -> 7 -> 21 quando recall=3 e confianca >= 4', () => {
@@ -262,4 +263,44 @@ test('parseCurriculumFromText extrai cadeiras e opcoes do formato Guia UNL / CLI
   assert.equal(parsed[1]?.name, 'Física Experimental');
   assert.equal(parsed[2]?.name, 'Fabrico Aditivo');
   assert.equal(parsed[2]?.optional, true);
+});
+
+test('parseScheduleJsonText suporta grelha portuguesa (2a..6a), arrays e chaves alternativas', () => {
+  const fromArray = parseScheduleJsonText(
+    '```json\n[{"courseCode":"MdF","courseName":"Mecânica dos Fluidos","type":"l.1","weekday":"2ª","start":"11h00","room":"Ed 8: 3.09"},{"courseCode":"FabAd","type":"tp.1","weekday":"Seg","start":"9:00","end":"11:00"}]\n```',
+  );
+  assert.equal(fromArray.slots.length, 2);
+  assert.equal(fromArray.slots[0]?.courseName, 'Mecânica dos Fluidos');
+  assert.equal(fromArray.slots[0]?.type, 'P');
+  assert.equal(fromArray.slots[0]?.weekday, 1);
+  assert.equal(fromArray.slots[0]?.start, '11:00');
+  assert.equal(fromArray.slots[0]?.end, '12:30');
+  assert.equal(fromArray.slots[1]?.courseName, 'FabAd');
+  assert.equal(fromArray.slots[1]?.type, 'TP');
+  assert.equal(fromArray.slots[1]?.weekday, 1);
+  assert.equal(fromArray.slots[1]?.start, '09:00');
+
+  const fromWrapper = parseScheduleJsonText(
+    JSON.stringify({
+      aulas: [
+        { disciplina: 'C3 D', sigla: 'C3 D', tipo: 't.2', dia: '3ª', inicio: '10:30', fim: '12:00' },
+      ],
+    }),
+  );
+  assert.equal(fromWrapper.slots.length, 1);
+  assert.equal(fromWrapper.slots[0]?.weekday, 2);
+  assert.equal(fromWrapper.slots[0]?.type, 'T');
+
+  const courses = parseHistoryJsonText(
+    JSON.stringify({
+      courses: [
+        { name: 'Fabrico Aditivo', status: 'a_fazer' },
+        { name: 'Cálculo I D', grade: '14,5', ects: '6' },
+      ],
+    }),
+  );
+  assert.equal(courses.length, 2);
+  assert.equal(courses[0]?.status, 'a_fazer');
+  assert.equal(courses[1]?.grade, 14.5);
+  assert.equal(courses[1]?.status, 'aprovada');
 });

@@ -11,9 +11,25 @@ import {
   todayStr, upcomingAssessments,
 } from '../lib/selectors';
 import type { UniAccessoryId, UniPersonaMode } from '../lib/uniAccessories';
+import {
+  parseHistoryJsonText,
+  parseScheduleJsonText,
+  type ExtractedHistoryItem,
+  type ExtractedScheduleAssessment,
+  type ExtractedSchedulePayload,
+  type ExtractedScheduleSlot,
+} from '../lib/visionParsers';
 import { useStore } from '../store/useStore';
 import type { AppState } from '../store/useStore';
 import type { Material } from '../types';
+
+export type {
+  ExtractedHistoryItem,
+  ExtractedScheduleAssessment,
+  ExtractedSchedulePayload,
+  ExtractedScheduleSlot,
+};
+export { parseHistoryJsonText, parseScheduleJsonText };
 
 export interface ChatAttachment {
   id: string;
@@ -191,7 +207,7 @@ async function callDirectRest(args: {
   };
 
   let attempt = await runOnce(args.model);
-  if (!attempt.res.ok && args.model === DEFAULT_MODEL) {
+  if (!attempt.res.ok && args.model !== FALLBACK_MODEL) {
     const errMsg = attempt.data?.error?.message ?? '';
     if (shouldFallbackModel(errMsg, attempt.res.status)) {
       attempt = await runOnce(FALLBACK_MODEL);
@@ -237,7 +253,7 @@ async function callDirectRestStream(args: {
   };
 
   let res = await openStream(args.model);
-  if (!res.ok && args.model === DEFAULT_MODEL) {
+  if (!res.ok && args.model !== FALLBACK_MODEL) {
     const errBody = (await res.json().catch(() => null)) as GenerateResponse | null;
     const msg = errBody?.error?.message ?? '';
     if (shouldFallbackModel(msg, res.status)) {
@@ -303,7 +319,7 @@ async function runNativeGenerate(args: {
   try {
     return await runWithModel(args.model);
   } catch (err) {
-    if (args.model === DEFAULT_MODEL && err instanceof Error && shouldFallbackModel(err.message)) {
+    if (args.model !== FALLBACK_MODEL && err instanceof Error && shouldFallbackModel(err.message)) {
       try {
         return await runWithModel(FALLBACK_MODEL);
       } catch (fallbackErr) {
@@ -347,7 +363,7 @@ async function runNativeStream(args: {
   try {
     return await streamWithModel(args.model);
   } catch (err) {
-    if (args.model === DEFAULT_MODEL && err instanceof Error && shouldFallbackModel(err.message)) {
+    if (args.model !== FALLBACK_MODEL && err instanceof Error && shouldFallbackModel(err.message)) {
       try {
         return await streamWithModel(FALLBACK_MODEL);
       } catch (fallbackErr) {
@@ -373,14 +389,6 @@ async function withQuotaAndFallback<T>(
   }
 }
 
-export interface ExtractedHistoryItem {
-  code?: string;
-  name: string;
-  grade?: number;
-  ects?: number;
-  status: 'aprovada' | 'a_fazer' | 'por_fazer';
-}
-
 /** Analisa um print/captura do portal académico com Gemini Vision (nativo ou chave própria). */
 export async function parseAcademicHistoryFromScreenshot(
   base64Data: string,
@@ -389,13 +397,14 @@ export async function parseAcademicHistoryFromScreenshot(
   const { customKey, model } = resolveGeminiConfig();
   const cleanBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
 
-  const prompt = `Extrai todas as unidades curriculares (cadeiras) visíveis nesta captura de ecrã de um portal académico em português.
+  const prompt = `Extrai todas as unidades curriculares (cadeiras/disciplinas) visíveis nesta captura de ecrã de um portal académico ou lista de inscrições/pauta em português.
 Devolve APENAS um array JSON válido onde cada item segue exatamente o formato:
 {"code": "string opcional", "name": "nome completo da cadeira", "grade": número entre 0 e 20 ou null se ainda não tiver nota, "ects": número ou 6, "status": "aprovada" | "a_fazer" | "por_fazer"}
 Regras:
 - Se tiver nota >= 10 (ou "Aprovado"), status = "aprovada".
-- Se estiver inscrito no semestre atual sem nota final, status = "a_fazer".
-- Se tiver reprovado ou falta realizar, status = "por_fazer".
+- Se estiver inscrito/a no semestre/trimestre atual ou numa lista de cadeiras inscritas sem nota final, status = "a_fazer".
+- Se tiver reprovado ou indicado como falta realizar/em atraso, status = "por_fazer".
+- Mesmo que a imagem mostre só nomes de cadeiras agrupados por "1º Semestre", "2º Semestre" ou "Trimestre" sem notas nem siglas, extrai TODAS as cadeiras visíveis.
 - Não inventes cadeiras que não estejam na imagem.`;
 
   const contents: Content[] = [
@@ -409,7 +418,7 @@ Regras:
   ];
   const generationConfig: GenerationConfig = {
     temperature: 0.1,
-    maxOutputTokens: 2048,
+    maxOutputTokens: 4096,
     responseMimeType: 'application/json',
   };
 
@@ -417,31 +426,7 @@ Regras:
     ? await callDirectRest({ key: customKey, model, contents, generationConfig })
     : await runNativeGenerate({ model, contents, generationConfig });
 
-  const jsonMatch = /\[[\s\S]*\]/.exec(rawText || '[]');
-  const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : rawText || '[]') as unknown;
-  if (!Array.isArray(parsed)) return [];
-
-  return parsed
-    .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === 'object' && 'name' in item))
-    .map((item) => {
-      const gradeNum = typeof item.grade === 'number' && !Number.isNaN(item.grade) ? item.grade : undefined;
-      const ectsNum = typeof item.ects === 'number' && !Number.isNaN(item.ects) ? item.ects : 6;
-      const statusRaw = String(item.status ?? '');
-      const status: ExtractedHistoryItem['status'] =
-        statusRaw === 'aprovada' || statusRaw === 'a_fazer' || statusRaw === 'por_fazer'
-          ? statusRaw
-          : gradeNum && gradeNum >= 10
-            ? 'aprovada'
-            : 'a_fazer';
-
-      return {
-        code: typeof item.code === 'string' && item.code.trim() ? item.code.trim() : undefined,
-        name: String(item.name).trim(),
-        grade: gradeNum,
-        ects: ectsNum,
-        status,
-      };
-    });
+  return parseHistoryJsonText(rawText);
 }
 
 export async function askGemini(args: {
@@ -793,28 +778,6 @@ Devolve APENAS JSON válido no formato: {"question": "pergunta objetiva em 1-2 f
   };
 }
 
-export interface ExtractedScheduleSlot {
-  courseName: string;
-  courseCode?: string;
-  type: 'T' | 'TP' | 'P' | 'OT';
-  weekday: number;
-  start: string;
-  end: string;
-  room?: string;
-}
-
-export interface ExtractedScheduleAssessment {
-  courseName: string;
-  title: string;
-  date: string;
-  kind: 'exame' | 'teste' | 'trabalho' | 'projeto' | 'quiz';
-}
-
-export interface ExtractedSchedulePayload {
-  slots: ExtractedScheduleSlot[];
-  assessments: ExtractedScheduleAssessment[];
-}
-
 /** Extrai disciplinas, aulas semanais e datas de avaliação a partir de uma foto do horário/agenda. */
 export async function parseTimetableFromScreenshot(
   base64Data: string,
@@ -822,21 +785,27 @@ export async function parseTimetableFromScreenshot(
 ): Promise<ExtractedSchedulePayload> {
   const { customKey, model } = resolveGeminiConfig();
   const cleanBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
-  const prompt = `Analisa esta foto ou print de um horário escolar/universitário ou agenda académica.
-Devolve APENAS JSON válido no formato:
+  const prompt = `Analisa esta foto ou print de um horário escolar/universitário ou agenda académica portuguesa.
+Devolve APENAS JSON válido no formato exato:
 {
   "slots": [
-    {"courseName": "Nome da Cadeira", "courseCode": "SIGLA opcional", "type": "T|TP|P|OT", "weekday": 1, "start": "09:00", "end": "10:30", "room": "Sala opcional"}
+    {"courseName": "Nome ou sigla da cadeira", "courseCode": "SIGLA opcional", "type": "T|TP|P|OT", "weekday": 1, "start": "09:00", "end": "11:00", "room": "Sala opcional"}
   ],
   "assessments": [
     {"courseName": "Nome da Cadeira", "title": "Teste 1", "date": "2026-11-25T14:00:00", "kind": "teste|exame|trabalho|projeto|quiz"}
   ]
 }
-Regras:
-- weekday segue Date.getDay(): 1=Segunda, 2=Terça, 3=Quarta, 4=Quinta, 5=Sexta, 6=Sábado, 0=Domingo.
-- start e end no formato "HH:mm". Se faltar duração, assume 1h30.
+Regras muito importantes para grelhas visuais de horários:
+- Cabeçalhos comuns em Portugal: "2ª" / "Seg" = weekday 1, "3ª" / "Ter" = 2, "4ª" / "Qua" = 3, "5ª" / "Qui" = 4, "6ª" / "Sex" = 5, "Sáb" = 6, "Dom" = 0.
+- Se as horas não estiverem escritas dentro do retângulo colorido, LÊ a hora de início e de fim pela posição vertical do topo e fundo do retângulo relativamente ao eixo de horas à esquerda (ex.: 8:00, 9:00, 10:00... 24:00) e às linhas da grelha (ex.: meio bloco = 30 min).
+- Quando o bloco só mostrar sigla curta (ex.: "FabAd tp.1 Ed 7: 3.4/Ed.VII", "MdF l.1 Ed 8: 3.09", "C3 D t.2", "SNTI t.1"):
+  * courseCode = sigla principal ("FabAd", "MdF", "C3 D", "SNTI")
+  * courseName = nome completo se visível, senão a própria sigla
+  * type: "t.*" -> "T", "tp.*" -> "TP", "l.*" / "p.*" -> "P", "s.*" / "ot.*" -> "OT"
+  * room = localização/sala (ex.: "Ed 7: 3.4/Ed.VII")
+- start e end no formato "HH:mm".
 - Se não houver avaliações visíveis na foto, devolve "assessments": [].
-- Não inventes aulas que não estejam visíveis.`;
+- Não inventes blocos que não existam visualmente na grelha.`;
 
   const contents: Content[] = [
     {
@@ -849,7 +818,7 @@ Regras:
   ];
   const generationConfig: GenerationConfig = {
     temperature: 0.1,
-    maxOutputTokens: 2048,
+    maxOutputTokens: 4096,
     responseMimeType: 'application/json',
   };
 
@@ -857,36 +826,5 @@ Regras:
     ? await callDirectRest({ key: customKey, model, contents, generationConfig })
     : await runNativeGenerate({ model, contents, generationConfig });
 
-  const match = /\{[\s\S]*\}/.exec(rawText || '{}');
-  const parsed = JSON.parse(match ? match[0] : rawText || '{}') as Partial<ExtractedSchedulePayload>;
-
-  const slots: ExtractedScheduleSlot[] = Array.isArray(parsed.slots)
-    ? parsed.slots
-        .filter((s) => s && typeof s.courseName === 'string' && typeof s.start === 'string')
-        .map((s) => ({
-          courseName: s.courseName.trim(),
-          courseCode: typeof s.courseCode === 'string' && s.courseCode.trim() ? s.courseCode.trim() : undefined,
-          type: s.type === 'T' || s.type === 'TP' || s.type === 'P' || s.type === 'OT' ? s.type : 'TP',
-          weekday: typeof s.weekday === 'number' && s.weekday >= 0 && s.weekday <= 6 ? s.weekday : 1,
-          start: s.start.slice(0, 5),
-          end: typeof s.end === 'string' && s.end.length >= 5 ? s.end.slice(0, 5) : s.start.slice(0, 5),
-          room: typeof s.room === 'string' && s.room.trim() ? s.room.trim() : undefined,
-        }))
-    : [];
-
-  const assessments: ExtractedScheduleAssessment[] = Array.isArray(parsed.assessments)
-    ? parsed.assessments
-        .filter((a) => a && typeof a.courseName === 'string' && typeof a.date === 'string')
-        .map((a) => ({
-          courseName: a.courseName.trim(),
-          title: typeof a.title === 'string' && a.title.trim() ? a.title.trim() : 'Avaliação',
-          date: a.date.trim(),
-          kind:
-            a.kind === 'exame' || a.kind === 'teste' || a.kind === 'trabalho' || a.kind === 'projeto' || a.kind === 'quiz'
-              ? a.kind
-              : 'teste',
-        }))
-    : [];
-
-  return { slots, assessments };
+  return parseScheduleJsonText(rawText);
 }

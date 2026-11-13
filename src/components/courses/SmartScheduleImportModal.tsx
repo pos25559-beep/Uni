@@ -1,7 +1,12 @@
 import { CalendarDays, Camera, Check, CheckCircle2, FileText, Loader2, Sparkles } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { matchCourse } from '../../integrations/clip';
-import { parseTimetableFromScreenshot, type ExtractedSchedulePayload } from '../../integrations/gemini';
+import {
+  parseAcademicHistoryFromScreenshot,
+  parseTimetableFromScreenshot,
+  type ExtractedHistoryItem,
+  type ExtractedSchedulePayload,
+} from '../../integrations/gemini';
 import { extractAcademicsFromGoogleCalendar, syncGoogleCalendar } from '../../integrations/gcal';
 import { colorNames, kindLabel, weekdayLong } from '../../lib/colors';
 import { newId, useStore } from '../../store/useStore';
@@ -29,6 +34,14 @@ interface PreviewAssessment {
   date: string;
   kind: Assessment['kind'];
   location?: string;
+  selected: boolean;
+}
+
+interface PreviewCourse {
+  id: string;
+  name: string;
+  code?: string;
+  ects: number;
   selected: boolean;
 }
 
@@ -78,6 +91,7 @@ export default function SmartScheduleImportModal({
   const [error, setError] = useState<string | null>(null);
   const [slots, setSlots] = useState<PreviewSlot[]>([]);
   const [assessments, setAssessments] = useState<PreviewAssessment[]>([]);
+  const [detectedCourses, setDetectedCourses] = useState<PreviewCourse[]>([]);
   const [sourceLabel, setSourceLabel] = useState<'local' | 'google'>('local');
   const [importedSummary, setImportedSummary] = useState<string | null>(null);
 
@@ -86,7 +100,11 @@ export default function SmartScheduleImportModal({
     [events],
   );
 
-  const applyExtracted = (payload: ExtractedSchedulePayload, src: 'local' | 'google') => {
+  const applyExtracted = (
+    payload: ExtractedSchedulePayload,
+    src: 'local' | 'google',
+    extraCourses: ExtractedHistoryItem[] = [],
+  ) => {
     setSourceLabel(src);
     setSlots(
       payload.slots.map((s, idx) => ({
@@ -102,13 +120,29 @@ export default function SmartScheduleImportModal({
         selected: true,
       })),
     );
-    if (payload.slots.length === 0 && payload.assessments.length === 0) {
-      setError('Não encontrei aulas nem avaliações nesta fonte. Tenta outra imagem mais nítida ou sincroniza primeiro a Google Agenda.');
+    const activeExtra = extraCourses.filter((c) => c.status !== 'aprovada');
+    setDetectedCourses(
+      activeExtra.map((c, idx) => ({
+        id: `crs-${idx}-${c.name}`,
+        name: c.name,
+        code: c.code,
+        ects: c.ects ?? 6,
+        selected: true,
+      })),
+    );
+    if (
+      payload.slots.length === 0 &&
+      payload.assessments.length === 0 &&
+      activeExtra.length === 0
+    ) {
+      setError(
+        'Não encontrei aulas, avaliações nem cadeiras reconhecíveis nestas imagens. Tenta prints mais nítidos da grelha de horário ou da lista de cadeiras.',
+      );
     }
   };
 
-  const handlePhotoPick = async (file?: File) => {
-    if (!file) return;
+  const handlePhotoPick = async (files?: FileList | null) => {
+    if (!files || files.length === 0) return;
     if (!aiConsent) {
       updateSettings({ aiConsent: true });
     }
@@ -116,9 +150,50 @@ export default function SmartScheduleImportModal({
     setError(null);
     setImportedSummary(null);
     try {
-      const { base64, mimeType } = await readImageBase64(file);
-      const parsed = await parseTimetableFromScreenshot(base64, mimeType);
-      applyExtracted(parsed, 'local');
+      const combinedSlots: ExtractedSchedulePayload['slots'] = [];
+      const combinedAssessments: ExtractedSchedulePayload['assessments'] = [];
+      const combinedCourses: ExtractedHistoryItem[] = [];
+      let firstError: Error | null = null;
+      let anySucceeded = false;
+
+      for (const file of Array.from(files)) {
+        const { base64, mimeType } = await readImageBase64(file);
+        const [scheduleRes, historyRes] = await Promise.allSettled([
+          parseTimetableFromScreenshot(base64, mimeType),
+          parseAcademicHistoryFromScreenshot(base64, mimeType),
+        ]);
+
+        if (scheduleRes.status === 'fulfilled') {
+          anySucceeded = true;
+          combinedSlots.push(...scheduleRes.value.slots);
+          combinedAssessments.push(...scheduleRes.value.assessments);
+        } else if (!firstError) {
+          firstError =
+            scheduleRes.reason instanceof Error
+              ? scheduleRes.reason
+              : new Error(String(scheduleRes.reason));
+        }
+
+        if (historyRes.status === 'fulfilled') {
+          anySucceeded = true;
+          combinedCourses.push(...historyRes.value);
+        } else if (!firstError) {
+          firstError =
+            historyRes.reason instanceof Error
+              ? historyRes.reason
+              : new Error(String(historyRes.reason));
+        }
+      }
+
+      if (!anySucceeded && firstError) {
+        throw firstError;
+      }
+
+      applyExtracted(
+        { slots: combinedSlots, assessments: combinedAssessments },
+        'local',
+        combinedCourses,
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Falha ao analisar a foto do horário.');
     } finally {
@@ -167,14 +242,17 @@ export default function SmartScheduleImportModal({
   const handleConfirmImport = () => {
     const selectedSlots = slots.filter((s) => s.selected);
     const selectedAssessments = assessments.filter((a) => a.selected);
-    if (selectedSlots.length === 0 && selectedAssessments.length === 0) return;
+    const selectedCourses = detectedCourses.filter((c) => c.selected);
+    if (selectedSlots.length === 0 && selectedAssessments.length === 0 && selectedCourses.length === 0) return;
 
     const currentCourses = [...useStore.getState().courses];
     const createdCourses: Course[] = [];
     let colorIdx = currentCourses.length;
 
-    const ensureCourseId = (courseName: string, courseCode?: string): string => {
-      const existing = matchCourse(courseName, [...currentCourses, ...createdCourses]);
+    const ensureCourseId = (courseName: string, courseCode?: string, ects = 6): string => {
+      const existing =
+        matchCourse(courseName, [...currentCourses, ...createdCourses]) ||
+        (courseCode ? matchCourse(courseCode, [...currentCourses, ...createdCourses]) : undefined);
       if (existing) return existing.id;
 
       const palette = colorNames.length > 0 ? colorNames : (['emerald', 'sky', 'amber'] as CourseColor[]);
@@ -185,7 +263,7 @@ export default function SmartScheduleImportModal({
         code: courseCode || makeCourseShortName(courseName),
         name: courseName,
         shortName: makeCourseShortName(courseName, courseCode),
-        ects: 6,
+        ects,
         color,
         targetGrade: 14,
         topics: [],
@@ -193,6 +271,10 @@ export default function SmartScheduleImportModal({
       createdCourses.push(created);
       return created.id;
     };
+
+    for (const c of selectedCourses) {
+      ensureCourseId(c.name, c.code, c.ects);
+    }
 
     const newClasses: ClassSlot[] = selectedSlots.map((s) => ({
       id: newId(),
@@ -226,9 +308,10 @@ export default function SmartScheduleImportModal({
     );
     setSlots([]);
     setAssessments([]);
+    setDetectedCourses([]);
   };
 
-  const hasPreview = slots.length > 0 || assessments.length > 0;
+  const hasPreview = slots.length > 0 || assessments.length > 0 || detectedCourses.length > 0;
 
   return (
     <Modal
@@ -300,20 +383,21 @@ export default function SmartScheduleImportModal({
         {mode === 'photo' ? (
           <div className="space-y-3 rounded-2xl border border-line bg-surface-2/70 p-4 text-xs">
             <p className="leading-relaxed text-fg">
-              Envia uma foto ou print do teu horário semanal, pauta ou agenda de papel. O Uni lê as cadeiras, horas, dias e salas por ti.
+              Envia 1 ou mais fotos ou prints (ex.: horário semanal + lista de cadeiras). O Uni lê as cadeiras, horas, dias e salas por ti.
             </p>
             <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-ink-cta px-4 py-2 text-xs font-semibold text-ink-cta-fg transition hover:opacity-90">
               {busy ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
-              {busy ? 'A ler horário com o Uni…' : 'Escolher foto ou print do horário'}
+              {busy ? 'A ler prints com o Uni…' : 'Escolher fotos ou prints'}
               <input
                 type="file"
+                multiple
                 accept="image/*"
                 className="hidden"
                 disabled={busy}
                 onChange={(e) => {
-                  const file = e.target.files?.[0];
+                  const files = e.target.files;
                   e.target.value = '';
-                  void handlePhotoPick(file);
+                  void handlePhotoPick(files);
                 }}
               />
             </label>
@@ -438,6 +522,48 @@ export default function SmartScheduleImportModal({
                     </div>
                   </label>
                 ))}
+              </div>
+            )}
+
+            {detectedCourses.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                  Cadeiras detetadas ({detectedCourses.length})
+                </p>
+                {detectedCourses.map((c) => {
+                  const matched =
+                    matchCourse(c.name, courses) ||
+                    (c.code ? matchCourse(c.code, courses) : undefined);
+                  return (
+                    <label
+                      key={c.id}
+                      className="flex cursor-pointer items-center justify-between gap-2 rounded-xl border border-line bg-surface px-3 py-2 text-xs"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <input
+                          type="checkbox"
+                          checked={c.selected}
+                          onChange={(e) =>
+                            setDetectedCourses((prev) =>
+                              prev.map((x) => (x.id === c.id ? { ...x, selected: e.target.checked } : x)),
+                            )
+                          }
+                          className="size-4 accent-accent"
+                        />
+                        <div>
+                          <p className="font-semibold text-fg">{c.name}</p>
+                          <p className="text-[11px] text-muted">
+                            {c.code ? `${c.code} · ` : ''}
+                            {c.ects} ECTS
+                          </p>
+                        </div>
+                      </div>
+                      <Badge tone={matched ? 'ok' : 'accent'}>
+                        {matched ? `Liga a ${matched.shortName}` : 'Cria cadeira'}
+                      </Badge>
+                    </label>
+                  );
+                })}
               </div>
             )}
           </div>
