@@ -1,6 +1,7 @@
 import {
   BookOpen,
   FileText,
+  FolderOpen,
   MessageSquare,
   MoreHorizontal,
   Plus,
@@ -13,11 +14,15 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ContextPanel } from '../components/assistant/ContextPanel';
 import { Composer } from '../components/assistant/Composer';
+import ConversationsModal from '../components/assistant/ConversationsModal';
 import { Markdown } from '../components/assistant/Markdown';
 import { QuickActions } from '../components/assistant/QuickActions';
 import UniNotebookDrawer from '../components/assistant/UniNotebookDrawer';
 import WeeklyTutorModal from '../components/assistant/WeeklyTutorModal';
+import UniCollectiblesModal from '../components/brand/UniCollectiblesModal';
 import { UniBuddy } from '../components/brand/UnipediaMarks';
+import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
+import GeminiKeyGuideModal from '../components/settings/GeminiKeyGuideModal';
 import { useNavigate } from 'react-router-dom';
 import { ActionSheet, Badge, Button, Modal, PageHeader, PillSelect, cx } from '../components/ui';
 import {
@@ -32,8 +37,10 @@ import {
 import { getDailyQuotaSnapshot } from '../lib/aiQuota';
 import { courseColors } from '../lib/colors';
 import {
+  TUTOR_SUBJECTS,
   appendMessage,
   deleteConversation,
+  subjectLabel,
   subscribeConversations,
   subscribeMessages,
   upsertConversation,
@@ -63,9 +70,11 @@ export default function Assistant() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId] = useState<string>('default');
   const [activeCourseId, setActiveCourseId] = useState<string>('all');
+  const [activeSubject, setActiveSubject] = useState<string>('all');
   const [selectedMaterialIds, setSelectedMaterialIds] = useState<string[]>([]);
   const [showDocPicker, setShowDocPicker] = useState(false);
   const [notebookOpen, setNotebookOpen] = useState(false);
+  const [convsModalMode, setConvsModalMode] = useState<'list' | 'new' | null>(null);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streamingText, setStreamingText] = useState<string | null>(null);
@@ -79,6 +88,8 @@ export default function Assistant() {
   const [confirmDeleteConv, setConfirmDeleteConv] = useState(false);
   const [showActions, setShowActions] = useState(false);
   const [tutorOpen, setTutorOpen] = useState(false);
+  const [keyGuideOpen, setKeyGuideOpen] = useState(false);
+  const [collectiblesOpen, setCollectiblesOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -161,32 +172,69 @@ export default function Assistant() {
     );
   };
 
-  const handleCreateNewConv = async () => {
+  const handleCreateConversation = async (opts?: {
+    title?: string;
+    courseId?: string;
+    subject?: string;
+  }) => {
     const id = newId();
+    const resolvedCourseId =
+      opts?.courseId !== undefined
+        ? opts.courseId
+        : activeCourseId !== 'all'
+          ? activeCourseId
+          : undefined;
+    const resolvedSubject =
+      opts?.subject ?? (activeSubject !== 'all' ? activeSubject : 'geral');
     const newConv: Conversation = {
       id,
-      title: 'Nova conversa',
-      courseId: activeCourseId !== 'all' ? activeCourseId : undefined,
+      title: opts?.title?.trim() || 'Nova conversa',
+      courseId: resolvedCourseId,
+      subject: resolvedSubject,
       materialIds: selectedMaterialIds,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
     await upsertConversation(newConv);
     setActiveConvId(id);
+    if (resolvedCourseId) setActiveCourseId(resolvedCourseId);
     setMessages([]);
+  };
+
+  const handleRenameConversation = async (conv: Conversation, title: string) => {
+    await upsertConversation({
+      ...conv,
+      title,
+      updatedAt: new Date().toISOString(),
+    });
+  };
+
+  const handleDeleteConversationById = async (targetId: string) => {
+    await deleteConversation(targetId);
+    setConfirmDeleteConv(false);
+    if (targetId === activeConvId) {
+      const remaining = conversations.filter((c) => c.id !== targetId);
+      if (remaining.length > 0) {
+        setActiveConvId(remaining[0].id);
+      } else {
+        setActiveConvId('default');
+        setMessages([]);
+      }
+    }
   };
 
   const handleDeleteActiveConv = async () => {
     if (!activeConvId) return;
-    await deleteConversation(activeConvId);
-    setConfirmDeleteConv(false);
-    const remaining = conversations.filter((c) => c.id !== activeConvId);
-    if (remaining.length > 0) {
-      setActiveConvId(remaining[0].id);
-    } else {
-      handleCreateNewConv();
-    }
+    await handleDeleteConversationById(activeConvId);
   };
+
+  const filteredConversations = useMemo(() => {
+    return conversations.filter((c) => {
+      if (activeCourseId !== 'all' && c.courseId !== activeCourseId) return false;
+      if (activeSubject !== 'all' && (c.subject || 'geral') !== activeSubject) return false;
+      return true;
+    });
+  }, [conversations, activeCourseId, activeSubject]);
 
   const run = useCallback(
     async (list: ChatMessage[], targetConvId: string, attachments?: ChatAttachment[]) => {
@@ -252,20 +300,23 @@ export default function Assistant() {
     if (loading) return;
 
     let convId = activeConvId;
-    if (!currentConv && conversations.length === 0) {
+    if (!currentConv) {
       convId = newId();
       const newConv: Conversation = {
         id: convId,
-        title: text.slice(0, 36) + (text.length > 36 ? '…' : ''),
+        title: text.slice(0, 40) + (text.length > 40 ? '…' : ''),
+        courseId: activeCourseId !== 'all' ? activeCourseId : undefined,
+        subject: activeSubject !== 'all' ? activeSubject : 'geral',
+        materialIds: selectedMaterialIds,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
       await upsertConversation(newConv);
       setActiveConvId(convId);
-    } else if (currentConv && currentConv.title === 'Nova conversa') {
+    } else if (currentConv.title === 'Nova conversa') {
       await upsertConversation({
         ...currentConv,
-        title: text.slice(0, 36) + (text.length > 36 ? '…' : ''),
+        title: text.slice(0, 40) + (text.length > 40 ? '…' : ''),
         updatedAt: new Date().toISOString(),
       });
     }
@@ -303,15 +354,25 @@ export default function Assistant() {
           accentTitle="Uni"
           subtitle={user ? 'Sincronizado na tua conta' : 'Neste dispositivo'}
           actions={
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <TabGuideHelpButton tabKey="assistente" />
               <Button
-                variant="secondary"
-                iconOnly
-                onClick={handleCreateNewConv}
-                aria-label="Nova conversa"
-                title="Nova conversa"
+                size="sm"
+                variant="primary"
+                onClick={() => setConvsModalMode('new')}
+                className="min-h-[44px] px-3.5"
               >
-                <Plus size={18} />
+                <Plus size={16} />
+                Nova conversa
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setConvsModalMode('list')}
+                className="min-h-[44px] px-3.5"
+              >
+                <FolderOpen size={15} />
+                Conversas ({conversations.length})
               </Button>
               <Button
                 variant="secondary"
@@ -371,6 +432,14 @@ export default function Assistant() {
               <Sparkles size={13} className="text-accent" />
               <span>Caderno</span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => setCollectiblesOpen(true)}
+              className="flex min-h-[42px] items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 py-1.5 text-xs font-semibold text-fg transition hover:border-accent"
+            >
+              <span>Coleção Uni</span>
+            </button>
           </div>
 
           {/* Seletor rápido de tom/personalidade do Uni */}
@@ -395,11 +464,16 @@ export default function Assistant() {
               })}
             </div>
 
-            <span className="rounded-full bg-surface-2/90 px-2.5 py-1 text-[11px] font-medium tabular text-muted">
+            <button
+              type="button"
+              onClick={() => setKeyGuideOpen(true)}
+              title="Ver como passar das 15 mensagens diárias com chave gratuita"
+              className="rounded-full border border-line bg-surface-2/90 px-2.5 py-1 text-[11px] font-medium tabular text-muted transition hover:border-accent hover:text-fg"
+            >
               {quota.bypassed
                 ? 'Chave própria · Ilimitado'
-                : `${quota.chatRemaining}/${quota.chatLimit} mensagens hoje`}
-            </span>
+                : `${quota.chatRemaining}/${quota.chatLimit} msgs · Desbloquear`}
+            </button>
 
             {attachedMaterials.map((m) => (
               <span
@@ -417,32 +491,90 @@ export default function Assistant() {
                 </button>
               </span>
             ))}
+          </div>
 
-            {conversations.length > 1 && (
-              <div className="ml-auto flex max-w-[240px] items-center gap-1 overflow-x-auto">
-                {conversations.slice(0, 4).map((c) => (
-                  <button
+          {/* Filtro por assunto + conversas da cadeira/assunto com eliminação rápida */}
+          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+            {[{ id: 'all', label: 'Todos assuntos' }, ...TUTOR_SUBJECTS].map((subj) => {
+              const active = activeSubject === subj.id;
+              return (
+                <button
+                  key={subj.id}
+                  type="button"
+                  onClick={() => setActiveSubject(subj.id)}
+                  className={cx(
+                    'min-h-[34px] rounded-full border px-3 text-xs font-medium transition',
+                    active
+                      ? 'border-accent bg-accent-soft text-accent font-semibold'
+                      : 'border-line bg-surface text-muted hover:text-fg',
+                  )}
+                >
+                  {subj.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {filteredConversations.length > 0 && (
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+              {filteredConversations.slice(0, 6).map((c) => {
+                const isActive = c.id === activeConvId;
+                return (
+                  <div
                     key={c.id}
-                    type="button"
-                    onClick={() => setActiveConvId(c.id)}
                     className={cx(
-                      'max-w-[95px] truncate rounded-full px-2.5 py-1 text-xs transition',
-                      c.id === activeConvId
-                        ? 'bg-ink-cta font-medium text-ink-cta-fg'
-                        : 'text-muted hover:bg-surface-2',
+                      'inline-flex shrink-0 items-center rounded-full border transition',
+                      isActive
+                        ? 'border-[#141312] bg-ink-cta text-ink-cta-fg dark:border-white/20'
+                        : 'border-line bg-surface text-fg hover:border-accent/45',
                     )}
                   >
-                    {c.title}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveConvId(c.id)}
+                      className="flex min-h-[36px] max-w-[200px] items-center gap-1.5 px-3 text-xs font-medium"
+                    >
+                      <span className="truncate">{c.title}</span>
+                      <span
+                        className={cx(
+                          'shrink-0 rounded-full px-1.5 py-0.5 text-[10px]',
+                          isActive ? 'bg-white/15' : 'bg-surface-2 text-muted',
+                        )}
+                      >
+                        {subjectLabel(c.subject)}
+                      </span>
+                    </button>
+                    {isActive && (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteConv(true)}
+                        aria-label={`Apagar conversa ${c.title}`}
+                        title="Apagar esta conversa"
+                        className="mr-1 grid size-7 place-items-center rounded-full text-ink-cta-fg/80 transition hover:bg-white/15 hover:text-ink-cta-fg"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Área de Mensagens */}
       <div className="mt-3 min-h-0 flex-1 space-y-4 overflow-y-auto px-1 py-2">
+        <TabGuideBanner
+          tabKey="assistente"
+          actions={
+            !hasCustomKey ? (
+              <Button size="sm" variant="primary" onClick={() => setKeyGuideOpen(true)}>
+                Como pôr chave grátis (&gt;15 msgs)
+              </Button>
+            ) : undefined
+          }
+        />
         <ContextPanel />
         {messages.length === 0 && (
           <div className="flex flex-col items-center px-4 py-4 text-center sm:py-6">
@@ -451,7 +583,8 @@ export default function Assistant() {
                 mood={uniWelcomeMood}
                 accessory={uniAccessory}
                 size={62}
-                ariaLabel="Uni — o teu companheiro IA"
+                onClick={() => setCollectiblesOpen(true)}
+                ariaLabel="Uni — tocar para abrir a coleção de estilos"
               />
             </div>
             <h2 className="mt-4 font-display text-xl font-bold">
@@ -533,10 +666,17 @@ export default function Assistant() {
             className="rise flex max-w-[95%] flex-col items-start gap-3 rounded-2xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger"
           >
             <span className="break-words">{error}</span>
-            <Button size="sm" variant="secondary" onClick={retry} disabled={loading}>
-              <RotateCcw size={14} />
-              Tentar de novo
-            </Button>
+            <div className="flex shrink-0 items-center gap-1.5">
+              {error.includes('limite diário') && (
+                <Button size="sm" variant="primary" onClick={() => setKeyGuideOpen(true)}>
+                  Usar chave grátis
+                </Button>
+              )}
+              <Button size="sm" variant="secondary" onClick={retry} disabled={loading}>
+                <RotateCcw size={14} />
+                Tentar de novo
+              </Button>
+            </div>
           </div>
         )}
 
@@ -686,6 +826,27 @@ export default function Assistant() {
       </Modal>
 
       <WeeklyTutorModal open={tutorOpen} onClose={() => setTutorOpen(false)} />
+      <GeminiKeyGuideModal open={keyGuideOpen} onClose={() => setKeyGuideOpen(false)} />
+      <UniCollectiblesModal open={collectiblesOpen} onClose={() => setCollectiblesOpen(false)} />
+      {convsModalMode && (
+        <ConversationsModal
+          open
+          initialTab={convsModalMode}
+          onClose={() => setConvsModalMode(null)}
+          conversations={conversations}
+          activeConvId={activeConvId}
+          courses={courses}
+          defaultCourseId={activeCourseId}
+          defaultSubject={activeSubject}
+          onSelectConversation={(conv) => {
+            setActiveConvId(conv.id);
+            if (conv.courseId) setActiveCourseId(conv.courseId);
+          }}
+          onCreateConversation={handleCreateConversation}
+          onRenameConversation={handleRenameConversation}
+          onDeleteConversation={handleDeleteConversationById}
+        />
+      )}
       <UniNotebookDrawer
         open={notebookOpen}
         onClose={() => setNotebookOpen(false)}

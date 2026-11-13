@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "829850599388",
+    "project_id": "campus-erp-84964",
+    "storage_bucket": "campus-erp-84964.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:829850599388:android:87bb95320225ad4c839919",
+        "android_client_info": {
+          "package_name": "com.unipedia.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "829850599388-cl0rn74c0pnso7f1jb742e7jujp42ghr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.unipedia.app",
+            "certificate_hash": "b768032082ebb496811539d222dd7086b11e042c"
+          }
+        },
+        {
+          "client_id": "829850599388-knstv0vbi1mqqjomcj9a7r1m46lfeqc9.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDLMphG1dnyvjJH_nFb3b6XWadYnhtqdiE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "829850599388-knstv0vbi1mqqjomcj9a7r1m46lfeqc9.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

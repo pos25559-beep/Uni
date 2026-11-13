@@ -8,6 +8,8 @@ import { useStore } from '../store/useStore';
  */
 export function useAcademicEmails(triggerKey?: string) {
   const courses = useStore((s) => s.courses);
+  const savedAcademicEmail = useStore((s) => s.settings.academicEmail);
+  const updateSettings = useStore((s) => s.updateSettings);
   const [emails, setEmails] = useState<AcademicEmail[]>(
     () => googleService.getCachedAcademicEmails() ?? [],
   );
@@ -15,7 +17,7 @@ export function useAcademicEmails(triggerKey?: string) {
   const [connected, setConnected] = useState(() => googleService.isGmailConnected());
   const [needsPermission, setNeedsPermission] = useState(false);
   const [academicEmail, setAcademicEmail] = useState<string | null>(
-    () => googleService.getAcademicAccountStatus().email,
+    () => googleService.getAcademicAccountStatus().email || savedAcademicEmail || null,
   );
 
   const loadEmails = useCallback(
@@ -78,18 +80,26 @@ export function useAcademicEmails(triggerKey?: string) {
   }, [courses, triggerKey]);
 
   const connect = useCallback(
-    async (forceConsent = false) => {
+    async (forceConsent = false, loginHint?: string) => {
       try {
-        const res = await googleService.connectAcademicAccount(forceConsent);
+        const res = await googleService.connectAcademicAccount(
+          forceConsent,
+          loginHint ?? savedAcademicEmail,
+        );
         setConnected(true);
         setNeedsPermission(false);
-        setAcademicEmail(res.email || googleService.getAcademicAccountStatus().email);
+        const resolvedEmail =
+          res.email || googleService.getAcademicAccountStatus().email || savedAcademicEmail || null;
+        setAcademicEmail(resolvedEmail);
+        if (resolvedEmail) {
+          updateSettings({ academicEmail: resolvedEmail });
+        }
         await loadEmails(true);
       } catch (err) {
         console.warn('Erro ao ligar ao Google Académico:', err);
       }
     },
-    [loadEmails],
+    [loadEmails, savedAcademicEmail, updateSettings],
   );
 
   return {

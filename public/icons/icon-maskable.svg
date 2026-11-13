@@ -1,20 +1,32 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <rect width="64" height="64" fill="#4f46e5" />
-  <path
-    d="M17 42.5V24.5C17 22.843 18.343 21.5 20 21.5H29C30.657 21.5 32 22.843 32 24.5V44.2C30.6 43 28.9 42.5 26.8 42.5H17Z"
-    fill="#faf8f5"
-    fill-opacity="0.96"
-  />
-  <path
-    d="M47 42.5V24.5C47 22.843 45.657 21.5 44 21.5H35C33.343 21.5 32 22.843 32 24.5V44.2C33.4 43 35.1 42.5 37.2 42.5H47Z"
-    fill="#e0e7ff"
-  />
-  <path
-    d="M29 36L43 18L37 30L29 36Z"
-    fill="#fceb9c"
-    stroke="#111318"
-    stroke-width="1.5"
-    stroke-linejoin="round"
-  />
-  <circle cx="43.8" cy="17.2" r="2.6" fill="#a9f5b8" />
+  <rect width="64" height="64" fill="#157F58" />
+  <g transform="translate(8 8) scale(0.75)">
+    <path
+      d="M29 14.5V7.5L32.5 10.5L36 7.5V14.5"
+      fill="#E04F33"
+      stroke="#141312"
+      stroke-width="1.8"
+      stroke-linejoin="round"
+    />
+    <path
+      d="M32 13.5C36.4 13.5 39.6 16.3 42.1 17.7C45.1 19.3 48.7 19.9 50.5 23.1C52.3 26.2 51.1 30 51.9 33.5C52.7 37 55.2 40.2 53.7 43.9C52.2 47.4 48.2 48.7 45.2 50.9C42.2 53.1 39.7 56.8 35.7 57C31.8 57.1 28.9 53.9 25.3 53C21.7 52.1 17.2 53.4 14.5 50.6C11.9 47.7 13 43.2 12 39.4C11 35.7 8.4 32.3 9.9 28.5C11.3 24.8 15.6 24.2 18.3 21.3C21 18.4 22.1 14.5 26 13.7C28.1 13.3 30.1 13.5 32 13.5Z"
+      fill="#C9DC9F"
+      stroke="#141312"
+      stroke-width="2.2"
+      stroke-linejoin="round"
+    />
+    <circle cx="22.8" cy="37.6" r="2.6" fill="#E04F33" fill-opacity="0.45" />
+    <circle cx="41.2" cy="37.6" r="2.6" fill="#E04F33" fill-opacity="0.45" />
+    <circle cx="25.2" cy="32.4" r="2.5" fill="#141312" />
+    <circle cx="38.8" cy="32.4" r="2.5" fill="#141312" />
+    <circle cx="26" cy="31.5" r="0.85" fill="#FFFFFF" />
+    <circle cx="39.6" cy="31.5" r="0.85" fill="#FFFFFF" />
+    <path
+      d="M27.4 38.4C29.1 41.7 34.9 41.7 36.6 38.4"
+      stroke="#141312"
+      stroke-width="2.3"
+      stroke-linecap="round"
+    />
+    <circle cx="51" cy="13.5" r="4" fill="#FCE99F" stroke="#141312" stroke-width="1.6" />
+  </g>
 </svg>

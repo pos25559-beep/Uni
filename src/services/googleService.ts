@@ -93,8 +93,11 @@ export const googleService = {
     await logoutFirebase();
   },
 
-  async connectAcademicAccount(forceConsent = false): Promise<{ email: string; token: string }> {
-    const result = await loginAcademicGoogle({ forceConsent });
+  async connectAcademicAccount(
+    forceConsent = false,
+    loginHint?: string,
+  ): Promise<{ email: string; token: string }> {
+    const result = await loginAcademicGoogle({ forceConsent, loginHint });
     clearAcademicEmailsCache();
     return result;
   },

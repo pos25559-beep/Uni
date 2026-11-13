@@ -3,6 +3,7 @@ import { useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { statusLabel } from '../../lib/colors';
 import { todayStr } from '../../lib/selectors';
+import { computeNextSrsState } from '../../lib/spacedRepetition';
 import { newId, useStore } from '../../store/useStore';
 import type { Course, Topic, TopicStatus } from '../../types';
 import { Button, cx, EmptyState, Input, Select } from '../ui';
@@ -94,15 +95,25 @@ export default function TopicsTab({ course }: Props) {
                     ))}
                   </div>
 
-                  <span className="w-28 text-xs text-muted tabular">{lastStudiedLabel(t.lastStudied)}</span>
+                  <span className="w-32 text-xs text-muted tabular">
+                    {lastStudiedLabel(t.lastStudied)}
+                    {t.nextReviewDate ? ` · rev ${t.nextReviewDate.slice(5)}` : ''}
+                  </span>
 
                   <div className="ml-auto flex items-center gap-1">
                     <Button
                       size="sm"
                       onClick={() => {
-                        const changes: Partial<Topic> = { lastStudied: todayStr() };
-                        if (t.status === 'todo') changes.status = 'learning';
-                        updateTopic(course.id, t.id, changes);
+                        const srs = computeNextSrsState(
+                          t,
+                          t.confidence >= 4 ? 3 : 2,
+                          t.confidence,
+                          todayStr(),
+                        );
+                        updateTopic(course.id, t.id, {
+                          ...srs,
+                          status: t.status === 'todo' ? 'learning' : srs.status,
+                        });
                       }}
                     >
                       <CheckCircle2 size={14} /> Estudei hoje

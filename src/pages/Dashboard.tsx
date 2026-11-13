@@ -18,8 +18,11 @@ import {
   X,
 } from 'lucide-react';
 import WeeklyTutorModal from '../components/assistant/WeeklyTutorModal';
+import UniCollectiblesModal from '../components/brand/UniCollectiblesModal';
 import { UniBuddy } from '../components/brand/UnipediaMarks';
+import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import AcademicGmailWidget from '../components/home/AcademicGmailWidget';
+import { getUniCollectibleStates, readCollectibleTelemetry } from '../lib/uniCollectibles';
 import {
   AgendaRibbonCard,
   HighlightShapesGrid,
@@ -129,6 +132,7 @@ export default function Dashboard() {
   const events = useStore((s) => s.events);
   const settings = useStore((s) => s.settings);
   const academicProfile = useStore((s) => s.academicProfile);
+  const weeklyCheckIns = useStore((s) => s.weeklyCheckIns);
   const patch = useStore((s) => s.patch);
   const upsert = useStore((s) => s.upsert);
 
@@ -136,11 +140,17 @@ export default function Dashboard() {
     () => resolveUniAccessory(settings.uniAccessory, academicProfile?.degreeName, courses[0]?.name),
     [settings.uniAccessory, academicProfile?.degreeName, courses],
   );
+  const collectibles = useMemo(
+    () => getUniCollectibleStates(readCollectibleTelemetry(sessions, courses, weeklyCheckIns)),
+    [sessions, courses, weeklyCheckIns],
+  );
+  const unlockedCollectibles = collectibles.filter((c) => c.unlocked).length;
 
   const [scope, setScope] = useState<'today' | 'week'>('today');
   const [draft, setDraft] = useState('');
   const [tutorOpen, setTutorOpen] = useState(false);
   const [uniBubbleOpen, setUniBubbleOpen] = useState(false);
+  const [collectiblesOpen, setCollectiblesOpen] = useState(false);
 
   const now = new Date();
   const today = todayStr();
@@ -313,6 +323,7 @@ export default function Dashboard() {
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
+          <TabGuideHelpButton tabKey="dashboard" />
           <Button
             variant="secondary"
             iconOnly
@@ -333,6 +344,8 @@ export default function Dashboard() {
           </Button>
         </div>
       </header>
+
+      <TabGuideBanner tabKey="dashboard" />
 
       {/* Balão interativo do Uni ("Clippy" da Unipedia) */}
       <AnimatePresence>
@@ -379,6 +392,17 @@ export default function Dashboard() {
             {streak} {streak === 1 ? 'dia seguido' : 'dias seguidos'}
           </StickerBadge>
         )}
+        <button
+          type="button"
+          onClick={() => {
+            void hapticTap();
+            setCollectiblesOpen(true);
+          }}
+          className="inline-flex min-h-[38px] items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1 text-xs font-semibold text-fg transition hover:border-accent"
+        >
+          <Sparkles size={13} className="text-accent" />
+          <span>Coleção Uni · {unlockedCollectibles}/{collectibles.length}</span>
+        </button>
       </div>
 
       <StaggerContainer className="space-y-5">
@@ -670,6 +694,7 @@ export default function Dashboard() {
       </StaggerContainer>
 
       <WeeklyTutorModal open={tutorOpen} onClose={() => setTutorOpen(false)} />
+      <UniCollectiblesModal open={collectiblesOpen} onClose={() => setCollectiblesOpen(false)} />
     </AnimatedPage>
   );
 }

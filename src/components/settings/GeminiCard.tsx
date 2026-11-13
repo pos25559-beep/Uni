@@ -1,18 +1,11 @@
-import { ChevronDown, Eye, EyeOff, ExternalLink, Sparkles } from 'lucide-react';
+import { ChevronDown, Eye, EyeOff, ExternalLink, HelpCircle, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { hasCustomGeminiKey } from '../../integrations/gemini';
 import { getDailyQuotaSnapshot } from '../../lib/aiQuota';
 import { useStore } from '../../store/useStore';
 import { Badge, Button, Field, Input, cx } from '../ui';
+import GeminiKeyGuideModal, { verifyGeminiApiKey, type GeminiKeyTestResult } from './GeminiKeyGuideModal';
 import { IntegrationCard, errorMessage } from './shared';
-
-interface TestResult {
-  available: boolean;
-  suggestions: string[];
-  total: number;
-}
-
-const MODELS_URL = 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=50';
 
 export default function GeminiCard() {
   const status = useStore((s) => s.integrations.gemini);
@@ -24,8 +17,9 @@ export default function GeminiCard() {
 
   const [showKey, setShowKey] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [result, setResult] = useState<TestResult | null>(null);
+  const [result, setResult] = useState<GeminiKeyTestResult | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [guideOpen, setGuideOpen] = useState(false);
 
   const customKeyActive = hasCustomGeminiKey();
   const quota = getDailyQuotaSnapshot();
@@ -42,31 +36,16 @@ export default function GeminiCard() {
       return;
     }
     if (!key) {
-      setLocalError('Insere uma chave pessoal do Google AI Studio na secção Avançado para testar.');
+      setLocalError('Insere uma chave pessoal do Google AI Studio ou abre o guia passo-a-passo.');
       return;
     }
     setTesting(true);
     setResult(null);
     setLocalError(null);
     try {
-      // A chave vai no cabeçalho, nunca no URL.
-      const res = await fetch(MODELS_URL, { headers: { 'x-goog-api-key': key } });
-      if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
-        throw new Error(body?.error?.message ?? `Erro ${res.status} ao contactar a API Gemini.`);
-      }
-      const data = (await res.json()) as { models?: { name?: string }[] };
-      const names = (data.models ?? [])
-        .map((m) => (m.name ?? '').replace(/^models\//, ''))
-        .filter(Boolean);
-      setResult({
-        available: names.includes(wanted),
-        suggestions: names.filter((n) => n.includes('gemini')).slice(0, 8),
-        total: names.length,
-      });
+      setResult(await verifyGeminiApiKey(key, wanted));
       setIntegration('gemini', { connected: true, lastSync: new Date().toISOString(), error: undefined });
     } catch (e) {
-      // O erro aparece no cartão de estado (IntegrationCard).
       setIntegration('gemini', { connected: false, error: errorMessage(e) });
     } finally {
       setTesting(false);
@@ -91,10 +70,17 @@ export default function GeminiCard() {
               : `${quota.chatRemaining}/${quota.chatLimit} mensagens e ${quota.notebookRemaining}/${quota.notebookLimit} cadernos disponíveis hoje.`}
           </p>
         </div>
-        <Badge tone={aiConsent ? 'ok' : 'neutral'}>
-          {customKeyActive ? 'Chave própria' : 'Nativo'}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" variant="secondary" onClick={() => setGuideOpen(true)}>
+            <HelpCircle size={13} /> {customKeyActive ? 'Gerir chave' : 'Passar de 15/dia (grátis)'}
+          </Button>
+          <Badge tone={aiConsent ? 'ok' : 'neutral'}>
+            {customKeyActive ? 'Chave própria' : 'Nativo'}
+          </Badge>
+        </div>
       </div>
+
+      <GeminiKeyGuideModal open={guideOpen} onClose={() => setGuideOpen(false)} />
 
       <label className="flex items-start gap-2.5 rounded-xl border border-line bg-surface-2 px-3 py-2.5 text-xs">
         <input

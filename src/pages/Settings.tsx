@@ -14,6 +14,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import AuthStatus from '../components/auth/AuthStatus';
 import { AnimatedPage } from '../components/motion/Primitives';
 import OnboardingModal from '../components/onboarding/OnboardingModal';
+import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import { startUnipediaGuidedTour } from '../components/onboarding/TourManager';
 import ClipCard from '../components/settings/ClipCard';
 import DataCard from '../components/settings/DataCard';
@@ -122,7 +123,10 @@ export default function SettingsPage() {
         title="As tuas"
         accentTitle="definições"
         subtitle={`${settings.semesterName} · tema ${THEME_LABELS[settings.theme]}`}
+        actions={<TabGuideHelpButton tabKey="definicoes" />}
       />
+
+      <TabGuideBanner tabKey="definicoes" />
 
       {/* Conta e sincronização */}
       <AuthStatus />

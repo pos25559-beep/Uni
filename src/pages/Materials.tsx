@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { FileUp, FolderOpen, HardDrive, Link2, Loader2, Pin, Plus, Search, Sparkles } from 'lucide-react';
 import { AnimatedPage } from '../components/motion/Primitives';
+import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import { ActionSheet, Button, CourseChip, EmptyState, Input, PageHeader, Select, cx } from '../components/ui';
 import { useStore } from '../store/useStore';
 import { providerLabel } from '../lib/colors';
@@ -123,11 +124,16 @@ export default function Materials() {
         accentTitle="materiais"
         subtitle={`${materials.length} ${materials.length === 1 ? 'material' : 'materiais'} na biblioteca`}
         actions={
-          <Button variant="primary" onClick={() => setAddMenuOpen(true)}>
-            <Plus size={16} /> Adicionar
-          </Button>
+          <div className="flex items-center gap-2">
+            <TabGuideHelpButton tabKey="materiais" />
+            <Button variant="primary" onClick={() => setAddMenuOpen(true)}>
+              <Plus size={16} /> Adicionar
+            </Button>
+          </div>
         }
       />
+
+      <TabGuideBanner tabKey="materiais" />
 
       <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-4">

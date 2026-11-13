@@ -167,11 +167,11 @@ export default function CourseEmailsTab({ course }: Props) {
       {!connected ? (
         <EmptyState
           icon={<Mail size={24} />}
-          title="Gmail da Faculdade não ligado"
-          hint="Para leres os avisos reais dos professores da NOVA FCT, autentica-te com a tua conta institucional Google."
+          title="Email Académico não ligado"
+          hint="Os teus emails pessoais ficam separados por privacidade. Para ler avisos reais dos docentes nesta cadeira, liga a tua conta institucional Google ou importa um ficheiro .eml."
           action={
             <Button variant="primary" onClick={() => handleConnect(false)}>
-              <Mail size={14} /> Ligar Gmail da Faculdade
+              <Mail size={14} /> Ligar Email Académico
             </Button>
           }
         />

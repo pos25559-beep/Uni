@@ -1,4 +1,5 @@
 import { Capacitor } from '@capacitor/core';
+import { SocialLogin } from '@capgo/capacitor-social-login';
 import { getAI, GoogleAIBackend, type AI } from 'firebase/ai';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
@@ -8,11 +9,14 @@ import {
   getAuth,
   getRedirectResult,
   GoogleAuthProvider,
+  isSignInWithEmailLink,
   onAuthStateChanged,
   sendPasswordResetEmail,
+  sendSignInLinkToEmail,
+  signInWithCredential,
   signInWithEmailAndPassword,
+  signInWithEmailLink,
   signInWithPopup,
-  signInWithRedirect,
   signOut,
   updateProfile,
   type User,
@@ -20,13 +24,13 @@ import {
 import { getFirestore } from 'firebase/firestore';
 
 export const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyCEhC7Ppe8BsFitlgqfYeSgHFfN_sUS4ro',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'campus-erp-84964.firebaseapp.com',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'campus-erp-84964',
+  apiKey: import.meta.env?.VITE_FIREBASE_API_KEY || 'AIzaSyCEhC7Ppe8BsFitlgqfYeSgHFfN_sUS4ro',
+  authDomain: import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN || 'campus-erp-84964.firebaseapp.com',
+  projectId: import.meta.env?.VITE_FIREBASE_PROJECT_ID || 'campus-erp-84964',
   storageBucket:
-    import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'campus-erp-84964.firebasestorage.app',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '829850599388',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:829850599388:web:d8a99af3adb0ce0f839919',
+    import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET || 'campus-erp-84964.firebasestorage.app',
+  messagingSenderId: import.meta.env?.VITE_FIREBASE_MESSAGING_SENDER_ID || '829850599388',
+  appId: import.meta.env?.VITE_FIREBASE_APP_ID || '1:829850599388:web:d8a99af3adb0ce0f839919',
 };
 
 export const app = !getApps().some((a) => a.name === '[DEFAULT]')
@@ -44,11 +48,11 @@ let nativeAIInstance: AI | null = null;
 export function getNativeAI(): AI {
   if (typeof window !== 'undefined' && !appCheckInitialized) {
     appCheckInitialized = true;
-    if (import.meta.env.DEV) {
+    if (import.meta.env?.DEV) {
       (window as unknown as Record<string, unknown>).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
     }
     const siteKey =
-      (import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY as string | undefined) ||
+      (import.meta.env?.VITE_FIREBASE_APPCHECK_SITE_KEY as string | undefined) ||
       '6Lfx7B4uAAAAACgDpIV44UBaXW-HkLrlqZYF6DdY';
     if (siteKey?.trim()) {
       try {
@@ -116,17 +120,15 @@ export function getAcademicGoogleAccessToken(): string | null {
   return null;
 }
 
+/**
+ * Devolve o email da conta académica institucional (nunca mistura com a conta pessoal).
+ */
 export function getAcademicGoogleEmail(): string | null {
-  const token = getAcademicGoogleAccessToken();
-  const personalToken = getCachedGoogleAccessToken();
-  if (!token && !personalToken && !auth.currentUser) {
-    return null;
-  }
   return (
     cachedAcademicToken?.email ||
     sessionStorage.getItem('campus_academic_google_email') ||
     academicAuth.currentUser?.email ||
-    (personalToken ? auth.currentUser?.email ?? null : null)
+    null
   );
 }
 
@@ -145,7 +147,6 @@ export function setAcademicGoogleToken(token: string, email?: string, expiresInS
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.addScope('https://www.googleapis.com/auth/drive.readonly');
 googleProvider.addScope('https://www.googleapis.com/auth/calendar.readonly');
-googleProvider.addScope('https://www.googleapis.com/auth/gmail.readonly');
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 export const academicGoogleProvider = new GoogleAuthProvider();
@@ -177,8 +178,49 @@ if (
     .catch(() => {});
 }
 
-/** Inicia sessão na conta pessoal principal (Drive pessoal, nuvem, Gemini). */
+const GOOGLE_WEB_CLIENT_ID =
+  import.meta.env?.VITE_GOOGLE_WEB_CLIENT_ID ||
+  '829850599388-knstv0vbi1mqqjomcj9a7r1m46lfeqc9.apps.googleusercontent.com';
+
+let nativeSocialInitialized = false;
+
+async function loginGoogleNative(scopes: string[]): Promise<{ idToken: string; accessToken?: string; email?: string }> {
+  if (!nativeSocialInitialized) {
+    await SocialLogin.initialize({
+      google: {
+        webClientId: GOOGLE_WEB_CLIENT_ID,
+        mode: 'online',
+      },
+    });
+    nativeSocialInitialized = true;
+  }
+  const res = await SocialLogin.login({
+    provider: 'google',
+    options: { scopes },
+  });
+  if (res.result.responseType !== 'online' || !res.result.idToken) {
+    throw new Error('Autenticação Google cancelada ou sem token de identidade.');
+  }
+  return {
+    idToken: res.result.idToken,
+    accessToken: res.result.accessToken?.token ?? undefined,
+    email: res.result.profile?.email ?? undefined,
+  };
+}
+
+/** Inicia sessão na conta pessoal principal (Drive pessoal, nuvem, Agenda). */
 export async function loginWithGoogle(opts?: { forceConsent?: boolean; loginHint?: string }): Promise<User> {
+  if (Capacitor.isNativePlatform()) {
+    const { idToken, accessToken } = await loginGoogleNative([
+      'https://www.googleapis.com/auth/drive.readonly',
+      'https://www.googleapis.com/auth/calendar.readonly',
+    ]);
+    const cred = GoogleAuthProvider.credential(idToken, accessToken);
+    const result = await signInWithCredential(auth, cred);
+    if (accessToken) setGoogleAccessToken(accessToken);
+    return result.user;
+  }
+
   const params: Record<string, string> = {
     prompt: opts?.forceConsent ? 'consent select_account' : 'select_account',
   };
@@ -186,12 +228,6 @@ export async function loginWithGoogle(opts?: { forceConsent?: boolean; loginHint
     params.login_hint = opts.loginHint;
   }
   googleProvider.setCustomParameters(params);
-
-  // No Android WebView nativo (Capacitor), popups são bloqueados; usar fluxo por redirecionamento
-  if (Capacitor.isNativePlatform()) {
-    await signInWithRedirect(auth, googleProvider);
-    throw new Error('A redirecionar para autenticação Google…');
-  }
 
   const result = await signInWithPopup(auth, googleProvider);
   const credential = GoogleAuthProvider.credentialFromResult(result);
@@ -222,14 +258,30 @@ export async function registerWithEmail(name: string, email: string, password: s
  * na instância secundária independente (academicAuth).
  * Desta forma, a conta pessoal principal NÃO é alterada nem desconectada!
  */
-export async function loginAcademicGoogle(opts?: { forceConsent?: boolean }): Promise<{ email: string; token: string }> {
-  academicGoogleProvider.setCustomParameters({
-    prompt: opts?.forceConsent ? 'consent select_account' : 'select_account',
-  });
+export async function loginAcademicGoogle(opts?: {
+  forceConsent?: boolean;
+  loginHint?: string;
+}): Promise<{ email: string; token: string }> {
   if (Capacitor.isNativePlatform()) {
-    await signInWithRedirect(academicAuth, academicGoogleProvider);
-    throw new Error('A redirecionar para conta académica…');
+    const { idToken, accessToken, email: nativeEmail } = await loginGoogleNative([
+      'https://www.googleapis.com/auth/gmail.readonly',
+      'https://www.googleapis.com/auth/drive.readonly',
+    ]);
+    const cred = GoogleAuthProvider.credential(idToken, accessToken);
+    const result = await signInWithCredential(academicAuth, cred);
+    const email = result.user.email || nativeEmail || '';
+    const token = accessToken || '';
+    if (token) setAcademicGoogleToken(token, email);
+    return { email, token };
   }
+
+  const params: Record<string, string> = {
+    prompt: opts?.forceConsent ? 'consent select_account' : 'select_account',
+  };
+  if (opts?.loginHint?.trim()) {
+    params.login_hint = opts.loginHint.trim();
+  }
+  academicGoogleProvider.setCustomParameters(params);
   const result = await signInWithPopup(academicAuth, academicGoogleProvider);
   const credential = GoogleAuthProvider.credentialFromResult(result);
   const token = credential?.accessToken || '';
@@ -253,12 +305,66 @@ export async function logoutFirebase(): Promise<void> {
   sessionStorage.removeItem('campus_google_access_token');
   sessionStorage.removeItem('campus_google_token_exp');
   logoutAcademicGoogle();
+  if (Capacitor.isNativePlatform()) {
+    await SocialLogin.logout({ provider: 'google' }).catch(() => {});
+  }
   await signOut(auth).catch(() => {});
 }
 
 /** Envia email de reposição de palavra-passe para contas Email/Password. */
 export async function resetPasswordWithEmail(email: string): Promise<void> {
   await sendPasswordResetEmail(auth, email.trim());
+}
+
+const MAGIC_EMAIL_STORAGE_KEY = 'unipedia_magic_email_for_signin';
+
+/** Envia um link mágico de entrada direta só com o email (sem palavra-passe). */
+export async function sendMagicEmailLink(email: string): Promise<void> {
+  const clean = email.trim();
+  const continueUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/entrar`
+      : 'https://campus-erp-84964.web.app/entrar';
+  await sendSignInLinkToEmail(auth, clean, {
+    url: continueUrl,
+    handleCodeInApp: true,
+  });
+  try {
+    localStorage.setItem(MAGIC_EMAIL_STORAGE_KEY, clean);
+  } catch {
+    // ignore storage quota
+  }
+}
+
+export function isIncomingEmailSignInLink(): boolean {
+  if (typeof window === 'undefined') return false;
+  return isSignInWithEmailLink(auth, window.location.href);
+}
+
+export function getPendingMagicLinkEmail(): string {
+  try {
+    return localStorage.getItem(MAGIC_EMAIL_STORAGE_KEY) || '';
+  } catch {
+    return '';
+  }
+}
+
+export async function completeMagicEmailLinkSignIn(explicitEmail?: string): Promise<User | null> {
+  if (typeof window === 'undefined' || !isSignInWithEmailLink(auth, window.location.href)) {
+    return null;
+  }
+  const email = (explicitEmail || getPendingMagicLinkEmail()).trim();
+  if (!email) {
+    return null;
+  }
+  const res = await signInWithEmailLink(auth, email, window.location.href);
+  try {
+    localStorage.removeItem(MAGIC_EMAIL_STORAGE_KEY);
+    window.history.replaceState({}, '', '/entrar');
+  } catch {
+    // ignore
+  }
+  return res.user;
 }
 
 /** Remove permanentemente a conta Firebase Auth atual. */

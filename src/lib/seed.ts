@@ -13,7 +13,9 @@ export const defaultSettings: Settings = {
   googleClientId: '',
   msClientId: '',
   uniAccessory: 'auto',
+  uniSkin: 'classic',
   uniPersona: 'amigo',
+  seenTabGuides: [],
 };
 
 export const emptyCollections = (): Collections => ({

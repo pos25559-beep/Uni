@@ -1,9 +1,13 @@
-import { GraduationCap, Layers, LayoutGrid, Plus, Upload } from 'lucide-react';
+import { CalendarDays, Camera, GraduationCap, Layers, LayoutGrid, Plus, Upload } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CourseCard from '../components/courses/CourseCard';
 import CourseFormModal from '../components/courses/CourseFormModal';
+import SmartScheduleImportModal, {
+  type SmartImportInitialMode,
+} from '../components/courses/SmartScheduleImportModal';
 import { AnimatedPage, FolderCardDeck, StaggerContainer, StaggerItem } from '../components/motion/Primitives';
+import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import ClipImportModal from '../components/settings/ClipImportModal';
 import { Button, EmptyState, PageHeader, SegmentedControl } from '../components/ui';
 import { fmtGrade, gradeSummary, semesterAverage, upcomingAssessments } from '../lib/selectors';
@@ -16,6 +20,7 @@ export default function Courses() {
   const assessments = useStore((s) => s.assessments);
   const [form, setForm] = useState<Course | 'new' | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [smartImport, setSmartImport] = useState<SmartImportInitialMode | null>(null);
   const [view, setView] = useState<'deck' | 'grid'>('deck');
 
   const summaries = useMemo(
@@ -42,9 +47,32 @@ export default function Courses() {
         accentTitle="cadeiras"
         subtitle={`${courses.length} ${courses.length === 1 ? 'cadeira' : 'cadeiras'} · ${totalEcts} ECTS · média ${fmtGrade(average)}`}
         actions={
-          <Button variant="primary" onClick={() => setForm('new')}>
-            <Plus size={16} /> Nova cadeira
-          </Button>
+          <div className="flex items-center gap-2">
+            <TabGuideHelpButton tabKey="cadeiras" />
+            <Button variant="secondary" onClick={() => setSmartImport('photo')}>
+              <Upload size={16} /> <span className="hidden sm:inline">Importar</span>
+            </Button>
+            <Button variant="primary" onClick={() => setForm('new')}>
+              <Plus size={16} /> Nova cadeira
+            </Button>
+          </div>
+        }
+      />
+
+      <TabGuideBanner
+        tabKey="cadeiras"
+        isEmpty={courses.length === 0}
+        actions={
+          courses.length === 0 ? (
+            <>
+              <Button size="sm" variant="primary" onClick={() => setSmartImport('photo')}>
+                <Camera size={14} /> Foto do horário (IA)
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => setSmartImport('gcal')}>
+                <CalendarDays size={14} /> Google Calendar
+              </Button>
+            </>
+          ) : undefined
         }
       />
 
@@ -52,14 +80,20 @@ export default function Courses() {
         <EmptyState
           icon={<GraduationCap size={28} />}
           title="Ainda não tens cadeiras"
-          hint="Adiciona as tuas cadeiras ou disciplinas à mão, ou importa o teu horário (.ics) para começar."
+          hint="Cria à mão, envia uma foto do horário ou agenda para o Uni extrair tudo, ou lê aulas e testes direto do Google Calendar."
           action={
             <div className="flex flex-wrap items-center justify-center gap-2">
-              <Button variant="secondary" onClick={() => setImportOpen(true)}>
-                <Upload size={16} /> Importar horário
+              <Button variant="primary" onClick={() => setSmartImport('photo')}>
+                <Camera size={16} /> Foto da agenda / horário
               </Button>
-              <Button variant="primary" onClick={() => setForm('new')}>
-                <Plus size={16} /> Nova cadeira
+              <Button variant="secondary" onClick={() => setSmartImport('gcal')}>
+                <CalendarDays size={16} /> Extrair Google Calendar
+              </Button>
+              <Button variant="secondary" onClick={() => setImportOpen(true)}>
+                <Upload size={16} /> CLIP / .ics
+              </Button>
+              <Button variant="ghost" onClick={() => setForm('new')}>
+                <Plus size={16} /> Criar à mão
               </Button>
             </div>
           }
@@ -115,6 +149,14 @@ export default function Courses() {
 
       {form && (
         <CourseFormModal course={form === 'new' ? undefined : form} onClose={() => setForm(null)} />
+      )}
+
+      {smartImport && (
+        <SmartScheduleImportModal
+          initialMode={smartImport}
+          onClose={() => setSmartImport(null)}
+          onOpenClipModal={() => setImportOpen(true)}
+        />
       )}
 
       {importOpen && <ClipImportModal onClose={() => setImportOpen(false)} />}

@@ -10,14 +10,66 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from './firebase';
 import type { ChatMessage } from '../integrations/gemini';
+import type { Course } from '../types';
+
+export type ConversationSubject = 'geral' | 'duvidas' | 'resumos' | 'exame' | 'exercicios';
+
+export const TUTOR_SUBJECTS: Array<{
+  id: ConversationSubject;
+  label: string;
+  hint: string;
+}> = [
+  { id: 'geral', label: 'Geral', hint: 'Organização e perguntas abertas' },
+  { id: 'duvidas', label: 'Dúvidas', hint: 'Explicações passo a passo' },
+  { id: 'resumos', label: 'Resumos', hint: 'Sínteses, mapas e apontamentos' },
+  { id: 'exame', label: 'Exame', hint: 'Simulações, recall e tópicos críticos' },
+  { id: 'exercicios', label: 'Exercícios', hint: 'Resolução guiada de fichas' },
+];
 
 export interface Conversation {
   id: string;
   title: string;
   courseId?: string;
+  subject?: string;
   materialIds?: string[];
   createdAt: string;
   updatedAt: string;
+}
+
+export function subjectLabel(subject?: string): string {
+  if (!subject) return 'Geral';
+  const match = TUTOR_SUBJECTS.find((s) => s.id === subject);
+  return match ? match.label : subject;
+}
+
+export interface ConversationGroup {
+  key: string;
+  label: string;
+  items: Conversation[];
+}
+
+/** Agrupa conversas por Cadeira (quando associada) ou Assunto para navegação organizada. */
+export function groupConversations(
+  conversations: Conversation[],
+  courses: Pick<Course, 'id' | 'name' | 'shortName'>[],
+): ConversationGroup[] {
+  const courseMap = new Map(courses.map((c) => [c.id, c.shortName || c.name]));
+  const groups = new Map<string, ConversationGroup>();
+
+  for (const conv of conversations) {
+    const cLabel = conv.courseId ? courseMap.get(conv.courseId) : undefined;
+    const sLabel = subjectLabel(conv.subject);
+    const key = cLabel ? `course:${conv.courseId}` : `subj:${sLabel.toLowerCase()}`;
+    const label = cLabel ? cLabel : `Assunto · ${sLabel}`;
+    const existing = groups.get(key);
+    if (existing) {
+      existing.items.push(conv);
+    } else {
+      groups.set(key, { key, label, items: [conv] });
+    }
+  }
+
+  return Array.from(groups.values());
 }
 
 const LOCAL_CONVERSATIONS_KEY = 'uni-erp-conversations-meta';
@@ -99,11 +151,18 @@ export function subscribeConversations(callback: (list: Conversation[]) => void)
  * Cria ou atualiza uma conversa.
  */
 export async function upsertConversation(conv: Conversation): Promise<void> {
+  const cleanConv = Object.fromEntries(
+    Object.entries(conv).filter(([, value]) => value !== undefined),
+  ) as unknown as Conversation;
+
   const user = auth.currentUser;
   if (!user) {
     const list = readLocalConversations();
-    const existingIdx = list.findIndex((c) => c.id === conv.id);
-    const updated = existingIdx >= 0 ? list.map((c) => (c.id === conv.id ? conv : c)) : [conv, ...list];
+    const existingIdx = list.findIndex((c) => c.id === cleanConv.id);
+    const updated =
+      existingIdx >= 0
+        ? list.map((c) => (c.id === cleanConv.id ? cleanConv : c))
+        : [cleanConv, ...list];
     updated.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     try {
       localStorage.setItem(LOCAL_CONVERSATIONS_KEY, JSON.stringify(updated));
@@ -114,8 +173,8 @@ export async function upsertConversation(conv: Conversation): Promise<void> {
     return;
   }
 
-  const docRef = doc(db, 'users', user.uid, 'conversations', conv.id);
-  await setDoc(docRef, conv, { merge: true });
+  const docRef = doc(db, 'users', user.uid, 'conversations', cleanConv.id);
+  await setDoc(docRef, cleanConv, { merge: true });
 }
 
 /**

@@ -1,4 +1,5 @@
 import {
+  Award,
   BookOpen,
   CalendarDays,
   ChartNoAxesColumn,
@@ -14,16 +15,17 @@ import {
   X,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { auth, onAuthStateChanged, type User } from '../lib/firebase';
 import { hapticTap, resolveIsDark, syncNativeTheme } from '../lib/nativeBridge';
+import { getUniCollectibleStates, readCollectibleTelemetry } from '../lib/uniCollectibles';
 import { googleService } from '../services/googleService';
 import { useStore } from '../store/useStore';
 import AuthStatus from './auth/AuthStatus';
+import UniCollectiblesModal from './brand/UniCollectiblesModal';
 import { UnipediaLogoMark } from './brand/UnipediaMarks';
 import { UNIPEDIA_BOUNCE_SPRING, UNIPEDIA_SPRING } from './motion/Primitives';
-import OnboardingModal from './onboarding/OnboardingModal';
 import { ToastViewport, cx } from './ui';
 
 const desktopNav = [
@@ -51,7 +53,15 @@ const mobileMoreRoutes = [
   { to: '/definicoes', label: 'Definições', hint: 'Conta, tema, IA e dados', icon: Settings },
 ];
 
-const BYPASS_ONBOARDING_PATHS = ['/bem-vindo', '/entrar', '/privacidade', '/termos', '/eliminar-conta'];
+const BYPASS_ONBOARDING_PATHS = [
+  '/bem-vindo',
+  '/entrar',
+  '/configurar',
+  '/onboarding',
+  '/privacidade',
+  '/termos',
+  '/eliminar-conta',
+];
 
 export default function AppShell() {
   const theme = useStore((s) => s.settings.theme);
@@ -60,21 +70,37 @@ export default function AppShell() {
   const hasSeenWelcome = Boolean(useStore((s) => s.settings.hasSeenWelcome));
   const updateSettings = useStore((s) => s.updateSettings);
   const academicProfile = useStore((s) => s.academicProfile);
-  const saveAcademicProfile = useStore((s) => s.saveAcademicProfile);
+  const sessions = useStore((s) => s.sessions);
+  const courses = useStore((s) => s.courses);
+  const weeklyCheckIns = useStore((s) => s.weeklyCheckIns);
 
   const location = useLocation();
   const [firebaseUser, setFirebaseUser] = useState<User | null>(() => auth.currentUser);
   const [authReady, setAuthReady] = useState<boolean>(() => Boolean(auth.currentUser));
-  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [collectiblesOpen, setCollectiblesOpen] = useState(false);
 
   const isBypassRoute = BYPASS_ONBOARDING_PATHS.some((p) => location.pathname.startsWith(p));
+  const isFullBleedRoute =
+    location.pathname.startsWith('/bem-vindo') ||
+    location.pathname.startsWith('/configurar') ||
+    location.pathname.startsWith('/onboarding');
   const needsLoginGate = !isBypassRoute && !guestMode && !firebaseUser;
-  const onboardingOpen =
-    !isBypassRoute && !needsLoginGate && !onboardingDismissed && !academicProfile?.onboardingCompleted;
+  const needsOnboardingSetup =
+    !isBypassRoute && !needsLoginGate && !academicProfile?.onboardingCompleted;
 
   const isMoreRouteActive = mobileMoreRoutes.some((r) => location.pathname.startsWith(r.to));
   const isDarkNow = resolveIsDark(theme);
+
+  const collectibleCounts = useMemo(() => {
+    const items = getUniCollectibleStates(
+      readCollectibleTelemetry(sessions, courses, weeklyCheckIns),
+    );
+    return {
+      unlocked: items.filter((i) => i.unlocked).length,
+      total: items.length,
+    };
+  }, [sessions, courses, weeklyCheckIns]);
 
   useEffect(() => {
     let active = true;
@@ -143,6 +169,10 @@ export default function AppShell() {
     return <Navigate to={hasSeenWelcome ? '/entrar' : '/bem-vindo'} replace />;
   }
 
+  if (needsOnboardingSetup && authReady) {
+    return <Navigate to="/configurar" replace />;
+  }
+
   const toggleTheme = () => {
     void hapticTap();
     updateSettings({ theme: isDarkNow ? 'light' : 'dark' });
@@ -153,6 +183,7 @@ export default function AppShell() {
       <ToastViewport />
 
       {/* Navegação lateral (Desktop & Tablet) */}
+      {!isBypassRoute && (
       <aside className="hidden w-64 shrink-0 flex-col border-r border-line bg-surface px-3.5 py-5 md:flex">
         <div className="mb-6 flex items-center gap-2.5 px-2">
           <UnipediaLogoMark size={36} />
@@ -186,6 +217,23 @@ export default function AppShell() {
           ))}
         </nav>
 
+        <button
+          type="button"
+          onClick={() => {
+            void hapticTap();
+            setCollectiblesOpen(true);
+          }}
+          className="mb-2 flex min-h-[44px] items-center justify-between gap-2 rounded-2xl border border-accent/25 bg-accent-soft/45 px-3.5 py-2 text-xs font-semibold text-fg transition hover:bg-accent-soft"
+        >
+          <span className="inline-flex items-center gap-2">
+            <Award size={15} className="text-accent" />
+            Coleção do Uni
+          </span>
+          <span className="rounded-full bg-surface px-2 py-0.5 font-mono text-[11px] font-bold text-accent">
+            {collectibleCounts.unlocked}/{collectibleCounts.total}
+          </span>
+        </button>
+
         <AuthStatus />
 
         <button
@@ -211,6 +259,7 @@ export default function AppShell() {
           </NavLink>
         </div>
       </aside>
+      )}
 
       {/* Conteúdo principal com Safe Area e espaço para a dock flutuante */}
       <main
@@ -223,7 +272,7 @@ export default function AppShell() {
       >
         <div
           className={cx(
-            location.pathname.startsWith('/bem-vindo')
+            isFullBleedRoute
               ? 'w-full'
               : 'mx-auto w-full max-w-5xl px-4 py-4 md:px-8 md:py-8',
           )}
@@ -364,6 +413,24 @@ export default function AppShell() {
               </div>
 
               <div className="mt-4 space-y-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    void hapticTap();
+                    setMoreOpen(false);
+                    setCollectiblesOpen(true);
+                  }}
+                  className="flex min-h-[48px] w-full items-center justify-between rounded-[18px] border border-accent/25 bg-accent-soft/50 px-3.5 py-2.5 text-left transition hover:bg-accent-soft"
+                >
+                  <span className="inline-flex items-center gap-2 text-xs font-bold text-fg">
+                    <Award size={16} className="text-accent" />
+                    Coleção do Uni &amp; Mascotes
+                  </span>
+                  <span className="rounded-full bg-surface px-2.5 py-0.5 font-mono text-xs font-bold text-accent">
+                    {collectibleCounts.unlocked}/{collectibleCounts.total}
+                  </span>
+                </button>
+
                 <AuthStatus />
 
                 <div className="flex items-center justify-between rounded-[18px] border border-line bg-bg px-3.5 py-2">
@@ -388,16 +455,10 @@ export default function AppShell() {
         )}
       </AnimatePresence>
 
-      {/* Onboarding Obrigatório no 1.º acesso */}
-      <OnboardingModal
-        open={onboardingOpen}
-        fullScreen
-        onClose={() => {
-          setOnboardingDismissed(true);
-          if (!academicProfile?.onboardingCompleted) {
-            saveAcademicProfile({ onboardingCompleted: true });
-          }
-        }}
+      {/* Galeria de Colecionáveis do Uni */}
+      <UniCollectiblesModal
+        open={collectiblesOpen}
+        onClose={() => setCollectiblesOpen(false)}
       />
     </div>
   );

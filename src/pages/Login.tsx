@@ -17,6 +17,7 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { UniBuddy, UnipediaLogoMark } from '../components/brand/UnipediaMarks';
+import { LEGAL_INFO } from '../lib/legal';
 import {
   AnimatedPage,
   StaggerContainer,
@@ -36,12 +37,16 @@ import {
 } from '../components/ui';
 import {
   auth,
+  completeMagicEmailLinkSignIn,
+  getPendingMagicLinkEmail,
+  isIncomingEmailSignInLink,
   loginWithEmail,
   loginWithGoogle,
   logoutFirebase,
   onAuthStateChanged,
   registerWithEmail,
   resetPasswordWithEmail,
+  sendMagicEmailLink,
   type User,
 } from '../lib/firebase';
 import { migrateLocalDataToCloud } from '../lib/firestoreSync';
@@ -69,7 +74,7 @@ function friendlyAuthError(code?: string, fallback?: string): string {
     case 'auth/too-many-requests':
       return 'Muitas tentativas seguidas. Aguarda um pouco ou repõe a tua palavra-passe.';
     case 'auth/operation-not-allowed':
-      return 'A entrada por email ainda precisa de ser ativada no projeto Firebase.';
+      return 'Este método de entrada precisa de estar ativo no Firebase Auth (tenta novamente ou usa o link mágico por email).';
     default:
       return fallback || 'Não foi possível entrar neste momento. Tenta novamente.';
   }
@@ -79,6 +84,8 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const guestMode = Boolean(useStore((s) => s.settings.guestMode));
+  const ageAlreadyConfirmed = Boolean(useStore((s) => s.settings.ageConfirmed13Plus));
+  const onboardingCompleted = Boolean(useStore((s) => s.academicProfile?.onboardingCompleted));
   const uniPreference = useStore((s) => s.settings.uniAccessory);
   const updateSettings = useStore((s) => s.updateSettings);
 
@@ -87,8 +94,11 @@ export default function LoginPage() {
     () => (searchParams.get('mode') === 'signup' ? 'signup' : 'signin'),
   );
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => getPendingMagicLinkEmail());
   const [password, setPassword] = useState('');
+  const [authMethod, setAuthMethod] = useState<'password' | 'magic'>('password');
+  const [magicLinkNeedsEmail, setMagicLinkNeedsEmail] = useState(false);
+  const [ageConfirmed, setAgeConfirmed] = useState(ageAlreadyConfirmed);
   const [showPass, setShowPass] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const [passFocused, setPassFocused] = useState(false);
@@ -103,11 +113,44 @@ export default function LoginPage() {
   const showBack = Boolean(user || guestMode);
 
   useEffect(() => {
-    return onAuthStateChanged(auth, (u) => {
+    const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setError(null);
     });
-  }, []);
+    if (isIncomingEmailSignInLink()) {
+      const pendingEmail = getPendingMagicLinkEmail();
+      if (!pendingEmail) {
+        setMagicLinkNeedsEmail(true);
+        setAuthMethod('magic');
+      } else {
+        setBusy(true);
+        void completeMagicEmailLinkSignIn(pendingEmail)
+          .then(async (u) => {
+            if (!u) return;
+            setUser(u);
+            updateSettings({
+              guestMode: false,
+              hasSeenWelcome: true,
+              ageConfirmed13Plus: true,
+              gdprAcceptedAt: new Date().toISOString(),
+              gdprPolicyVersion: LEGAL_INFO.policyVersion,
+              ...(u.email ? { personalEmail: u.email } : {}),
+            });
+            await migrateLocalDataToCloud().catch(() => {});
+            const done = Boolean(useStore.getState().academicProfile?.onboardingCompleted);
+            void hapticSuccess();
+            showToast('Sessão iniciada por link no email!');
+            navigate(done ? '/' : '/configurar');
+          })
+          .catch((err: unknown) => {
+            const eObj = err as { code?: string; message?: string };
+            setError(friendlyAuthError(eObj?.code, eObj?.message));
+          })
+          .finally(() => setBusy(false));
+      }
+    }
+    return unsub;
+  }, [navigate, updateSettings]);
 
   const uniMood = user
     ? 'celebrate'
@@ -130,8 +173,59 @@ export default function LoginPage() {
 
   const submitEmail = async (e: FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || password.length < 6) {
-      setError('Insere um email válido e uma palavra-passe com pelo menos 6 caracteres.');
+    if (!email.trim()) {
+      setError('Insere um email válido.');
+      return;
+    }
+
+    if (authMethod === 'magic') {
+      if (mode === 'signup' && !ageConfirmed) {
+        setError('Confirma a idade mínima e a Política de Privacidade para criar conta.');
+        return;
+      }
+      setBusy(true);
+      setError(null);
+      setInfo(null);
+      void hapticTap();
+      try {
+        if (magicLinkNeedsEmail && isIncomingEmailSignInLink()) {
+          const u = await completeMagicEmailLinkSignIn(email);
+          if (u) {
+            setUser(u);
+            updateSettings({
+              guestMode: false,
+              hasSeenWelcome: true,
+              ageConfirmed13Plus: true,
+              gdprAcceptedAt: new Date().toISOString(),
+              gdprPolicyVersion: LEGAL_INFO.policyVersion,
+              ...(u.email ? { personalEmail: u.email } : {}),
+            });
+            await migrateLocalDataToCloud().catch(() => {});
+            const done = Boolean(useStore.getState().academicProfile?.onboardingCompleted);
+            void hapticSuccess();
+            showToast('Sessão iniciada!');
+            navigate(done ? '/' : '/configurar');
+            return;
+          }
+        }
+        await sendMagicEmailLink(email);
+        void hapticSuccess();
+        setInfo(`Enviámos um link mágico para ${email.trim()}. Abre esse email neste dispositivo para entrar sem palavra-passe.`);
+      } catch (err: unknown) {
+        const eObj = err as { code?: string; message?: string };
+        setError(friendlyAuthError(eObj?.code, eObj?.message));
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Insere uma palavra-passe com pelo menos 6 caracteres.');
+      return;
+    }
+    if (mode === 'signup' && !ageConfirmed) {
+      setError('Confirma a idade mínima e a Política de Privacidade para criar conta.');
       return;
     }
     setBusy(true);
@@ -148,12 +242,20 @@ export default function LoginPage() {
       updateSettings({
         guestMode: false,
         hasSeenWelcome: true,
+        ...(mode === 'signup' || ageConfirmed
+          ? {
+              ageConfirmed13Plus: true,
+              gdprAcceptedAt: new Date().toISOString(),
+              gdprPolicyVersion: LEGAL_INFO.policyVersion,
+            }
+          : {}),
         ...(u.displayName ? { userName: u.displayName } : cleanName ? { userName: cleanName } : {}),
       });
       await migrateLocalDataToCloud().catch(() => {});
+      const done = Boolean(useStore.getState().academicProfile?.onboardingCompleted);
       void hapticSuccess();
-      showToast(mode === 'signup' ? 'Conta criada! Bem-vindo à Unipedia.' : 'Sessão iniciada!');
-      navigate('/');
+      showToast(mode === 'signup' ? 'Conta criada! Vamos configurar o teu curso.' : 'Sessão iniciada!');
+      navigate(done ? '/' : '/configurar');
     } catch (err: unknown) {
       const eObj = err as { code?: string; message?: string };
       setError(friendlyAuthError(eObj?.code, eObj?.message));
@@ -189,6 +291,9 @@ export default function LoginPage() {
       updateSettings({
         guestMode: false,
         hasSeenWelcome: true,
+        ageConfirmed13Plus: true,
+        gdprAcceptedAt: new Date().toISOString(),
+        gdprPolicyVersion: LEGAL_INFO.policyVersion,
         ...(u.displayName ? { userName: u.displayName } : {}),
         ...(u.email ? { personalEmail: u.email } : {}),
       });
@@ -202,7 +307,7 @@ export default function LoginPage() {
       void googleService.syncGoogleEcosystemAfterLogin(st.courses).catch(() => {});
       void hapticSuccess();
       showToast('Bem-vindo! Conta Google e serviços associados.');
-      navigate('/');
+      navigate(st.academicProfile?.onboardingCompleted ? '/' : '/configurar');
     } catch (err: unknown) {
       const eObj = err as { code?: string; message?: string };
       if (eObj?.code !== 'auth/popup-closed-by-user') {
@@ -215,8 +320,18 @@ export default function LoginPage() {
 
   const handleContinueOffline = () => {
     void hapticTap();
-    updateSettings({ guestMode: true, hasSeenWelcome: true });
-    navigate('/');
+    updateSettings({
+      guestMode: true,
+      hasSeenWelcome: true,
+      ...(ageConfirmed
+        ? {
+            ageConfirmed13Plus: true,
+            gdprAcceptedAt: new Date().toISOString(),
+            gdprPolicyVersion: LEGAL_INFO.policyVersion,
+          }
+        : {}),
+    });
+    navigate(onboardingCompleted ? '/' : '/configurar');
   };
 
   const handleLogout = async () => {
@@ -427,33 +542,56 @@ export default function LoginPage() {
                   </div>
                 </Field>
 
-                <Field label="Palavra-passe">
-                  <div className="relative">
-                    <Lock size={16} className="pointer-events-none absolute top-3.5 left-3.5 text-muted" />
-                    <Input
-                      type={showPass ? 'text' : 'password'}
-                      required
-                      minLength={6}
-                      value={password}
-                      onFocus={() => setPassFocused(true)}
-                      onBlur={() => setPassFocused(false)}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Mínimo 6 caracteres"
-                      autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-                      className="pr-12 pl-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPass((v) => !v)}
-                      aria-label={showPass ? 'Ocultar palavra-passe' : 'Mostrar palavra-passe'}
-                      className="absolute inset-y-0 right-1 flex w-11 items-center justify-center rounded-full text-muted hover:text-fg"
-                    >
-                      {showPass ? <EyeOff size={17} /> : <Eye size={17} />}
-                    </button>
-                  </div>
-                </Field>
+                {/* Seletor discreto: Palavra-passe vs. Só Email (Link Mágico) */}
+                <div className="flex items-center justify-between gap-2 rounded-[14px] bg-surface-2/65 px-3 py-2 text-xs">
+                  <span className="text-muted">
+                    {authMethod === 'magic'
+                      ? 'Entrada direta por link no email (sem passe)'
+                      : 'Usar palavra-passe normal'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMethod((v) => (v === 'password' ? 'magic' : 'password'));
+                      setError(null);
+                      setInfo(null);
+                      void hapticTap();
+                    }}
+                    className="font-semibold text-accent hover:underline"
+                  >
+                    {authMethod === 'magic' ? 'Usar palavra-passe' : 'Entrar só com email'}
+                  </button>
+                </div>
 
-                {mode === 'signin' && (
+                {authMethod === 'password' && (
+                  <Field label="Palavra-passe">
+                    <div className="relative">
+                      <Lock size={16} className="pointer-events-none absolute top-3.5 left-3.5 text-muted" />
+                      <Input
+                        type={showPass ? 'text' : 'password'}
+                        required
+                        minLength={6}
+                        value={password}
+                        onFocus={() => setPassFocused(true)}
+                        onBlur={() => setPassFocused(false)}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Mínimo 6 caracteres"
+                        autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                        className="pr-12 pl-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPass((v) => !v)}
+                        aria-label={showPass ? 'Ocultar palavra-passe' : 'Mostrar palavra-passe'}
+                        className="absolute inset-y-0 right-1 flex w-11 items-center justify-center rounded-full text-muted hover:text-fg"
+                      >
+                        {showPass ? <EyeOff size={17} /> : <Eye size={17} />}
+                      </button>
+                    </div>
+                  </Field>
+                )}
+
+                {authMethod === 'password' && mode === 'signin' && (
                   <div className="flex justify-end">
                     <button
                       type="button"
@@ -463,6 +601,32 @@ export default function LoginPage() {
                       Esqueci-me da palavra-passe
                     </button>
                   </div>
+                )}
+
+                {mode === 'signup' && (
+                  <label className="flex cursor-pointer items-start gap-2.5 rounded-[16px] border border-line bg-bg px-3.5 py-2.5 text-xs leading-relaxed text-fg">
+                    <input
+                      type="checkbox"
+                      checked={ageConfirmed}
+                      onChange={(e) => {
+                        setAgeConfirmed(e.target.checked);
+                        setError(null);
+                        void hapticTap();
+                      }}
+                      className="mt-0.5 h-4 w-4 shrink-0 rounded border-line accent-accent"
+                    />
+                    <span>
+                      Confirmo ter pelo menos <strong>{LEGAL_INFO.minimumAgePT} anos</strong> (ou autorização) e aceito a{' '}
+                      <Link to="/privacidade" className="inline-link font-semibold text-accent underline">
+                        Privacidade
+                      </Link>{' '}
+                      e os{' '}
+                      <Link to="/termos" className="inline-link font-semibold text-accent underline">
+                        Termos
+                      </Link>
+                      .
+                    </span>
+                  </label>
                 )}
 
                 <AnimatePresence>
@@ -490,7 +654,13 @@ export default function LoginPage() {
 
                 <motion.div whileTap={{ scale: 0.98 }} transition={UNIPEDIA_BOUNCE_SPRING}>
                   <Button type="submit" variant="primary" loading={busy} className="w-full">
-                    {mode === 'signup' ? 'Criar a minha conta' : 'Entrar'}
+                    {authMethod === 'magic'
+                      ? magicLinkNeedsEmail
+                        ? 'Confirmar email do link'
+                        : 'Enviar link de entrada para o email'
+                      : mode === 'signup'
+                        ? 'Criar a minha conta'
+                        : 'Entrar'}
                     <ArrowRight size={16} />
                   </Button>
                 </motion.div>

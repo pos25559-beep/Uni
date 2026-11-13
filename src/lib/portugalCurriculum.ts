@@ -4,17 +4,36 @@ export interface CurriculumCourseTemplate {
   code: string;
   name: string;
   shortName: string;
-  year: 1 | 2 | 3;
+  year: 1 | 2 | 3 | 4 | 5;
   semester: 1 | 2;
   ects: number;
   topics: string[];
   color?: CourseColor;
 }
 
+export function formatAcademicYearLabel(year: number, isSecondarySchool = false): string {
+  if (isSecondarySchool) {
+    return year === 1 ? '10.º Ano' : year === 2 ? '11.º Ano' : '12.º Ano';
+  }
+  if (year === 4) return '4.º Ano · 1.º Mestrado';
+  if (year === 5) return '5.º Ano · 2.º Mestrado';
+  return `${year}.º Ano`;
+}
+
+export function formatAcademicYearShort(year: number, isSecondarySchool = false): string {
+  if (isSecondarySchool) {
+    return year === 1 ? '10.º' : year === 2 ? '11.º' : '12.º';
+  }
+  if (year === 4) return '1.º Mest.';
+  if (year === 5) return '2.º Mest.';
+  return `${year}.º Ano`;
+}
+
 export interface DegreeCurriculum {
   id: string;
   name: string;
   shortName: string;
+  cycle?: 'licenciatura' | 'mestrado' | 'misto';
   courses: CurriculumCourseTemplate[];
 }
 
@@ -35,6 +54,68 @@ const COURSE_PALETTE: CourseColor[] = [
   'cyan',
 ];
 
+const NOVA_FCT_LEMC_COURSES: CurriculumCourseTemplate[] = [
+  // 1.º Ano (Despacho n.º 1003/2024 — NOVA FCT LEMec)
+  { code: 'C1D', name: 'Cálculo I D', shortName: 'Cálculo I D', year: 1, semester: 1, ects: 6, topics: ['Funções e limites', 'Cálculo diferencial', 'Primitivas e integrais', 'Séries numéricas'] },
+  { code: 'ALGA', name: 'Álgebra Linear e Geometria Analítica', shortName: 'ALGA', year: 1, semester: 1, ects: 6, topics: ['Matrizes e determinantes', 'Espaços vetoriais', 'Aplicações lineares', 'Valores e vetores próprios'] },
+  { code: 'DCM', name: 'Desenho de Construção Mecânica', shortName: 'DCM', year: 1, semester: 1, ects: 6, topics: ['Projeções ortogonais', 'Cortes e secções', 'Cotagem e tolerâncias', 'Normalização técnica'] },
+  { code: 'MECD', name: 'Mecânica D', shortName: 'Mecânica D', year: 1, semester: 1, ects: 6, topics: ['Cinemática', 'Leis de Newton', 'Trabalho e energia', 'Dinâmica de sistemas'] },
+  { code: 'QC', name: 'Química C', shortName: 'Química C', year: 1, semester: 1, ects: 6, topics: ['Estrutura atómica e ligação', 'Termoquímica', 'Equilíbrio químico', 'Eletroquímica e corrosão'] },
+  { code: 'C2D', name: 'Cálculo II D', shortName: 'Cálculo II D', year: 1, semester: 2, ects: 6, topics: ['Cálculo diferencial em R^n', 'Extremos condicionados', 'Integrais múltiplos', 'Curvas e superfícies'] },
+  { code: 'TERMD', name: 'Termodinâmica D', shortName: 'Termo D', year: 1, semester: 2, ects: 6, topics: ['1.ª Lei da Termodinâmica', 'Substâncias puras', '2.ª Lei e entropia', 'Rendimento e ciclos básicos'] },
+  { code: 'ICED', name: 'Informática para Ciências e Engenharias D', shortName: 'Informática D', year: 1, semester: 2, ects: 6, topics: ['Algoritmia em Python', 'Controlo de fluxo e funções', 'Estruturas de dados', 'Cálculo científico'] },
+  { code: 'ITPM', name: 'Introdução às Tecnologias e Processos Mecânicos', shortName: 'ITPM', year: 1, semester: 2, ects: 6, topics: ['Metrologia dimensional', 'Processos de fabrico', 'Máquinas-ferramenta', 'Ligação de materiais'] },
+  { code: 'ECON', name: 'Economia', shortName: 'Economia', year: 1, semester: 2, ects: 3, topics: ['Microeconomia', 'Mercados e procura', 'Macroeconomia', 'Indicadores económicos'] },
+  { code: 'CTCT', name: 'Competências Transversais para Ciências e Tecnologia', shortName: 'CTCT', year: 1, semester: 2, ects: 3, topics: ['Comunicação científica', 'Trabalho em equipa', 'Gestão do tempo', 'Ética em engenharia'] },
+
+  // 2.º Ano (Despacho n.º 1003/2024 — NOVA FCT LEMec)
+  { code: 'C3D', name: 'Cálculo III D', shortName: 'Cálculo III D', year: 2, semester: 1, ects: 6, topics: ['Campos vetoriais', 'Integrais de linha e superfície', 'Stokes e Gauss', 'EDOs e Transformada de Laplace'] },
+  { code: 'PEB', name: 'Probabilidades e Estatística B', shortName: 'Prob. Est. B', year: 2, semester: 1, ects: 6, topics: ['Variáveis aleatórias', 'Distribuições', 'Estimação pontual e intervalar', 'Testes de hipóteses e regressão'] },
+  { code: 'CMAT', name: 'Ciência dos Materiais', shortName: 'Materiais', year: 2, semester: 1, ects: 6, topics: ['Estrutura cristalina e defeitos', 'Difusão e diagramas de fase', 'Tratamentos térmicos', 'Propriedades mecânicas'] },
+  { code: 'EMAGD', name: 'Eletromagnetismo D', shortName: 'Eletromag. D', year: 2, semester: 1, ects: 6, topics: ['Eletrostática', 'Magnetostática', 'Indução de Faraday', 'Equações de Maxwell'] },
+  { code: 'MA1', name: 'Mecânica Aplicada I', shortName: 'Mec. Apl. I', year: 2, semester: 1, ects: 6, topics: ['Estática de corpos rígidos', 'Treliças e pórticos', 'Esforços internos e momentos', 'Atrito e centro de massa'] },
+  { code: 'DAC', name: 'Desenho Assistido por Computador', shortName: 'DAC / CAD', year: 2, semester: 2, ects: 6, topics: ['Modelação paramétrica 3D', 'Montagens e restrições', 'Desenhos técnicos e toleranciamento', 'Superfícies'] },
+  { code: 'EME', name: 'Eletrotecnia e Máquinas Elétricas', shortName: 'Eletrotecnia', year: 2, semester: 2, ects: 6, topics: ['Circuitos AC monofásicos e trifásicos', 'Transformadores', 'Motores de indução', 'Acionamentos elétricos'] },
+  { code: 'MS1', name: 'Mecânica dos Sólidos I', shortName: 'MS1', year: 2, semester: 2, ects: 6, topics: ['Tensão e deformação', 'Tração e compressão', 'Torção', 'Flexão simples e deflexão'] },
+  { code: 'MA2', name: 'Mecânica Aplicada II', shortName: 'Mec. Apl. II', year: 2, semester: 2, ects: 6, topics: ['Cinemática do corpo rígido', 'Dinâmica plana de mecanismos', 'Impulso e quantidade de movimento', 'Trabalho virtual'] },
+  { code: 'SSTD', name: 'Sociedade, Sustentabilidade e Transformação Digital', shortName: 'SSTD', year: 2, semester: 2, ects: 3, topics: ['Transição energética', 'Economia circular', 'Indústria 4.0', 'Impacto social da tecnologia'] },
+  { code: 'TERMA', name: 'Termodinâmica Aplicada', shortName: 'Termo Apl.', year: 2, semester: 2, ects: 6, topics: ['Ciclos Rankine e Brayton', 'Refrigeração e bombas de calor', 'Psicrometria', 'Combustão'] },
+
+  // 3.º Ano (Despacho n.º 1003/2024 — NOVA FCT LEMec)
+  { code: 'EG', name: 'Eletrónica Geral', shortName: 'Eletrónica', year: 3, semester: 1, ects: 6, topics: ['Díodos e transístores', 'Amplificadores operacionais', 'Sistemas digitais', 'Instrumentação e sensores'] },
+  { code: 'MDF', name: 'Mecânica dos Fluidos', shortName: 'MdF', year: 3, semester: 1, ects: 6, topics: ['Estática dos fluidos', 'Equações de conservação', 'Escoamento em condutas', 'Análise dimensional e camada limite'] },
+  { code: 'MS2', name: 'Mecânica dos Sólidos II', shortName: 'MS2', year: 3, semester: 1, ects: 6, topics: ['Estado plano de tensões', 'Critérios de cedência', 'Flexão desviada e composta', 'Encurvadura e métodos energéticos'] },
+  { code: 'TFS', name: 'Tecnologias de Fundição e Soldadura', shortName: 'Fund. Sold.', year: 3, semester: 1, ects: 6, topics: ['Processos de fundição', 'Solidificação e defeitos', 'Soldadura por arco e laser', 'Metalurgia da soldadura'] },
+  { code: 'PIIC', name: 'PIIC / PIPP Engenharia Mecânica', shortName: 'PIIC / PIPP', year: 3, semester: 1, ects: 3, topics: ['Iniciação à investigação', 'Prática profissional', 'Relatório técnico', 'Apresentação'] },
+  { code: 'CMM', name: 'Comportamento Mecânico dos Materiais', shortName: 'Comp. Mec.', year: 3, semester: 2, ects: 6, topics: ['Elasticidade e plasticidade', 'Mecânica da fratura', 'Fadiga de materiais', 'Fluência'] },
+  { code: 'GP', name: 'Gestão da Produção', shortName: 'Gestão Prod.', year: 3, semester: 2, ects: 6, topics: ['Planeamento de produção', 'Lean Manufacturing', 'Controlo de stocks', 'Qualidade industrial'] },
+  { code: 'PDP', name: 'Projeto de Desenvolvimento de Produto', shortName: 'Proj. Produto', year: 3, semester: 2, ects: 6, topics: ['Especificação e conceito', 'DFM e DFA', 'Prototipagem rápida', 'Validação de produto'] },
+  { code: 'TCOR', name: 'Tecnologias de Corte', shortName: 'Tec. Corte', year: 3, semester: 2, ects: 6, topics: ['Mecânica do corte ortogonal', 'Ferramentas e desgaste', 'CNC e maquinação', 'Processos não convencionais'] },
+  { code: 'TCAL', name: 'Transmissão do Calor', shortName: 'Transm. Calor', year: 3, semester: 2, ects: 6, topics: ['Condução estacionária e transiente', 'Convecção natural e forçada', 'Permutadores de calor', 'Radiação térmica'] },
+  { code: 'VMR', name: 'Vibrações Mecânicas e Ruído', shortName: 'Vibrações', year: 3, semester: 2, ects: 6, topics: ['Vibrações livres e forçadas (1 GL)', 'Sistemas múltiplos GL', 'Isolamento vibratório', 'Acústica industrial'] },
+];
+
+const NOVA_FCT_MEMEC_COURSES: CurriculumCourseTemplate[] = [
+  // 1.º Ano de Mestrado (4.º Ano Curricular — Despacho n.º 136/2024 NOVA FCT MEMec)
+  { code: 'OM1', name: 'Órgãos de Máquinas I', shortName: 'Órgãos I', year: 4, semester: 1, ects: 6, topics: ['Dimensionamento à fadiga', 'Veios e eixos', 'Rolamentos e chumaceiras', 'Ligações aparafusadas e soldadas'] },
+  { code: 'IIO', name: 'Introdução à Investigação Operacional', shortName: 'Inv. Oper.', year: 4, semester: 1, ects: 6, topics: ['Programação linear e Simplex', 'Dualidade', 'Problemas de transporte e redes', 'Programação inteira'] },
+  { code: 'TEP', name: 'Tecnologias de Enformação Plástica', shortName: 'TEP', year: 4, semester: 1, ects: 6, topics: ['Plasticidade aplicada', 'Laminagem e extrusão', 'Estampagem e quinagem', 'Forjamento e simulação'] },
+  { code: 'TMP', name: 'Teoria e Metodologias de Projeto', shortName: 'TMP', year: 4, semester: 1, ects: 6, topics: ['Engenharia sistemática', 'Análise funcional e QFD', 'FMEA e robustez', 'Ciclo de vida'] },
+  { code: 'TFI', name: 'Termofluidos Industriais', shortName: 'Termofluidos', year: 4, semester: 1, ects: 6, topics: ['Redes de tubagem e bombagem', 'Turbomáquinas', 'Vapor industrial e caldeiras', 'Eficiência energética'] },
+  { code: 'AIRA', name: 'Automação Industrial e Robótica Avançada', shortName: 'Automação', year: 4, semester: 2, ects: 6, topics: ['PLCs e redes industriais', 'Cinemática de manipuladores', 'Controlo de trajetória', 'Células robotizadas'] },
+  { code: 'OM2', name: 'Órgãos de Máquinas II', shortName: 'Órgãos II', year: 4, semester: 2, ects: 6, topics: ['Engrenagens cilíndricas e cónicas', 'Correias e correntes', 'Embraiagens e travões', 'Tribologia e lubrificação'] },
+  { code: 'PM', name: 'Projeto Mecânico', shortName: 'Proj. Mec.', year: 4, semester: 2, ects: 6, topics: ['Análise estrutural avançada', 'Elementos finitos aplicados', 'Otimização estrutural', 'Caderno de encargos'] },
+  { code: 'FABAD', name: 'Fabrico Aditivo', shortName: 'Fab. Aditivo', year: 4, semester: 2, ects: 6, topics: ['Processos PBF, DED e FFF', 'Design for Additive (DfAM)', 'Topologia e lattices', 'Pós-processamento e qualificação'] },
+  { code: 'EMP', name: 'Empreendedorismo', shortName: 'Empreend.', year: 4, semester: 2, ects: 3, topics: ['Proposta de valor', 'Modelo de negócio', 'Propriedade intelectual', 'Plano financeiro'] },
+
+  // 2.º Ano de Mestrado (5.º Ano Curricular — Despacho n.º 136/2024 NOVA FCT MEMec)
+  { code: 'OPT1', name: 'Opção Orientada I (MEMec)', shortName: 'Opção I', year: 5, semester: 1, ects: 6, topics: ['Especialização em Projeto / Fabrico / Energia', 'Seminários técnicos'] },
+  { code: 'OPT2', name: 'Opção Orientada II (MEMec)', shortName: 'Opção II', year: 5, semester: 1, ects: 6, topics: ['Simulação / CAE / Sistemas Térmicos', 'Caso prático'] },
+  { code: 'OPT3', name: 'Opção Orientada III (MEMec)', shortName: 'Opção III', year: 5, semester: 1, ects: 6, topics: ['Gestão Industrial / Materiais Avançados', 'Seminário'] },
+  { code: 'PREPD', name: 'Preparação de Dissertação / Projeto MEMec', shortName: 'Prep. Diss.', year: 5, semester: 1, ects: 6, topics: ['Estado da arte', 'Metodologia experimental/numérica', 'Plano de trabalhos'] },
+  { code: 'DISS', name: 'Dissertação / Trabalho de Projeto / Estágio MEMec', shortName: 'Dissertação', year: 5, semester: 2, ects: 30, topics: ['Investigação ou projeto industrial', 'Validação de resultados', 'Tese e defesa pública'] },
+];
+
 export const PORTUGAL_CURRICULA: UniversityCatalogEntry[] = [
   {
     id: 'nova-fct',
@@ -43,36 +124,24 @@ export const PORTUGAL_CURRICULA: UniversityCatalogEntry[] = [
     degrees: [
       {
         id: 'lemc',
-        name: 'Licenciatura em Engenharia Mecânica (LEMc)',
+        name: 'Licenciatura em Engenharia Mecânica (LEMc · Plano atual MEP)',
         shortName: 'LEMc',
-        courses: [
-          // 1.º Ano
-          { code: 'AM1', name: 'Análise Matemática I', shortName: 'AM1', year: 1, semester: 1, ects: 6, topics: ['Limites e continuidade', 'Derivadas', 'Primitivas e integrais', 'Séries numéricas'] },
-          { code: 'ALGA', name: 'Álgebra Linear e Geometria Analítica', shortName: 'ALGA', year: 1, semester: 1, ects: 6, topics: ['Matrizes e determinantes', 'Espaços vetoriais', 'Aplicações lineares', 'Valores próprios'] },
-          { code: 'F1', name: 'Física I', shortName: 'Física I', year: 1, semester: 1, ects: 6, topics: ['Cinemática', 'Leis de Newton', 'Trabalho e energia', 'Corpo rígido'] },
-          { code: 'DM', name: 'Desenho de Engenharia Mecânica', shortName: 'DEM', year: 1, semester: 1, ects: 6, topics: ['Projeções ortogonais', 'Cortes e secções', 'Cotagem e tolerâncias', 'CAD 3D'] },
-          { code: 'QG', name: 'Química Geral', shortName: 'Química', year: 1, semester: 1, ects: 6, topics: ['Estrutura atómica', 'Ligação química', 'Equilíbrio químico', 'Eletroquímica'] },
-          { code: 'AM2', name: 'Análise Matemática II', shortName: 'AM2', year: 1, semester: 2, ects: 6, topics: ['Cálculo diferencial em R^n', 'Extremos condicionados', 'Integrais múltiplos', 'Curvas e superfícies'] },
-          { code: 'F2', name: 'Física II', shortName: 'Física II', year: 1, semester: 2, ects: 6, topics: ['Eletrostática', 'Corrente contínua', 'Magnetostática', 'Indução eletromagnética'] },
-          { code: 'CM1', name: 'Ciência dos Materiais', shortName: 'Materiais', year: 1, semester: 2, ects: 6, topics: ['Estrutura cristalina', 'Diagramas de fase', 'Tratamentos térmicos', 'Propriedades mecânicas'] },
-          { code: 'PROG', name: 'Programação', shortName: 'Programação', year: 1, semester: 2, ects: 6, topics: ['Algoritmia', 'Ciclos e funções', 'Estruturas de dados', 'Cálculo numérico básico'] },
-          // 2.º Ano
-          { code: 'AM3', name: 'Cálculo III D / Análise Matemática III', shortName: 'Cálculo III D', year: 2, semester: 1, ects: 6, topics: ['Campos vetoriais', 'Integrais de linha e superfície', 'Teorema de Stokes e Gauss', 'EDO e Laplace'] },
-          { code: 'ME', name: 'Mecânica Aplicada', shortName: 'Mecânica', year: 2, semester: 1, ects: 6, topics: ['Estática', 'Equilíbrio de estruturas', 'Dinâmica da partícula', 'Dinâmica do corpo rígido'] },
-          { code: 'MS1', name: 'Mecânica dos Sólidos I', shortName: 'MS1', year: 2, semester: 1, ects: 6, topics: ['Tensão e deformação', 'Tração e compressão', 'Torção', 'Flexão simples'] },
-          { code: 'TD1', name: 'Termodinâmica', shortName: 'Termodinâmica', year: 2, semester: 1, ects: 6, topics: ['1.ª Lei da Termodinâmica', 'Substâncias puras', '2.ª Lei e entropia', 'Ciclos motores'] },
-          { code: 'MN', name: 'Métodos Numéricos', shortName: 'Métodos Num.', year: 2, semester: 2, ects: 6, topics: ['Erros numéricos', 'Sistemas lineares', 'Interpolação', 'Integração e EDOs'] },
-          { code: 'MS2', name: 'Mecânica dos Sólidos II', shortName: 'MS2', year: 2, semester: 2, ects: 6, topics: ['Estado plano de tensões', 'Critérios de cedência', 'Flexão desviada', 'Encurvadura de colunas'] },
-          { code: 'MDF', name: 'Mecânica dos Fluidos', shortName: 'MdF', year: 2, semester: 2, ects: 6, topics: ['Estática dos fluidos', 'Equação de Bernoulli', 'Escoamento viscoso em condutas', 'Análise dimensional'] },
-          { code: 'TM', name: 'Tecnologia Mecânica', shortName: 'Tec. Mec.', year: 2, semester: 2, ects: 6, topics: ['Fundição e deformação plástica', 'Maquinagem', 'Soldadura', 'Metrologia'] },
-          // 3.º Ano
-          { code: 'TC', name: 'Transferência de Calor', shortName: 'Transf. Calor', year: 3, semester: 1, ects: 6, topics: ['Condução estacionária e transiente', 'Convecção forçada e natural', 'Permutadores de calor', 'Radiação térmica'] },
-          { code: 'OM1', name: 'Órgãos de Máquinas I', shortName: 'Órgãos I', year: 3, semester: 1, ects: 6, topics: ['Fadiga de materiais', 'Veios e eixos', 'Rolamentos', 'Ligações aparafusadas e soldadas'] },
-          { code: 'AC', name: 'Automação e Controlo', shortName: 'Controlo', year: 3, semester: 1, ects: 6, topics: ['Sistemas lineares', 'Resposta temporal e frequencial', 'Estabilidade', 'Controladores PID'] },
-          { code: 'EF', name: 'Elementos Finitos', shortName: 'Elem. Finitos', year: 3, semester: 2, ects: 6, topics: ['Formulação variacional', 'Elementos 1D e 2D', 'Análise estrutural', 'Convergência de malha'] },
-          { code: 'OM2', name: 'Órgãos de Máquinas II', shortName: 'Órgãos II', year: 3, semester: 2, ects: 6, topics: ['Engrenagens cilíndricas', 'Correias e correntes', 'Embraiagens e travões', 'Lubrificação'] },
-          { code: 'PROJL', name: 'Projeto de Engenharia Mecânica', shortName: 'Projeto LEMc', year: 3, semester: 2, ects: 12, topics: ['Especificação e conceito', 'Dimensionamento estrutural', 'Seleção de materiais', 'Prototipagem'] },
-        ],
+        cycle: 'licenciatura',
+        courses: NOVA_FCT_LEMC_COURSES,
+      },
+      {
+        id: 'memec',
+        name: 'Mestrado em Engenharia Mecânica (MEMec · 1.º e 2.º Mestrado)',
+        shortName: 'MEMec',
+        cycle: 'mestrado',
+        courses: NOVA_FCT_MEMEC_COURSES,
+      },
+      {
+        id: 'lemc-memec',
+        name: 'Percurso Combinado LEMc + MEMec (Licenciatura + Mestrado 1.º–5.º Ano)',
+        shortName: 'LEMc + MEMec',
+        cycle: 'misto',
+        courses: [...NOVA_FCT_LEMC_COURSES, ...NOVA_FCT_MEMEC_COURSES],
       },
       {
         id: 'lei',
@@ -275,21 +344,27 @@ export function getDegreeCurriculum(
   return getUniversityById(universityId, catalog)?.degrees.find((d) => d.id === degreeId);
 }
 
-/** Constrói registos iniciais de histórico para todas as cadeiras do plano curricular selecionado. */
+/** Constrói registos iniciais de histórico para todas as cadeiras do plano curricular selecionado, suportando anos simultâneos (ex: Licenciatura + Mestrado). */
 export function buildInitialCompletedRecords(
   universityId: string,
   degreeId: string,
-  currentYear: 1 | 2 | 3,
+  currentYear: 1 | 2 | 3 | 4 | 5,
   currentSemester: 1 | 2,
   catalog: UniversityCatalogEntry[] = PORTUGAL_CURRICULA,
+  activeYears?: number[],
 ): CompletedCourseRecord[] {
   const degree = getDegreeCurriculum(universityId, degreeId, catalog);
   if (!degree) return [];
 
+  const targetActiveYears =
+    activeYears && activeYears.length > 0 ? activeYears : [currentYear];
+  const minActiveYear = Math.min(...targetActiveYears);
+
   return degree.courses.map((c) => {
-    const isPastYear = c.year < currentYear;
-    const isCurrentSlot = c.year === currentYear && c.semester === currentSemester;
-    const isPastSameYear = c.year === currentYear && c.semester < currentSemester;
+    const isSelectedYear = targetActiveYears.includes(c.year);
+    const isCurrentSlot = isSelectedYear && c.semester === currentSemester;
+    const isPastYear = c.year < minActiveYear;
+    const isPastSameActiveYear = isSelectedYear && c.semester < currentSemester;
 
     return {
       id: `hist-${universityId}-${degreeId}-${c.code.toLowerCase()}`,
@@ -298,7 +373,7 @@ export function buildInitialCompletedRecords(
       year: c.year,
       semester: c.semester,
       ects: c.ects,
-      status: isPastYear || isPastSameYear ? 'aprovada' : isCurrentSlot ? 'a_fazer' : 'por_fazer',
+      status: isPastYear || isPastSameActiveYear ? 'aprovada' : isCurrentSlot ? 'a_fazer' : 'por_fazer',
     };
   });
 }
@@ -309,8 +384,9 @@ export function buildActiveCoursesFromCurriculum(
   degreeId: string,
   records: CompletedCourseRecord[],
   existingCourses: Course[] = [],
+  catalog: UniversityCatalogEntry[] = PORTUGAL_CURRICULA,
 ): Course[] {
-  const degree = getDegreeCurriculum(universityId, degreeId);
+  const degree = getDegreeCurriculum(universityId, degreeId, catalog);
   const templates = degree?.courses ?? [];
   const activeRecords = records.filter((r) => r.status === 'a_fazer');
 

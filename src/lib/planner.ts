@@ -1,6 +1,7 @@
 // Motor do plano de estudo. Funções puras (sem React): mesma entrada, mesma saída.
 import { differenceInCalendarDays, differenceInMinutes, format, parseISO } from 'date-fns';
 import { newId } from '../store/useStore';
+import { isTopicReviewDue } from './spacedRepetition';
 import type {
   Assessment,
   CalendarEvent,
@@ -52,6 +53,7 @@ interface WorkItem {
 }
 
 const BLOCK = 50;
+const ADAPTIVE_LOW_CONFIDENCE_BLOCK = 35;
 const MIN_BLOCK = 25;
 const BREAK = 10;
 const MAX_BLOCKS_PER_DAY = 4;
@@ -59,7 +61,6 @@ const MAX_BLOCKS_PER_COURSE = 2;
 const HORIZON_DAYS = 45;
 const TEST_MODE_DAYS = 10;
 const SPACED_MINUTES = 25;
-const SPACED_AFTER_DAYS = 7;
 const LIGHT_CLASS_LOAD_MIN = 240;
 const EVENT_THRESHOLD_MIN = 120;
 const MIN_DAY_BUDGET = 30;
@@ -196,6 +197,10 @@ export function generatePlan(input: PlanInput): StudySession[] {
     let budget = settings.dailyStudyMinutes;
     if (classMinutes >= LIGHT_CLASS_LOAD_MIN) budget *= 0.75;
     if (eventMinutes > EVENT_THRESHOLD_MIN) budget -= eventMinutes;
+    if (latestCheckIn?.mood === 'atrasado' || latestCheckIn?.mood === 'pressionado') {
+      // Protege contra sobrecarga quando o aluno sinaliza atraso no check-in semanal.
+      budget *= 0.85;
+    }
     budget = Math.round(Math.max(MIN_DAY_BUDGET, budget));
     const alreadyUsed = existing
       .filter((s) => s.date === key && (s.done || !s.generated))
@@ -245,6 +250,49 @@ export function generatePlan(input: PlanInput): StudySession[] {
       });
     }
 
+    // Revisão espaçada contínua (SRS 1→3→7→21d): reserva 1 slot diário quando há matéria vencida,
+    // mesmo com avaliações no horizonte (exceto quando uma avaliação é hoje/amanhã ou foco exclusivo).
+    const hasImminentTomorrow = active.some((it) => it.daysLeft <= 1);
+    const activeCourseIds = new Set(active.map((it) => it.courseId));
+    const dueTopics = courses
+      .flatMap((c) => c.topics.map((topic) => ({ courseId: c.id, topic })))
+      .filter(({ topic }) => {
+        const scheduledOn = lastScheduled.get(topic.id);
+        if (scheduledOn) {
+          const interval = Math.max(1, topic.srsIntervalDays ?? 7);
+          return differenceInCalendarDays(day, parseDay(scheduledOn)) >= interval;
+        }
+        return isTopicReviewDue(topic, key);
+      })
+      .sort((a, b) => {
+        const aRelevant = activeCourseIds.has(a.courseId) ? 0 : 1;
+        const bRelevant = activeCourseIds.has(b.courseId) ? 0 : 1;
+        if (aRelevant !== bRelevant) return aRelevant - bRelevant;
+        const aScore = a.topic.lastRecallScore ?? 2;
+        const bScore = b.topic.lastRecallScore ?? 2;
+        if (aScore !== bScore) return aScore - bScore;
+        return (a.topic.nextReviewDate ?? a.topic.lastStudied ?? '').localeCompare(
+          b.topic.nextReviewDate ?? b.topic.lastStudied ?? '',
+        );
+      });
+
+    if (!hasImminentTomorrow && dueTopics.length > 0 && canTake()) {
+      const srsQuota = active.length === 0 ? dueTopics.length : 1;
+      let addedSrs = 0;
+      for (const s of dueTopics) {
+        if (addedSrs >= srsQuota || !canTake()) break;
+        if (!courseOk(s.courseId)) continue;
+        add({
+          courseId: s.courseId,
+          topicId: s.topic.id,
+          minutes: Math.min(SPACED_MINUTES, remaining),
+          notes: s.topic.nextReviewDate ? 'Revisão espaçada (SRS)' : 'Revisão ativa',
+        });
+        lastScheduled.set(s.topic.id, key);
+        addedSrs++;
+      }
+    }
+
     // Preenchimento guloso por prioridade.
     while (canTake()) {
       let best: { score: number; item: (typeof active)[number]; topic: Topic } | null = null;
@@ -272,14 +320,17 @@ export function generatePlan(input: PlanInput): StudySession[] {
         for (const t of it.topics) {
           if ((effort.get(t.id) ?? 0) <= 0) continue;
           const checkInBoost = isTopicHighlightedByCheckIn(t.title) ? 0.35 : 0;
-          const needFactor = (needBase[t.status] + checkInBoost) * (1.2 - t.confidence * 0.15);
+          const recallPenalty = t.lastRecallScore === 1 ? 0.25 : 0;
+          const needFactor = (needBase[t.status] + checkInBoost + recallPenalty) * (1.2 - t.confidence * 0.15);
           const score = timeFactor * weightFactor * difficultyFactor * modeFactor * needFactor;
           if (!best || score > best.score) best = { score, item: it, topic: t };
         }
       }
       if (!best) break;
       const eff = effort.get(best.topic.id) ?? 0;
-      const want = Math.min(BLOCK, Math.max(MIN_BLOCK, eff));
+      const lowConfidence = best.topic.confidence <= 2 || best.topic.lastRecallScore === 1;
+      const targetCap = lowConfidence ? ADAPTIVE_LOW_CONFIDENCE_BLOCK : BLOCK;
+      const want = Math.min(targetCap, Math.max(MIN_BLOCK, eff));
       const minutes = Math.min(want, remaining);
       add({
         courseId: best.item.courseId,
@@ -288,29 +339,11 @@ export function generatePlan(input: PlanInput): StudySession[] {
         minutes,
         ...(urgentCourseIdsToday.has(best.item.courseId)
           ? { notes: singleTestMode ? 'Foco Modo Teste' : 'Equilíbrio Modo Teste' }
-          : {}),
+          : lowConfidence
+            ? { notes: 'Bloco focado curto (reforço)' }
+            : {}),
       });
       effort.set(best.topic.id, Math.max(0, eff - minutes));
-    }
-
-    // Sem avaliações próximas: revisão espaçada de tópicos consolidados há mais de 7 dias.
-    if (active.length === 0) {
-      const stale = courses
-        .flatMap((c) => c.topics.map((t) => ({ courseId: c.id, topic: t })))
-        .filter(({ topic }) => topic.status === 'review' || topic.status === 'done')
-        .map(({ courseId, topic }) => ({
-          courseId,
-          topic,
-          last: lastScheduled.get(topic.id) ?? topic.lastStudied,
-        }))
-        .filter(({ last }) => !last || differenceInCalendarDays(day, parseDay(last)) > SPACED_AFTER_DAYS)
-        .sort((a, b) => (a.last ?? '').localeCompare(b.last ?? ''));
-      for (const s of stale) {
-        if (!canTake()) break;
-        if (!courseOk(s.courseId)) continue;
-        add({ courseId: s.courseId, topicId: s.topic.id, minutes: SPACED_MINUTES, notes: 'Revisão espaçada' });
-        lastScheduled.set(s.topic.id, key);
-      }
     }
 
     // Horas de início sequenciais, com intervalo entre blocos.

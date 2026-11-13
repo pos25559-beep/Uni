@@ -114,9 +114,18 @@ function sanitizeAcademicProfile(profile: AcademicProfile): Record<string, unkno
     degreeId: (profile.degreeId || 'outro').slice(0, 100),
     degreeName: (profile.degreeName || '').slice(0, 200),
     entryYear: Math.max(2000, Math.min(2100, Number(profile.entryYear) || new Date().getFullYear())),
-    currentAcademicYear: ([1, 2, 3].includes(profile.currentAcademicYear)
+    currentAcademicYear: ([1, 2, 3, 4, 5].includes(profile.currentAcademicYear)
       ? profile.currentAcademicYear
-      : 1) as 1 | 2 | 3,
+      : 1) as 1 | 2 | 3 | 4 | 5,
+    ...(profile.academicCycle ? { academicCycle: profile.academicCycle } : {}),
+    ...(Array.isArray(profile.activeYears) && profile.activeYears.length > 0
+      ? {
+          activeYears: profile.activeYears
+            .map((y) => Number(y))
+            .filter((y) => [1, 2, 3, 4, 5].includes(y))
+            .slice(0, 5),
+        }
+      : {}),
     currentSemester: ([1, 2].includes(profile.currentSemester) ? profile.currentSemester : 1) as 1 | 2,
     difficultCourseIds: (profile.difficultCourseIds ?? []).slice(0, 50),
     ...(profile.difficultTopicsNotes?.trim()
@@ -381,7 +390,7 @@ export interface SharedCurriculumDoc {
     code: string;
     name: string;
     shortName: string;
-    year: 1 | 2 | 3;
+    year: 1 | 2 | 3 | 4 | 5;
     semester: 1 | 2;
     ects: number;
     topics: string[];

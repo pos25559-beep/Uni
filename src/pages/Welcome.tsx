@@ -92,7 +92,8 @@ export default function WelcomePage() {
   const handleTryLocal = () => {
     void hapticTap();
     markSeen({ guestMode: true });
-    navigate('/');
+    const done = Boolean(useStore.getState().academicProfile?.onboardingCompleted);
+    navigate(done ? '/' : '/configurar');
   };
 
   return (

@@ -1,5 +1,5 @@
 import { isNonAcademicDocument, matchesCourse } from './courseAliases';
-import { emptyCollections } from './seed';
+import { defaultSettings, emptyCollections } from './seed';
 import type { AcademicProfile, Collections, Course, Material, WeeklyCheckIn } from '../types';
 
 const LEGACY_PERSONAL_IDS = [
@@ -106,16 +106,15 @@ export function rehydrateStoreState(
   }
 
   const courses = Array.isArray(state.courses) ? state.courses : [];
-  if (state.settings) {
-    if (isLegacyAuthorName(state.settings.userName)) {
-      state.settings.userName = '';
-    }
-    if (
-      courses.length === 0 &&
-      state.settings.semesterName?.includes('(LEMc)')
-    ) {
-      state.settings.semesterName = 'Semestre atual';
-    }
+  state.settings = { ...defaultSettings, ...(state.settings ?? {}) };
+  if (isLegacyAuthorName(state.settings.userName)) {
+    state.settings.userName = '';
+  }
+  if (
+    courses.length === 0 &&
+    state.settings.semesterName?.includes('(LEMc)')
+  ) {
+    state.settings.semesterName = 'Semestre atual';
   }
 
   if (Array.isArray(state.materials)) {

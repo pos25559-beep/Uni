@@ -2,7 +2,7 @@
 // Lê mensagens reais dos docentes e avisos institucionais do CLIP diretamente da conta Google do utilizador.
 // NUNCA gera nem inventa emails falsos ou simulados.
 
-import { getCachedGoogleAccessToken, getAcademicGoogleAccessToken } from '../lib/firebase';
+import { getAcademicGoogleAccessToken } from '../lib/firebase';
 import { googleFetch } from './googleAuth';
 import type { Course } from '../types';
 import { matchCourseByText } from '../lib/courseAliases';
@@ -65,7 +65,7 @@ export function detectCourseFromEmail(
 }
 
 export function isGmailConnected(): boolean {
-  return Boolean(getAcademicGoogleAccessToken() || getCachedGoogleAccessToken());
+  return Boolean(getAcademicGoogleAccessToken());
 }
 
 // Cache global em memória para evitar chamadas de rede repetidas e rate-limiting da Google
@@ -103,7 +103,7 @@ export async function fetchAcademicEmailsDetailed(
     return { emails: reassigned, hasPermission: true };
   }
 
-  const token = getAcademicGoogleAccessToken() || getCachedGoogleAccessToken();
+  const token = getAcademicGoogleAccessToken();
   if (!token) {
     return { emails: [], hasPermission: false, error: 'unauthenticated' };
   }

@@ -14,6 +14,7 @@ import {
 } from './pages/LegalPages';
 import LoginPage from './pages/Login';
 import Materials from './pages/Materials';
+import OnboardingPage from './pages/Onboarding';
 import Planner from './pages/Planner';
 import Progress from './pages/Progress';
 import SettingsPage from './pages/Settings';
@@ -29,6 +30,8 @@ export default function App() {
             <Route index element={<Dashboard />} />
             <Route path="bem-vindo" element={<WelcomePage />} />
             <Route path="entrar" element={<LoginPage />} />
+            <Route path="configurar" element={<OnboardingPage />} />
+            <Route path="onboarding" element={<OnboardingPage />} />
             <Route path="cadeiras" element={<Courses />} />
             <Route path="cadeiras/:id" element={<CourseDetail />} />
             <Route path="calendario" element={<Calendar />} />

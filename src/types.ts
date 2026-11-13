@@ -18,6 +18,14 @@ export interface Topic {
   confidence: 1 | 2 | 3 | 4 | 5;
   /** yyyy-MM-dd */
   lastStudied?: string;
+  /** Intervalo atual de repetição espaçada (1, 3, 7 ou 21 dias). */
+  srsIntervalDays?: number;
+  /** Próxima data recomendada de revisão espaçada (yyyy-MM-dd). */
+  nextReviewDate?: string;
+  /** Último resultado de recall ativo pós-sessão: 1 = rever já, 2 = com esforço, 3 = dominei. */
+  lastRecallScore?: 1 | 2 | 3;
+  /** Total de verificações de recall ativo concluídas neste tópico. */
+  recallCount?: number;
 }
 
 export interface CourseProfessor {
@@ -214,10 +222,14 @@ export interface Settings {
   hasSeenWelcome?: boolean;
   /** Visual/acessório escolhido para o mascote Uni ('auto' adapta-se ao curso/cadeira). */
   uniAccessory?: 'auto' | 'default' | 'math' | 'tech' | 'health' | 'arts' | 'science' | 'humanities';
+  /** Edição/tema de cor do mascote Uni desbloqueado por estudo. */
+  uniSkin?: 'classic' | 'crimson' | 'butter' | 'sage' | 'ink';
   /** Personalidade do Uni nas respostas do Tutor. */
   uniPersona?: 'amigo' | 'exigente' | 'calmo';
   /** Indica se o tour guiado pós-onboarding já foi concluído. */
   tourCompleted?: boolean;
+  /** Lista de rotas/abas onde o cartão-guia do Uni de 1.ª visita já foi visto. */
+  seenTabGuides?: string[];
 }
 
 export interface CompletedCourseRecord {
@@ -251,7 +263,9 @@ export interface AcademicProfile {
   degreeId: string;
   degreeName: string;
   entryYear: number;
-  currentAcademicYear: 1 | 2 | 3;
+  currentAcademicYear: 1 | 2 | 3 | 4 | 5;
+  academicCycle?: 'licenciatura' | 'mestrado' | 'misto';
+  activeYears?: number[];
   currentSemester: 1 | 2;
   difficultCourseIds: ID[];
   difficultTopicsNotes?: string;

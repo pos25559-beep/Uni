@@ -168,10 +168,30 @@ export default function ProfileCard() {
             {avg !== null && <Badge tone="accent">Média: {avg.toFixed(1)} val.</Badge>}
           </div>
           <p className="truncate text-xs text-fg">
-            {academicProfile.universityName} · {academicProfile.degreeName} ({academicProfile.currentAcademicYear}.º ano, {academicProfile.currentSemester}.º sem.)
+            {academicProfile.universityName} · {academicProfile.degreeName} (
+            {academicProfile.activeYears && academicProfile.activeYears.length > 1
+              ? `Anos ${academicProfile.activeYears.map((y) => (y > 3 ? `${y - 3}.º Mest.` : `${y}.º`)).join(' + ')}`
+              : academicProfile.currentAcademicYear > 3
+                ? `${academicProfile.currentAcademicYear - 3}.º Mestrado`
+                : `${academicProfile.currentAcademicYear}.º ano`}
+            , {academicProfile.currentSemester}.º sem.)
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => navigate('/bem-vindo')}
+          >
+            Ver boas-vindas
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => navigate('/configurar')}
+          >
+            Onboarding completo
+          </Button>
           <Button
             size="sm"
             variant="ghost"

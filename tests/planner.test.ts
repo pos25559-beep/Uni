@@ -1,0 +1,226 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { extractAcademicsFromGoogleCalendar } from '../src/integrations/gcal';
+import { groupConversations, subjectLabel } from '../src/lib/geminiConversations';
+import { generatePlan } from '../src/lib/planner';
+import {
+  buildInitialCompletedRecords,
+  formatAcademicYearLabel,
+} from '../src/lib/portugalCurriculum';
+import { defaultSettings } from '../src/lib/seed';
+import { computeNextSrsState, isTopicReviewDue } from '../src/lib/spacedRepetition';
+import { getUniCollectibleStates } from '../src/lib/uniCollectibles';
+import type { CalendarEvent, Course, Topic } from '../src/types';
+
+test('computeNextSrsState avanca 1 -> 3 -> 7 -> 21 quando recall=3 e confianca >= 4', () => {
+  const base: Topic = { id: 't1', title: 'Derivadas', status: 'learning', confidence: 4 };
+
+  const s1 = computeNextSrsState(base, 3, 4, '2026-11-01');
+  assert.equal(s1.srsIntervalDays, 3);
+  assert.equal(s1.nextReviewDate, '2026-11-04');
+  assert.equal(s1.status, 'review');
+
+  const s2 = computeNextSrsState({ ...base, ...s1 }, 3, 4, '2026-11-04');
+  assert.equal(s2.srsIntervalDays, 7);
+  assert.equal(s2.nextReviewDate, '2026-11-11');
+  assert.equal(s2.status, 'done');
+
+  const s3 = computeNextSrsState({ ...base, ...s2 }, 3, 5, '2026-11-11');
+  assert.equal(s3.srsIntervalDays, 21);
+  assert.equal(s3.nextReviewDate, '2026-12-02');
+});
+
+test('computeNextSrsState reinicia para 1 dia quando recall=1 ou confianca baixa', () => {
+  const topic: Topic = {
+    id: 't2',
+    title: 'Integrais',
+    status: 'review',
+    confidence: 4,
+    srsIntervalDays: 7,
+  };
+  const reset = computeNextSrsState(topic, 1, 2, '2026-11-10');
+  assert.equal(reset.srsIntervalDays, 1);
+  assert.equal(reset.nextReviewDate, '2026-11-11');
+  assert.equal(reset.status, 'learning');
+});
+
+test('generatePlan agenda revisao espacada continua mesmo com avaliacao no horizonte', () => {
+  const courses: Course[] = [
+    {
+      id: 'c1',
+      code: 'MAT1',
+      name: 'Calculo I',
+      shortName: 'Calc I',
+      ects: 6,
+      color: 'emerald',
+      targetGrade: 14,
+      topics: [
+        {
+          id: 't-due',
+          title: 'Limites notaveis',
+          status: 'review',
+          confidence: 4,
+          srsIntervalDays: 3,
+          nextReviewDate: '2026-11-13',
+        },
+        {
+          id: 't-new',
+          title: 'Series numericas',
+          status: 'todo',
+          confidence: 2,
+        },
+      ],
+    },
+  ];
+
+  const sessions = generatePlan({
+    courses,
+    assessments: [
+      {
+        id: 'a1',
+        courseId: 'c1',
+        kind: 'teste',
+        title: 'Frequencia 1',
+        date: '2026-11-28T10:00:00',
+        weight: 50,
+        topicIds: ['t-new'],
+        source: 'local',
+      },
+    ],
+    classes: [],
+    events: [],
+    settings: { ...defaultSettings, dailyStudyMinutes: 100, studyDays: [1, 2, 3, 4, 5, 6] },
+    from: '2026-11-13',
+    days: 5,
+  });
+
+  const srsSessions = sessions.filter((s) => s.topicId === 't-due' && s.notes?.includes('SRS'));
+  assert.ok(srsSessions.length >= 1, 'Deve agendar bloco SRS para topico vencido');
+  assert.equal(srsSessions[0]?.date, '2026-11-13');
+
+  const adaptiveBlocks = sessions.filter((s) => s.topicId === 't-new');
+  assert.ok(adaptiveBlocks.length >= 1);
+  assert.ok(adaptiveBlocks[0]!.minutes <= 35, 'Topico de baixa confianca deve usar bloco curto (<=35 min)');
+});
+
+test('isTopicReviewDue respeita nextReviewDate explicito', () => {
+  const future: Topic = {
+    id: 't3',
+    title: 'Algebra Linear',
+    status: 'review',
+    confidence: 4,
+    nextReviewDate: '2026-11-20',
+  };
+  assert.equal(isTopicReviewDue(future, '2026-11-13'), false);
+  assert.equal(isTopicReviewDue(future, '2026-11-20'), true);
+});
+
+test('getUniCollectibleStates desbloqueia Uni Vermelho Coral com 3 recalls ativos', () => {
+  const locked = getUniCollectibleStates({
+    completedSessions: 1,
+    totalRecalls: 1,
+    streakDays: 1,
+    checkInsCount: 0,
+    mastered21dCount: 0,
+  });
+  const crimsonLocked = locked.find((i) => i.skin.id === 'crimson');
+  assert.equal(crimsonLocked?.unlocked, false);
+
+  const unlocked = getUniCollectibleStates({
+    completedSessions: 3,
+    totalRecalls: 3,
+    streakDays: 1,
+    checkInsCount: 0,
+    mastered21dCount: 0,
+  });
+  const crimsonUnlocked = unlocked.find((i) => i.skin.id === 'crimson');
+  assert.equal(crimsonUnlocked?.unlocked, true);
+});
+
+test('extractAcademicsFromGoogleCalendar deteta aulas recorrentes e exames', () => {
+  const events: CalendarEvent[] = [
+    {
+      id: 'google:1',
+      title: 'Cálculo I TP',
+      start: '2026-11-02T09:00:00',
+      end: '2026-11-02T10:30:00',
+      source: 'google',
+      location: 'Sala 1.4',
+    },
+    {
+      id: 'google:2',
+      title: 'Cálculo I TP',
+      start: '2026-11-09T09:00:00',
+      end: '2026-11-09T10:30:00',
+      source: 'google',
+      location: 'Sala 1.4',
+    },
+    {
+      id: 'google:3',
+      title: 'Frequência Cálculo I',
+      start: '2026-11-24T14:00:00',
+      end: '2026-11-24T16:00:00',
+      source: 'google',
+    },
+  ];
+  const res = extractAcademicsFromGoogleCalendar(events, []);
+  assert.equal(res.classes.length, 1);
+  assert.equal(res.classes[0]?.room, 'Sala 1.4');
+  assert.equal(res.assessments.length, 1);
+  assert.equal(res.assessments[0]?.kind, 'teste');
+});
+
+test('subjectLabel e groupConversations organizam conversas por cadeira e assunto', () => {
+  assert.equal(subjectLabel('duvidas'), 'Dúvidas');
+  assert.equal(subjectLabel(undefined), 'Geral');
+  assert.equal(subjectLabel('Projeto'), 'Projeto');
+
+  const groups = groupConversations(
+    [
+      {
+        id: '1',
+        title: 'Integrais por partes',
+        courseId: 'c1',
+        subject: 'duvidas',
+        createdAt: '2026-11-10T10:00:00Z',
+        updatedAt: '2026-11-10T10:00:00Z',
+      },
+      {
+        id: '2',
+        title: 'Modelo de exame',
+        courseId: 'c1',
+        subject: 'exame',
+        createdAt: '2026-11-11T10:00:00Z',
+        updatedAt: '2026-11-11T10:00:00Z',
+      },
+      {
+        id: '3',
+        title: 'Resumo capítulo 2',
+        subject: 'resumos',
+        createdAt: '2026-11-12T10:00:00Z',
+        updatedAt: '2026-11-12T10:00:00Z',
+      },
+    ],
+    [{ id: 'c1', name: 'Cálculo I', shortName: 'Calc I' }],
+  );
+
+  assert.equal(groups.length, 2);
+  assert.equal(groups[0]?.label, 'Calc I');
+  assert.equal(groups[0]?.items.length, 2);
+  assert.equal(groups[1]?.label, 'Assunto · Resumos');
+});
+
+test('buildInitialCompletedRecords suporta varios anos simultaneos e mestrado (LEMc + MEMec)', () => {
+  const mixed = buildInitialCompletedRecords('nova-fct', 'lemc-memec', 4, 1, undefined, [2, 3, 4]);
+  const active = mixed.filter((r) => r.status === 'a_fazer');
+
+  assert.ok(active.some((r) => r.code === 'C3D' && r.year === 2), 'Inclui 2.º ano atual (Cálculo III D)');
+  assert.ok(active.some((r) => r.code === 'MS2' && r.year === 3), 'Inclui 3.º ano atual (MS2)');
+  assert.ok(active.some((r) => r.code === 'TEP' && r.year === 4), 'Inclui 1.º Mestrado atual (TEP)');
+  assert.ok(
+    mixed.some((r) => r.code === 'C1D' && r.status === 'aprovada'),
+    'Plano atual MEP tem Cálculo I D aprovado do 1.º ano',
+  );
+  assert.equal(formatAcademicYearLabel(4), '4.º Ano · 1.º Mestrado');
+  assert.equal(formatAcademicYearLabel(5), '5.º Ano · 2.º Mestrado');
+});

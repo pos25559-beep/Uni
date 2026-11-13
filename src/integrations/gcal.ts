@@ -1,7 +1,9 @@
 // Sincronização da Google Agenda (só leitura) para os eventos da app.
 import { endOfDay, format, parseISO, startOfDay } from 'date-fns';
+import { icsToClipData, type ClipImport } from './clip';
+import type { IcsEvent } from './ics';
 import { useStore } from '../store/useStore';
-import type { CalendarEvent } from '../types';
+import type { CalendarEvent, Course } from '../types';
 import { googleFetch } from './googleAuth';
 
 interface GoogleEventTime { dateTime?: string; date?: string }
@@ -79,4 +81,44 @@ export async function syncGoogleCalendar(): Promise<number> {
     setIntegration('google', { error: message });
     throw e instanceof Error ? e : new Error(message);
   }
+}
+
+const CLASS_KEYWORD_RE = /\b(aula|te[óo]rica|pr[áa]tica|laborat[óo]rio|tp|ot)\b/i;
+
+/**
+ * Extrai aulas semanais e avaliações académicas a partir dos eventos sincronizados
+ * da Google Agenda, reutilizando o classificador partilhado em `clip.ts`.
+ */
+export function extractAcademicsFromGoogleCalendar(
+  events: CalendarEvent[],
+  courses: Course[],
+): ClipImport {
+  const googleOnly = events.filter((e) => e.source === 'google');
+  const freq = new Map<string, number>();
+
+  for (const ev of googleOnly) {
+    if (ev.allDay) continue;
+    const s = new Date(ev.start);
+    const e = new Date(ev.end);
+    const key = `${ev.title}|${s.getDay()}|${format(s, 'HH:mm')}|${format(e, 'HH:mm')}`;
+    freq.set(key, (freq.get(key) ?? 0) + 1);
+  }
+
+  const mapped: IcsEvent[] = googleOnly.map((ev) => {
+    const start = new Date(ev.start);
+    const end = new Date(ev.end);
+    const key = `${ev.title}|${start.getDay()}|${format(start, 'HH:mm')}|${format(end, 'HH:mm')}`;
+    const repeated = !ev.allDay && (freq.get(key) ?? 0) >= 2;
+    return {
+      uid: ev.id,
+      summary: ev.title,
+      start,
+      end,
+      allDay: Boolean(ev.allDay),
+      location: ev.location,
+      weekly: repeated || (!ev.allDay && CLASS_KEYWORD_RE.test(ev.title)),
+    };
+  });
+
+  return icsToClipData(mapped, courses);
 }

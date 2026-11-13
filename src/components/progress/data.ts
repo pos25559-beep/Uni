@@ -82,13 +82,17 @@ export const plural = (n: number, one: string, many: string) => `${n} ${n === 1 
 
 /** Minutos de meta no período: dias de estudo já decorridos × minutos diários. */
 export function studyGoalMinutes(r: PeriodRange, settings: Pick<Settings, 'studyDays' | 'dailyStudyMinutes'>): number {
-  const studyDays = r.days.filter((d) => d <= r.elapsedTo && settings.studyDays.includes(parseISO(d).getDay()));
-  return studyDays.length * settings.dailyStudyMinutes;
+  const allowedDays = Array.isArray(settings.studyDays) ? settings.studyDays : [1, 2, 3, 4, 5];
+  const dailyMin = settings.dailyStudyMinutes ?? 120;
+  const studyDays = r.days.filter((d) => d <= r.elapsedTo && allowedDays.includes(parseISO(d).getDay()));
+  return studyDays.length * dailyMin;
 }
 
 /** Meta por barra: diária, ou semanal (× dias de estudo) quando agregado por semana. */
 export function bucketGoal(r: PeriodRange, settings: Pick<Settings, 'studyDays' | 'dailyStudyMinutes'>): number {
-  return r.byWeek ? settings.dailyStudyMinutes * settings.studyDays.length : settings.dailyStudyMinutes;
+  const allowedDays = Array.isArray(settings.studyDays) ? settings.studyDays : [1, 2, 3, 4, 5];
+  const dailyMin = settings.dailyStudyMinutes ?? 120;
+  return r.byWeek ? dailyMin * allowedDays.length : dailyMin;
 }
 
 export interface SeriesDef { key: string; name: string; color: string }

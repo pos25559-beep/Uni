@@ -53,7 +53,7 @@ export class AiConsentRequiredError extends Error {
 }
 
 export function getCustomGeminiKey(): string {
-  const saved = useStore.getState().settings.geminiApiKey.trim();
+  const saved = (useStore.getState().settings.geminiApiKey ?? '').trim();
   if (saved) return saved;
   return import.meta.env.DEV ? String(import.meta.env.VITE_GEMINI_API_KEY ?? '').trim() : '';
 }
@@ -528,7 +528,13 @@ export function buildStudyContext(state: AppState): string {
   if (academicProfile) {
     lines.push('', 'PERFIL ACADÉMICO DO ESTUDANTE (UNIPEDIA):');
     lines.push(`- Faculdade/Curso: ${academicProfile.universityName} — ${academicProfile.degreeName}`);
-    lines.push(`- Ingresso: ${academicProfile.entryYear} · Ano atual: ${academicProfile.currentAcademicYear}.º ano, ${academicProfile.currentSemester}.º semestre`);
+    const yearDesc =
+      academicProfile.activeYears && academicProfile.activeYears.length > 1
+        ? `Anos ativos: ${academicProfile.activeYears.map((y) => (y > 3 ? `${y - 3}.º Mestrado` : `${y}.º ano`)).join(', ')}`
+        : academicProfile.currentAcademicYear > 3
+          ? `Ano atual: ${academicProfile.currentAcademicYear - 3}.º ano Mestrado`
+          : `Ano atual: ${academicProfile.currentAcademicYear}.º ano`;
+    lines.push(`- Ingresso: ${academicProfile.entryYear} · ${yearDesc}, ${academicProfile.currentSemester}.º semestre`);
     if (academicProfile.difficultCourseIds.length > 0) {
       const hardNames = academicProfile.difficultCourseIds.map(
         (id) => courses.find((c) => c.id === id)?.shortName ?? id,
@@ -747,4 +753,140 @@ Regras estritas:
 
   if (!text) throw new Error('Não foi possível gerar o caderno agora. Tenta novamente.');
   return text;
+}
+
+export interface RecallChallenge {
+  question: string;
+  hint: string;
+}
+
+/** Gera 1 pergunta curta de recall ativo pós-sessão sobre o tópico estudado. */
+export async function generateRecallChallenge(
+  topicTitle: string,
+  courseName?: string,
+): Promise<RecallChallenge> {
+  const { customKey, model } = resolveGeminiConfig();
+  const prompt = `Cria 1 pergunta curta de recordação ativa (active recall) em português europeu sobre "${topicTitle}"${courseName ? ` (${courseName})` : ''}.
+Devolve APENAS JSON válido no formato: {"question": "pergunta objetiva em 1-2 frases para testar compreensão sem consultar apontamentos", "hint": "pista curta ou critério de resposta correta em 1 frase"}`;
+  const contents: Content[] = [{ role: 'user', parts: [{ type: 'text', text: prompt }] }];
+  const generationConfig: GenerationConfig = {
+    temperature: 0.4,
+    maxOutputTokens: 320,
+    responseMimeType: 'application/json',
+  };
+
+  const rawText = await withQuotaAndFallback('chat', customKey, () =>
+    customKey
+      ? callDirectRest({ key: customKey, model, contents, generationConfig })
+      : runNativeGenerate({ model, contents, generationConfig }),
+  );
+
+  const match = /\{[\s\S]*\}/.exec(rawText || '{}');
+  const parsed = JSON.parse(match ? match[0] : rawText || '{}') as Partial<RecallChallenge>;
+  return {
+    question:
+      parsed.question?.trim() ||
+      `Explica por palavras tuas o mecanismo ou ideia central de «${topicTitle}».`,
+    hint:
+      parsed.hint?.trim() ||
+      'Verifica se consegues dar 1 exemplo concreto ou justificar porquê acontece.',
+  };
+}
+
+export interface ExtractedScheduleSlot {
+  courseName: string;
+  courseCode?: string;
+  type: 'T' | 'TP' | 'P' | 'OT';
+  weekday: number;
+  start: string;
+  end: string;
+  room?: string;
+}
+
+export interface ExtractedScheduleAssessment {
+  courseName: string;
+  title: string;
+  date: string;
+  kind: 'exame' | 'teste' | 'trabalho' | 'projeto' | 'quiz';
+}
+
+export interface ExtractedSchedulePayload {
+  slots: ExtractedScheduleSlot[];
+  assessments: ExtractedScheduleAssessment[];
+}
+
+/** Extrai disciplinas, aulas semanais e datas de avaliação a partir de uma foto do horário/agenda. */
+export async function parseTimetableFromScreenshot(
+  base64Data: string,
+  mimeType: string,
+): Promise<ExtractedSchedulePayload> {
+  const { customKey, model } = resolveGeminiConfig();
+  const cleanBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
+  const prompt = `Analisa esta foto ou print de um horário escolar/universitário ou agenda académica.
+Devolve APENAS JSON válido no formato:
+{
+  "slots": [
+    {"courseName": "Nome da Cadeira", "courseCode": "SIGLA opcional", "type": "T|TP|P|OT", "weekday": 1, "start": "09:00", "end": "10:30", "room": "Sala opcional"}
+  ],
+  "assessments": [
+    {"courseName": "Nome da Cadeira", "title": "Teste 1", "date": "2026-11-25T14:00:00", "kind": "teste|exame|trabalho|projeto|quiz"}
+  ]
+}
+Regras:
+- weekday segue Date.getDay(): 1=Segunda, 2=Terça, 3=Quarta, 4=Quinta, 5=Sexta, 6=Sábado, 0=Domingo.
+- start e end no formato "HH:mm". Se faltar duração, assume 1h30.
+- Se não houver avaliações visíveis na foto, devolve "assessments": [].
+- Não inventes aulas que não estejam visíveis.`;
+
+  const contents: Content[] = [
+    {
+      role: 'user',
+      parts: [
+        { type: 'text', text: prompt },
+        { type: 'inlineData', inlineData: { mimeType, data: cleanBase64 } },
+      ],
+    },
+  ];
+  const generationConfig: GenerationConfig = {
+    temperature: 0.1,
+    maxOutputTokens: 2048,
+    responseMimeType: 'application/json',
+  };
+
+  const rawText = customKey
+    ? await callDirectRest({ key: customKey, model, contents, generationConfig })
+    : await runNativeGenerate({ model, contents, generationConfig });
+
+  const match = /\{[\s\S]*\}/.exec(rawText || '{}');
+  const parsed = JSON.parse(match ? match[0] : rawText || '{}') as Partial<ExtractedSchedulePayload>;
+
+  const slots: ExtractedScheduleSlot[] = Array.isArray(parsed.slots)
+    ? parsed.slots
+        .filter((s) => s && typeof s.courseName === 'string' && typeof s.start === 'string')
+        .map((s) => ({
+          courseName: s.courseName.trim(),
+          courseCode: typeof s.courseCode === 'string' && s.courseCode.trim() ? s.courseCode.trim() : undefined,
+          type: s.type === 'T' || s.type === 'TP' || s.type === 'P' || s.type === 'OT' ? s.type : 'TP',
+          weekday: typeof s.weekday === 'number' && s.weekday >= 0 && s.weekday <= 6 ? s.weekday : 1,
+          start: s.start.slice(0, 5),
+          end: typeof s.end === 'string' && s.end.length >= 5 ? s.end.slice(0, 5) : s.start.slice(0, 5),
+          room: typeof s.room === 'string' && s.room.trim() ? s.room.trim() : undefined,
+        }))
+    : [];
+
+  const assessments: ExtractedScheduleAssessment[] = Array.isArray(parsed.assessments)
+    ? parsed.assessments
+        .filter((a) => a && typeof a.courseName === 'string' && typeof a.date === 'string')
+        .map((a) => ({
+          courseName: a.courseName.trim(),
+          title: typeof a.title === 'string' && a.title.trim() ? a.title.trim() : 'Avaliação',
+          date: a.date.trim(),
+          kind:
+            a.kind === 'exame' || a.kind === 'teste' || a.kind === 'trabalho' || a.kind === 'projeto' || a.kind === 'quiz'
+              ? a.kind
+              : 'teste',
+        }))
+    : [];
+
+  return { slots, assessments };
 }

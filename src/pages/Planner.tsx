@@ -25,6 +25,7 @@ import CourseDistribution from '../components/planner/CourseDistribution';
 import DayColumn from '../components/planner/DayColumn';
 import FocusTimer from '../components/planner/FocusTimer';
 import SessionModal from '../components/planner/SessionModal';
+import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import {
   ActionSheet,
   Badge,
@@ -212,6 +213,7 @@ export default function Planner() {
         subtitle={`${fmtMinutes(settings.dailyStudyMinutes)} por dia · ${studyDaysLabel(settings.studyDays)}`}
         actions={
           <div className="flex items-center gap-2">
+            <TabGuideHelpButton tabKey="plano" />
             <Button variant="primary" onClick={onGenerate} disabled={noPlanInputs}>
               <Sparkles size={16} /> Gerar plano
             </Button>
@@ -227,6 +229,8 @@ export default function Planner() {
           </div>
         }
       />
+
+      <TabGuideBanner tabKey="plano" />
 
       {testMode.mode !== 'normal' && (
         <div

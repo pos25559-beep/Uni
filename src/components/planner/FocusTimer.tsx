@@ -1,9 +1,11 @@
 // Temporizador de foco para uma sessão. Baseado em timestamps (Date.now()), por isso
 // continua certo mesmo com o separador em segundo plano (os timers do browser abrandam).
-import { Check, Pause, Play, Plus, X } from 'lucide-react';
+import { Brain, Check, Loader2, Pause, Play, Plus, Sparkles, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { generateRecallChallenge, type RecallChallenge } from '../../integrations/gemini';
 import { courseColors } from '../../lib/colors';
 import { todayStr } from '../../lib/selectors';
+import { computeNextSrsState, RECALL_LABELS, type RecallScore } from '../../lib/spacedRepetition';
 import { useStore } from '../../store/useStore';
 import type { Course, StudySession, Topic } from '../../types';
 import { Button, Ring, cx } from '../ui';
@@ -11,6 +13,7 @@ import { Button, Ring, cx } from '../ui';
 type Phase = 'idle' | 'running' | 'paused' | 'finished';
 const levels: Topic['confidence'][] = [1, 2, 3, 4, 5];
 const levelText = ['Muito fraca', 'Fraca', 'Razoável', 'Boa', 'Dominada'];
+const recallScores: RecallScore[] = [1, 2, 3];
 const EXTRA_MS = 5 * 60_000;
 
 const formatClock = (ms: number) => {
@@ -30,6 +33,7 @@ interface FocusTimerProps {
 export default function FocusTimer({ session, course, topic, onClose }: FocusTimerProps) {
   const patch = useStore((s) => s.patch);
   const updateTopic = useStore((s) => s.updateTopic);
+  const aiConsent = Boolean(useStore((s) => s.settings.aiConsent));
 
   const [budgetMs, setBudgetMs] = useState(session.minutes * 60_000);
   const [phase, setPhase] = useState<Phase>('idle');
@@ -38,6 +42,12 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [confidenceSet, setConfidenceSet] = useState<Topic['confidence'] | null>(null);
+  const [recallScore, setRecallScore] = useState<RecallScore | null>(null);
+  const [nextIntervalBanner, setNextIntervalBanner] = useState<string | null>(null);
+  const [challenge, setChallenge] = useState<RecallChallenge | null>(null);
+  const [challengeBusy, setChallengeBusy] = useState(false);
+  const [showHint, setShowHint] = useState(false);
+  const [recallError, setRecallError] = useState<string | null>(null);
   const originalTitle = useRef(document.title);
 
   const elapsedMs = Math.min(
@@ -114,10 +124,43 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, remainingMs]);
 
+  const applyPedagogicalEvaluation = (nextRecall: RecallScore | null, nextConfidence: Topic['confidence'] | null) => {
+    if (!session.topicId || !topic) return;
+    const finalConf = nextConfidence ?? confidenceSet ?? topic.confidence;
+    if (nextRecall) {
+      const srsUpdate = computeNextSrsState(topic, nextRecall, finalConf, todayStr());
+      updateTopic(session.courseId, session.topicId, srsUpdate);
+      setNextIntervalBanner(
+        `Próxima revisão ativa agendada para ${srsUpdate.nextReviewDate} (+${srsUpdate.srsIntervalDays}d).`,
+      );
+    } else if (nextConfidence) {
+      updateTopic(session.courseId, session.topicId, { confidence: nextConfidence });
+    }
+  };
+
   const setConfidence = (level: Topic['confidence']) => {
-    if (!session.topicId) return;
-    updateTopic(session.courseId, session.topicId, { confidence: level });
     setConfidenceSet(level);
+    applyPedagogicalEvaluation(recallScore, level);
+  };
+
+  const selectRecall = (score: RecallScore) => {
+    setRecallScore(score);
+    applyPedagogicalEvaluation(score, confidenceSet);
+  };
+
+  const askUniChallenge = async () => {
+    if (!topic || challengeBusy) return;
+    setChallengeBusy(true);
+    setRecallError(null);
+    setShowHint(false);
+    try {
+      const res = await generateRecallChallenge(topic.title, course?.name);
+      setChallenge(res);
+    } catch (err) {
+      setRecallError(err instanceof Error ? err.message : 'Não foi possível gerar o desafio agora.');
+    } finally {
+      setChallengeBusy(false);
+    }
   };
 
   const progress = budgetMs > 0 ? elapsedMs / budgetMs : 0;
@@ -178,39 +221,107 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
             </p>
           </>
         ) : (
-          <div className="w-full">
+          <div className="w-full space-y-4">
             <p className="text-sm font-semibold text-ok">Sessão concluída</p>
             {session.topicId && topic ? (
-              <div className="mt-5">
-                <p className="text-sm font-medium">Como correu?</p>
-                <p className="mt-1 text-xs text-muted">Indica o quão confiante estás nesta matéria.</p>
-                <div className="mt-4 flex justify-center gap-2" role="radiogroup" aria-label="Confiança">
-                  {levels.map((level) => {
-                    const active = (confidenceSet ?? topic.confidence) >= level;
-                    return (
+              <div className="space-y-4 text-left">
+                <div className="rounded-2xl border border-line bg-surface p-3.5 text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-1.5 font-semibold text-fg">
+                      <Brain size={14} className="text-accent" /> Recall Ativo (30s)
+                    </span>
+                    {aiConsent && (
                       <button
-                        key={level}
                         type="button"
-                        role="radio"
-                        aria-checked={confidenceSet === level}
-                        aria-label={`${level} — ${levelText[level - 1]}`}
-                        title={levelText[level - 1]}
-                        onClick={() => setConfidence(level)}
-                        className={cx(
-                          'size-10 rounded-full border transition',
-                          active ? 'border-accent bg-accent' : 'border-line bg-surface-2 hover:border-muted/60',
-                          confidenceSet === level && 'ring-2 ring-accent ring-offset-2 ring-offset-bg',
-                        )}
-                      />
-                    );
-                  })}
+                        onClick={() => void askUniChallenge()}
+                        disabled={challengeBusy}
+                        className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2.5 py-1 text-[11px] font-semibold text-accent transition hover:bg-accent/20 disabled:opacity-50"
+                      >
+                        {challengeBusy ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                        {challenge ? 'Outra pergunta' : 'Pergunta do Uni'}
+                      </button>
+                    )}
+                  </div>
+                  <p className="mt-2 text-xs leading-relaxed text-fg">
+                    {challenge
+                      ? challenge.question
+                      : `Sem olhar para os apontamentos, tenta resumir em 2 frases a ideia-chave de «${topic.title}».`}
+                  </p>
+                  {challenge && (
+                    <div className="mt-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowHint((v) => !v)}
+                        className="text-[11px] font-medium text-accent hover:underline"
+                      >
+                        {showHint ? 'Esconder pista' : 'Ver critério de resposta'}
+                      </button>
+                      {showHint && <p className="mt-1 text-[11px] text-muted">{challenge.hint}</p>}
+                    </div>
+                  )}
+                  {recallError && <p className="mt-1.5 text-[11px] text-danger">{recallError}</p>}
+
+                  <div className="mt-3 grid grid-cols-3 gap-1.5" role="group" aria-label="Desempenho no recall ativo">
+                    {recallScores.map((score) => {
+                      const active = recallScore === score;
+                      return (
+                        <button
+                          key={score}
+                          type="button"
+                          onClick={() => selectRecall(score)}
+                          className={cx(
+                            'rounded-xl border px-2 py-2 text-center transition',
+                            active
+                              ? 'border-accent bg-accent-soft text-accent'
+                              : 'border-line bg-surface-2 text-muted hover:text-fg',
+                          )}
+                        >
+                          <span className="block text-[11px] font-semibold">{RECALL_LABELS[score].label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {recallScore && (
+                    <p className="mt-1.5 text-[11px] text-muted">{RECALL_LABELS[recallScore].hint}</p>
+                  )}
                 </div>
-                <p className="mt-3 h-4 text-xs text-muted">
-                  {confidenceSet ? levelText[confidenceSet - 1] : ''}
-                </p>
+
+                <div className="text-center">
+                  <p className="text-xs font-medium text-muted">Confiança atual na matéria (1–5)</p>
+                  <div className="mt-2 flex justify-center gap-2" role="radiogroup" aria-label="Confiança">
+                    {levels.map((level) => {
+                      const active = (confidenceSet ?? topic.confidence) >= level;
+                      return (
+                        <button
+                          key={level}
+                          type="button"
+                          role="radio"
+                          aria-checked={confidenceSet === level}
+                          aria-label={`${level} — ${levelText[level - 1]}`}
+                          title={levelText[level - 1]}
+                          onClick={() => setConfidence(level)}
+                          className={cx(
+                            'size-9 rounded-full border transition',
+                            active ? 'border-accent bg-accent' : 'border-line bg-surface-2 hover:border-muted/60',
+                            confidenceSet === level && 'ring-2 ring-accent ring-offset-2 ring-offset-bg',
+                          )}
+                        />
+                      );
+                    })}
+                  </div>
+                  <p className="mt-1.5 h-4 text-[11px] text-muted">
+                    {confidenceSet ? levelText[confidenceSet - 1] : ''}
+                  </p>
+                </div>
+
+                {nextIntervalBanner && (
+                  <p className="rounded-xl bg-ok/10 px-3 py-2 text-center text-[11px] font-medium text-ok">
+                    {nextIntervalBanner}
+                  </p>
+                )}
               </div>
             ) : null}
-            <Button variant="primary" onClick={onClose} className="mt-6 w-full">
+            <Button variant="primary" onClick={onClose} className="w-full">
               Fechar
             </Button>
           </div>

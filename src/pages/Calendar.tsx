@@ -13,6 +13,7 @@ import { buildCalendarItems } from '../components/calendar/items';
 import type { CalItem, CalKind, CalState } from '../components/calendar/items';
 import { KIND_META, KIND_ORDER } from '../components/calendar/shared';
 import { AnimatedPage } from '../components/motion/Primitives';
+import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import WeekView from '../components/calendar/WeekView';
 import { Button, PageHeader, SegmentedControl, cx } from '../components/ui';
 import { toDateStr } from '../lib/selectors';
@@ -112,11 +113,16 @@ export default function Calendar() {
         accentTitle="calendário"
         subtitle="Aulas, avaliações, estudo, eventos e tarefas num só lugar."
         actions={
-          <Button variant="primary" onClick={() => setNewOpen(true)}>
-            <CalendarPlus size={16} /> Novo evento
-          </Button>
+          <div className="flex items-center gap-2">
+            <TabGuideHelpButton tabKey="calendario" />
+            <Button variant="primary" onClick={() => setNewOpen(true)}>
+              <CalendarPlus size={16} /> Novo evento
+            </Button>
+          </div>
         }
       />
+
+      <TabGuideBanner tabKey="calendario" />
 
       {/* Navegação e vista */}
       <div className="flex flex-wrap items-center justify-between gap-3">

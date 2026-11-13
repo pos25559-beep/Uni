@@ -11,6 +11,9 @@ import { pt } from 'date-fns/locale';
 
 export default function AcademicGmailWidget() {
   const courses = useStore((s) => s.courses);
+  const personalEmail = useStore((s) => s.settings.personalEmail);
+  const savedAcademicEmail = useStore((s) => s.settings.academicEmail);
+  const updateSettings = useStore((s) => s.updateSettings);
   const upsert = useStore((s) => s.upsert);
   const {
     emails: allEmails,
@@ -22,6 +25,7 @@ export default function AcademicGmailWidget() {
     connect: handleConnect,
   } = useAcademicEmails();
 
+  const [emailInput, setEmailInput] = useState(savedAcademicEmail || '');
   const [importedEmails, setImportedEmails] = useState<AcademicEmail[]>([]);
   const [selectedEmail, setSelectedEmail] = useState<AcademicEmail | null>(null);
   const [taskAdded, setTaskAdded] = useState(false);
@@ -141,11 +145,30 @@ export default function AcademicGmailWidget() {
             </ul>
           ) : !connected ? (
             <div className="space-y-3 text-xs">
-              <p className="opacity-80 leading-relaxed">
-                Acompanha avisos dos professores num só cartão ou testa já importando um email real (<code className="rounded bg-white/70 px-1 py-0.5 font-mono text-[11px] dark:bg-black/25">.eml</code>).
+              <p className="opacity-85 leading-relaxed">
+                {personalEmail
+                  ? `A tua conta pessoal (${personalEmail}) fica só para Drive e Agenda. Liga abaixo o teu email institucional da faculdade ou importa um aviso `
+                  : 'Liga o teu email institucional da faculdade para ver avisos dos docentes num só cartão ou importa já um ficheiro '}
+                <code className="rounded bg-white/70 px-1 py-0.5 font-mono text-[11px] dark:bg-black/25">.eml</code>.
               </p>
               <div className="flex flex-wrap items-center gap-2">
-                <Button size="sm" variant="primary" onClick={() => handleConnect(false)}>
+                <input
+                  type="email"
+                  value={emailInput}
+                  onChange={(e) => setEmailInput(e.target.value)}
+                  placeholder="ex: nome@campus.fct.unl.pt"
+                  aria-label="Email institucional"
+                  className="min-h-[38px] flex-1 min-w-[190px] rounded-xl border border-black/15 bg-white/85 px-3 py-1.5 text-xs text-[#141312] placeholder:text-black/45 focus:border-[#157F58] focus:outline-none dark:border-white/15 dark:bg-black/30 dark:text-[#FAF6EC] dark:placeholder:text-white/40"
+                />
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={() => {
+                    const trimmed = emailInput.trim();
+                    if (trimmed) updateSettings({ academicEmail: trimmed });
+                    void handleConnect(false, trimmed || undefined);
+                  }}
+                >
                   <Mail size={13} />
                   Ligar Email Académico
                 </Button>
@@ -156,7 +179,7 @@ export default function AcademicGmailWidget() {
                   className="bg-white/85 text-[#141312] dark:bg-surface dark:text-fg"
                 >
                   <Upload size={13} />
-                  Importar aviso (.eml)
+                  Importar (.eml)
                 </Button>
               </div>
             </div>
