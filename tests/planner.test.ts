@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { parseCurriculumFromText } from '../src/lib/curriculumParser';
 import { extractAcademicsFromGoogleCalendar } from '../src/integrations/gcal';
 import { groupConversations, subjectLabel } from '../src/lib/geminiConversations';
 import { generatePlan } from '../src/lib/planner';
@@ -210,17 +211,55 @@ test('subjectLabel e groupConversations organizam conversas por cadeira e assunt
   assert.equal(groups[1]?.label, 'Assunto · Resumos');
 });
 
-test('buildInitialCompletedRecords suporta varios anos simultaneos e mestrado (LEMc + MEMec)', () => {
+test('buildInitialCompletedRecords suporta plano 2026/27 e varios anos simultaneos (LEMc + MEMc)', () => {
   const mixed = buildInitialCompletedRecords('nova-fct', 'lemc-memec', 4, 1, undefined, [2, 3, 4]);
   const active = mixed.filter((r) => r.status === 'a_fazer');
 
   assert.ok(active.some((r) => r.code === 'C3D' && r.year === 2), 'Inclui 2.º ano atual (Cálculo III D)');
   assert.ok(active.some((r) => r.code === 'MS2' && r.year === 3), 'Inclui 3.º ano atual (MS2)');
+  assert.ok(active.some((r) => r.code === 'EME' && r.year === 4), 'Inclui 1.º Mestrado 2026/27 (EME)');
   assert.ok(active.some((r) => r.code === 'TEP' && r.year === 4), 'Inclui 1.º Mestrado atual (TEP)');
   assert.ok(
-    mixed.some((r) => r.code === 'C1D' && r.status === 'aprovada'),
-    'Plano atual MEP tem Cálculo I D aprovado do 1.º ano',
+    mixed.some((r) => r.code === 'FEXP' && r.status === 'aprovada'),
+    'Plano 2026/27 tem Física Experimental aprovada do 1.º ano',
   );
+  assert.ok(
+    mixed.some((r) => r.code === 'IPEIO' && r.year === 2 && r.semester === 2),
+    'Plano 2026/27 inclui IPEIO no 2.º ano 2.º sem',
+  );
+  assert.ok(
+    mixed.some((r) => r.code === 'OM' && r.year === 3 && r.semester === 2),
+    'Plano 2026/27 inclui Órgãos de Máquinas no 3.º ano 2.º sem',
+  );
+  assert.ok(
+    mixed.some((r) => r.code === 'TFI' && r.year === 4 && r.semester === 2),
+    'Plano 2026/27 inclui Termofluidos Industrial no 1.º Mestrado 2.º sem',
+  );
+
+  // Cadeiras opcionais não devem ser marcadas como aprovadas nem ativas automaticamente
+  const fabad = mixed.find((r) => r.code === 'FABAD');
+  assert.equal(fabad?.isOptional, true);
+  assert.equal(fabad?.status, 'por_fazer');
+
   assert.equal(formatAcademicYearLabel(4), '4.º Ano · 1.º Mestrado');
   assert.equal(formatAcademicYearLabel(5), '5.º Ano · 2.º Mestrado');
+});
+
+test('parseCurriculumFromText extrai cadeiras e opcoes do formato Guia UNL / CLIP', () => {
+  const sample = [
+    '1.º Semestre',
+    '13493\tCálculo I D\t6.0',
+    '13501\tFísica Experimental\t6.0',
+    'Opções:',
+    '14123\tFabrico Aditivo\t6.0',
+  ].join('\n');
+
+  const parsed = parseCurriculumFromText(sample, 1, 1);
+  assert.equal(parsed.length, 3);
+  assert.equal(parsed[0]?.name, 'Cálculo I D');
+  assert.equal(parsed[0]?.year, 1);
+  assert.equal(parsed[0]?.ects, 6);
+  assert.equal(parsed[1]?.name, 'Física Experimental');
+  assert.equal(parsed[2]?.name, 'Fabrico Aditivo');
+  assert.equal(parsed[2]?.optional, true);
 });

@@ -542,26 +542,24 @@ export default function LoginPage() {
                   </div>
                 </Field>
 
-                {/* Seletor discreto: Palavra-passe vs. Só Email (Link Mágico) */}
-                <div className="flex items-center justify-between gap-2 rounded-[14px] bg-surface-2/65 px-3 py-2 text-xs">
-                  <span className="text-muted">
-                    {authMethod === 'magic'
-                      ? 'Entrada direta por link no email (sem passe)'
-                      : 'Usar palavra-passe normal'}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAuthMethod((v) => (v === 'password' ? 'magic' : 'password'));
-                      setError(null);
-                      setInfo(null);
-                      void hapticTap();
-                    }}
-                    className="font-semibold text-accent hover:underline"
-                  >
-                    {authMethod === 'magic' ? 'Usar palavra-passe' : 'Entrar só com email'}
-                  </button>
-                </div>
+                {/* Banner quando está no modo Link Direto (sem palavra-passe) */}
+                {authMethod === 'magic' && (
+                  <div className="flex items-center justify-between gap-2 rounded-[14px] bg-surface-2/65 px-3 py-2 text-xs">
+                    <span className="text-muted">Entrada direta por link no email (sem palavra-passe)</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMethod('password');
+                        setError(null);
+                        setInfo(null);
+                        void hapticTap();
+                      }}
+                      className="font-semibold text-accent hover:underline"
+                    >
+                      Usar palavra-passe
+                    </button>
+                  </div>
+                )}
 
                 {authMethod === 'password' && (
                   <Field label="Palavra-passe">
@@ -684,7 +682,21 @@ export default function LoginPage() {
 
         {!user && (
           <StaggerItem>
-            <div className="flex flex-col items-center gap-2 pt-1 text-center">
+            <div className="flex flex-col items-center gap-1.5 pt-1 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMethod((v) => (v === 'password' ? 'magic' : 'password'));
+                  setError(null);
+                  setInfo(null);
+                  void hapticTap();
+                }}
+                className="min-h-[44px] rounded-xl px-3 text-xs font-semibold text-accent hover:underline"
+              >
+                {authMethod === 'password'
+                  ? 'Preferes entrar só com email (link sem palavra-passe)?'
+                  : 'Entrar antes com email e palavra-passe'}
+              </button>
               <Button variant="ghost" onClick={handleContinueOffline}>
                 Usar só neste telemóvel por agora
               </Button>

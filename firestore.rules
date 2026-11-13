@@ -49,11 +49,13 @@ service cloud.firestore {
     //   - degreeId: string (required, 1 - 100 chars)
     //   - degreeName: string (required, 1 - 200 chars)
     //   - entryYear: number (required, 2000 - 2100)
-    //   - currentAcademicYear: number (required, 1 | 2 | 3)
+    //   - currentAcademicYear: number (required, 1 | 2 | 3 | 4 | 5)
+    //   - academicCycle: string (optional, 'licenciatura' | 'mestrado' | 'misto')
+    //   - activeYears: list of numbers (optional, max 5 items)
     //   - currentSemester: number (required, 1 | 2)
     //   - difficultCourseIds: list (required, max 50 items)
     //   - difficultTopicsNotes: string (optional, max 4000 chars)
-    //   - completedCourses: list (required, max 100 items)
+    //   - completedCourses: list (required, max 200 items; items may include optional 'isOptional': bool)
     //   - userId: string (optional, immutable, must match {userId})
     //   - createdAt: timestamp/string (optional, immutable)
     //   - updatedAt: timestamp/string (optional)
@@ -227,7 +229,7 @@ service cloud.firestore {
     //   - degreeId: string (required, 1 - 200 chars)
     //   - degreeName: string (required, 1 - 200 chars)
     //   - degreeShortName: string (optional, 1 - 200 chars)
-    //   - courses: list (required, max 80 items)
+    //   - courses: list (required, max 150 items)
     //   - createdBy: string (required, immutable, 1 - 200 chars, must match auth uid)
     //   - createdAt: timestamp/string (optional, immutable)
     //   - updatedAt: timestamp/string (optional)
@@ -657,9 +659,10 @@ service cloud.firestore {
     function isValidAcademicProfile(data, userId) {
       return data.keys().hasOnly([
           'onboardingCompleted', 'universityId', 'universityName', 'degreeId',
-          'degreeName', 'entryYear', 'currentAcademicYear', 'currentSemester',
-          'difficultCourseIds', 'difficultTopicsNotes', 'completedCourses',
-          'userId', 'createdAt', 'updatedAt'
+          'degreeName', 'entryYear', 'currentAcademicYear', 'academicCycle',
+          'activeYears', 'currentSemester', 'difficultCourseIds',
+          'difficultTopicsNotes', 'completedCourses', 'userId', 'createdAt',
+          'updatedAt'
         ]) &&
         data.keys().hasAll([
           'onboardingCompleted', 'universityId', 'universityName', 'degreeId',
@@ -672,10 +675,12 @@ service cloud.firestore {
         data.degreeId is string && data.degreeId.size() > 0 && data.degreeId.size() <= 100 &&
         data.degreeName is string && data.degreeName.size() > 0 && data.degreeName.size() <= 200 &&
         data.entryYear is number && data.entryYear >= 2000 && data.entryYear <= 2100 &&
-        data.currentAcademicYear in [1, 2, 3] &&
+        data.currentAcademicYear in [1, 2, 3, 4, 5] &&
+        (!('academicCycle' in data) || data.academicCycle in ['licenciatura', 'mestrado', 'misto']) &&
+        (!('activeYears' in data) || (data.activeYears is list && data.activeYears.size() <= 5)) &&
         data.currentSemester in [1, 2] &&
         data.difficultCourseIds is list && data.difficultCourseIds.size() <= 50 &&
-        data.completedCourses is list && data.completedCourses.size() <= 100 &&
+        data.completedCourses is list && data.completedCourses.size() <= 200 &&
         isValidOptionalString(data, 'difficultTopicsNotes', 0, 4000) &&
         (!('userId' in data) || data.userId == userId) &&
         isValidOptionalDateOrTimestamp(data, 'createdAt') &&
@@ -723,7 +728,7 @@ service cloud.firestore {
         data.degreeId is string && data.degreeId.size() > 0 && data.degreeId.size() <= 200 &&
         data.degreeName is string && data.degreeName.size() > 0 && data.degreeName.size() <= 200 &&
         isValidOptionalString(data, 'degreeShortName', 1, 200) &&
-        data.courses is list && data.courses.size() <= 80 &&
+        data.courses is list && data.courses.size() <= 150 &&
         data.createdBy is string && data.createdBy.size() > 0 && data.createdBy.size() <= 200 &&
         isValidOptionalDateOrTimestamp(data, 'createdAt') &&
         isValidOptionalDateOrTimestamp(data, 'updatedAt');
@@ -835,10 +840,10 @@ service cloud.firestore {
         allow delete: if isOwner(userId);
       }
 
-      // Fallback delete for any other nested subcollections under /users/{userId}
+      // Fallback read & delete for any other nested subcollections under /users/{userId}
       // (ensures complete GDPR Art. 17 & Google Play account deletion)
       match /{subcollection=**} {
-        allow delete: if isOwner(userId);
+        allow read, delete: if isOwner(userId);
       }
     }
 

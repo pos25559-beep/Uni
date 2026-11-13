@@ -11,6 +11,8 @@ import {
   GoogleAuthProvider,
   isSignInWithEmailLink,
   onAuthStateChanged,
+  reauthenticateWithCredential,
+  reauthenticateWithPopup,
   sendPasswordResetEmail,
   sendSignInLinkToEmail,
   signInWithCredential,
@@ -367,11 +369,37 @@ export async function completeMagicEmailLinkSignIn(explicitEmail?: string): Prom
   return res.user;
 }
 
-/** Remove permanentemente a conta Firebase Auth atual. */
+/** Remove permanentemente a conta Firebase Auth atual, reautenticando via Google se necessário. */
 export async function deleteCurrentFirebaseUser(): Promise<void> {
   const current = auth.currentUser;
   if (!current) return;
-  await deleteUser(current);
+
+  try {
+    await deleteUser(current);
+  } catch (err: unknown) {
+    const code = (err as { code?: string } | null)?.code;
+    const hasGoogle = current.providerData.some((p) => p.providerId === 'google.com');
+    if (code === 'auth/requires-recent-login' && hasGoogle) {
+      if (Capacitor.isNativePlatform()) {
+        const { idToken, accessToken } = await loginGoogleNative([
+          'https://www.googleapis.com/auth/drive.readonly',
+          'https://www.googleapis.com/auth/calendar.readonly',
+        ]);
+        const cred = GoogleAuthProvider.credential(idToken, accessToken);
+        await reauthenticateWithCredential(current, cred);
+      } else {
+        googleProvider.setCustomParameters({
+          prompt: 'select_account',
+          ...(current.email ? { login_hint: current.email } : {}),
+        });
+        await reauthenticateWithPopup(current, googleProvider);
+      }
+      await deleteUser(current);
+    } else {
+      throw err;
+    }
+  }
+
   cachedGoogleToken = null;
   cachedAcademicToken = null;
   sessionStorage.clear();

@@ -241,6 +241,7 @@ export interface CompletedCourseRecord {
   ects: number;
   grade?: number;
   status: 'aprovada' | 'a_fazer' | 'por_fazer';
+  isOptional?: boolean;
 }
 
 export interface WeeklyCheckIn {

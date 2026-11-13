@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  ClipboardPaste,
   Cloud,
   ExternalLink,
   HardDrive,
@@ -24,6 +25,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useMemo, useState } from 'react';
 import { useAcademicEmails } from '../../hooks/useGoogleData';
 import { parseAcademicHistoryFromScreenshot } from '../../integrations/gemini';
+import { parseCurriculumFromText } from '../../lib/curriculumParser';
 import { auth } from '../../lib/firebase';
 import {
   fetchSharedCurriculaFromCloud,
@@ -184,6 +186,8 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
   const [ocrFeedback, setOcrFeedback] = useState<string | null>(null);
   const [ocrError, setOcrError] = useState<string | null>(null);
   const [scheduleImportMode, setScheduleImportMode] = useState<SmartImportInitialMode | null>(null);
+  const [showPastePlan, setShowPastePlan] = useState(false);
+  const [pastedPlanText, setPastedPlanText] = useState('');
 
   // Passo 3: Conta institucional, Gemini Key, Ritmo e Tour
   const [academicHint, setAcademicHint] = useState(settings.academicEmail ?? '');
@@ -342,6 +346,53 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
           : r,
       ),
     );
+  };
+
+  const handleApplyPastedCurriculum = (mode: 'replace' | 'merge') => {
+    const parsed = parseCurriculumFromText(pastedPlanText, primaryAcademicYear, currentSemester);
+    if (parsed.length === 0) {
+      setOcrError(
+        'Não detetei cadeiras nesse texto. Cola a tabela do Guia de Cursos (guia.unl.pt) ou do CLIP, ou escreve uma cadeira por linha.',
+      );
+      return;
+    }
+
+    const targetYears = activeYears.length > 0 ? activeYears : [primaryAcademicYear];
+    const minY = Math.min(...targetYears);
+    const mapped: CompletedCourseRecord[] = parsed.map((c, idx) => {
+      const isSelected = targetYears.includes(c.year);
+      const isCur = isSelected && c.semester === currentSemester;
+      const isPast = c.year < minY || (isSelected && c.semester < currentSemester);
+      return {
+        id: `hist-paste-${c.code.toLowerCase()}-${c.year}-${c.semester}-${idx}`,
+        code: c.code,
+        name: c.name,
+        year: c.year,
+        semester: c.semester,
+        ects: c.ects,
+        ...(c.optional ? { isOptional: true } : {}),
+        status: c.optional ? 'por_fazer' : isPast ? 'aprovada' : isCur ? 'a_fazer' : 'por_fazer',
+      };
+    });
+
+    if (mode === 'replace') {
+      setRecords(mapped);
+    } else {
+      setRecords((prev) => {
+        const seen = new Set(prev.map((r) => `${r.year}:${r.name.toLowerCase()}`));
+        const additions = mapped.filter((m) => !seen.has(`${m.year}:${m.name.toLowerCase()}`));
+        return [...prev, ...additions];
+      });
+    }
+
+    setOcrError(null);
+    setOcrFeedback(
+      `${parsed.length} ${parsed.length === 1 ? 'cadeira importada' : 'cadeiras importadas'} diretamente do texto colado!`,
+    );
+    setShowPastePlan(false);
+    setPastedPlanText('');
+    setYearFilter('all');
+    void hapticSuccess();
   };
 
   const addCustomRecord = () => {
@@ -931,6 +982,16 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                   >
                     <CalendarDays size={14} /> Google Agenda
                   </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      setShowPastePlan((v) => !v);
+                      void hapticTap();
+                    }}
+                  >
+                    <ClipboardPaste size={14} /> Colar CLIP / Guia
+                  </Button>
                   <label className="inline-flex min-h-[36px] cursor-pointer items-center gap-1.5 rounded-xl bg-accent px-3 py-1.5 text-xs font-semibold text-accent-fg shadow-sm transition hover:opacity-90">
                     {ocrBusy ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
                     {ocrBusy ? 'A ler print…' : 'Print CLIP / Pauta'}
@@ -948,6 +1009,51 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                   </label>
                 </div>
               </div>
+
+              {showPastePlan && (
+                <div className="space-y-3 rounded-2xl border border-accent/35 bg-surface p-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-xs font-semibold text-fg">
+                        Colar plano curricular (CLIP, Guia UNL ou lista de cadeiras)
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-muted">
+                        Se o plano mudou este ano ou vens de outro curso, copia a tabela com semestres, nomes e ECTS e cola abaixo — funciona offline sem gastar IA.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowPastePlan(false)}
+                      aria-label="Fechar caixa de importação"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted hover:bg-surface-2 hover:text-fg"
+                    >
+                      <X size={15} />
+                    </button>
+                  </div>
+                  <Textarea
+                    rows={5}
+                    value={pastedPlanText}
+                    onChange={(e) => setPastedPlanText(e.target.value)}
+                    placeholder={`1.º Semestre\n13493\tCálculo I D\t6.0\n13501\tFísica Experimental\t6.0\nOpções:\n14123\tFabrico Aditivo\t6.0`}
+                  />
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => handleApplyPastedCurriculum('merge')}
+                    >
+                      Adicionar à lista
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={() => handleApplyPastedCurriculum('replace')}
+                    >
+                      Substituir plano atual
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               {ocrFeedback && (
                 <p className="flex items-center gap-1.5 rounded-xl bg-ok/10 px-3 py-2 text-xs text-ok">
@@ -1068,6 +1174,11 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                             {r.code}
                           </span>
                           <span className="font-semibold text-fg">{r.name}</span>
+                          {r.isOptional && (
+                            <span className="rounded-md bg-surface-2/80 px-1.5 py-0.5 text-[10px] font-medium text-muted">
+                              Opcional
+                            </span>
+                          )}
                         </div>
                         <p className="mt-0.5 text-[11px] text-muted">
                           {formatAcademicYearLabel(r.year, isSecondarySchool)} · {r.semester}.º Sem · {r.ects} ECTS
