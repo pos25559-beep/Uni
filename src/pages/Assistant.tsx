@@ -14,7 +14,8 @@ import { Composer } from '../components/assistant/Composer';
 import { Markdown } from '../components/assistant/Markdown';
 import { QuickActions } from '../components/assistant/QuickActions';
 import WeeklyTutorModal from '../components/assistant/WeeklyTutorModal';
-import { Button, Modal, PageHeader, cx } from '../components/ui';
+import { Link } from 'react-router-dom';
+import { Badge, Button, Modal, PageHeader, cx } from '../components/ui';
 import {
   askGemini,
   buildDocumentContext,
@@ -38,7 +39,10 @@ const MAX_SENT = 20;
 export default function Assistant() {
   const courses = useStore((s) => s.courses);
   const materials = useStore((s) => s.materials);
-  const model = useStore((s) => s.settings.geminiModel) || 'gemini-3.8-flash';
+  const model = useStore((s) => s.settings.geminiModel) || 'gemini-2.5-flash';
+  const aiConsent = useStore((s) => Boolean(s.settings.aiConsent));
+  const hasApiKey = useStore((s) => Boolean(s.settings.geminiApiKey?.trim()));
+  const updateSettings = useStore((s) => s.updateSettings);
   const userName = useStore((s) => s.settings.userName);
   const setIntegration = useStore((s) => s.setIntegration);
 
@@ -227,7 +231,7 @@ export default function Assistant() {
   };
 
   return (
-    <div className="flex h-[calc(100dvh-8rem)] flex-col md:h-[calc(100dvh-4rem)]">
+    <div className="flex h-[calc(100dvh-10rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] flex-col md:h-[calc(100dvh-4rem)]">
       {/* Cabeçalho */}
       <div className="shrink-0 space-y-3">
         <PageHeader
@@ -342,12 +346,11 @@ export default function Assistant() {
             </div>
           )}
         </div>
-
-        <ContextPanel />
       </div>
 
       {/* Área de Mensagens */}
-      <div className="mt-4 min-h-0 flex-1 space-y-4 overflow-y-auto px-1 py-2">
+      <div className="mt-3 min-h-0 flex-1 space-y-4 overflow-y-auto px-1 py-2">
+        <ContextPanel />
         {messages.length === 0 && (
           <div className="flex flex-col items-center px-4 py-8 text-center">
             <div className="grid size-12 place-items-center rounded-2xl bg-accent-soft text-accent">
@@ -380,12 +383,15 @@ export default function Assistant() {
               className="rise max-w-[95%] rounded-2xl rounded-bl-md border border-line bg-surface px-4 py-3"
             >
               <Markdown text={m.text} />
-              {m.sourceDocTitles && m.sourceDocTitles.length > 0 && (
-                <div className="mt-2 pt-2 border-t border-line text-[11px] text-muted flex items-center gap-1.5">
-                  <FileText size={12} />
-                  <span>Contexto: {m.sourceDocTitles.join(', ')}</span>
-                </div>
-              )}
+              <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-line/70 pt-2 text-[11px] text-muted">
+                <span>Gerado por IA ({model}) · Valida informações académicas</span>
+                {m.sourceDocTitles && m.sourceDocTitles.length > 0 && (
+                  <span className="inline-flex items-center gap-1">
+                    <FileText size={11} />
+                    {m.sourceDocTitles.join(', ')}
+                  </span>
+                )}
+              </div>
             </div>
           ),
         )}
@@ -424,8 +430,44 @@ export default function Assistant() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Compositor */}
-      <div className="shrink-0 space-y-3 pt-3">
+      {/* Aviso explícito EU AI Act Art. 50 & RGPD antes de usar IA */}
+      {(!aiConsent || !hasApiKey) && (
+        <div className="mt-3 flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-2xl border border-accent/30 bg-accent-soft/60 px-4 py-3 text-xs">
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-2 font-semibold text-fg">
+              <Sparkles size={14} className="text-accent" />
+              <span>Tutor IA (EU AI Act Art. 50)</span>
+              <Badge tone="neutral">Opcional</Badge>
+            </div>
+            <p className="text-muted">
+              {!aiConsent
+                ? 'Para enviar perguntas ao Google Gemini tens primeiro de autorizar o processamento por IA.'
+                : 'Consentimento ativo! Adiciona agora a tua chave pessoal Gemini (gratuita) nas Definições.'}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {!aiConsent && (
+              <Button size="sm" variant="primary" onClick={() => updateSettings({ aiConsent: true })}>
+                Autorizar IA
+              </Button>
+            )}
+            {!hasApiKey && (
+              <Link
+                to="/definicoes"
+                className="inline-flex h-8 items-center rounded-xl border border-line bg-surface px-3 text-xs font-medium text-fg hover:bg-surface-2"
+              >
+                Configurar chave Gemini
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Compositor com espaço para teclado nativo */}
+      <div
+        className="shrink-0 space-y-3 pt-3"
+        style={{ paddingBottom: 'var(--keyboard-height, 0px)' }}
+      >
         <div className="flex items-center justify-between">
           <button
             type="button"

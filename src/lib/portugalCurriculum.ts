@@ -229,6 +229,36 @@ export const PORTUGAL_CURRICULA: UniversityCatalogEntry[] = [
       },
     ],
   },
+  {
+    id: 'escola-secundario',
+    name: 'Ensino Secundário / Escola (Portugal)',
+    shortName: 'Secundário',
+    degrees: [
+      {
+        id: 'sec-ct',
+        name: 'Ciências e Tecnologias (10.º–12.º)',
+        shortName: 'Ciências',
+        courses: [
+          { code: 'MAT-A', name: 'Matemática A', shortName: 'Mat. A', year: 1, semester: 1, ects: 6, topics: ['Geometria e vetores', 'Funções e derivadas', 'Probabilidades e combinatória', 'Complexos'] },
+          { code: 'FQA', name: 'Física e Química A', shortName: 'FQ A', year: 1, semester: 1, ects: 6, topics: ['Mecânica e energia', 'Ondas e eletromagnetismo', 'Ligação e reações químicas', 'Equilíbrio químico'] },
+          { code: 'BGEO', name: 'Biologia e Geologia', shortName: 'Bio/Geo', year: 1, semester: 2, ects: 6, topics: ['Biomoléculas e célula', 'Fotossíntese e respiração', 'Tectónica e rochas', 'Evolução'] },
+          { code: 'PT', name: 'Português', shortName: 'Português', year: 2, semester: 1, ects: 6, topics: ['Poesia trovadoresca e Camões', 'Fernando Pessoa', 'Memorial do Convento', 'Gramática e texto argumentativo'] },
+          { code: 'ING', name: 'Inglês', shortName: 'Inglês', year: 2, semester: 2, ects: 4, topics: ['Reading comprehension', 'Essay & writing', 'Grammar B2/C1'] },
+        ],
+      },
+      {
+        id: 'sec-se',
+        name: 'Ciências Socioeconómicas (10.º–12.º)',
+        shortName: 'Economia',
+        courses: [
+          { code: 'MAT-A', name: 'Matemática A', shortName: 'Mat. A', year: 1, semester: 1, ects: 6, topics: ['Funções', 'Probabilidades', 'Combinatória', 'Derivadas'] },
+          { code: 'ECON-A', name: 'Economia A', shortName: 'Economia', year: 1, semester: 1, ects: 6, topics: ['Consumo e poupança', 'Produção e mercados', 'Inflação e PIB', 'Política económica'] },
+          { code: 'GEOG-A', name: 'Geografia A', shortName: 'Geografia', year: 1, semester: 2, ects: 6, topics: ['População e povoamento', 'Recursos hídricos e climáticos', 'Desenvolvimento e UE'] },
+          { code: 'PT', name: 'Português', shortName: 'Português', year: 2, semester: 1, ects: 6, topics: ['Obras literárias', 'Análise crítica', 'Gramática'] },
+        ],
+      },
+    ],
+  },
 ];
 
 export function getUniversityById(

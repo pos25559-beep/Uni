@@ -1,37 +1,43 @@
 @import "tailwindcss";
+@import "driver.js/dist/driver.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Tokens — a fonte de verdade é o DESIGN.md. Monocromático: modo branco e modo escuro, sem cor de marca. */
+/* Unipedia — Caderno Editorial & Geométrico Vivo (tokens oficiais em DESIGN.md). */
 :root {
-  --bg: #ffffff;
+  --bg: #faf8f5;
   --surface: #ffffff;
-  --surface-2: #f4f4f5;
-  --line: #e4e4e7;
-  --fg: #0a0a0a;
-  --muted: #6b6b70;
-  --accent: #0a0a0a;
+  --surface-2: #f3efe7;
+  --line: #e5dfd3;
+  --fg: #111318;
+  --muted: #5f6470;
+  --accent: #4f46e5;
   --accent-fg: #ffffff;
-  --accent-soft: #ededee;
-  --ok: #1a7f46;
-  --warn: #9a6700;
-  --danger: #c62828;
+  --accent-soft: #eef0ff;
+  --ink-cta: #111318;
+  --ink-cta-fg: #ffffff;
+  --ok: #15803d;
+  --warn: #b45309;
+  --danger: #dc2626;
+  --keyboard-height: 0px;
   color-scheme: light;
 }
 
 .dark {
-  --bg: #0a0a0a;
-  --surface: #121212;
-  --surface-2: #1c1c1c;
-  --line: #2a2a2a;
-  --fg: #f5f5f5;
-  --muted: #a0a0a0;
-  --accent: #f5f5f5;
-  --accent-fg: #0a0a0a;
-  --accent-soft: #262626;
-  --ok: #5fc28a;
-  --warn: #e0a84a;
-  --danger: #f2796f;
+  --bg: #0b0d12;
+  --surface: #131720;
+  --surface-2: #1b202c;
+  --line: #272d3d;
+  --fg: #f6f5f1;
+  --muted: #9ca3af;
+  --accent: #818cf8;
+  --accent-fg: #0b0d12;
+  --accent-soft: #1f2442;
+  --ink-cta: #f6f5f1;
+  --ink-cta-fg: #0b0d12;
+  --ok: #4ade80;
+  --warn: #fbbf24;
+  --danger: #f87171;
   color-scheme: dark;
 }
 
@@ -45,16 +51,18 @@
   --color-accent: var(--accent);
   --color-accent-fg: var(--accent-fg);
   --color-accent-soft: var(--accent-soft);
+  --color-ink-cta: var(--ink-cta);
+  --color-ink-cta-fg: var(--ink-cta-fg);
   --color-ok: var(--ok);
   --color-warn: var(--warn);
   --color-danger: var(--danger);
   --font-sans: "Geist Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, "SF Mono", Menlo, monospace;
   --font-display: "Bricolage Grotesque Variable", "Geist Variable", ui-sans-serif, system-ui, sans-serif;
-  /* Cantos contidos: os componentes pedem rounded-xl/2xl, a escala é que decide quanto. */
-  --radius-lg: 6px;
-  --radius-xl: 8px;
-  --radius-2xl: 10px;
+  --font-serif: "Instrument Serif", Georgia, serif;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-2xl: 18px;
 }
 
 html, body, #root {
@@ -79,8 +87,15 @@ img, video {
 
 h1 {
   font-family: var(--font-display);
-  font-variation-settings: "opsz" 48, "wdth" 92;
-  letter-spacing: -0.02em;
+  font-variation-settings: "opsz" 48, "wdth" 94;
+  letter-spacing: -0.025em;
+}
+
+.font-editorial {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.01em;
 }
 
 h1, h2, h3 {
@@ -110,7 +125,7 @@ dialog::backdrop {
 
 * { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
 
 /* Números: sempre mono e tabulares, para colunas alinharem e valores não "dançarem". */
 .tabular {
@@ -119,6 +134,46 @@ dialog::backdrop {
   letter-spacing: -0.02em;
 }
 
-@keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-.rise { animation: rise 0.22s ease-out both; }
-@media (prefers-reduced-motion: reduce) { .rise { animation: none; } }
+/* Tema Unipedia para o tour guiado Driver.js */
+.driver-popover.unipedia-tour-popover {
+  background-color: var(--surface);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: 0 12px 32px -12px rgba(17, 19, 24, 0.22);
+  font-family: var(--font-sans);
+}
+.driver-popover.unipedia-tour-popover .driver-popover-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--fg);
+}
+.driver-popover.unipedia-tour-popover .driver-popover-description {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.driver-popover.unipedia-tour-popover .driver-popover-progress-text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+.driver-popover.unipedia-tour-popover button.driver-popover-next-btn {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border: none;
+  border-radius: 10px;
+  padding: 6px 12px;
+  font-weight: 500;
+  text-shadow: none;
+}
+.driver-popover.unipedia-tour-popover button.driver-popover-prev-btn,
+.driver-popover.unipedia-tour-popover button.driver-popover-close-btn {
+  background: var(--surface-2);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  text-shadow: none;
+}

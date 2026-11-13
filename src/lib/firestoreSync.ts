@@ -10,7 +10,7 @@ import {
   writeBatch,
   type FieldValue,
 } from 'firebase/firestore';
-import { auth, db, onAuthStateChanged, type User } from './firebase';
+import { auth, db, deleteCurrentFirebaseUser, onAuthStateChanged, type User } from './firebase';
 import { useStore } from '../store/useStore';
 import type {
   AcademicProfile,
@@ -47,6 +47,12 @@ const SETTINGS_KEYS: Array<keyof Settings> = [
   'academicEmail',
   'personalEmail',
   'personalNotebookUrl',
+  'gdprAcceptedAt',
+  'gdprPolicyVersion',
+  'ageConfirmed13Plus',
+  'aiConsent',
+  'cloudSyncConsent',
+  'tourCompleted',
 ];
 
 const OPTIONAL_EMAIL_OR_URL_KEYS = new Set<string>([
@@ -333,6 +339,56 @@ export async function syncCourseBatch(courses: Course[]) {
     batch.set(doc(db, 'users', user.uid, 'courses', c.id), stripUndefined(c), { merge: true });
   }
   await batch.commit();
+}
+
+/**
+ * Elimina definitivamente todos os dados do utilizador na cloud (`/users/{uid}` + subcoleções)
+ * e apaga a conta do Firebase Authentication + armazenamento local (RGPD Art. 17.º & Google Play Account Deletion).
+ */
+export async function deleteCurrentAccountAndCloudData(): Promise<void> {
+  const user = auth.currentUser;
+
+  // Desliga os listeners antes de apagar para evitar ressincronização fantasma
+  activeUnsubscribers.forEach((u) => u());
+  activeUnsubscribers = [];
+
+  if (user) {
+    const uid = user.uid;
+    // Apaga mensagens dentro das conversas antes das conversas e restantes subcoleções
+    const convSnap = await getDocs(collection(db, 'users', uid, 'conversations'));
+    for (const convDoc of convSnap.docs) {
+      const msgSnap = await getDocs(collection(db, 'users', uid, 'conversations', convDoc.id, 'messages'));
+      if (!msgSnap.empty) {
+        const msgBatch = writeBatch(db);
+        msgSnap.docs.forEach((m) => msgBatch.delete(m.ref));
+        await msgBatch.commit();
+      }
+    }
+
+    const subcollections = [
+      ...COLLECTIONS,
+      'conversations',
+      'weeklyCheckIns',
+      'profile',
+    ] as const;
+
+    for (const sub of subcollections) {
+      const snap = await getDocs(collection(db, 'users', uid, sub));
+      if (!snap.empty) {
+        const batch = writeBatch(db);
+        snap.docs.forEach((d) => batch.delete(d.ref));
+        await batch.commit();
+      }
+    }
+
+    await deleteDoc(doc(db, 'users', uid)).catch(() => {});
+    await deleteCurrentFirebaseUser();
+  }
+
+  useStore.getState().clearAll();
+  localStorage.removeItem('uni-erp-v5');
+  localStorage.removeItem('unipedia-onboarding-v1');
+  sessionStorage.clear();
 }
 
 export interface SharedCurriculumDoc {

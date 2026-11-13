@@ -13,7 +13,7 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
   return (
     <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+        <h1 className="font-display text-2xl font-bold tracking-tight">{title}</h1>
         {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
@@ -25,10 +25,10 @@ export function Card({ children, className, title, action, padded = true }: {
   children: ReactNode; className?: string; title?: ReactNode; action?: ReactNode; padded?: boolean;
 }) {
   return (
-    <section className={cx('rise rounded-2xl border border-line bg-surface', padded && 'p-5', className)}>
+    <section className={cx('rise rounded-3xl border border-line bg-surface shadow-card', padded && 'p-5', className)}>
       {(title || action) && (
         <div className={cx('mb-4 flex items-center justify-between gap-3', !padded && 'px-5 pt-5')}>
-          <h2 className="text-sm font-semibold text-fg">{title}</h2>
+          <h2 className="font-display text-sm font-bold text-fg">{title}</h2>
           {action}
         </div>
       )}
@@ -39,10 +39,10 @@ export function Card({ children, className, title, action, padded = true }: {
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 const buttonStyles: Record<ButtonVariant, string> = {
-  primary: 'bg-accent text-accent-fg hover:opacity-90',
-  secondary: 'border border-line bg-surface-2 text-fg hover:border-muted/50',
-  ghost: 'text-muted hover:bg-surface-2 hover:text-fg',
-  danger: 'bg-danger/12 text-danger hover:bg-danger/20',
+  primary: 'bg-accent text-accent-fg hover:opacity-90 active:scale-[0.98]',
+  secondary: 'border border-line bg-surface-2 text-fg hover:border-muted/50 active:scale-[0.98]',
+  ghost: 'text-muted hover:bg-surface-2 hover:text-fg active:scale-[0.98]',
+  danger: 'bg-danger/12 text-danger hover:bg-danger/20 active:scale-[0.98]',
 };
 
 export function Button({ variant = 'secondary', size = 'md', className, ...props }:
@@ -52,8 +52,8 @@ export function Button({ variant = 'secondary', size = 'md', className, ...props
       type="button"
       {...props}
       className={cx(
-        'inline-flex shrink-0 items-center justify-center gap-2 rounded-xl font-medium transition disabled:cursor-not-allowed disabled:opacity-50',
-        size === 'sm' ? 'h-8 px-3 text-xs' : 'h-10 px-4 text-sm',
+        'inline-flex shrink-0 items-center justify-center gap-2 rounded-xl font-medium transition duration-150 disabled:cursor-not-allowed disabled:opacity-50',
+        size === 'sm' ? 'h-9 px-3 text-xs' : 'h-10 px-4 text-sm',
         buttonStyles[variant],
         className,
       )}

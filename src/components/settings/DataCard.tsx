@@ -1,20 +1,12 @@
 import { format } from 'date-fns';
-import { Database, Download, Trash2, Upload } from 'lucide-react';
+import { Database, Download, ShieldAlert, Trash2, Upload } from 'lucide-react';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { applyBackupJson, buildBackupPayload } from '../../lib/backup';
 import { useStore } from '../../store/useStore';
-import type {
-  Assessment, CalendarEvent, ClassSlot, Course, Material, Settings, StudySession, Task,
-} from '../../types';
 import { Badge, Button, Card, Modal, cx } from '../ui';
+import AccountDeletionModal from './AccountDeletionModal';
 import { errorMessage } from './shared';
-
-const isRecord = (v: unknown): v is Record<string, unknown> =>
-  typeof v === 'object' && v !== null && !Array.isArray(v);
-
-const hasId = (v: unknown) => isRecord(v) && typeof v.id === 'string' && v.id.length > 0;
-
-/** Itens válidos (objetos com id) de uma coleção do ficheiro. */
-const pickItems = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v.filter(hasId) as T[]) : []);
 
 type Pending = 'demo' | 'clear' | null;
 
@@ -23,29 +15,12 @@ export default function DataCard() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<Pending>(null);
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
 
   const exportBackup = () => {
     setError(null);
     try {
-      const s = useStore.getState();
-      const payload = {
-        app: 'unipedia',
-        version: 1,
-        exportedAt: new Date().toISOString(),
-        collections: {
-          courses: s.courses,
-          assessments: s.assessments,
-          classes: s.classes,
-          sessions: s.sessions,
-          tasks: s.tasks,
-          materials: s.materials,
-          events: s.events,
-        },
-        academicProfile: s.academicProfile,
-        weeklyCheckIns: s.weeklyCheckIns,
-        // A chave Gemini nunca sai no ficheiro.
-        settings: { ...s.settings, geminiApiKey: '' },
-      };
+      const payload = buildBackupPayload(useStore.getState());
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -65,43 +40,7 @@ export default function DataCard() {
     setMessage(null);
     setError(null);
     try {
-      const parsed: unknown = JSON.parse(await file.text());
-      if (!isRecord(parsed) || !isRecord(parsed.collections)) {
-        throw new Error('Ficheiro inválido: falta o objeto «collections».');
-      }
-      const cols = parsed.collections;
-      const known = ['courses', 'assessments', 'classes', 'sessions', 'tasks', 'materials', 'events'];
-      if (!known.some((k) => Array.isArray(cols[k]))) {
-        throw new Error('Ficheiro inválido: não encontrei nenhuma coleção conhecida.');
-      }
-
-      const st = useStore.getState();
-      const courses = pickItems<Course>(cols.courses);
-      const assessments = pickItems<Assessment>(cols.assessments);
-      const classes = pickItems<ClassSlot>(cols.classes);
-      const sessions = pickItems<StudySession>(cols.sessions);
-      const tasks = pickItems<Task>(cols.tasks);
-      const materials = pickItems<Material>(cols.materials);
-      const events = pickItems<CalendarEvent>(cols.events);
-
-      st.upsertMany('courses', courses);
-      st.upsertMany('assessments', assessments);
-      st.upsertMany('classes', classes);
-      st.upsertMany('sessions', sessions);
-      st.upsertMany('tasks', tasks);
-      st.upsertMany('materials', materials);
-      st.upsertMany('events', events);
-
-      if (isRecord(parsed.settings)) {
-        // Ignora a chave Gemini do ficheiro para não apagar a do utilizador.
-        const incoming = Object.fromEntries(
-          Object.entries(parsed.settings).filter(([k]) => k !== 'geminiApiKey'),
-        );
-        st.updateSettings(incoming as Partial<Settings>);
-      }
-
-      const total = courses.length + assessments.length + classes.length + sessions.length
-        + tasks.length + materials.length + events.length;
+      const total = applyBackupJson(await file.text(), useStore.getState());
       setMessage(`Importados ${total} registos.`);
     } catch (e) {
       setError(errorMessage(e, 'Não foi possível importar o ficheiro.'));
@@ -171,14 +110,26 @@ export default function DataCard() {
             </Button>
             <Button variant="danger" onClick={() => setPending('clear')}>
               <Trash2 size={16} />
-              Apagar tudo
+              Limpar coleções locais
+            </Button>
+            <Button variant="danger" onClick={() => setDeleteAccountOpen(true)}>
+              <ShieldAlert size={16} />
+              Eliminar conta &amp; dados (RGPD)
             </Button>
           </div>
+          <p className="text-xs text-muted">
+            Conformidade europeia:{' '}
+            <Link to="/privacidade" className="text-accent underline">Política de Privacidade</Link> ·{' '}
+            <Link to="/termos" className="text-accent underline">Termos</Link> ·{' '}
+            <Link to="/eliminar-conta" className="text-accent underline">Portal de Eliminação</Link>
+          </p>
         </div>
       </div>
 
       {message && <p className="mt-4 text-sm text-ok">{message}</p>}
       {error && <p className="mt-4 break-words text-sm text-danger">{error}</p>}
+
+      <AccountDeletionModal open={deleteAccountOpen} onClose={() => setDeleteAccountOpen(false)} />
 
       <Modal
         open={pending !== null}

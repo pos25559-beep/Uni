@@ -6,9 +6,11 @@ import { pt } from 'date-fns/locale';
 import {
   AlertTriangle, ArrowRight, CalendarClock, CalendarDays, Check, Clock, Flame, GraduationCap, MessageSquare, Plus, Sparkles,
 } from 'lucide-react';
-import { Badge, Button, Card, CourseChip, EmptyState, Input, PageHeader, Progress, Ring, Stat, cx } from '../components/ui';
+import { Badge, Button, Card, CourseChip, EmptyState, Input, PageHeader, Progress, Ring, cx } from '../components/ui';
+import { AnimatedPage, BentoMetricTile } from '../components/motion/Primitives';
 import WeeklyTutorModal from '../components/assistant/WeeklyTutorModal';
 import { courseColors, kindLabel } from '../lib/colors';
+import { hapticTap } from '../lib/nativeBridge';
 import { analyzeTestMode } from '../lib/planner';
 import {
   daysUntil, fmtGrade, fmtMinutes, gradeSummary, minutesThisWeek, readiness, semesterAverage,
@@ -126,8 +128,10 @@ export default function Dashboard() {
   const topicTitle = (s: StudySession) =>
     courseById.get(s.courseId)?.topics.find((t) => t.id === s.topicId)?.title ?? 'Estudo geral';
 
-  const toggleSession = (s: StudySession) =>
+  const toggleSession = (s: StudySession) => {
+    void hapticTap();
     patch('sessions', s.id, { done: !s.done, actualMinutes: s.done ? undefined : s.minutes });
+  };
 
   // --- Agenda de hoje -------------------------------------------------------
   const agenda = useMemo<AgendaItem[]>(() => {
@@ -186,7 +190,7 @@ export default function Dashboard() {
   const subtitle = `${capitalize(format(now, "EEEE, d 'de' MMMM", { locale: pt }))} · ${settings.semesterName}`;
 
   return (
-    <>
+    <AnimatedPage>
       <PageHeader
         title={`${greeting(now.getHours())}${settings.userName ? `, ${settings.userName}` : ''}`}
         subtitle={subtitle}
@@ -245,30 +249,34 @@ export default function Dashboard() {
         </Link>
       )}
 
-      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat
+      <div data-tour="bento-overview" className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <BentoMetricTile
+          tone="indigo"
           label="Média do semestre"
           value={fmtGrade(average)}
           hint={average === null ? 'Sem notas lançadas' : 'Ponderada por ECTS'}
-          icon={<GraduationCap size={16} className="text-muted" />}
+          icon={<GraduationCap size={16} className="text-accent" />}
         />
-        <Stat
+        <BentoMetricTile
+          tone="mint"
           label="Estudo esta semana"
           value={fmtMinutes(weekMinutes)}
           hint={`${weekPct}% da meta de ${fmtMinutes(weekGoal)}`}
-          icon={<Clock size={16} className="text-muted" />}
+          icon={<Clock size={16} className="text-ok" />}
         />
-        <Stat
+        <BentoMetricTile
+          tone="amber"
           label="Sequência"
           value={streak}
           hint="dias seguidos"
-          icon={<Flame size={16} className="text-muted" />}
+          icon={<Flame size={16} className="text-warn" />}
         />
-        <Stat
+        <BentoMetricTile
+          tone="lilac"
           label="Próxima avaliação"
           value={nextDays === null ? '—' : capitalize(dayWord(nextDays))}
           hint={next ? `${next.title}${nextCourse ? ` · ${nextCourse.shortName}` : ''}` : 'Nada marcado'}
-          icon={<CalendarClock size={16} className="text-muted" />}
+          icon={<CalendarClock size={16} className="text-accent" />}
         />
       </div>
 
@@ -418,7 +426,7 @@ export default function Dashboard() {
         </div>
       </div>
       <WeeklyTutorModal open={tutorOpen} onClose={() => setTutorOpen(false)} />
-    </>
+    </AnimatedPage>
   );
 }
 

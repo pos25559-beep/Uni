@@ -40,7 +40,7 @@ export function CourseTimeChart({ courses, sessions, range }: Props) {
           <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 64, bottom: 0, left: 0 }}>
             <XAxis type="number" hide />
             <YAxis type="category" dataKey="name" width={84} {...axisProps} />
-            <Bar dataKey="value" name="Estudo" fill="var(--accent)" radius={[0, 3, 3, 0]} {...animation()} barSize={18}>
+            <Bar dataKey="value" name="Estudo" fill="var(--accent)" radius={[0, 10, 10, 0]} {...animation()} barSize={20}>
               {rows.map((r) => <Cell key={r.courseId} fill={r.color} />)}
               <LabelList
                 dataKey="value"

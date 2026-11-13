@@ -30,6 +30,12 @@ service cloud.firestore {
     //   - academicEmail: string (optional, valid email format, max 150 chars)
     //   - personalEmail: string (optional, valid email format, max 150 chars)
     //   - personalNotebookUrl: string (optional, valid URL, max 1000 chars)
+    //   - gdprAcceptedAt: string/timestamp (optional, max 40 chars)
+    //   - gdprPolicyVersion: string (optional, max 40 chars)
+    //   - ageConfirmed13Plus: bool (optional)
+    //   - aiConsent: bool (optional)
+    //   - cloudSyncConsent: bool (optional)
+    //   - tourCompleted: bool (optional)
     //   - settings: map (optional, containing settings key-values)
     //   - createdAt: timestamp/string (optional, immutable)
     //   - updatedAt: timestamp/string (optional)
@@ -342,6 +348,13 @@ service cloud.firestore {
       return !(field in data) || isValidDateOrTimestamp(data[field]);
     }
 
+    // Validate optional timestamp or bounded string in a map
+    function isValidOptionalTimestampOrBoundedString(data, field, maxLen) {
+      return !(field in data) ||
+        (data[field] is timestamp) ||
+        (data[field] is string && data[field].size() <= maxLen);
+    }
+
     // Validate optional URL in a map
     function isValidOptionalUrl(data, field) {
       return !(field in data) || isValidUrl(data[field]);
@@ -388,7 +401,8 @@ service cloud.firestore {
           'userName', 'theme', 'semesterName', 'semesterStart', 'semesterEnd',
           'dailyStudyMinutes', 'studyDays', 'geminiApiKey', 'geminiModel',
           'googleClientId', 'msClientId', 'academicEmail', 'personalEmail',
-          'personalNotebookUrl'
+          'personalNotebookUrl', 'gdprAcceptedAt', 'gdprPolicyVersion',
+          'ageConfirmed13Plus', 'aiConsent', 'cloudSyncConsent', 'tourCompleted'
         ]) &&
         isValidOptionalString(settings, 'userName', 0, 100) &&
         (!('theme' in settings) || settings.theme in ['light', 'dark']) &&
@@ -403,7 +417,13 @@ service cloud.firestore {
         isValidOptionalString(settings, 'msClientId', 0, 200) &&
         isValidOptionalEmail(settings, 'academicEmail', 150) &&
         isValidOptionalEmail(settings, 'personalEmail', 150) &&
-        isValidOptionalUrl(settings, 'personalNotebookUrl');
+        isValidOptionalUrl(settings, 'personalNotebookUrl') &&
+        isValidOptionalTimestampOrBoundedString(settings, 'gdprAcceptedAt', 40) &&
+        isValidOptionalString(settings, 'gdprPolicyVersion', 0, 40) &&
+        isValidOptionalBool(settings, 'ageConfirmed13Plus') &&
+        isValidOptionalBool(settings, 'aiConsent') &&
+        isValidOptionalBool(settings, 'cloudSyncConsent') &&
+        isValidOptionalBool(settings, 'tourCompleted');
     }
 
     // Validates user profile & settings document
@@ -413,7 +433,9 @@ service cloud.firestore {
           'theme', 'semesterName', 'semesterStart', 'semesterEnd',
           'dailyStudyMinutes', 'studyDays', 'geminiApiKey', 'geminiModel',
           'googleClientId', 'msClientId', 'academicEmail', 'personalEmail',
-          'personalNotebookUrl', 'settings', 'createdAt', 'updatedAt'
+          'personalNotebookUrl', 'gdprAcceptedAt', 'gdprPolicyVersion',
+          'ageConfirmed13Plus', 'aiConsent', 'cloudSyncConsent', 'tourCompleted',
+          'settings', 'createdAt', 'updatedAt'
         ]) &&
         (!('uid' in data) || data.uid == userId) &&
         (!('id' in data) || data.id == userId) &&
@@ -434,6 +456,12 @@ service cloud.firestore {
         isValidOptionalEmail(data, 'academicEmail', 150) &&
         isValidOptionalEmail(data, 'personalEmail', 150) &&
         isValidOptionalUrl(data, 'personalNotebookUrl') &&
+        isValidOptionalTimestampOrBoundedString(data, 'gdprAcceptedAt', 40) &&
+        isValidOptionalString(data, 'gdprPolicyVersion', 0, 40) &&
+        isValidOptionalBool(data, 'ageConfirmed13Plus') &&
+        isValidOptionalBool(data, 'aiConsent') &&
+        isValidOptionalBool(data, 'cloudSyncConsent') &&
+        isValidOptionalBool(data, 'tourCompleted') &&
         (!('settings' in data) || isValidSettingsMap(data.settings)) &&
         isValidOptionalDateOrTimestamp(data, 'createdAt') &&
         isValidOptionalDateOrTimestamp(data, 'updatedAt');
@@ -804,6 +832,12 @@ service cloud.firestore {
         allow read: if isOwner(userId);
         allow create: if isOwner(userId) && isValidWeeklyCheckIn(request.resource.data, userId);
         allow update: if isOwner(userId) && isValidWeeklyCheckIn(request.resource.data, userId) && areImmutableFieldsUnchanged(['id', 'userId', 'createdAt']);
+        allow delete: if isOwner(userId);
+      }
+
+      // Fallback delete for any other nested subcollections under /users/{userId}
+      // (ensures complete GDPR Art. 17 & Google Play account deletion)
+      match /{subcollection=**} {
         allow delete: if isOwner(userId);
       }
     }

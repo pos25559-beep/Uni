@@ -5,12 +5,27 @@ import { Capacitor } from '@capacitor/core'
 import '@fontsource-variable/geist'
 import '@fontsource-variable/geist-mono'
 import '@fontsource-variable/bricolage-grotesque'
+import '@fontsource/instrument-serif/400.css'
+import '@fontsource/instrument-serif/400-italic.css'
 import './index.css'
 import App from './App.tsx'
 import { initFirestoreSync } from './lib/firestoreSync'
+import {
+  hideNativeSplash,
+  initNativeKeyboardBridge,
+  syncNativeTheme,
+} from './lib/nativeBridge'
+import { useStore } from './store/useStore'
 
 // Inicia escuta em tempo real do Firestore para utilizador autenticado
 initFirestoreSync();
+
+// Ponte nativa (StatusBar, Teclado virtual e Splash Screen)
+const initialTheme = useStore.getState().settings.theme;
+document.documentElement.classList.toggle('dark', initialTheme === 'dark');
+void syncNativeTheme(initialTheme);
+void initNativeKeyboardBridge();
+void hideNativeSplash();
 
 // Navegação com botão Voltar no Android nativo (Capacitor)
 if (Capacitor.isNativePlatform()) {

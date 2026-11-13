@@ -198,6 +198,18 @@ export interface Settings {
   personalEmail?: string;
   /** Link do espaço pessoal do NotebookLM. */
   personalNotebookUrl?: string;
+  /** Data ISO de aceitação da Política de Privacidade / Termos (RGPD Art. 7). */
+  gdprAcceptedAt?: string;
+  /** Versão da política aceite. */
+  gdprPolicyVersion?: string;
+  /** Confirmação mínima de idade (>= 13 anos em Portugal, Lei n.º 58/2019). */
+  ageConfirmed13Plus?: boolean;
+  /** Consentimento explícito para envio de contexto/prints à Google Gemini API (EU AI Act Art. 50). */
+  aiConsent?: boolean;
+  /** Preferência explícita por sincronização cloud (Firebase Firestore). */
+  cloudSyncConsent?: boolean;
+  /** Indica se o tour guiado pós-onboarding já foi concluído. */
+  tourCompleted?: boolean;
 }
 
 export interface CompletedCourseRecord {

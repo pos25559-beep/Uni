@@ -1,10 +1,12 @@
-import { Download, GraduationCap, Moon, Sun } from 'lucide-react';
+import { Compass, Download, GraduationCap, Moon, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 import { computeWeightedAverage } from '../../lib/portugalCurriculum';
 import { fmtMinutes } from '../../lib/selectors';
 import { weekdayShort } from '../../lib/colors';
 import OnboardingModal from '../onboarding/OnboardingModal';
+import { startUnipediaGuidedTour } from '../onboarding/TourManager';
 import { Badge, Button, Card, Field, Input, cx } from '../ui';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -19,6 +21,7 @@ export default function ProfileCard() {
   const settings = useStore((s) => s.settings);
   const academicProfile = useStore((s) => s.academicProfile);
   const updateSettings = useStore((s) => s.updateSettings);
+  const navigate = useNavigate();
   const [minutesText, setMinutesText] = useState(String(settings.dailyStudyMinutes));
   const [wizardOpen, setWizardOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
@@ -166,9 +169,21 @@ export default function ProfileCard() {
             {academicProfile.universityName} · {academicProfile.degreeName} ({academicProfile.currentAcademicYear}.º ano, {academicProfile.currentSemester}.º sem.)
           </p>
         </div>
-        <Button size="sm" onClick={() => setWizardOpen(true)}>
-          <GraduationCap size={14} /> Editar curso &amp; histórico
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              navigate('/');
+              window.setTimeout(() => startUnipediaGuidedTour(), 350);
+            }}
+          >
+            <Compass size={14} /> Repetir tour guiado
+          </Button>
+          <Button size="sm" onClick={() => setWizardOpen(true)}>
+            <GraduationCap size={14} /> Editar curso &amp; histórico
+          </Button>
+        </div>
       </div>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">

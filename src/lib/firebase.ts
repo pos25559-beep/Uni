@@ -2,6 +2,7 @@ import { Capacitor } from '@capacitor/core';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
   createUserWithEmailAndPassword,
+  deleteUser,
   getAuth,
   getRedirectResult,
   GoogleAuthProvider,
@@ -211,6 +212,16 @@ export async function logoutFirebase(): Promise<void> {
   sessionStorage.removeItem('campus_google_access_token');
   sessionStorage.removeItem('campus_google_token_exp');
   await signOut(auth).catch(() => {});
+}
+
+/** Remove permanentemente a conta Firebase Auth atual. */
+export async function deleteCurrentFirebaseUser(): Promise<void> {
+  const current = auth.currentUser;
+  if (!current) return;
+  await deleteUser(current);
+  cachedGoogleToken = null;
+  cachedAcademicToken = null;
+  sessionStorage.clear();
 }
 
 export { onAuthStateChanged };

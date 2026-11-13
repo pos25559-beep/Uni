@@ -52,7 +52,7 @@ export function StreakHeatmap({ sessions, now }: Props) {
                   title={cell.future ? undefined : title}
                   aria-label={cell.future ? undefined : title}
                   className={cx(
-                    'aspect-square rounded-[3px]',
+                    'aspect-square rounded-full transition-transform hover:scale-110',
                     cell.future ? 'bg-transparent' : level === 0 ? 'bg-surface-2' : 'bg-accent',
                   )}
                   style={cell.future || level === 0 ? undefined : { opacity: STEP_OPACITY[level] }}
@@ -68,7 +68,7 @@ export function StreakHeatmap({ sessions, now }: Props) {
         {STEP_OPACITY.map((opacity, i) => (
           <span
             key={i}
-            className={cx('size-3 rounded-[3px]', i === 0 ? 'bg-surface-2' : 'bg-accent')}
+            className={cx('size-3 rounded-full', i === 0 ? 'bg-surface-2' : 'bg-accent')}
             style={i === 0 ? undefined : { opacity }}
           />
         ))}

@@ -29,15 +29,21 @@ export default function CourseCard({ course, summary, next }: Props) {
   return (
     <Link
       to={`/cadeiras/${course.id}`}
-      className="rise group flex flex-col overflow-hidden rounded-2xl border border-line bg-surface transition hover:border-muted/50 hover:shadow-sm"
+      className="rise group flex flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-card transition duration-150 hover:-translate-y-0.5 hover:border-muted/50 hover:shadow-sm active:scale-[0.99]"
     >
-      <div className={cx('h-1 w-full', colors.dot)} />
+      <div className={cx('flex items-center justify-between border-b border-line/70 px-5 py-2.5 text-xs font-semibold', colors.tint)}>
+        <span className="inline-flex items-center gap-2">
+          <span className={cx('size-2 rounded-full', colors.dot)} />
+          <span className="font-mono tracking-tight text-fg">{course.shortName || course.code}</span>
+        </span>
+        <span className="font-mono text-[11px] tabular text-muted">{course.ects} ECTS</span>
+      </div>
       <div className="flex flex-1 flex-col gap-4 p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="truncate text-base font-semibold tracking-tight group-hover:text-accent">{course.name}</h2>
+            <h2 className="truncate font-display text-base font-bold tracking-tight group-hover:text-accent">{course.name}</h2>
             <p className="mt-0.5 truncate text-xs text-muted">
-              {[course.code, `${course.ects} ECTS`, course.teacher].filter(Boolean).join(' · ')}
+              {course.teacher || 'Sem docente atribuído'}
             </p>
           </div>
           <Ring value={progress} size={56} stroke={5} color={colors.hex}>

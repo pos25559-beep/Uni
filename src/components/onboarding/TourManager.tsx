@@ -1,0 +1,99 @@
+import { driver, type DriveStep } from 'driver.js';
+import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import { useStore } from '../../store/useStore';
+
+export function startUnipediaGuidedTour(onComplete?: () => void): void {
+  const steps: DriveStep[] = [
+    {
+      popover: {
+        title: 'Bem-vindo à nova Unipedia',
+        description:
+          'Este é o teu painel «Hoje»: junta sequência de estudo, alertas de exames e as tuas aulas do dia num relance.',
+        side: 'bottom',
+        align: 'center',
+      },
+    },
+    {
+      element: '[data-tour="bento-overview"]',
+      popover: {
+        title: 'Progresso em tempo real',
+        description:
+          'Acompanha prontidão, horas estudadas na semana, média do percurso e tarefas pendentes.',
+        side: 'bottom',
+        align: 'start',
+      },
+    },
+    {
+      element: '[data-tour="nav-cadeiras"]',
+      popover: {
+        title: 'Cadeiras e Disciplinas',
+        description:
+          'Gere tópicos, confiança (1–5), notas necessárias e ligações diretas ao teu curso.',
+        side: 'top',
+        align: 'center',
+      },
+    },
+    {
+      element: '[data-tour="nav-plano"]',
+      popover: {
+        title: 'Plano de 14 dias & Foco',
+        description:
+          'Blocos gerados automaticamente por prioridade de avaliações, com temporizador integrado.',
+        side: 'top',
+        align: 'center',
+      },
+    },
+    {
+      element: '[data-tour="nav-assistente"]',
+      popover: {
+        title: 'Tutor IA (opcional · RGPD)',
+        description:
+          'Tira dúvidas com base no teu contexto real, sempre com controlo explícito de privacidade.',
+        side: 'top',
+        align: 'center',
+      },
+    },
+  ];
+
+  const availableSteps = steps.filter(
+    (step) => !step.element || Boolean(document.querySelector(String(step.element))),
+  );
+
+  const instance = driver({
+    showProgress: true,
+    animate: !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    allowClose: true,
+    overlayOpacity: 0.42,
+    popoverClass: 'unipedia-tour-popover',
+    nextBtnText: 'Seguinte',
+    prevBtnText: 'Anterior',
+    doneBtnText: 'Começar a estudar',
+    progressText: '{{current}} / {{total}}',
+    steps: availableSteps,
+    onDestroyed: () => {
+      onComplete?.();
+    },
+  });
+
+  instance.drive();
+}
+
+export default function TourManager() {
+  const onboardingCompleted = useStore((s) => s.academicProfile.onboardingCompleted);
+  const tourCompleted = Boolean(useStore((s) => s.settings.tourCompleted));
+  const updateSettings = useStore((s) => s.updateSettings);
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!onboardingCompleted || tourCompleted || location.pathname !== '/') return;
+    const timer = window.setTimeout(() => {
+      startUnipediaGuidedTour(() => {
+        updateSettings({ tourCompleted: true });
+      });
+    }, 550);
+    return () => window.clearTimeout(timer);
+  }, [onboardingCompleted, tourCompleted, location.pathname, updateSettings]);
+
+  return null;
+}

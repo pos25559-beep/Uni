@@ -28,8 +28,36 @@ interface GenerateResponse {
 
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const MAX_CONTEXT_CHARS = 4500;
-const DEFAULT_GEMINI_KEY = 'AIzaSyCBfXOeOqvHsqCaAqY-RGYjcp9i-j_l6Jo';
-const DEFAULT_MODEL = 'gemini-3.8-flash';
+const DEFAULT_MODEL = 'gemini-2.5-flash';
+
+export class AiConsentRequiredError extends Error {
+  constructor() {
+    super('Para usar o Gemini IA tens primeiro de ativar o consentimento de processamento por IA nas Definições.');
+    this.name = 'AiConsentRequiredError';
+  }
+}
+
+export class MissingGeminiKeyError extends Error {
+  constructor() {
+    super('Configura a tua chave Gemini API nas Definições → Gemini IA (ou ativa em desenvolvimento) para usar este assistente.');
+    this.name = 'MissingGeminiKeyError';
+  }
+}
+
+function resolveGeminiConfig() {
+  const { geminiApiKey, geminiModel, aiConsent } = useStore.getState().settings;
+  if (!aiConsent) {
+    throw new AiConsentRequiredError();
+  }
+  const key = geminiApiKey.trim() || (import.meta.env.DEV ? (import.meta.env.VITE_GEMINI_API_KEY ?? '') : '');
+  if (!key) {
+    throw new MissingGeminiKeyError();
+  }
+  const model = (!geminiModel || geminiModel.startsWith('gemini-2.0') || geminiModel.startsWith('gemini-3.8'))
+    ? DEFAULT_MODEL
+    : geminiModel.trim();
+  return { key, model };
+}
 
 export interface ExtractedHistoryItem {
   code?: string;
@@ -44,9 +72,7 @@ export async function parseAcademicHistoryFromScreenshot(
   base64Data: string,
   mimeType: string,
 ): Promise<ExtractedHistoryItem[]> {
-  const { geminiApiKey, geminiModel } = useStore.getState().settings;
-  const key = geminiApiKey.trim() || import.meta.env.VITE_GEMINI_API_KEY || DEFAULT_GEMINI_KEY;
-  const model = (!geminiModel || geminiModel.startsWith('gemini-2.')) ? DEFAULT_MODEL : geminiModel.trim();
+  const { key, model } = resolveGeminiConfig();
 
   const cleanBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
 
@@ -118,9 +144,7 @@ export async function askGemini(args: {
   system: string;
   signal?: AbortSignal;
 }): Promise<string> {
-  const { geminiApiKey, geminiModel } = useStore.getState().settings;
-  const key = geminiApiKey.trim() || import.meta.env.VITE_GEMINI_API_KEY || DEFAULT_GEMINI_KEY;
-  const model = (!geminiModel || geminiModel.startsWith('gemini-2.')) ? DEFAULT_MODEL : geminiModel.trim();
+  const { key, model } = resolveGeminiConfig();
 
   const res = await fetch(`${API_BASE}/${encodeURIComponent(model)}:generateContent`, {
     method: 'POST',

@@ -1,27 +1,30 @@
 {
-  "id": "/",
-  "name": "Unipedia",
+  "name": "Unipedia — Percurso Académico",
   "short_name": "Unipedia",
-  "description": "Plano de estudo inteligente, tutor semanal e sincronização académica para universitários em Portugal.",
+  "description": "Organiza o teu semestre ou ano escolar: horário, notas, plano de estudo de 14 dias e progresso em qualquer dispositivo.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#0b0d12",
-  "theme_color": "#0b0d12",
+  "theme_color": "#4f46e5",
   "lang": "pt-PT",
   "icons": [
     {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
       "src": "/icons/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
+      "type": "image/png"
     },
     {
       "src": "/icons/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
+      "type": "image/png"
     },
     {
       "src": "/icons/icon-512-maskable.png",

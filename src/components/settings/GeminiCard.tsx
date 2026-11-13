@@ -16,6 +16,7 @@ export default function GeminiCard() {
   const status = useStore((s) => s.integrations.gemini);
   const apiKey = useStore((s) => s.settings.geminiApiKey);
   const model = useStore((s) => s.settings.geminiModel);
+  const aiConsent = Boolean(useStore((s) => s.settings.aiConsent));
   const updateSettings = useStore((s) => s.updateSettings);
   const setIntegration = useStore((s) => s.setIntegration);
 
@@ -25,8 +26,16 @@ export default function GeminiCard() {
   const [localError, setLocalError] = useState<string | null>(null);
 
   const test = async () => {
-    const key = apiKey.trim() || 'AIzaSyCBfXOeOqvHsqCaAqY-RGYjcp9i-j_l6Jo';
-    const wanted = model.trim() || 'gemini-3.8-flash';
+    const key = apiKey.trim() || (import.meta.env.DEV ? (import.meta.env.VITE_GEMINI_API_KEY ?? '') : '');
+    const wanted = model.trim() || 'gemini-2.5-flash';
+    if (!aiConsent) {
+      setLocalError('Ativa primeiro o consentimento de processamento por IA abaixo (EU AI Act / RGPD).');
+      return;
+    }
+    if (!key) {
+      setLocalError('Insere a tua chave Google AI Studio pessoal para testar a ligação.');
+      return;
+    }
     setTesting(true);
     setResult(null);
     setLocalError(null);
@@ -64,18 +73,30 @@ export default function GeminiCard() {
     >
       <HowTo
         steps={[
-          <>O projeto já tem a chave Cloud padrão configurada com o modelo <b className="text-fg">gemini-3.8-flash</b>.</>,
-          <>Se preferires usar uma chave pessoal, cria em <a className="text-accent underline-offset-2 hover:underline" href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">aistudio.google.com/apikey</a> e cola abaixo.</>,
+          <>Ativa o consentimento RGPD / EU AI Act para enviar contexto académico ao teu modelo Gemini.</>,
+          <>Cria a tua chave gratuita em <a className="text-accent underline-offset-2 hover:underline" href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">aistudio.google.com/apikey</a> e cola abaixo.</>,
           <>Clica em «Testar ligação» para validar os modelos disponíveis.</>,
         ]}
       />
 
-      <Field label="Chave API (opcional se usares a chave do projeto)">
+      <label className="flex items-start gap-2.5 rounded-xl border border-line bg-surface-2 px-3 py-2.5 text-xs">
+        <input
+          type="checkbox"
+          checked={aiConsent}
+          onChange={(e) => updateSettings({ aiConsent: e.target.checked })}
+          className="mt-0.5 size-4 rounded accent-accent"
+        />
+        <span>
+          <strong className="text-fg">Consentimento IA (RGPD &amp; EU AI Act):</strong> autorizo o envio de perguntas e prints escolhidos por mim à API Google Gemini.
+        </span>
+      </label>
+
+      <Field label="Chave API Gemini (guardada localmente no teu dispositivo)">
         <div className="flex gap-2">
           <Input
             type={showKey ? 'text' : 'password'}
             value={apiKey}
-            placeholder="Chave Cloud padrão ativa (ou cola chave AI Studio)"
+            placeholder="Cola a tua chave do Google AI Studio (AIza...)"
             autoComplete="off"
             spellCheck={false}
             className="min-w-0 flex-1"
