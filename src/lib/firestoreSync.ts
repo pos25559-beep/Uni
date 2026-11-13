@@ -10,7 +10,14 @@ import {
   writeBatch,
   type FieldValue,
 } from 'firebase/firestore';
-import { auth, db, deleteCurrentFirebaseUser, onAuthStateChanged, type User } from './firebase';
+import {
+  auth,
+  db,
+  deleteCurrentFirebaseUser,
+  onAuthStateChanged,
+  sessionNeedsRecentLogin,
+  type User,
+} from './firebase';
 import { useStore } from '../store/useStore';
 import type {
   AcademicProfile,
@@ -334,6 +341,12 @@ export async function syncCourseBatch(courses: Course[]) {
  */
 export async function deleteCurrentAccountAndCloudData(): Promise<void> {
   const user = auth.currentUser;
+
+  if (user && sessionNeedsRecentLogin()) {
+    const err = new Error('Reautenticação necessária antes de apagar a conta.');
+    (err as Error & { code?: string }).code = 'auth/requires-recent-login';
+    throw err;
+  }
 
   // Desliga os listeners antes de apagar para evitar ressincronização fantasma
   activeUnsubscribers.forEach((u) => u());

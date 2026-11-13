@@ -6,6 +6,7 @@ import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-ch
 import {
   createUserWithEmailAndPassword,
   deleteUser,
+  EmailAuthProvider,
   getAuth,
   getRedirectResult,
   GoogleAuthProvider,
@@ -369,37 +370,61 @@ export async function completeMagicEmailLinkSignIn(explicitEmail?: string): Prom
   return res.user;
 }
 
-/** Remove permanentemente a conta Firebase Auth atual, reautenticando via Google se necessário. */
-export async function deleteCurrentFirebaseUser(): Promise<void> {
+/** Indica se a sessão atual tem mais de 4 minutos e provavelmente exigirá reautenticação recente para apagar conta. */
+export function sessionNeedsRecentLogin(maxAgeMs = 4 * 60 * 1000): boolean {
+  const current = auth.currentUser;
+  if (!current?.metadata?.lastSignInTime) return false;
+  const lastMs = Date.parse(current.metadata.lastSignInTime);
+  if (Number.isNaN(lastMs)) return false;
+  return Date.now() - lastMs > maxAgeMs;
+}
+
+/**
+ * Reautentica a sessão atual por clique explícito do utilizador antes de ações sensíveis.
+ * Para contas Google na Web usa um provider limpo apenas de identidade (sem scopes de Drive/Agenda).
+ */
+export async function reauthenticateCurrentUser(password?: string): Promise<void> {
   const current = auth.currentUser;
   if (!current) return;
 
-  try {
-    await deleteUser(current);
-  } catch (err: unknown) {
-    const code = (err as { code?: string } | null)?.code;
-    const hasGoogle = current.providerData.some((p) => p.providerId === 'google.com');
-    if (code === 'auth/requires-recent-login' && hasGoogle) {
-      if (Capacitor.isNativePlatform()) {
-        const { idToken, accessToken } = await loginGoogleNative([
-          'https://www.googleapis.com/auth/drive.readonly',
-          'https://www.googleapis.com/auth/calendar.readonly',
-        ]);
-        const cred = GoogleAuthProvider.credential(idToken, accessToken);
-        await reauthenticateWithCredential(current, cred);
-      } else {
-        googleProvider.setCustomParameters({
-          prompt: 'select_account',
-          ...(current.email ? { login_hint: current.email } : {}),
-        });
-        await reauthenticateWithPopup(current, googleProvider);
-      }
-      await deleteUser(current);
-    } else {
-      throw err;
-    }
+  const hasPassword = current.providerData.some((p) => p.providerId === 'password');
+  const hasGoogle = current.providerData.some((p) => p.providerId === 'google.com');
+
+  if (password && current.email) {
+    const cred = EmailAuthProvider.credential(current.email, password);
+    await reauthenticateWithCredential(current, cred);
+    return;
   }
 
+  if (hasGoogle) {
+    if (Capacitor.isNativePlatform()) {
+      const { idToken, accessToken } = await loginGoogleNative([]);
+      const cred = GoogleAuthProvider.credential(idToken, accessToken);
+      await reauthenticateWithCredential(current, cred);
+      return;
+    }
+
+    // Provider isolado apenas para confirmar identidade (sem pedir permissões extra do Drive/Calendar)
+    const cleanIdentityProvider = new GoogleAuthProvider();
+    if (current.email) {
+      cleanIdentityProvider.setCustomParameters({ login_hint: current.email });
+    }
+    await reauthenticateWithPopup(current, cleanIdentityProvider);
+    return;
+  }
+
+  if (hasPassword && !password) {
+    const err = new Error('Introduz a tua palavra-passe atual para confirmar.');
+    (err as Error & { code?: string }).code = 'auth/missing-password';
+    throw err;
+  }
+}
+
+/** Remove permanentemente a conta Firebase Auth atual (sem disparar popups surpresa). */
+export async function deleteCurrentFirebaseUser(): Promise<void> {
+  const current = auth.currentUser;
+  if (!current) return;
+  await deleteUser(current);
   cachedGoogleToken = null;
   cachedAcademicToken = null;
   sessionStorage.clear();

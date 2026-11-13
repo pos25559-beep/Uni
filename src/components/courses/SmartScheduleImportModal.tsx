@@ -247,7 +247,7 @@ export default function SmartScheduleImportModal({
                 onOpenClipModal();
               }}
             >
-              <FileText size={14} /> Usar CLIP / .ics
+              <FileText size={14} /> Importar .ics / Portal
             </Button>
           ) : (
             <span />

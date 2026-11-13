@@ -140,7 +140,7 @@ export default function ClipImportModal({ onClose }: { onClose: () => void }) {
         return;
       }
     }
-    setError('Não encontrei aulas nesse conteúdo. Abre o Horário no CLIP, seleciona tudo (Ctrl/Cmd+A), copia (Ctrl/Cmd+C) e cola aqui.');
+    setError('Não encontrei aulas nesse conteúdo. Abre o Horário no portal da tua escola/faculdade, seleciona tudo (Ctrl/Cmd+A), copia (Ctrl/Cmd+C) e cola aqui.');
   };
 
   const onHtmlFile = async (file: File | undefined) => {
@@ -151,7 +151,7 @@ export default function ClipImportModal({ onClose }: { onClose: () => void }) {
       const html = decodeHtmlBytes(await file.arrayBuffer());
       const parsed = parseClipScheduleHtml(html, courses);
       if (parsed.classes.length === 0) {
-        setError('Não encontrei aulas nessa página. Guarda a página do Horário do CLIP (Ctrl/Cmd+S) e escolhe esse ficheiro.');
+        setError('Não encontrei aulas nessa página. Guarda a página do Horário do portal académico (Ctrl/Cmd+S) e escolhe esse ficheiro.');
         return;
       }
       startPreview(toClipPreview(parsed.classes, parsed.courses));
@@ -170,7 +170,7 @@ export default function ClipImportModal({ onClose }: { onClose: () => void }) {
       const content = await file.text();
       const events = parseIcs(content);
       if (events.length === 0) {
-        setError('Não encontrei eventos neste ficheiro. Confirma que é um .ics exportado do CLIP.');
+        setError('Não encontrei eventos neste ficheiro. Confirma que é um .ics exportado do portal ou agenda.');
         return;
       }
       startPreview({ ...icsToClipData(events, courses), rejected: [], source: 'ics', clipCourses: [] });
@@ -491,7 +491,7 @@ export default function ClipImportModal({ onClose }: { onClose: () => void }) {
       {!done && preview && rows && (
         <>
           <div className="rounded-xl bg-warn/12 px-3 py-2 text-xs text-warn">
-            Importar substitui o que foi importado antes do CLIP (aulas, avaliações e eventos). Os dados de outras fontes não mudam.
+            Importar substitui o que foi importado antes pelo portal (aulas, avaliações e eventos). Os dados de outras fontes não mudam.
           </div>
 
           {missingCourses.length > 0 && (

@@ -1,9 +1,14 @@
 import { format } from 'date-fns';
-import { AlertTriangle, CheckCircle2, Download, Trash2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Download, KeyRound, LogOut, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { buildBackupPayload } from '../../lib/backup';
-import { auth } from '../../lib/firebase';
+import {
+  auth,
+  logoutFirebase,
+  reauthenticateCurrentUser,
+  sessionNeedsRecentLogin,
+} from '../../lib/firebase';
 import { deleteCurrentAccountAndCloudData } from '../../lib/firestoreSync';
 import { LEGAL_INFO } from '../../lib/legal';
 import { hapticTap } from '../../lib/nativeBridge';
@@ -16,7 +21,10 @@ interface AccountDeletionModalProps {
 }
 
 export default function AccountDeletionModal({ open, onClose }: AccountDeletionModalProps) {
+  const navigate = useNavigate();
   const [confirmWord, setConfirmWord] = useState('');
+  const [reauthPassword, setReauthPassword] = useState('');
+  const [needsReauth, setNeedsReauth] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -24,6 +32,22 @@ export default function AccountDeletionModal({ open, onClose }: AccountDeletionM
   const user = auth.currentUser;
   const requiresWord = 'ELIMINAR';
   const canConfirm = confirmWord.trim().toUpperCase() === requiresWord;
+  const hasGoogleProvider = Boolean(user?.providerData.some((p) => p.providerId === 'google.com'));
+  const hasPasswordProvider = Boolean(user?.providerData.some((p) => p.providerId === 'password'));
+  const sessionStale = Boolean(user && (needsReauth || sessionNeedsRecentLogin()));
+
+  const finishLocalReset = () => {
+    useStore.getState().clearAll();
+    useStore.getState().updateSettings({
+      gdprAcceptedAt: undefined,
+      aiConsent: false,
+      cloudSyncConsent: false,
+      tourCompleted: false,
+    });
+    localStorage.removeItem('uni-erp-v5');
+    localStorage.removeItem('unipedia-onboarding-v1');
+    sessionStorage.clear();
+  };
 
   const exportFirst = () => {
     const payload = buildBackupPayload(useStore.getState());
@@ -44,20 +68,28 @@ export default function AccountDeletionModal({ open, onClose }: AccountDeletionM
     setError(null);
     await hapticTap('medium');
     try {
+      if (sessionStale && user) {
+        if (hasPasswordProvider && !hasGoogleProvider && !reauthPassword.trim()) {
+          setNeedsReauth(true);
+          setError('Introduz a tua palavra-passe atual abaixo para confirmar a eliminação.');
+          return;
+        }
+        await reauthenticateCurrentUser(reauthPassword.trim() || undefined);
+      }
       await deleteCurrentAccountAndCloudData();
+      finishLocalReset();
       setDone(true);
-      useStore.getState().updateSettings({
-        gdprAcceptedAt: undefined,
-        aiConsent: false,
-        cloudSyncConsent: false,
-        tourCompleted: false,
-      });
     } catch (e: unknown) {
       const errObj = e as { code?: string; message?: string } | null;
       if (errObj?.code === 'auth/requires-recent-login') {
-        setError(
-          'Por segurança, entra novamente na tua conta (/entrar) antes de confirmar a eliminação permanente.',
-        );
+        setNeedsReauth(true);
+        setError(null);
+      } else if (errObj?.code === 'auth/popup-closed-by-user') {
+        setNeedsReauth(true);
+        setError('Fechaste a janela da Google antes de confirmar. Podes tentar novamente sem risco, ou usar a limpeza local.');
+      } else if (errObj?.code === 'auth/wrong-password' || errObj?.code === 'auth/invalid-credential') {
+        setNeedsReauth(true);
+        setError('Palavra-passe incorreta. Tenta novamente.');
       } else {
         setError(errObj?.message || 'Não foi possível concluir a eliminação.');
       }
@@ -66,15 +98,34 @@ export default function AccountDeletionModal({ open, onClose }: AccountDeletionM
     }
   };
 
+  const handleLocalSignOutWipe = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await logoutFirebase();
+      finishLocalReset();
+      setDone(true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleFinishClose = () => {
+    onClose();
+    if (done) {
+      navigate('/bem-vindo', { replace: true });
+    }
+  };
+
   return (
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={handleFinishClose}
       title={user ? 'Eliminar conta e dados' : 'Apagar todos os dados locais'}
       footer={
         done ? (
-          <Button variant="primary" onClick={onClose}>
-            Concluir
+          <Button variant="primary" onClick={handleFinishClose}>
+            Concluir e recomeçar
           </Button>
         ) : (
           <>
@@ -88,7 +139,11 @@ export default function AccountDeletionModal({ open, onClose }: AccountDeletionM
               disabled={!canConfirm || busy}
             >
               <Trash2 size={15} />
-              {user ? 'Eliminar definitivamente' : 'Apagar dados locais'}
+              {sessionStale && hasGoogleProvider
+                ? 'Confirmar no Google e apagar'
+                : user
+                  ? 'Eliminar definitivamente'
+                  : 'Apagar dados locais'}
             </Button>
           </>
         )
@@ -101,7 +156,7 @@ export default function AccountDeletionModal({ open, onClose }: AccountDeletionM
             Eliminação concluída
           </div>
           <p className="text-muted">
-            Os teus registos locais, perfil e conta Cloud foram removidos.
+            Os teus registos locais, perfil e conta Cloud foram removidos. Podes começar de novo quando quiseres.
           </p>
         </div>
       ) : (
@@ -123,18 +178,38 @@ export default function AccountDeletionModal({ open, onClose }: AccountDeletionM
             Exportar cópia JSON antes de apagar
           </Button>
 
+          {sessionStale && user && (
+            <div className="space-y-2.5 rounded-[16px] border border-accent/30 bg-accent-soft/35 p-3 text-xs">
+              <p className="font-semibold text-fg">
+                Confirmação rápida de segurança (sessão aberta há mais de 4 min)
+              </p>
+              {hasPasswordProvider && !hasGoogleProvider ? (
+                <div className="space-y-1.5">
+                  <p className="text-muted">
+                    Introduz a tua palavra-passe atual para confirmar que és mesmo tu:
+                  </p>
+                  <div className="relative">
+                    <KeyRound size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                    <Input
+                      type="password"
+                      value={reauthPassword}
+                      onChange={(e) => setReauthPassword(e.target.value)}
+                      placeholder="Palavra-passe atual"
+                      className="pl-9"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <p className="text-muted">
+                  Por segurança, ao clicar abaixo vais confirmar rapidamente quem és na janela da Google (só identidade básica, sem pedir acesso a Drive ou Agenda e sem risco de bloqueio).
+                </p>
+              )}
+            </div>
+          )}
+
           {error && (
             <div className="space-y-2 rounded-[16px] bg-coral-soft p-3 text-xs text-coral">
               <p>{error}</p>
-              {error.includes('/entrar') && (
-                <Link
-                  to="/entrar"
-                  onClick={onClose}
-                  className="inline-block font-bold underline"
-                >
-                  Ir para Entrar e re-autenticar
-                </Link>
-              )}
             </div>
           )}
 
@@ -151,6 +226,18 @@ export default function AccountDeletionModal({ open, onClose }: AccountDeletionM
               spellCheck={false}
             />
           </div>
+
+          {user && (
+            <button
+              type="button"
+              onClick={handleLocalSignOutWipe}
+              disabled={busy}
+              className="inline-flex min-h-[36px] items-center gap-1.5 text-xs font-semibold text-muted hover:text-fg hover:underline"
+            >
+              <LogOut size={13} />
+              Prefiro apenas terminar sessão e limpar este dispositivo
+            </button>
+          )}
 
           <p className="text-xs text-muted">
             Contacto RGPD:{' '}

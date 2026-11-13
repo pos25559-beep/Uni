@@ -352,7 +352,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     const parsed = parseCurriculumFromText(pastedPlanText, primaryAcademicYear, currentSemester);
     if (parsed.length === 0) {
       setOcrError(
-        'Não detetei cadeiras nesse texto. Cola a tabela do Guia de Cursos (guia.unl.pt) ou do CLIP, ou escreve uma cadeira por linha.',
+        'Não detetei cadeiras nesse texto. Cola a tabela do Guia de Cursos ou portal académico, ou escreve uma cadeira por linha.',
       );
       return;
     }
@@ -990,11 +990,11 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                       void hapticTap();
                     }}
                   >
-                    <ClipboardPaste size={14} /> Colar CLIP / Guia
+                    <ClipboardPaste size={14} /> Colar Plano / Guia
                   </Button>
                   <label className="inline-flex min-h-[36px] cursor-pointer items-center gap-1.5 rounded-xl bg-accent px-3 py-1.5 text-xs font-semibold text-accent-fg shadow-sm transition hover:opacity-90">
                     {ocrBusy ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
-                    {ocrBusy ? 'A ler print…' : 'Print CLIP / Pauta'}
+                    {ocrBusy ? 'A ler print…' : 'Print Horário / Pauta'}
                     <input
                       type="file"
                       accept="image/*"
@@ -1015,7 +1015,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="text-xs font-semibold text-fg">
-                        Colar plano curricular (CLIP, Guia UNL ou lista de cadeiras)
+                        Colar plano curricular (Portal académico, Guia de Curso ou lista de cadeiras)
                       </p>
                       <p className="mt-0.5 text-[11px] text-muted">
                         Se o plano mudou este ano ou vens de outro curso, copia a tabela com semestres, nomes e ECTS e cola abaixo — funciona offline sem gastar IA.
@@ -1153,7 +1153,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
               <div className="max-h-72 space-y-2 overflow-y-auto rounded-3xl border border-line bg-surface p-3">
                 {filteredRecords.length === 0 ? (
                   <p className="p-6 text-center text-xs text-muted">
-                    Ainda sem cadeiras neste filtro. Usa «+ Adicionar» acima ou «Print CLIP / Pauta».
+                    Ainda sem cadeiras neste filtro. Usa «+ Adicionar» acima ou «Print Horário / Pauta».
                   </p>
                 ) : (
                   filteredRecords.map((r) => (

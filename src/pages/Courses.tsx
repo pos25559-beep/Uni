@@ -90,7 +90,7 @@ export default function Courses() {
                 <CalendarDays size={16} /> Extrair Google Calendar
               </Button>
               <Button variant="secondary" onClick={() => setImportOpen(true)}>
-                <Upload size={16} /> CLIP / .ics
+                <Upload size={16} /> Horário (.ics / Portal)
               </Button>
               <Button variant="ghost" onClick={() => setForm('new')}>
                 <Plus size={16} /> Criar à mão
