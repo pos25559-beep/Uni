@@ -18,7 +18,6 @@ import type { FormEvent } from 'react';
 import type { Assessment, Course, Material } from '../../types';
 import { Badge, Button, EmptyState, Input, cx } from '../ui';
 import { newId, useStore } from '../../store/useStore';
-import { pedroMaterials } from '../../lib/seed';
 import { matchesCourse, isNonAcademicDocument } from '../../lib/courseAliases';
 import { courseColors, providerLabel } from '../../lib/colors';
 import { daysUntil } from '../../lib/selectors';
@@ -61,7 +60,6 @@ export default function CourseRepositoryTab({
 }: Props) {
   const materials = useStore((s) => s.materials);
   const upsert = useStore((s) => s.upsert);
-  const upsertMany = useStore((s) => s.upsertMany);
   const patch = useStore((s) => s.patch);
   const remove = useStore((s) => s.remove);
 
@@ -116,30 +114,6 @@ export default function CourseRepositoryTab({
       return false;
     });
   }, [materials, course]);
-
-  const handleRestoreCourseMaterials = () => {
-    const toAdd = pedroMaterials
-      .filter((m) => {
-        const mCourseId = (m.courseId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        const codeLower = (course.code || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        const shortLower = (course.shortName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        return (
-          mCourseId === (course.id || '').toLowerCase() ||
-          (codeLower && mCourseId === codeLower) ||
-          (shortLower && mCourseId === shortLower) ||
-          matchesCourse(m.title, course)
-        );
-      })
-      .map((m) => ({
-        ...m,
-        id: `${m.id}-${course.id.slice(0, 6)}`,
-        courseId: course.id,
-      }));
-
-    if (toAdd.length > 0) {
-      upsertMany('materials', toAdd);
-    }
-  };
 
   // Ordena: fixados primeiro, depois mais recentes
   const sortedMaterials = useMemo(() => {
@@ -509,10 +483,6 @@ export default function CourseRepositoryTab({
               >
                 {scanningDrive ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                 Varrer Google Drive
-              </Button>
-              <Button variant="ghost" onClick={handleRestoreCourseMaterials}>
-                <Sparkles size={14} />
-                Restaurar Ligações Oficiais
               </Button>
             </div>
           }

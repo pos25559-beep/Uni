@@ -20,10 +20,15 @@ import { useStore } from './store/useStore'
 // Inicia escuta em tempo real do Firestore para utilizador autenticado
 initFirestoreSync();
 
-// Ponte nativa (StatusBar, Teclado virtual e Splash Screen)
+// Ponte nativa (Tema Sistema/Claro/Escuro, StatusBar, Teclado virtual e Splash Screen)
 const initialTheme = useStore.getState().settings.theme;
-document.documentElement.classList.toggle('dark', initialTheme === 'dark');
 void syncNativeTheme(initialTheme);
+if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    const current = useStore.getState().settings.theme;
+    if (current === 'system') void syncNativeTheme('system');
+  });
+}
 void initNativeKeyboardBridge();
 void hideNativeSplash();
 

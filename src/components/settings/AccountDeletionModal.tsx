@@ -1,7 +1,9 @@
-import { AlertTriangle, CheckCircle2, Trash2 } from 'lucide-react';
+import { format } from 'date-fns';
+import { AlertTriangle, CheckCircle2, Download, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { auth, loginWithGoogle } from '../../lib/firebase';
+import { buildBackupPayload } from '../../lib/backup';
+import { auth } from '../../lib/firebase';
 import { deleteCurrentAccountAndCloudData } from '../../lib/firestoreSync';
 import { LEGAL_INFO } from '../../lib/legal';
 import { hapticTap } from '../../lib/nativeBridge';
@@ -20,8 +22,21 @@ export default function AccountDeletionModal({ open, onClose }: AccountDeletionM
   const [done, setDone] = useState(false);
 
   const user = auth.currentUser;
-  const requiresWord = 'APAGAR';
+  const requiresWord = 'ELIMINAR';
   const canConfirm = confirmWord.trim().toUpperCase() === requiresWord;
+
+  const exportFirst = () => {
+    const payload = buildBackupPayload(useStore.getState());
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `unipedia-copia-${format(new Date(), 'yyyy-MM-dd')}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
 
   const handleDelete = async () => {
     if (!canConfirm) return;
@@ -41,7 +56,7 @@ export default function AccountDeletionModal({ open, onClose }: AccountDeletionM
       const errObj = e as { code?: string; message?: string } | null;
       if (errObj?.code === 'auth/requires-recent-login') {
         setError(
-          'Por segurança (Firebase Auth), inicia sessão novamente antes de confirmar a eliminação permanente da conta.',
+          'Por segurança, entra novamente na tua conta (/entrar) antes de confirmar a eliminação permanente.',
         );
       } else {
         setError(errObj?.message || 'Não foi possível concluir a eliminação.');
@@ -51,20 +66,11 @@ export default function AccountDeletionModal({ open, onClose }: AccountDeletionM
     }
   };
 
-  const handleReauthGoogle = async () => {
-    setError(null);
-    try {
-      await loginWithGoogle();
-    } catch (e: unknown) {
-      setError((e as Error)?.message || 'Erro ao re-autenticar.');
-    }
-  };
-
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={user ? 'Eliminar conta e dados (RGPD Art. 17.º)' : 'Apagar todos os dados locais'}
+      title={user ? 'Eliminar conta e dados' : 'Apagar todos os dados locais'}
       footer={
         done ? (
           <Button variant="primary" onClick={onClose}>
@@ -77,54 +83,64 @@ export default function AccountDeletionModal({ open, onClose }: AccountDeletionM
             </Button>
             <Button
               variant="danger"
+              loading={busy}
               onClick={handleDelete}
               disabled={!canConfirm || busy}
             >
               <Trash2 size={15} />
-              {busy ? 'A eliminar…' : user ? 'Eliminar conta definitivamente' : 'Apagar dados locais'}
+              {user ? 'Eliminar definitivamente' : 'Apagar dados locais'}
             </Button>
           </>
         )
       }
     >
       {done ? (
-        <div className="space-y-3 rounded-2xl border border-ok/30 bg-ok/10 p-4 text-sm">
-          <div className="flex items-center gap-2 font-semibold text-ok">
+        <div className="space-y-3 rounded-[18px] bg-accent-soft p-4 text-sm">
+          <div className="flex items-center gap-2 font-bold text-ok">
             <CheckCircle2 size={18} />
             Eliminação concluída
           </div>
           <p className="text-muted">
-            Os teus registos locais, perfil académico, sessões e conta Cloud foram removidos. Podes recomeçar o onboarding a qualquer momento.
+            Os teus registos locais, perfil e conta Cloud foram removidos.
           </p>
         </div>
       ) : (
         <div className="space-y-4 text-sm">
-          <div className="flex items-start gap-2.5 rounded-2xl border border-danger/30 bg-danger/10 p-3.5 text-danger">
+          <div className="flex items-start gap-2.5 rounded-[18px] bg-coral-soft p-3.5 text-coral">
             <AlertTriangle size={18} className="mt-0.5 shrink-0" />
             <div className="space-y-1 text-xs leading-relaxed">
-              <p className="font-semibold">Esta ação é irreversível.</p>
+              <p className="font-bold">Esta ação não tem retorno.</p>
               <p>
                 {user
-                  ? `Vai apagar permanentemente a conta (${user.email ?? user.uid}), todas as coleções no Cloud Firestore (/users/${user.uid}) e todo o armazenamento local deste dispositivo.`
-                  : 'Vai apagar todas as cadeiras, avaliações, sessões, materiais e preferências guardadas neste dispositivo.'}
+                  ? `Apaga a tua conta (${user.email ?? 'ativa'}), todos os dados na nuvem e os dados guardados neste telemóvel.`
+                  : 'Apaga todas as cadeiras, avaliações, sessões, materiais e definições guardadas neste dispositivo.'}
               </p>
             </div>
           </div>
 
+          <Button variant="secondary" size="sm" onClick={exportFirst} className="w-full">
+            <Download size={15} />
+            Exportar cópia JSON antes de apagar
+          </Button>
+
           {error && (
-            <div className="space-y-2 rounded-xl border border-danger/30 bg-danger/10 p-3 text-xs text-danger">
+            <div className="space-y-2 rounded-[16px] bg-coral-soft p-3 text-xs text-coral">
               <p>{error}</p>
-              {error.includes('re-autentic') || error.includes('inicia sessão novamente') ? (
-                <Button size="sm" variant="secondary" onClick={handleReauthGoogle}>
-                  Re-autenticar com Google
-                </Button>
-              ) : null}
+              {error.includes('/entrar') && (
+                <Link
+                  to="/entrar"
+                  onClick={onClose}
+                  className="inline-block font-bold underline"
+                >
+                  Ir para Entrar e re-autenticar
+                </Link>
+              )}
             </div>
           )}
 
           <div className="space-y-1.5">
-            <label htmlFor="delete-confirm-input" className="block text-xs font-medium text-muted">
-              Escreve <span className="font-mono font-semibold text-fg">{requiresWord}</span> para confirmar:
+            <label htmlFor="delete-confirm-input" className="block text-xs font-semibold text-muted">
+              Escreve <span className="font-mono font-bold text-fg">{requiresWord}</span> para confirmar:
             </label>
             <Input
               id="delete-confirm-input"
@@ -137,10 +153,10 @@ export default function AccountDeletionModal({ open, onClose }: AccountDeletionM
           </div>
 
           <p className="text-xs text-muted">
-            Dúvidas ou pedidos ao abrigo do RGPD: <a href={`mailto:${LEGAL_INFO.contactEmail}`} className="text-accent underline">{LEGAL_INFO.contactEmail}</a> ·{' '}
-            <Link to="/privacidade" onClick={onClose} className="text-accent underline">
-              Política de Privacidade
-            </Link>
+            Contacto RGPD:{' '}
+            <a href={`mailto:${LEGAL_INFO.contactEmail}`} className="font-semibold text-accent underline">
+              {LEGAL_INFO.contactEmail}
+            </a>
           </p>
         </div>
       )}

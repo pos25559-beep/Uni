@@ -82,21 +82,19 @@ export default function GoogleCard() {
                     )}
                   </div>
                   <p className="text-muted text-xs">
-                    {personalEmail || (isPersonalConnected ? 'Sessão Google pessoal ativa' : 'pos25559@gmail.com')}
+                    {personalEmail || (isPersonalConnected ? 'Sessão Google pessoal ativa' : 'Opcional · Liga apenas se quiseres importar do Drive ou Agenda')}
                   </p>
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-1.5">
                 <Badge tone="accent">Google Drive</Badge>
-                <Badge tone="accent">Gemini AI</Badge>
                 <Badge tone="accent">Agenda</Badge>
-                <Badge tone="accent">Nuvem</Badge>
               </div>
             </div>
 
             <p className="text-muted leading-relaxed">
-              Utilizada para ler as tuas pastas pessoais do Drive, aceder ao drive partilhado do LEMc (Mec Bolinhas), sincronizar o teu plano na nuvem e alimentar os cadernos do NotebookLM.
+              Opcional: permite ler as pastas do Google Drive que associares às tuas cadeiras e importar eventos da Google Agenda. Para iniciar sessão na Unipedia, recomendamos usar Email e Palavra-passe em Conta.
             </p>
 
             <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-line/60">
@@ -166,13 +164,13 @@ export default function GoogleCard() {
           <div className="rounded-xl border border-line bg-surface-2/40 p-4 space-y-3 text-xs">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2.5">
-                <div className="grid size-9 place-items-center rounded-lg bg-amber-500/10 text-amber-500 font-semibold">
+                <div className="grid size-9 place-items-center rounded-lg bg-[#FCE99F]/70 text-[#6B4800] dark:bg-[#352D14] dark:text-[#FDE68A] font-semibold">
                   <GraduationCap size={18} />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <p className="font-semibold text-fg text-sm">
-                      Conta Académica FCT (Gmail dos Professores & CLIP)
+                      Conta Académica (Gmail Institucional &amp; CLIP)
                     </p>
                     {isAcademicConnected ? (
                       <Badge tone="ok">Ativa</Badge>
@@ -181,20 +179,19 @@ export default function GoogleCard() {
                     )}
                   </div>
                   <p className="text-muted text-xs">
-                    {academicEmail || 'po.silva@campus.fct.unl.pt'}
+                    {academicEmail || 'Opcional · Email institucional da tua faculdade'}
                   </p>
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-1.5">
                 <Badge tone="accent">Gmail Professores</Badge>
-                <Badge tone="accent">Avisos CLIP</Badge>
                 <Badge tone="accent">Só Leitura</Badge>
               </div>
             </div>
 
             <p className="text-muted leading-relaxed">
-              Lê os emails reais dos docentes sobre salas, convocações de testes, pautas e horários de dúvidas. Funciona em paralelo com a tua conta pessoal sem misturar sessões.
+              Lê avisos de docentes sobre salas, testes e horários diretamente na caixa académica, em modo só de leitura.
             </p>
 
             <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-line/60">
@@ -202,7 +199,7 @@ export default function GoogleCard() {
                 <>
                   <div className="flex items-center gap-1.5 text-ok font-medium">
                     <CheckCircle2 size={14} />
-                    <span>Conectada: {academicEmail || 'po.silva@campus.fct.unl.pt'}</span>
+                    <span>Conectada: {academicEmail || 'Conta académica ativa'}</span>
                   </div>
                   <Button
                     size="sm"

@@ -26,14 +26,13 @@ export interface UniversityCatalogEntry {
 }
 
 const COURSE_PALETTE: CourseColor[] = [
-  'violet',
-  'sky',
-  'emerald',
+  'lime',
   'amber',
+  'emerald',
+  'sky',
+  'orange',
   'rose',
   'cyan',
-  'orange',
-  'lime',
 ];
 
 export const PORTUGAL_CURRICULA: UniversityCatalogEntry[] = [

@@ -12,6 +12,7 @@ import {
   PrivacyPolicyPage,
   TermsOfUsePage,
 } from './pages/LegalPages';
+import LoginPage from './pages/Login';
 import Materials from './pages/Materials';
 import Planner from './pages/Planner';
 import Progress from './pages/Progress';
@@ -25,6 +26,7 @@ export default function App() {
         <Routes>
           <Route element={<AppShell />}>
             <Route index element={<Dashboard />} />
+            <Route path="entrar" element={<LoginPage />} />
             <Route path="cadeiras" element={<Courses />} />
             <Route path="cadeiras/:id" element={<CourseDetail />} />
             <Route path="calendario" element={<Calendar />} />
@@ -33,6 +35,7 @@ export default function App() {
             <Route path="materiais" element={<Materials />} />
             <Route path="assistente" element={<Assistant />} />
             <Route path="definicoes" element={<SettingsPage />} />
+            <Route path="definicoes/:section" element={<SettingsPage />} />
             <Route path="privacidade" element={<PrivacyPolicyPage />} />
             <Route path="termos" element={<TermsOfUsePage />} />
             <Route path="eliminar-conta" element={<DeleteAccountPage />} />

@@ -96,7 +96,7 @@ export default function WeekView({ days, byDay, courseById, today, selected, onS
 
         {/* Faixa de dias inteiros / fora do horário */}
         <div className="grid border-b border-line" style={{ gridTemplateColumns: COLS }}>
-          <div className="pr-2 pt-2 text-right text-[10px] text-muted">Dia todo</div>
+          <div className="pr-2 pt-2 text-right text-[11px] text-muted">Dia todo</div>
           {days.map((d) => {
             const ds = format(d, 'yyyy-MM-dd');
             const strip = (byDay.get(ds) ?? []).filter((it) => place(it) === null);
@@ -106,12 +106,12 @@ export default function WeekView({ days, byDay, courseById, today, selected, onS
                   <span
                     key={it.id}
                     title={it.title}
-                    className={cx('truncate rounded px-1 py-0.5 text-[10px] leading-tight', itemTone(it, it.courseId ? courseById.get(it.courseId) : undefined), it.done && 'opacity-50')}
+                    className={cx('truncate rounded px-1 py-0.5 text-[11px] leading-tight', itemTone(it, it.courseId ? courseById.get(it.courseId) : undefined), it.done && 'opacity-50')}
                   >
                     {it.start ? `${it.start} ` : ''}{it.title}
                   </span>
                 ))}
-                {strip.length > 3 && <span className="px-1 text-[10px] text-muted">+{strip.length - 3}</span>}
+                {strip.length > 3 && <span className="px-1 text-[11px] text-muted">+{strip.length - 3}</span>}
               </div>
             );
           })}
@@ -123,7 +123,7 @@ export default function WeekView({ days, byDay, courseById, today, selected, onS
             {HOURS.map((h) => (
               <div
                 key={h}
-                className="absolute right-2 -translate-y-1/2 text-[10px] tabular text-muted"
+                className="absolute right-2 -translate-y-1/2 text-[11px] tabular text-muted"
                 style={{ top: (h - 8) * HOUR_H }}
               >
                 {String(h).padStart(2, '0')}:00
@@ -161,7 +161,7 @@ export default function WeekView({ days, byDay, courseById, today, selected, onS
                     >
                       <div className="truncate font-medium tabular">{item.start}{item.end ? `–${item.end}` : ''}</div>
                       <div className="truncate">{item.title}</div>
-                      {item.location && height > 48 && <div className="truncate text-[10px] opacity-75">{item.location}</div>}
+                      {item.location && height > 48 && <div className="truncate text-[11px] opacity-75">{item.location}</div>}
                     </div>
                   );
                 })}

@@ -1,20 +1,17 @@
 import { format } from 'date-fns';
-import { Database, Download, ShieldAlert, Trash2, Upload } from 'lucide-react';
+import { Download, ShieldAlert, Trash2, Upload } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { applyBackupJson, buildBackupPayload } from '../../lib/backup';
 import { useStore } from '../../store/useStore';
-import { Badge, Button, Card, Modal, cx } from '../ui';
+import { Button, Card, Modal } from '../ui';
 import AccountDeletionModal from './AccountDeletionModal';
 import { errorMessage } from './shared';
 
-type Pending = 'demo' | 'clear' | null;
-
 export default function DataCard() {
-  const isDemo = useStore((s) => s.isDemo);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState<Pending>(null);
+  const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
 
   const exportBackup = () => {
@@ -41,42 +38,35 @@ export default function DataCard() {
     setError(null);
     try {
       const total = applyBackupJson(await file.text(), useStore.getState());
-      setMessage(`Importados ${total} registos.`);
+      setMessage(`Importados ${total} registos com sucesso.`);
     } catch (e) {
-      setError(errorMessage(e, 'Não foi possível importar o ficheiro.'));
+      setError(errorMessage(e, 'Não foi possível importar o ficheiro JSON.'));
     }
   };
 
-  const confirmPending = () => {
-    if (pending === 'demo') {
-      useStore.getState().loadDemo();
-      setMessage('Dados de demonstração carregados.');
-    } else if (pending === 'clear') {
-      useStore.getState().clearAll();
-      setMessage('Dados apagados. As definições mantêm-se.');
-    }
+  const confirmClear = () => {
+    useStore.getState().clearAll();
+    setMessage('Dados apagados deste dispositivo. As tuas definições mantêm-se.');
     setError(null);
-    setPending(null);
+    setConfirmClearOpen(false);
   };
 
   return (
-    <Card title="Dados" action={isDemo ? <Badge tone="accent">Modo demonstração</Badge> : undefined}>
+    <Card title="Cópia de segurança & Dados">
       <div className="grid gap-5 md:grid-cols-2">
         <div className="space-y-3">
           <div>
-            <h3 className="text-sm font-medium">Cópia de segurança</h3>
+            <h3 className="text-sm font-semibold text-fg">Backup em ficheiro JSON</h3>
             <p className="mt-0.5 text-xs text-muted">
-              Guarda tudo num ficheiro JSON. A chave da Gemini não é incluída.
+              Guarda todas as cadeiras, notas e horários num ficheiro portátil. A tua chave Gemini não é exportada.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button onClick={exportBackup}>
+            <Button variant="secondary" onClick={exportBackup}>
               <Download size={16} />
-              Exportar cópia de segurança
+              Exportar cópia
             </Button>
-            <label className={cx(
-              'inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-line bg-surface-2 px-4 text-sm font-medium text-fg transition hover:border-muted/50',
-            )}>
+            <label className="inline-flex min-h-[44px] cursor-pointer items-center justify-center gap-2 rounded-full border border-line bg-surface px-4 text-sm font-semibold text-fg transition hover:bg-surface-2">
               <Upload size={16} />
               Importar cópia
               <input
@@ -91,63 +81,54 @@ export default function DataCard() {
               />
             </label>
           </div>
-          <p className="text-xs text-muted">
-            A importação junta os registos aos que já existem (os de mesmo id são atualizados).
-          </p>
         </div>
 
         <div className="space-y-3">
           <div>
-            <h3 className="text-sm font-medium">Dados de exemplo e reposição</h3>
+            <h3 className="text-sm font-semibold text-fg">Reposição & Privacidade (RGPD)</h3>
             <p className="mt-0.5 text-xs text-muted">
-              Estes botões substituem os dados atuais deste navegador.
+              Podes limpar o dispositivo ou eliminar definitivamente a tua conta na nuvem.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => setPending('demo')}>
-              <Database size={16} />
-              Carregar cadeiras e horário do Pedro (LEMc)
-            </Button>
-            <Button variant="danger" onClick={() => setPending('clear')}>
+            <Button variant="danger" onClick={() => setConfirmClearOpen(true)}>
               <Trash2 size={16} />
-              Limpar coleções locais
+              Limpar dados locais
             </Button>
             <Button variant="danger" onClick={() => setDeleteAccountOpen(true)}>
               <ShieldAlert size={16} />
-              Eliminar conta &amp; dados (RGPD)
+              Eliminar conta
             </Button>
           </div>
           <p className="text-xs text-muted">
-            Conformidade europeia:{' '}
-            <Link to="/privacidade" className="text-accent underline">Política de Privacidade</Link> ·{' '}
-            <Link to="/termos" className="text-accent underline">Termos</Link> ·{' '}
-            <Link to="/eliminar-conta" className="text-accent underline">Portal de Eliminação</Link>
+            Documentos legais:{' '}
+            <Link to="/privacidade" className="font-semibold text-accent underline">Privacidade</Link> ·{' '}
+            <Link to="/termos" className="font-semibold text-accent underline">Termos</Link> ·{' '}
+            <Link to="/eliminar-conta" className="font-semibold text-accent underline">Eliminar conta</Link>
           </p>
         </div>
       </div>
 
-      {message && <p className="mt-4 text-sm text-ok">{message}</p>}
-      {error && <p className="mt-4 break-words text-sm text-danger">{error}</p>}
+      {message && <p className="mt-4 text-sm font-medium text-ok">{message}</p>}
+      {error && <p className="mt-4 break-words text-sm font-medium text-coral">{error}</p>}
 
       <AccountDeletionModal open={deleteAccountOpen} onClose={() => setDeleteAccountOpen(false)} />
 
       <Modal
-        open={pending !== null}
-        onClose={() => setPending(null)}
-        title={pending === 'clear' ? 'Apagar todos os dados?' : 'Carregar horário do Pedro (LEMc)?'}
+        open={confirmClearOpen}
+        onClose={() => setConfirmClearOpen(false)}
+        title="Apagar todos os dados locais?"
         footer={
           <>
-            <Button onClick={() => setPending(null)}>Cancelar</Button>
-            <Button variant={pending === 'clear' ? 'danger' : 'primary'} onClick={confirmPending}>
-              {pending === 'clear' ? 'Apagar tudo' : 'Carregar horário LEMc'}
+            <Button variant="secondary" onClick={() => setConfirmClearOpen(false)}>Cancelar</Button>
+            <Button variant="danger" onClick={confirmClear}>
+              Apagar tudo
             </Button>
           </>
         }
       >
         <p className="text-sm text-muted">
-          {pending === 'clear'
-            ? 'Remove cadeiras, avaliações, aulas, sessões, tarefas, materiais e eventos deste navegador. Não se pode desfazer: exporta uma cópia antes, se precisares. As definições mantêm-se.'
-            : 'Substitui os dados atuais pelas 6 cadeiras, horários e datas de testes reais do teu 1.º Semestre de LEMc (CLIP).'}
+          Esta ação remove cadeiras, avaliações, aulas, sessões, tarefas, materiais e eventos guardados neste dispositivo. Exporta primeiro uma cópia de segurança se precisares.
         </p>
       </Modal>
     </Card>

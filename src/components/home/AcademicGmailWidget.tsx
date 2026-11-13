@@ -97,12 +97,12 @@ export default function AcademicGmailWidget() {
                         )}
                         <span className="truncate font-semibold text-fg">{em.fromName}</span>
                         {course && (
-                          <span className="rounded bg-surface-2 px-1 py-0.2 font-mono text-[10px] text-accent">
+                          <span className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-[11px] text-accent">
                             {course.shortName}
                           </span>
                         )}
                       </div>
-                      <span className="shrink-0 font-mono text-[10px] text-muted">
+                      <span className="shrink-0 font-mono text-[11px] text-muted">
                         {format(parseISO(em.date), 'd MMM', { locale: pt })}
                       </span>
                     </div>
@@ -110,7 +110,7 @@ export default function AcademicGmailWidget() {
                     <p className="mt-1 truncate font-medium text-fg group-hover:text-accent">
                       {em.subject}
                     </p>
-                    <p className="mt-0.5 line-clamp-1 text-muted text-[11px]">
+                    <p className="mt-0.5 line-clamp-1 text-xs text-muted">
                       {em.snippet}
                     </p>
                   </button>

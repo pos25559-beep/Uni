@@ -41,7 +41,6 @@ type Tab = 'clip' | 'ics' | 'text';
 type Counts = { classes: number; assessments: number; events: number };
 
 const NEW_PREFIX = 'new:';
-const NO_COURSES: Course[] = [];
 
 const fmtDate = (iso: string, allDay = false) =>
   format(parseISO(iso), allDay ? 'd MMM yyyy' : 'd MMM yyyy, HH:mm', { locale: pt });
@@ -82,10 +81,8 @@ const kbd = 'rounded border border-line bg-surface px-1 font-mono text-[11px] te
 
 export default function ClipImportModal({ onClose }: { onClose: () => void }) {
   const courses = useStore((s) => s.courses);
-  const isDemo = useStore((s) => s.isDemo);
   const replaceSource = useStore((s) => s.replaceSource);
   const setIntegration = useStore((s) => s.setIntegration);
-  const clearAll = useStore((s) => s.clearAll);
 
   const [tab, setTab] = useState<Tab>('clip');
   const [text, setText] = useState('');
@@ -94,12 +91,9 @@ export default function ClipImportModal({ onClose }: { onClose: () => void }) {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [picks, setPicks] = useState<Record<string, Pick>>({});
   const [done, setDone] = useState<Counts | null>(null);
-  const [wipeDemo, setWipeDemo] = useState(true);
   const [createMissing, setCreateMissing] = useState(true);
 
-  // Com dados de demonstração a apagar, a correspondência é feita contra uma lista vazia.
-  const demoWipe = isDemo && wipeDemo;
-  const activeCourses = demoWipe ? NO_COURSES : courses;
+  const activeCourses = courses;
 
   const pickOf = (key: string, def: string): Pick =>
     picks[key] ?? { courseId: def, include: true };
@@ -211,8 +205,6 @@ export default function ClipImportModal({ onClose }: { onClose: () => void }) {
   const importAll = () => {
     if (!preview) return;
     const now = new Date().toISOString();
-
-    if (demoWipe) clearAll();
     const store = useStore.getState();
 
     // Cria as cadeiras em falta primeiro e guarda o id novo de cada unidade do CLIP.
@@ -221,7 +213,7 @@ export default function ClipImportModal({ onClose }: { onClose: () => void }) {
       const used = new Set<CourseColor>(store.courses.map((c) => c.color));
       missingCourses.forEach((mc, i) => {
         const id = newId();
-        const color = colorNames.find((c) => !used.has(c)) ?? colorNames[i % colorNames.length] ?? 'violet';
+        const color = colorNames.find((c) => !used.has(c)) ?? colorNames[i % colorNames.length] ?? 'emerald';
         used.add(color);
         store.upsert('courses', {
           id,
@@ -501,23 +493,6 @@ export default function ClipImportModal({ onClose }: { onClose: () => void }) {
           <div className="rounded-xl bg-warn/12 px-3 py-2 text-xs text-warn">
             Importar substitui o que foi importado antes do CLIP (aulas, avaliações e eventos). Os dados de outras fontes não mudam.
           </div>
-
-          {isDemo && (
-            <div className="space-y-2 rounded-xl border border-line px-3 py-3">
-              <p className="text-xs text-warn">
-                Estás a ver dados de demonstração. Apagá-los remove tudo o que está na app.
-              </p>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  className="size-4 accent-accent"
-                  checked={wipeDemo}
-                  onChange={(e) => { setWipeDemo(e.target.checked); setPicks({}); }}
-                />
-                Apagar os dados de demonstração antes de importar
-              </label>
-            </div>
-          )}
 
           {missingCourses.length > 0 && (
             <div className="space-y-2 rounded-xl border border-line px-3 py-3">

@@ -19,8 +19,8 @@ export const DRIVE_FOLDER_MIME = 'application/vnd.google-apps.folder';
 const DRIVE_SHORTCUT_MIME = 'application/vnd.google-apps.shortcut';
 const FIELDS = 'nextPageToken,files(id,name,mimeType,modifiedTime,webViewLink,shortcutDetails(targetId,targetMimeType))';
 
-// Pasta raiz partilhada multi-cadeiras do curso (não deve atribuir fallbackCourseId único)
-const MULTI_COURSE_ROOT_IDS = new Set(['1v3KSXUxC6E62ekhx4zawYbcF3YEHre1B']);
+// Pastas partilhadas multi-cadeiras indicadas explicitamente pelo utilizador
+const MULTI_COURSE_ROOT_IDS = new Set<string>();
 
 interface DriveFile {
   id: string;
@@ -288,23 +288,6 @@ export async function scanAndAutoLinkGoogleDrive(
         folderTargets.set(fid, { fallbackCourseId: c.id, initialPrefix: c.shortName });
       }
     }
-  }
-
-  // Pastas partilhadas globais do curso LEMc e pastas extra indicadas pelo utilizador
-  folderTargets.set('1v3KSXUxC6E62ekhx4zawYbcF3YEHre1B', {}); // Pasta LEMc (Mec Bolinhas)
-  const mdfCourse = courses.find((c) => /mdf|mecanica dos fluidos/i.test(`${c.shortName} ${c.name}`));
-  const ms2Course = courses.find((c) => /ms2|mecanica dos solidos 2/i.test(`${c.shortName} ${c.name}`));
-  if (!folderTargets.has('1FrdZ9ifEs_0rpTHZAA4K6YOo2kMOkKI8')) {
-    folderTargets.set('1FrdZ9ifEs_0rpTHZAA4K6YOo2kMOkKI8', {
-      fallbackCourseId: mdfCourse?.id,
-      initialPrefix: mdfCourse?.shortName ?? 'MdF',
-    });
-  }
-  if (!folderTargets.has('15LIku2BmCeBuOKEblcrOLre80gZ8_N56')) {
-    folderTargets.set('15LIku2BmCeBuOKEblcrOLre80gZ8_N56', {
-      fallbackCourseId: ms2Course?.id,
-      initialPrefix: ms2Course?.shortName ?? 'MS2',
-    });
   }
 
   for (const rawUrl of extraFolderUrls) {

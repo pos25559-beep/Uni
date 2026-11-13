@@ -21,7 +21,7 @@ export default function CourseFormModal({ course, onClose }: Props) {
   const [ects, setEcts] = useState(String(course?.ects ?? 6));
   const [teacher, setTeacher] = useState(course?.teacher ?? '');
   const [targetGrade, setTargetGrade] = useState(String(course?.targetGrade ?? 10));
-  const [color, setColor] = useState<CourseColor>(course?.color ?? 'violet');
+  const [color, setColor] = useState<CourseColor>(course?.color && course.color !== 'violet' ? course.color : 'emerald');
   const [notebookUrl, setNotebookUrl] = useState(course?.notebookUrl ?? '');
   const [driveFolderUrl, setDriveFolderUrl] = useState(course?.driveFolderUrl ?? '');
   const [clipUrl, setClipUrl] = useState(course?.clipUrl ?? '');

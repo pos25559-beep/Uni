@@ -7,6 +7,7 @@ import {
   getRedirectResult,
   GoogleAuthProvider,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   signInWithRedirect,
@@ -212,6 +213,11 @@ export async function logoutFirebase(): Promise<void> {
   sessionStorage.removeItem('campus_google_access_token');
   sessionStorage.removeItem('campus_google_token_exp');
   await signOut(auth).catch(() => {});
+}
+
+/** Envia email de reposição de palavra-passe para contas Email/Password. */
+export async function resetPasswordWithEmail(email: string): Promise<void> {
+  await sendPasswordResetEmail(auth, email.trim());
 }
 
 /** Remove permanentemente a conta Firebase Auth atual. */

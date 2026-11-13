@@ -4,29 +4,68 @@ import { Link, useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import {
-  AlertTriangle, ArrowRight, CalendarClock, CalendarDays, Check, Clock, Flame, GraduationCap, MessageSquare, Plus, Sparkles,
+  AlertTriangle,
+  ArrowRight,
+  CalendarClock,
+  CalendarDays,
+  Check,
+  Clock,
+  GraduationCap,
+  MessageSquare,
+  Plus,
+  Settings as SettingsIcon,
+  Sparkles,
 } from 'lucide-react';
-import { Badge, Button, Card, CourseChip, EmptyState, Input, PageHeader, Progress, Ring, cx } from '../components/ui';
-import { AnimatedPage, BentoMetricTile } from '../components/motion/Primitives';
 import WeeklyTutorModal from '../components/assistant/WeeklyTutorModal';
+import { NotebookBuddy } from '../components/brand/UnipediaMarks';
+import AcademicGmailWidget from '../components/home/AcademicGmailWidget';
+import {
+  AnimatedPage,
+  BentoMetricTile,
+  FolderCardDeck,
+  StickerBadge,
+  celebrateStationery,
+} from '../components/motion/Primitives';
+import {
+  Badge,
+  Button,
+  Card,
+  CourseChip,
+  EmptyState,
+  Input,
+  Progress,
+  Ring,
+  SegmentedControl,
+  cx,
+  showToast,
+} from '../components/ui';
 import { courseColors, kindLabel } from '../lib/colors';
-import { hapticTap } from '../lib/nativeBridge';
+import { hapticSuccess, hapticTap } from '../lib/nativeBridge';
 import { analyzeTestMode } from '../lib/planner';
 import {
-  daysUntil, fmtGrade, fmtMinutes, gradeSummary, minutesThisWeek, readiness, semesterAverage,
-  sessionMinutes, studyStreak, todayStr, topicProgress, upcomingAssessments, urgency,
+  daysUntil,
+  fmtGrade,
+  fmtMinutes,
+  gradeSummary,
+  minutesThisWeek,
+  readiness,
+  semesterAverage,
+  sessionMinutes,
+  studyStreak,
+  todayStr,
+  topicProgress,
+  upcomingAssessments,
+  urgency,
 } from '../lib/selectors';
 import { newId, useStore } from '../store/useStore';
 import type { Assessment, Course, StudySession, Task } from '../types';
-import AcademicGmailWidget from '../components/home/AcademicGmailWidget';
 
 const greeting = (hour: number) => (hour < 12 ? 'Bom dia' : hour < 19 ? 'Boa tarde' : 'Boa noite');
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 const fmtDay = (iso: string) => format(parseISO(iso), 'd MMM', { locale: pt });
-const fmtDateTime = (iso: string) => format(parseISO(iso), "EEE d MMM · HH:mm", { locale: pt });
+const fmtDateTime = (iso: string) => format(parseISO(iso), 'EEE d MMM · HH:mm', { locale: pt });
 
-/** "hoje", "amanhã", "ontem", "em N dias", "há N dias". */
 const dayWord = (days: number) => {
   if (days === 0) return 'hoje';
   if (days === 1) return 'amanhã';
@@ -34,10 +73,17 @@ const dayWord = (days: number) => {
   return days > 0 ? `em ${days} dias` : `há ${-days} dias`;
 };
 
-const PRIORITY_DOT: Record<Task['priority'], string> = { 1: 'bg-danger', 2: 'bg-warn', 3: 'bg-muted' };
-const PRIORITY_LABEL: Record<Task['priority'], string> = { 1: 'Prioridade alta', 2: 'Prioridade média', 3: 'Prioridade baixa' };
+const PRIORITY_DOT: Record<Task['priority'], string> = {
+  1: 'bg-danger',
+  2: 'bg-warn',
+  3: 'bg-muted',
+};
+const PRIORITY_LABEL: Record<Task['priority'], string> = {
+  1: 'Prioridade alta',
+  2: 'Prioridade média',
+  3: 'Prioridade baixa',
+};
 
-/** Tarefas com data primeiro (mais cedo primeiro), depois por prioridade (1 = mais alta). */
 const compareTasks = (a: Task, b: Task) => {
   if (a.due !== b.due) {
     if (!a.due) return 1;
@@ -76,6 +122,10 @@ export default function Dashboard() {
   const patch = useStore((s) => s.patch);
   const upsert = useStore((s) => s.upsert);
 
+  const [scope, setScope] = useState<'today' | 'week'>('today');
+  const [draft, setDraft] = useState('');
+  const [tutorOpen, setTutorOpen] = useState(false);
+
   const now = new Date();
   const today = todayStr();
   const weekday = now.getDay();
@@ -83,13 +133,16 @@ export default function Dashboard() {
 
   const courseById = useMemo(() => new Map<string, Course>(courses.map((c) => [c.id, c])), [courses]);
 
-  // --- Alerta e avisos -----------------------------------------------------
   const upcoming = useMemo(() => upcomingAssessments(assessments), [assessments]);
 
-  const scored = useMemo<Scored[]>(() => upcoming.map((a) => {
-    const course = courseById.get(a.courseId);
-    return { a, course, score: urgency(a, course), ready: readiness(a, course) };
-  }), [upcoming, courseById]);
+  const scored = useMemo<Scored[]>(
+    () =>
+      upcoming.map((a) => {
+        const course = courseById.get(a.courseId);
+        return { a, course, score: urgency(a, course), ready: readiness(a, course) };
+      }),
+    [upcoming, courseById],
+  );
 
   const topAlert = useMemo(() => {
     let top: Scored | undefined;
@@ -104,7 +157,6 @@ export default function Dashboard() {
     [sessions, today],
   );
 
-  // --- Estatísticas ----------------------------------------------------------
   const average = useMemo(() => semesterAverage(courses, assessments), [courses, assessments]);
   const weekMinutes = useMemo(() => minutesThisWeek(sessions), [sessions]);
   const weekGoal = settings.dailyStudyMinutes * settings.studyDays.length;
@@ -114,11 +166,11 @@ export default function Dashboard() {
   const nextCourse = next ? courseById.get(next.courseId) : undefined;
   const nextDays = next ? daysUntil(next.date) : null;
 
-  // --- Foco de hoje ---------------------------------------------------------
   const todaySessions = useMemo(
-    () => sessions
-      .filter((s) => s.date === today)
-      .sort((a, b) => (a.start ?? '99:99').localeCompare(b.start ?? '99:99') || a.minutes - b.minutes),
+    () =>
+      sessions
+        .filter((s) => s.date === today)
+        .sort((a, b) => (a.start ?? '99:99').localeCompare(b.start ?? '99:99') || a.minutes - b.minutes),
     [sessions, today],
   );
   const plannedToday = todaySessions.reduce((sum, s) => sum + s.minutes, 0);
@@ -129,11 +181,19 @@ export default function Dashboard() {
     courseById.get(s.courseId)?.topics.find((t) => t.id === s.topicId)?.title ?? 'Estudo geral';
 
   const toggleSession = (s: StudySession) => {
+    const becomingDone = !s.done;
     void hapticTap();
-    patch('sessions', s.id, { done: !s.done, actualMinutes: s.done ? undefined : s.minutes });
+    patch('sessions', s.id, { done: becomingDone, actualMinutes: s.done ? undefined : s.minutes });
+    if (becomingDone && todaySessions.length > 0) {
+      const allOthersDone = todaySessions.every((item) => (item.id === s.id ? true : item.done));
+      if (allOthersDone) {
+        void hapticSuccess();
+        celebrateStationery();
+        showToast('Objetivo de hoje concluído!', 'ok');
+      }
+    }
   };
 
-  // --- Agenda de hoje -------------------------------------------------------
   const agenda = useMemo<AgendaItem[]>(() => {
     const fromClasses: AgendaItem[] = classes
       .filter((c) => c.weekday === weekday)
@@ -166,10 +226,7 @@ export default function Dashboard() {
     return [...fromClasses, ...fromEvents].sort((a, b) => a.start.localeCompare(b.start));
   }, [classes, events, courseById, today, weekday]);
 
-  // --- Tarefas --------------------------------------------------------------
   const pendingTasks = useMemo(() => tasks.filter((t) => !t.done).sort(compareTasks), [tasks]);
-  const [draft, setDraft] = useState('');
-  const [tutorOpen, setTutorOpen] = useState(false);
   const testMode = useMemo(
     () => analyzeTestMode(courses, assessments, today),
     [courses, assessments, today],
@@ -178,55 +235,183 @@ export default function Dashboard() {
   const addTask = () => {
     const title = draft.trim();
     if (!title) return;
+    void hapticTap();
     upsert('tasks', { id: newId(), title, done: false, priority: 2 });
     setDraft('');
+    showToast('Tarefa adicionada', 'ok');
   };
+
   const onDraftKey = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.nativeEvent.isComposing || e.keyCode === 229) return;
     if (e.key === 'Enter') addTask();
   };
-  const toggleTask = (t: Task) => patch('tasks', t.id, { done: !t.done });
 
-  const subtitle = `${capitalize(format(now, "EEEE, d 'de' MMMM", { locale: pt }))} · ${settings.semesterName}`;
+  const toggleTask = (t: Task) => {
+    void hapticTap();
+    patch('tasks', t.id, { done: !t.done });
+  };
+
+  const firstName = settings.userName.trim().split(/\s+/)[0] ?? '';
+  const dateLabel = capitalize(format(now, "EEEE, d 'de' MMM", { locale: pt }));
+  const doneSessionsCount = todaySessions.filter((s) => s.done).length;
 
   return (
-    <AnimatedPage>
-      <PageHeader
-        title={`${greeting(now.getHours())}${settings.userName ? `, ${settings.userName}` : ''}`}
-        subtitle={subtitle}
-        actions={
-          <Button variant="secondary" size="sm" onClick={() => setTutorOpen(true)}>
-            <MessageSquare size={15} /> Tutor semanal
-          </Button>
-        }
-      />
+    <AnimatedPage className="space-y-5">
+      {/* Cabeçalho editorial com saudação e máximo 2 ações circulares */}
+      <header className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-pastel-sage/80 ring-1 ring-line/50 dark:bg-surface-2">
+            <NotebookBuddy mood={streak >= 3 || progressToday >= 1 ? 'celebrate' : 'happy'} size={34} />
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-xs font-medium text-muted">
+              {dateLabel} · {settings.semesterName}
+            </p>
+            <h1 className="truncate font-display text-[26px] font-bold leading-tight tracking-tight sm:text-3xl">
+              {greeting(now.getHours())}
+              {firstName ? (
+                <>
+                  , <span className="font-serif font-medium italic text-accent">{firstName}</span>
+                </>
+              ) : (
+                <>
+                  , <span className="font-serif font-medium italic text-accent">bora estudar</span>
+                </>
+              )}
+            </h1>
+          </div>
+        </div>
 
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            variant="secondary"
+            iconOnly
+            onClick={() => setTutorOpen(true)}
+            aria-label="Abrir tutor semanal"
+            title="Tutor semanal"
+          >
+            <MessageSquare size={18} />
+          </Button>
+          <Button
+            variant="secondary"
+            iconOnly
+            onClick={() => navigate('/definicoes')}
+            aria-label="Abrir definições"
+            title="Definições"
+          >
+            <SettingsIcon size={18} />
+          </Button>
+        </div>
+      </header>
+
+      {/* Switcher compacto estilo "Practice | Lessons" */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <SegmentedControl
+          layoutId="dashboard-scope"
+          value={scope}
+          onChange={(v) => setScope(v as 'today' | 'week')}
+          items={[
+            { id: 'today', label: 'Hoje', count: todaySessions.length },
+            { id: 'week', label: 'Esta semana' },
+          ]}
+        />
+        {streak > 0 && (
+          <StickerBadge tone="butter" tilt={-1.5}>
+            {streak} {streak === 1 ? 'dia seguido' : 'dias seguidos'}
+          </StickerBadge>
+        )}
+      </div>
+
+      {/* Cartão Hero estilo papelaria com métricas inline */}
+      <section
+        data-tour="bento-overview"
+        className="rounded-[26px] bg-pastel-butter/75 p-5 text-[#141312] shadow-card dark:bg-surface-2 dark:text-[#FAF6EC]"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider opacity-70">
+              {scope === 'today' ? 'Resumo de hoje' : 'Pulso da semana'}
+            </p>
+            <h2 className="mt-0.5 font-display text-lg font-bold">
+              {scope === 'today'
+                ? plannedToday > 0
+                  ? `${fmtMinutes(doneToday)} de ${fmtMinutes(plannedToday)} focados`
+                  : 'Dia leve para pôr matéria em dia'
+                : `${fmtMinutes(weekMinutes)} de ${fmtMinutes(weekGoal)} esta semana`}
+            </h2>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => navigate('/plano')}
+              className="flex size-10 items-center justify-center rounded-full bg-surface/85 text-fg shadow-card transition hover:scale-105 dark:bg-black/30 dark:text-[#FAF6EC]"
+              aria-label="Abrir plano"
+            >
+              <CalendarDays size={16} />
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-4 gap-2 text-left">
+          <div>
+            <p className="text-[11px] font-medium opacity-70">Média</p>
+            <p className="mt-0.5 font-display text-xl font-bold tabular sm:text-2xl">{fmtGrade(average)}</p>
+          </div>
+          <div>
+            <p className="text-[11px] font-medium opacity-70">Semana</p>
+            <p className="mt-0.5 font-display text-xl font-bold tabular sm:text-2xl">{weekPct}%</p>
+          </div>
+          <div>
+            <p className="text-[11px] font-medium opacity-70">Sessões</p>
+            <p className="mt-0.5 font-display text-xl font-bold tabular sm:text-2xl">
+              {doneSessionsCount}/{todaySessions.length}
+            </p>
+          </div>
+          <div>
+            <p className="text-[11px] font-medium opacity-70">Provas</p>
+            <p className="mt-0.5 font-display text-xl font-bold tabular sm:text-2xl">{upcoming.length}</p>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <div className="mb-1.5 flex items-center justify-between text-xs font-medium opacity-80">
+            <span>{scope === 'today' ? 'Progresso de hoje' : 'Meta semanal'}</span>
+            <span className="tabular">{scope === 'today' ? pct(progressToday) : `${weekPct}%`}</span>
+          </div>
+          <Progress
+            value={scope === 'today' ? progressToday : weekPct / 100}
+            color="bg-[#141312] dark:bg-accent"
+          />
+        </div>
+      </section>
+
+      {/* Alertas contextuais compactos */}
       {testMode.mode !== 'normal' && (
         <Link
           to="/plano"
-          className="rise mb-4 flex items-center justify-between gap-3 rounded-2xl border border-accent/40 bg-accent-soft/50 px-4 py-3 transition hover:bg-accent-soft"
+          className="rise flex items-center justify-between gap-3 rounded-[20px] bg-pastel-peach/80 px-4 py-3 text-[#141312] transition hover:opacity-95 dark:bg-surface-2 dark:text-[#FAF6EC]"
         >
-          <div className="flex items-center gap-3">
-            <Sparkles size={18} className="shrink-0 text-accent" />
-            <div className="text-sm">
+          <div className="flex min-w-0 items-center gap-3">
+            <Sparkles size={18} className="shrink-0 text-coral" />
+            <div className="min-w-0 text-sm">
               <span className="font-semibold">
-                {testMode.mode === 'single_test' ? 'Modo Teste ativo (< 10 dias)' : 'Modo Teste Múltiplo ativo (< 10 dias)'}
+                {testMode.mode === 'single_test' ? 'Modo Teste ativo (< 10 dias)' : 'Modo Teste Múltiplo'}
               </span>
-              <span className="ml-2 text-muted">
+              <span className="ml-2 opacity-75">
                 {testMode.urgentAssessments
                   .map((u) => `${u.course.shortName} (${u.daysLeft === 0 ? 'hoje' : `${u.daysLeft}d`})`)
                   .join(' · ')}
               </span>
             </div>
           </div>
-          <ArrowRight size={16} className="shrink-0 text-accent" />
+          <ArrowRight size={16} className="shrink-0" />
         </Link>
       )}
 
       {topAlert && (
         <Link
           to="/plano"
-          className="rise mb-4 flex items-center gap-3 rounded-2xl border border-warn/40 bg-warn/10 px-4 py-3 transition hover:bg-warn/15"
+          className="rise flex items-center gap-3 rounded-[20px] border border-warn/40 bg-warn/10 px-4 py-3 transition hover:bg-warn/15"
         >
           <AlertTriangle size={18} className="shrink-0 text-warn" />
           <p className="min-w-0 flex-1 text-sm">
@@ -240,102 +425,135 @@ export default function Dashboard() {
       )}
 
       {overdue > 0 && (
-        <Link to="/plano" className="mb-4 flex items-center gap-2 px-1 text-xs text-muted hover:text-fg">
+        <Link to="/plano" className="flex items-center gap-2 px-1 text-xs font-medium text-muted hover:text-fg">
           <Clock size={14} className="shrink-0" />
           <span>
-            {overdue} {overdue === 1 ? 'sessão por concluir de dias anteriores' : 'sessões por concluir de dias anteriores'} — reagendar no plano
+            {overdue} {overdue === 1 ? 'sessão por concluir' : 'sessões por concluir'} — reagendar no plano
           </span>
           <ArrowRight size={12} className="shrink-0" />
         </Link>
       )}
 
-      <div data-tour="bento-overview" className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {/* Bento 2x1 colorido estilo referência "Ver ->" */}
+      <div className="grid grid-cols-2 gap-3">
         <BentoMetricTile
-          tone="indigo"
-          label="Média do semestre"
-          value={fmtGrade(average)}
-          hint={average === null ? 'Sem notas lançadas' : 'Ponderada por ECTS'}
-          icon={<GraduationCap size={16} className="text-accent" />}
-        />
-        <BentoMetricTile
-          tone="mint"
-          label="Estudo esta semana"
-          value={fmtMinutes(weekMinutes)}
-          hint={`${weekPct}% da meta de ${fmtMinutes(weekGoal)}`}
-          icon={<Clock size={16} className="text-ok" />}
-        />
-        <BentoMetricTile
-          tone="amber"
-          label="Sequência"
-          value={streak}
-          hint="dias seguidos"
-          icon={<Flame size={16} className="text-warn" />}
-        />
-        <BentoMetricTile
-          tone="lilac"
+          tone="sage"
           label="Próxima avaliação"
-          value={nextDays === null ? '—' : capitalize(dayWord(nextDays))}
-          hint={next ? `${next.title}${nextCourse ? ` · ${nextCourse.shortName}` : ''}` : 'Nada marcado'}
-          icon={<CalendarClock size={16} className="text-accent" />}
+          value={nextDays === null ? 'Livre' : capitalize(dayWord(nextDays))}
+          hint={next ? `${next.title}${nextCourse ? ` · ${nextCourse.shortName}` : ''}` : 'Sem provas próximas'}
+          icon={<CalendarClock size={16} />}
+          actionLabel="Ver"
+          onClick={() => navigate(next ? `/cadeiras/${next.courseId}` : '/calendario')}
+        />
+        <BentoMetricTile
+          tone="sky"
+          label="Caderno & Progresso"
+          value={courses.length > 0 ? `${courses.length} cad.` : 'Novo'}
+          hint={average !== null ? `Média atual ${fmtGrade(average)}` : 'Abre as tuas estatísticas'}
+          icon={<GraduationCap size={16} />}
+          actionLabel="Ver"
+          onClick={() => navigate(scope === 'week' ? '/progresso' : '/cadeiras')}
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <div className="min-w-0 space-y-6">
+      {/* Conteúdo principal */}
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+        <div className="min-w-0 space-y-5">
           <Card
             title="Foco de hoje"
-            action={<Button size="sm" onClick={() => navigate('/plano')}>Abrir plano</Button>}
+            action={
+              <Button variant="secondary" size="sm" onClick={() => navigate('/plano')}>
+                Abrir plano
+              </Button>
+            }
           >
             {todaySessions.length === 0 ? (
               <EmptyState
                 icon={<CalendarDays size={22} />}
                 title="Sem sessões para hoje"
-                hint="Gera um plano de estudo para distribuir a matéria pelos próximos dias."
+                hint="Gera um plano no separador Plano para distribuir a matéria."
+                action={
+                  <Button variant="primary" size="sm" onClick={() => navigate('/plano')}>
+                    Ir ao plano
+                  </Button>
+                }
               />
             ) : (
-              <>
-                <div className="mb-4">
-                  <div className="mb-2 flex items-center justify-between text-xs text-muted">
-                    <span className="tabular">
-                      {fmtMinutes(doneToday)} de {fmtMinutes(plannedToday)} concluídos
-                    </span>
-                    <span className="tabular">{pct(progressToday)}</span>
-                  </div>
-                  <Progress value={progressToday} />
-                </div>
-                <ul className="space-y-2">
-                  {todaySessions.map((s) => (
-                    <SessionRow
-                      key={s.id}
-                      session={s}
-                      course={courseById.get(s.courseId)}
-                      topic={topicTitle(s)}
-                      onToggle={() => toggleSession(s)}
-                    />
-                  ))}
-                </ul>
-              </>
-            )}
-          </Card>
-
-          <Card title="Próximas avaliações">
-            {upcoming.length === 0 ? (
-              <EmptyState
-                icon={<CalendarDays size={22} />}
-                title="Sem avaliações marcadas"
-                hint="Quando adicionares testes, trabalhos ou exames, aparecem aqui."
-              />
-            ) : (
-              <ul className="divide-y divide-line">
-                {scored.slice(0, 5).map((x) => (
-                  <AssessmentRow key={x.a.id} assessment={x.a} course={x.course} ready={x.ready} />
+              <ul className="space-y-2">
+                {todaySessions.map((s) => (
+                  <SessionRow
+                    key={s.id}
+                    session={s}
+                    course={courseById.get(s.courseId)}
+                    topic={topicTitle(s)}
+                    onToggle={() => toggleSession(s)}
+                  />
                 ))}
               </ul>
             )}
           </Card>
+
+          <Card
+            title="Tarefas"
+            action={<span className="text-xs font-medium tabular text-muted">{pendingTasks.length} pendentes</span>}
+          >
+            <div className="relative mb-3">
+              <Plus size={16} className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-muted" />
+              <Input
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={onDraftKey}
+                placeholder="Nova tarefa — Enter para adicionar"
+                aria-label="Nova tarefa"
+                className="pl-10"
+              />
+            </div>
+            {pendingTasks.length === 0 ? (
+              <EmptyState title="Sem tarefas pendentes" hint="Escreve acima para adicionar uma nota rápida." />
+            ) : (
+              <>
+                <ul className="space-y-1">
+                  {pendingTasks.slice(0, 6).map((t) => (
+                    <TaskRow
+                      key={t.id}
+                      task={t}
+                      course={t.courseId ? courseById.get(t.courseId) : undefined}
+                      today={today}
+                      onToggle={() => toggleTask(t)}
+                    />
+                  ))}
+                </ul>
+                {pendingTasks.length > 6 && (
+                  <p className="mt-2 px-1 text-xs text-muted">e mais {pendingTasks.length - 6}</p>
+                )}
+              </>
+            )}
+          </Card>
+
+          {upcoming.length > 0 && (
+            <Card title="Próximas avaliações">
+              <ul className="divide-y divide-line">
+                {scored.slice(0, 4).map((x) => (
+                  <AssessmentRow key={x.a.id} assessment={x.a} course={x.course} ready={x.ready} />
+                ))}
+              </ul>
+            </Card>
+          )}
         </div>
 
-        <div className="min-w-0 space-y-6">
+        <div className="min-w-0 space-y-5">
+          {courses.length > 0 && (
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between px-1">
+                <h2 className="font-display text-base font-bold">As tuas pastas</h2>
+                <Link to="/cadeiras" className="inline-link text-xs font-semibold text-accent hover:underline">
+                  Ver todas →
+                </Link>
+              </div>
+              <FolderCardDeck courses={courses} onOpenCourse={(id) => navigate(`/cadeiras/${id}`)} />
+            </div>
+          )}
+
           <Card
             title="Agenda de hoje"
             action={<span className="text-xs tabular text-muted">{format(now, 'd MMM', { locale: pt })}</span>}
@@ -362,9 +580,11 @@ export default function Dashboard() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{item.title}</p>
                         <p className="truncate text-xs text-muted">
-                          {[item.allDay ? 'Dia inteiro' : `${item.start}–${item.end}`, item.sub].filter(Boolean).join(' · ')}
+                          {[item.allDay ? 'Dia inteiro' : `${item.start}–${item.end}`, item.sub]
+                            .filter(Boolean)
+                            .join(' · ')}
                         </p>
-                        {isNow && <span className="text-[11px] font-semibold text-accent">Agora</span>}
+                        {isNow && <span className="text-xs font-semibold text-accent">Agora</span>}
                       </div>
                     </li>
                   );
@@ -373,71 +593,41 @@ export default function Dashboard() {
             )}
           </Card>
 
-          <Card
-            title="Tarefas"
-            action={<span className="text-xs tabular text-muted">{pendingTasks.length} pendentes</span>}
-          >
-            <div className="relative mb-3">
-              <Plus size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted" />
-              <Input
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={onDraftKey}
-                placeholder="Nova tarefa — Enter para adicionar"
-                aria-label="Nova tarefa"
-                className="pl-9"
-              />
-            </div>
-            {pendingTasks.length === 0 ? (
-              <EmptyState title="Sem tarefas pendentes" hint="Escreve acima para adicionar a primeira." />
-            ) : (
-              <>
-                <ul className="space-y-1">
-                  {pendingTasks.slice(0, 6).map((t) => (
-                    <TaskRow
-                      key={t.id}
-                      task={t}
-                      course={t.courseId ? courseById.get(t.courseId) : undefined}
-                      today={today}
-                      onToggle={() => toggleTask(t)}
-                    />
-                  ))}
-                </ul>
-                {pendingTasks.length > 6 && (
-                  <p className="mt-2 px-1 text-xs text-muted">e mais {pendingTasks.length - 6}</p>
-                )}
-              </>
-            )}
-          </Card>
-
           <AcademicGmailWidget />
 
-          <Card title="Cadeiras">
-            {courses.length === 0 ? (
-              <EmptyState title="Ainda sem cadeiras" hint="Adiciona cadeiras para acompanhar matéria e notas." />
-            ) : (
+          {courses.length > 0 && (
+            <Card title="Progresso por cadeira">
               <ul className="space-y-1">
                 {courses.map((c) => (
                   <CourseRow key={c.id} course={c} assessments={assessments} />
                 ))}
               </ul>
-            )}
-          </Card>
+            </Card>
+          )}
         </div>
       </div>
+
       <WeeklyTutorModal open={tutorOpen} onClose={() => setTutorOpen(false)} />
     </AnimatedPage>
   );
 }
 
-function SessionRow({ session, course, topic, onToggle }: {
-  session: StudySession; course: Course | undefined; topic: string; onToggle: () => void;
+function SessionRow({
+  session,
+  course,
+  topic,
+  onToggle,
+}: {
+  session: StudySession;
+  course: Course | undefined;
+  topic: string;
+  onToggle: () => void;
 }) {
   return (
     <li
       className={cx(
-        'flex items-center gap-3 rounded-xl border border-line bg-surface-2/60 px-3 py-3 transition',
-        session.done && 'opacity-60',
+        'flex min-h-[54px] items-center gap-3 rounded-2xl bg-surface-2/70 px-3 py-2.5 transition',
+        session.done && 'opacity-65',
       )}
     >
       <button
@@ -445,11 +635,11 @@ function SessionRow({ session, course, topic, onToggle }: {
         onClick={onToggle}
         aria-label={session.done ? 'Marcar como por concluir' : 'Marcar como concluída'}
         className={cx(
-          'grid size-6 shrink-0 place-items-center rounded-full border transition',
-          session.done ? 'border-ok bg-ok text-bg' : 'border-muted/60 hover:border-accent',
+          'grid size-8 shrink-0 place-items-center rounded-full border-2 transition',
+          session.done ? 'border-ok bg-ok text-white' : 'border-muted/50 bg-surface hover:border-accent',
         )}
       >
-        {session.done && <Check size={14} strokeWidth={3} />}
+        {session.done && <Check size={15} strokeWidth={3} />}
       </button>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
@@ -460,15 +650,21 @@ function SessionRow({ session, course, topic, onToggle }: {
           {topic}
         </p>
       </div>
-      <span className="shrink-0 text-xs tabular text-muted">
+      <span className="shrink-0 text-xs font-semibold tabular text-muted">
         {session.done ? fmtMinutes(sessionMinutes(session)) : `${session.minutes} min`}
       </span>
     </li>
   );
 }
 
-function AssessmentRow({ assessment, course, ready }: {
-  assessment: Assessment; course: Course | undefined; ready: number;
+function AssessmentRow({
+  assessment,
+  course,
+  ready,
+}: {
+  assessment: Assessment;
+  course: Course | undefined;
+  ready: number;
 }) {
   const days = daysUntil(assessment.date);
   const tone = days <= 3 ? 'danger' : days <= 7 ? 'warn' : 'neutral';
@@ -498,23 +694,35 @@ function AssessmentRow({ assessment, course, ready }: {
   );
 }
 
-function TaskRow({ task, course, today, onToggle }: {
-  task: Task; course: Course | undefined; today: string; onToggle: () => void;
+function TaskRow({
+  task,
+  course,
+  today,
+  onToggle,
+}: {
+  task: Task;
+  course: Course | undefined;
+  today: string;
+  onToggle: () => void;
 }) {
   const overdue = !!task.due && task.due < today;
   const dueLabel = task.due
-    ? (task.due === today ? 'hoje' : overdue ? `${dayWord(daysUntil(task.due))} · ${fmtDay(task.due)}` : fmtDay(task.due))
+    ? task.due === today
+      ? 'hoje'
+      : overdue
+        ? `${dayWord(daysUntil(task.due))} · ${fmtDay(task.due)}`
+        : fmtDay(task.due)
     : null;
   return (
-    <li className="flex items-center gap-3 rounded-xl px-1 py-2 transition hover:bg-surface-2">
+    <li className="flex min-h-[48px] items-center gap-3 rounded-xl px-2 py-1.5 transition hover:bg-surface-2">
       <button
         type="button"
         onClick={onToggle}
         aria-label={`Concluir: ${task.title}`}
-        className="grid size-5 shrink-0 place-items-center rounded-full border border-muted/60 transition hover:border-accent"
+        className="grid size-7 shrink-0 place-items-center rounded-full border-2 border-muted/50 bg-surface transition hover:border-accent"
       />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm">{task.title}</p>
+        <p className="truncate text-sm font-medium">{task.title}</p>
         {(course || dueLabel) && (
           <p className="flex flex-wrap items-center gap-x-2 text-xs text-muted">
             {course && <span>{course.shortName}</span>}
@@ -525,7 +733,7 @@ function TaskRow({ task, course, today, onToggle }: {
       <span
         title={PRIORITY_LABEL[task.priority]}
         aria-label={PRIORITY_LABEL[task.priority]}
-        className={cx('size-1.5 shrink-0 rounded-full', PRIORITY_DOT[task.priority])}
+        className={cx('size-2 shrink-0 rounded-full', PRIORITY_DOT[task.priority])}
       />
     </li>
   );
@@ -538,10 +746,10 @@ function CourseRow({ course, assessments }: { course: Course; assessments: Asses
     <li>
       <Link
         to={`/cadeiras/${course.id}`}
-        className="flex items-center gap-3 rounded-xl px-1 py-2 transition hover:bg-surface-2"
+        className="flex min-h-[52px] items-center gap-3 rounded-xl px-2 py-1.5 transition hover:bg-surface-2"
       >
         <Ring value={progress} size={44} stroke={4} color={courseColors[course.color].hex}>
-          <span className="text-[10px]">{pct(progress)}</span>
+          <span className="text-xs font-semibold tabular">{pct(progress)}</span>
         </Ring>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{course.shortName}</p>

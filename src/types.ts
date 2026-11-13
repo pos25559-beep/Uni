@@ -178,7 +178,7 @@ export interface IntegrationStatus {
 
 export interface Settings {
   userName: string;
-  theme: 'dark' | 'light';
+  theme: 'system' | 'dark' | 'light';
   semesterName: string;
   /** yyyy-MM-dd */
   semesterStart: string;

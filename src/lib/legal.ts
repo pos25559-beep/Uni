@@ -1,12 +1,12 @@
 /** Identidade legal e contactos oficiais da Unipedia para RGPD e Google Play Store. */
 export const LEGAL_INFO = {
   appName: 'Unipedia',
-  controllerName: 'Pedro Silva (Projeto Unipedia)',
+  controllerName: 'Projeto Unipedia',
   country: 'Portugal',
-  contactEmail: 'pos25559@gmail.com',
+  contactEmail: 'privacidade@unipedia.app',
   minimumAgePT: 13,
   lastUpdated: '2026-11-13',
-  policyVersion: '2026-11-13-v1',
+  policyVersion: '2026-11-13-v2',
   publicBaseUrl: 'https://campus-erp-84964.web.app',
   supervisoryAuthority: {
     name: 'Comissão Nacional de Proteção de Dados (CNPD)',

@@ -1,12 +1,11 @@
-import { ArrowLeft, ExternalLink, ShieldCheck, Trash2 } from 'lucide-react';
+import { ChevronDown, Cloud, ExternalLink, ShieldCheck, Smartphone, Sparkles, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { AnimatedPage, StickerBadge } from '../components/motion/Primitives';
+import AccountDeletionModal from '../components/settings/AccountDeletionModal';
+import { Button, Card, SubpageHeader, cx } from '../components/ui';
 import { auth } from '../lib/firebase';
 import { LEGAL_INFO } from '../lib/legal';
-import { AnimatedPage } from '../components/motion/Primitives';
-import AccountDeletionModal from '../components/settings/AccountDeletionModal';
-import { UnipediaLogoMark } from '../components/brand/UnipediaMarks';
-import { Badge, Button, Card } from '../components/ui';
 
 function LegalShell({
   title,
@@ -18,121 +17,154 @@ function LegalShell({
   children: React.ReactNode;
 }) {
   return (
-    <AnimatedPage className="mx-auto max-w-3xl space-y-6 pb-8">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link
-          to="/"
-          className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3.5 py-2 text-xs font-medium text-fg hover:bg-surface-2"
-        >
-          <ArrowLeft size={14} />
-          Voltar à Unipedia
-        </Link>
-        <div className="flex items-center gap-2">
-          <UnipediaLogoMark size={26} />
-          <span className="text-xs font-medium text-muted">
-            Atualizado em <span className="tabular">{LEGAL_INFO.lastUpdated}</span>
-          </span>
-        </div>
-      </div>
-
-      <header className="space-y-2">
-        <Badge tone="accent">Conformidade Europeia · RGPD &amp; Google Play</Badge>
-        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">{title}</h1>
-        <p className="text-sm text-muted">{subtitle}</p>
-      </header>
+    <AnimatedPage className="mx-auto max-w-2xl space-y-5 pb-10">
+      <SubpageHeader title={title} subtitle={`Atualizado em ${LEGAL_INFO.lastUpdated}`} backTo="/definicoes" />
+      <p className="text-sm text-muted">{subtitle}</p>
 
       {children}
 
       <footer className="flex flex-wrap items-center gap-4 border-t border-line pt-4 text-xs text-muted">
         <Link to="/privacidade" className="hover:text-fg underline-offset-2 hover:underline">
-          Política de Privacidade
+          Privacidade
         </Link>
         <Link to="/termos" className="hover:text-fg underline-offset-2 hover:underline">
-          Termos de Utilização
+          Termos
         </Link>
         <Link to="/eliminar-conta" className="hover:text-fg underline-offset-2 hover:underline">
-          Eliminar Conta e Dados
+          Eliminar conta
         </Link>
       </footer>
     </AnimatedPage>
   );
 }
 
+function LegalAccordion({
+  title,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="overflow-hidden rounded-[20px] border border-line bg-surface shadow-card">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className="flex min-h-[54px] w-full items-center justify-between gap-3 px-4 py-3.5 text-left font-display text-sm font-bold text-fg hover:bg-surface-2/50"
+      >
+        <span>{title}</span>
+        <ChevronDown
+          size={17}
+          className={cx('shrink-0 text-muted transition-transform', open && 'rotate-180')}
+        />
+      </button>
+      {open && <div className="border-t border-line px-4 py-3.5 text-sm leading-relaxed text-muted">{children}</div>}
+    </div>
+  );
+}
+
 export function PrivacyPolicyPage() {
   return (
     <LegalShell
-      title="Política de Privacidade (RGPD)"
-      subtitle="Transparência total sobre como a Unipedia recolhe, armazena e protege os teus dados de estudo na União Europeia."
+      title="Política de Privacidade"
+      subtitle="Explicação direta sobre o que fica contigo e o que é partilhado — sem letra pequena."
     >
-      <Card title="1. Responsável pelo Tratamento">
-        <div className="space-y-2 text-sm text-muted">
+      {/* Resumo visual em 30 segundos */}
+      <div className="space-y-4 rounded-[24px] bg-[#BCEEE0] p-5 text-[#141312] dark:bg-[#17312B] dark:text-[#FAF6EC]">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <StickerBadge tone="butter" tilt={-2}>
+            A tua privacidade em 30 segundos
+          </StickerBadge>
+          <span className="text-xs font-semibold opacity-75">RGPD · UE</span>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-[18px] bg-white/75 p-3.5 dark:bg-black/25">
+            <Smartphone size={18} className="text-[#157F58] dark:text-[#4ADE80]" />
+            <p className="mt-2 font-display text-sm font-bold">No teu telemóvel</p>
+            <p className="mt-1 text-xs opacity-80">
+              Cadeiras, notas, tarefas e PDFs ficam guardados localmente por defeito. Zero publicidade.
+            </p>
+          </div>
+          <div className="rounded-[18px] bg-white/75 p-3.5 dark:bg-black/25">
+            <Cloud size={18} className="text-[#1D5FAD] dark:text-[#93C5FD]" />
+            <p className="mt-2 font-display text-sm font-bold">Na nuvem só se quiseres</p>
+            <p className="mt-1 text-xs opacity-80">
+              Só sincronizamos se criares conta em /entrar. Podes usar tudo sem conta.
+            </p>
+          </div>
+          <div className="rounded-[18px] bg-white/75 p-3.5 dark:bg-black/25">
+            <Sparkles size={18} className="text-[#E04F33] dark:text-[#FF7A59]" />
+            <p className="mt-2 font-display text-sm font-bold">Tutor IA transparente</p>
+            <p className="mt-1 text-xs opacity-80">
+              Só envia resumos ou prints quando ativas o consentimento e fazes uma pergunta.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <LegalAccordion title="1. Quem gere a app e idade mínima" defaultOpen>
+        <div className="space-y-2">
           <p>
-            <strong className="text-fg">Entidade responsável:</strong> {LEGAL_INFO.controllerName} ({LEGAL_INFO.country}).
-          </p>
-          <p>
-            <strong className="text-fg">Contacto para privacidade e RGPD:</strong>{' '}
-            <a className="text-accent underline" href={`mailto:${LEGAL_INFO.contactEmail}`}>
+            <strong className="text-fg">Responsável:</strong> {LEGAL_INFO.controllerName} ({LEGAL_INFO.country}) ·{' '}
+            <a className="font-semibold text-accent underline" href={`mailto:${LEGAL_INFO.contactEmail}`}>
               {LEGAL_INFO.contactEmail}
             </a>
           </p>
           <p>
-            <strong className="text-fg">Idade mínima (Lei n.º 58/2019 — Portugal):</strong> {LEGAL_INFO.minimumAgePT} anos. Menores de {LEGAL_INFO.minimumAgePT} anos apenas podem usar contas sincronizadas com autorização dos encarregados de educação.
+            <strong className="text-fg">Idade mínima em Portugal:</strong> pelo menos{' '}
+            <strong className="text-fg">{LEGAL_INFO.minimumAgePT} anos</strong> (ou autorização do encarregado de educação, nos termos do RGPD e da Lei n.º 58/2019).
           </p>
         </div>
-      </Card>
+      </LegalAccordion>
 
-      <Card title="2. Dados Tratados e Finalidades">
-        <ul className="list-disc space-y-2 pl-5 text-sm text-muted">
+      <LegalAccordion title="2. Os teus direitos (Exportar, Revogar, Eliminar)">
+        <ul className="list-disc space-y-2 pl-5">
           <li>
-            <strong className="text-fg">Modo Local (por omissão):</strong> cadeiras, notas, sessões de estudo, tarefas, horários, ficheiros guardados localmente e preferências permanecem exclusivamente no dispositivo (<code className="text-xs">localStorage</code> / WebView Android). Não há rastreadores publicitários nem telemetria oculta.
+            <strong className="text-fg">Exportar tudo:</strong> em{' '}
+            <Link to="/definicoes" className="font-semibold text-accent underline">
+              Definições → Privacidade &amp; Dados
+            </Link>{' '}
+            descarregas uma cópia JSON completa a qualquer momento.
           </li>
           <li>
-            <strong className="text-fg">Sincronização Cloud Opcional (Firebase Auth &amp; Firestore):</strong> caso escolhas iniciar sessão (Google ou Email/Palavra-passe), o identificador (<code className="text-xs">uid</code>), nome, email e os dados do teu semestre são sincronizados sob regras de isolamento estrito (<code className="text-xs">/users/{'{uid}'}</code>) para acederes entre telemóvel e computador.
+            <strong className="text-fg">Desligar Tutor IA ou Nuvem:</strong> podes revogar qualquer consentimento com um toque nas Definições.
           </li>
           <li>
-            <strong className="text-fg">Inteligência Artificial Opcional (Google Gemini API — EU AI Act Art. 50.º):</strong> apenas quando ativas o consentimento explícito de IA e configuras a tua chave, o contexto de estudo que escolhes partilhar ou capturas do teu portal académico (OCR) são enviados diretamente à API Gemini para responder às tuas questões.
+            <strong className="text-fg">Apagar conta para sempre:</strong> usa o portal{' '}
+            <Link to="/eliminar-conta" className="font-semibold text-accent underline">
+              Eliminar conta
+            </Link>.
           </li>
           <li>
-            <strong className="text-fg">Fontes Externas Só de Leitura (opcional):</strong> ligações Google Calendar, Google Drive, Gmail Académico (<code className="text-xs">gmail.readonly</code>) e Microsoft OneDrive são iniciadas unicamente por ti via OAuth oficial.
+            <strong className="text-fg">Autoridade de controlo:</strong>{' '}
+            <a
+              href={LEGAL_INFO.supervisoryAuthority.url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 font-semibold text-accent underline"
+            >
+              {LEGAL_INFO.supervisoryAuthority.name}
+              <ExternalLink size={12} />
+            </a>
           </li>
         </ul>
-      </Card>
+      </LegalAccordion>
 
-      <Card title="3. Bases Legais e Transferências Internacionais">
-        <div className="space-y-2 text-sm text-muted">
+      <LegalAccordion title="3. Detalhes técnicos e legais">
+        <div className="space-y-2 text-xs leading-relaxed">
           <p>
-            Tratamos os teus dados com base no <strong className="text-fg">consentimento explícito</strong> (RGPD Art. 6.º, n.º 1, alínea a) para Cloud, OAuth e Gemini IA, e na <strong className="text-fg">execução do serviço solicitado</strong> (alínea b) para funcionamento local da app.
+            <strong className="text-fg">Bases legais (RGPD Art. 6.º):</strong> execução local do serviço solicitado (alínea b) e consentimento explícito para sincronização Cloud (Firebase), OAuth Google/OneDrive (só leitura) e Google Gemini IA (alínea a + EU AI Act Art. 50.º).
           </p>
           <p>
-            Serviços Google (Firebase / Gemini / Google OAuth) e Microsoft (OneDrive) operam ao abrigo do EU-U.S. Data Privacy Framework e Cláusulas Contratuais-Tipo aprovadas pela Comissão Europeia.
+            Serviços Google (Firebase / Gemini / Google OAuth) e Microsoft operam sob o EU-U.S. Data Privacy Framework e Cláusulas Contratuais-Tipo.
           </p>
         </div>
-      </Card>
-
-      <Card title="4. Os Teus Direitos (Portabilidade, Retificação e Esquecimento)">
-        <div className="space-y-3 text-sm text-muted">
-          <p>
-            Ao abrigo dos artigos 15.º a 21.º do RGPD podes, a qualquer momento e sem custos:
-          </p>
-          <ul className="list-disc space-y-1.5 pl-5">
-            <li><strong className="text-fg">Exportar e Importar tudo (Portabilidade Art. 20.º):</strong> em <Link to="/definicoes" className="text-accent underline">Definições → Dados</Link> descarregas um JSON completo.</li>
-            <li><strong className="text-fg">Revogar consentimentos:</strong> desativa IA Gemini ou sincronização Cloud a qualquer momento nas Definições.</li>
-            <li><strong className="text-fg">Eliminar conta e dados (Art. 17.º):</strong> usa o botão permanente na página <Link to="/eliminar-conta" className="text-accent underline">/eliminar-conta</Link> ou nas Definições.</li>
-            <li>
-              <strong className="text-fg">Reclamação:</strong> podes apresentar reclamação junto da{' '}
-              <a
-                href={LEGAL_INFO.supervisoryAuthority.url}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-accent underline"
-              >
-                {LEGAL_INFO.supervisoryAuthority.name}
-                <ExternalLink size={12} />
-              </a>.
-            </li>
-          </ul>
-        </div>
-      </Card>
+      </LegalAccordion>
     </LegalShell>
   );
 }
@@ -141,25 +173,19 @@ export function TermsOfUsePage() {
   return (
     <LegalShell
       title="Termos de Utilização"
-      subtitle="Condições simples e justas para utilizares a Unipedia na faculdade ou na escola."
+      subtitle="Regras claras e justas para usares a Unipedia nos teus estudos."
     >
-      <Card title="1. Âmbito Académico">
-        <p className="text-sm text-muted leading-relaxed">
-          A Unipedia é uma ferramenta de organização pessoal de estudo para estudantes do Ensino Superior e Ensino Secundário. Cálculos de médias, prioridades de testes e planos de 14 dias têm caráter estritamente orientador e não substituem regulamentos oficiais, pautas ou avisos da tua escola ou universidade.
-        </p>
-      </Card>
+      <LegalAccordion title="1. Apoio ao estudo (caráter orientador)" defaultOpen>
+        A Unipedia ajuda-te a organizar horários, tarefas, apontamentos e metas. Médias, planos e alertas de teste são orientadores: confirma sempre prazos, salas e regulamentos oficiais na tua escola ou universidade.
+      </LegalAccordion>
 
-      <Card title="2. Transparência sobre Inteligência Artificial (EU AI Act)">
-        <p className="text-sm text-muted leading-relaxed">
-          O Tutor Semanal, o Assistente e o leitor de prints académicos utilizam modelos generativos Gemini quando ativados por ti. Resultados de IA podem conter imprecisões: confirma sempre datas de exames, fórmulas de avaliação e notas nas plataformas oficiais da instituição (ex.: CLIP, Fénix, Sigarra, Inovar).
-        </p>
-      </Card>
+      <LegalAccordion title="2. Uso de Inteligência Artificial (Tutor)">
+        O Tutor utiliza modelos Gemini apenas com a tua chave e consentimento ativo. Respostas de IA podem falhar em cálculos ou datas — valida sempre com o programa da cadeira.
+      </LegalAccordion>
 
-      <Card title="3. Catálogo Curricular Partilhado">
-        <p className="text-sm text-muted leading-relaxed">
-          Ao partilhares um plano curricular na coleção pública (<code className="text-xs">/curricula</code>), comprometes-te a enviar apenas estrutura pública de unidades curriculares (nome, código, ECTS e tópicos genéricos), sem dados pessoais de terceiros.
-        </p>
-      </Card>
+      <LegalAccordion title="3. Planos curriculares partilhados">
+        Caso partilhes a estrutura de um curso no catálogo comunitário, comprometes-te a enviar apenas informação pública das cadeiras (nome, código, ECTS e tópicos gerais), sem dados pessoais de terceiros.
+      </LegalAccordion>
     </LegalShell>
   );
 }
@@ -170,36 +196,32 @@ export function DeleteAccountPage() {
 
   return (
     <LegalShell
-      title="Eliminar Conta e Dados (Unipedia)"
-      subtitle="Fluxo oficial da Google Play Store e do RGPD (Direito ao Esquecimento) para remover integralmente a tua conta e dados associados."
+      title="Eliminar Conta e Dados"
+      subtitle="Apaga definitivamente os teus dados deste dispositivo e da nuvem (Direito ao Esquecimento · RGPD Art. 17.º)."
     >
       <Card
-        title="O que é eliminado?"
+        title="O que é removido"
         action={<ShieldCheck size={18} className="text-ok" />}
       >
         <div className="space-y-3 text-sm text-muted">
-          <p>
-            Quando confirmas a eliminação na Unipedia, os seguintes dados são apagados de imediato e de forma irreversível:
-          </p>
           <ul className="list-disc space-y-1.5 pl-5">
-            <li>Credencial e registo de autenticação no <strong className="text-fg">Firebase Authentication</strong>.</li>
-            <li>Todos os documentos na cloud em <code className="text-xs">/users/{'{uid}'}</code> (perfil académico, cadeiras, avaliações, horários, sessões de estudo, tarefas, materiais, eventos e check-ins semanais).</li>
-            <li>Dados locais (<code className="text-xs">localStorage</code> e <code className="text-xs">sessionStorage</code>) no dispositivo atual.</li>
+            <li>Credencial de autenticação na conta Unipedia (se tiveres sessão iniciada).</li>
+            <li>Todos os dados guardados na nuvem e neste telemóvel (cadeiras, notas, tarefas, materiais locais e definições).</li>
           </ul>
-          <p className="rounded-xl border border-line bg-surface-2 p-3 text-xs">
-            <strong className="text-fg">Estado atual neste dispositivo:</strong>{' '}
-            {user ? `Sessão iniciada como ${user.email ?? user.uid}.` : 'Sem sessão Cloud iniciada (podes iniciar sessão em Definições ou limpar os dados locais abaixo).'}
+          <p className="rounded-[16px] bg-surface-2 px-3.5 py-2.5 text-xs">
+            <strong className="text-fg">Estado atual:</strong>{' '}
+            {user ? `Sessão iniciada (${user.email ?? 'conta ativa'}).` : 'Modo offline neste dispositivo (sem conta Cloud).'}
           </p>
-          <div className="pt-1 flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 pt-1">
             <Button variant="danger" onClick={() => setModalOpen(true)}>
               <Trash2 size={16} />
-              {user ? 'Iniciar eliminação definitiva da conta' : 'Apagar dados locais deste dispositivo'}
+              {user ? 'Eliminar conta definitivamente' : 'Apagar dados deste dispositivo'}
             </Button>
             <a
               href={`mailto:${LEGAL_INFO.contactEmail}?subject=${encodeURIComponent('Pedido RGPD — Eliminação de Conta Unipedia')}`}
-              className="inline-flex h-10 items-center rounded-xl border border-line bg-surface-2 px-4 text-sm font-medium text-fg hover:border-muted/50"
+              className="inline-flex min-h-[44px] items-center rounded-full border border-line bg-surface px-4 text-sm font-semibold text-fg hover:bg-surface-2"
             >
-              Pedir eliminação por email
+              Pedir por email
             </a>
           </div>
         </div>

@@ -157,27 +157,10 @@ export function initFirestoreSync() {
     const userDocRef = doc(db, 'users', uid);
     const academicDocRef = doc(db, 'users', uid, 'profile', 'academic');
 
-    // Deteta novo utilizador na cloud para não misturar dados demo de demonstração
+    // Garante documento inicial na cloud para o utilizador autenticado
     try {
       const userSnap = await getDoc(userDocRef);
-      const state = useStore.getState();
-
       if (!userSnap.exists()) {
-        if (state.isDemo) {
-          isApplyingRemote = true;
-          try {
-            state.clearAll();
-            useStore.setState((prev) => ({
-              academicProfile: {
-                ...prev.academicProfile,
-                onboardingCompleted: false,
-              },
-            }));
-          } finally {
-            isApplyingRemote = false;
-          }
-        }
-
         const latestState = useStore.getState();
         const initialSettings = sanitizeSettingsPayload(
           {
@@ -247,13 +230,11 @@ export function initFirestoreSync() {
         .map((d) => ({ id: d.id, ...(d.data() as Omit<WeeklyCheckIn, 'id'>) }))
         .sort((a, b) => (b.weekOf || '').localeCompare(a.weekOf || ''));
 
-      if (items.length > 0 || !useStore.getState().isDemo) {
-        isApplyingRemote = true;
-        try {
-          useStore.setState({ weeklyCheckIns: items });
-        } finally {
-          isApplyingRemote = false;
-        }
+      isApplyingRemote = true;
+      try {
+        useStore.setState({ weeklyCheckIns: items });
+      } finally {
+        isApplyingRemote = false;
       }
     });
     activeUnsubscribers.push(unsubCheckIns);
@@ -263,16 +244,13 @@ export function initFirestoreSync() {
       const colRef = collection(db, 'users', uid, colKey);
       const unsub = onSnapshot(colRef, (snapshot) => {
         const items = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-        if (items.length > 0 || !useStore.getState().isDemo) {
-          isApplyingRemote = true;
-          try {
-            useStore.setState({
-              [colKey]: items,
-              isDemo: false,
-            } as Partial<Collections & { isDemo: boolean }>);
-          } finally {
-            isApplyingRemote = false;
-          }
+        isApplyingRemote = true;
+        try {
+          useStore.setState({
+            [colKey]: items,
+          } as Partial<Collections>);
+        } finally {
+          isApplyingRemote = false;
         }
       });
       activeUnsubscribers.push(unsub);

@@ -186,7 +186,7 @@ export function buildStudyContext(state: AppState): string {
   const lines: string[] = [];
 
   lines.push(`Data de hoje: ${format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: pt })}`);
-  lines.push(`Semestre: ${settings.semesterName}${state.isDemo ? ' (dados de demonstração)' : ''}`);
+  lines.push(`Semestre: ${settings.semesterName}`);
 
   if (academicProfile) {
     lines.push('', 'PERFIL ACADÉMICO DO ESTUDANTE (UNIPEDIA):');

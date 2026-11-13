@@ -13,11 +13,10 @@ export function ContextPanel() {
   const sessions = useStore((s) => s.sessions);
   const tasks = useStore((s) => s.tasks);
   const settings = useStore((s) => s.settings);
-  const isDemo = useStore((s) => s.isDemo);
 
   const context = useMemo(
     () => (open ? buildStudyContext(useStore.getState()) : ''),
-    [open, courses, assessments, sessions, tasks, settings, isDemo],
+    [open, courses, assessments, sessions, tasks, settings],
   );
 
   return (

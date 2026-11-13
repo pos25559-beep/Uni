@@ -12,8 +12,9 @@ import NewEventModal from '../components/calendar/NewEventModal';
 import { buildCalendarItems } from '../components/calendar/items';
 import type { CalItem, CalKind, CalState } from '../components/calendar/items';
 import { KIND_META, KIND_ORDER } from '../components/calendar/shared';
+import { AnimatedPage } from '../components/motion/Primitives';
 import WeekView from '../components/calendar/WeekView';
-import { Button, PageHeader, cx } from '../components/ui';
+import { Button, PageHeader, SegmentedControl, cx } from '../components/ui';
 import { toDateStr } from '../lib/selectors';
 import { useStore } from '../store/useStore';
 import type { Course } from '../types';
@@ -104,9 +105,11 @@ export default function Calendar() {
   const toggleKind = (k: CalKind) => setKinds((prev) => ({ ...prev, [k]: !prev[k] }));
 
   return (
-    <>
+    <AnimatedPage className="space-y-4">
       <PageHeader
-        title="Calendário"
+        eyebrow="Horário"
+        title="O teu"
+        accentTitle="calendário"
         subtitle="Aulas, avaliações, estudo, eventos e tarefas num só lugar."
         actions={
           <Button variant="primary" onClick={() => setNewOpen(true)}>
@@ -116,34 +119,24 @@ export default function Calendar() {
       />
 
       {/* Navegação e vista */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="secondary" className="px-2" aria-label="Anterior" onClick={() => step(-1)}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5">
+          <Button size="sm" iconOnly variant="secondary" aria-label="Anterior" onClick={() => step(-1)}>
             <ChevronLeft size={16} />
           </Button>
           <Button size="sm" variant="secondary" onClick={goToday}>Hoje</Button>
-          <Button size="sm" variant="secondary" className="px-2" aria-label="Seguinte" onClick={() => step(1)}>
+          <Button size="sm" iconOnly variant="secondary" aria-label="Seguinte" onClick={() => step(1)}>
             <ChevronRight size={16} />
           </Button>
-          <span className="ml-1 min-w-0 truncate text-sm font-semibold capitalize tabular">{label}</span>
+          <span className="ml-1 min-w-0 truncate font-display text-sm font-bold capitalize tabular">{label}</span>
         </div>
 
-        <div role="group" aria-label="Vista" className="inline-flex rounded-xl border border-line bg-surface-2 p-1">
-          {VIEWS.map((v) => (
-            <button
-              key={v.key}
-              type="button"
-              aria-pressed={view === v.key}
-              onClick={() => setView(v.key)}
-              className={cx(
-                'h-7 rounded-lg px-3 text-xs font-medium transition',
-                view === v.key ? 'bg-surface text-fg shadow-sm' : 'text-muted hover:text-fg',
-              )}
-            >
-              {v.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          layoutId="calendar-view-tabs"
+          value={view}
+          onChange={(v) => setView(v as View)}
+          items={VIEWS.map((v) => ({ id: v.key, label: v.label }))}
+        />
       </div>
 
       {/* Filtros */}
@@ -218,6 +211,6 @@ export default function Calendar() {
           onClose={() => setNewOpen(false)}
         />
       )}
-    </>
+    </AnimatedPage>
   );
 }

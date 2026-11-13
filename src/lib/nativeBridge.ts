@@ -4,8 +4,10 @@ import { Keyboard } from '@capacitor/keyboard';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { StatusBar, Style } from '@capacitor/status-bar';
 
-const DARK_BG = '#0b0d12';
-const LIGHT_BG = '#faf8f5';
+const DARK_BG = '#141311';
+const LIGHT_BG = '#FAF8F2';
+
+export type ThemePreference = 'system' | 'light' | 'dark';
 
 interface ThemeChromePlugin {
   apply(options: { color: string; isDark: boolean }): Promise<void>;
@@ -13,10 +15,23 @@ interface ThemeChromePlugin {
 
 const ThemeChrome = registerPlugin<ThemeChromePlugin>('ThemeChrome');
 
-/** Sincroniza a barra de estado Android/iOS com o tema atual da Unipedia. */
-export async function syncNativeTheme(theme: 'dark' | 'light'): Promise<void> {
+/** Resolve se o tema efetivo deve ser escuro dado o modo escolhido pelo utilizador. */
+export function resolveIsDark(pref: ThemePreference): boolean {
+  if (pref === 'dark') return true;
+  if (pref === 'light') return false;
+  if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+  return false;
+}
+
+/** Aplica a classe dark no DOM e sincroniza a barra de estado Android/iOS com o tema atual. */
+export async function syncNativeTheme(pref: ThemePreference): Promise<void> {
+  const isDark = resolveIsDark(pref);
+  if (typeof document !== 'undefined') {
+    document.documentElement.classList.toggle('dark', isDark);
+  }
   if (!Capacitor.isNativePlatform()) return;
-  const isDark = theme === 'dark';
   const color = isDark ? DARK_BG : LIGHT_BG;
   try {
     await StatusBar.setOverlaysWebView({ overlay: false });

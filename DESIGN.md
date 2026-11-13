@@ -1,71 +1,60 @@
----
-name: Unipedia
-description: Caderno Editorial & Geométrico Vivo — instrumento de estudo tátil, claro e escuro, com cor para progresso e cadeiras, números em mono tabular.
-colors:
-  light:
-    bg: "#faf8f5"
-    surface: "#ffffff"
-    surface-2: "#f3efe7"
-    line: "#e5dfd3"
-    fg: "#111318"
-    muted: "#5f6470"
-    accent: "#4f46e5"
-    accent-fg: "#ffffff"
-    accent-soft: "#eef0ff"
-    ink-cta: "#111318"
-    ink-cta-fg: "#ffffff"
-    ok: "#15803d"
-    warn: "#b45309"
-    danger: "#dc2626"
-  dark:
-    bg: "#0b0d12"
-    surface: "#131720"
-    surface-2: "#1b202c"
-    line: "#272d3d"
-    fg: "#f6f5f1"
-    muted: "#9ca3af"
-    accent: "#818cf8"
-    accent-fg: "#0b0d12"
-    accent-soft: "#1f2442"
-    ink-cta: "#f6f5f1"
-    ink-cta-fg: "#0b0d12"
-    ok: "#4ade80"
-    warn: "#fbbf24"
-    danger: "#f87171"
-typography:
-  display: { family: "Bricolage Grotesque Variable", use: "h1 e cabeçalhos hero", tracking: "-0.025em" }
-  editorial: { family: "Instrument Serif", use: "ênfase itálica pontual em headlines de onboarding/hero" }
-  body: { family: "Geist Variable", size: "14px", lineHeight: 1.5 }
-  mono: { family: "Geist Mono Variable", use: "notas, médias, horas, minutos, percentagens, contagens" }
-  scale: [11, 12, 14, 16, 20, 26, 34]
-radius: { control: "12px", card: "18px", pill: "9999px" }
-spacing: { unit: "4px", card-padding: "20px", section-gap: "24px" }
-elevation: "tátil por contraste de papel, borda 1px #E5DFD3/#272D3D e acento semântico"
-motion: { library: "motion/react", spring: "stiffness 380, damping 32", reducedMotion: "user" }
----
+# Unipedia v3 — Design System ("Estúdio Caderno Vivo")
 
-# Unipedia — DESIGN.md
+## 1. Personalidade & Princípios Anti-Slop
+A Unipedia ajuda estudantes em Portugal (Ensino Superior e Secundário) a planear, estudar e progredir com tranquilidade e energia positiva.
+- **Direção visual**: *Estúdio Caderno Vivo* — papel creme quente, tinta negra tátil, ritmo editorial (Display sans + Serif itálico), blocos coloridos de papelaria e mascotes simples e humanos.
+- **Proibição de AI-Slop**:
+  - **Zero roxo/índigo/violeta** no logo, acento primário ou modo escuro.
+  - **Zero paredes infinitas de cartões brancos com borda** — alternar blocos pastel sem bordas pesadas (*color blocking*), listas limpas agrupadas (`ListGroup`) e bastante respiro entre secções.
+  - **Sem linguagem técnica ou de programador na UI**: zero jargão de ERP, zero emails/IDs reais hardcoded.
 
-Este ficheiro define o sistema de design oficial da **Unipedia**, uma marca focada em ajudar estudantes universitários e do ensino secundário a organizar o percurso escolar, estudar melhor e progredir com confiança.
+## 2. Paleta de Cores (WCAG AA)
+### Superfícies & Tinta
+| Token | Modo Claro (Papel Quente) | Modo Escuro (Grafite Quente) | Uso |
+| :--- | :--- | :--- | :--- |
+| `--bg` | `#FAF8F2` | `#141311` | Fundo principal da app |
+| `--surface` | `#FFFFFF` | `#1E1C18` | Cartões limpos e listas |
+| `--surface-2` | `#F2ECE1` | `#28241E` | Cápsulas inativas, inputs e separação suave |
+| `--fg` | `#141312` | `#FAF6EC` | Texto principal e CTAs de tinta negra |
+| `--muted` | `#5F5B54` | `#B5AFA4` | Subtítulos e metadados (`>= 4.5:1`) |
+| `--line` | `#E6DFD3` | `#322D26` | Divisórias finas e contornos discretos |
 
-## 1. Direção: Caderno Editorial & Geométrico Vivo
+### Acentos Floresta & Coral (Assinatura Unipedia)
+| Token | Modo Claro | Modo Escuro | Uso |
+| :--- | :--- | :--- | :--- |
+| `--accent` | `#157F58` | `#4ADE80` | **Verde Floresta Caderno**: foco ativo, links, anéis, seleção |
+| `--accent-soft` | `#DCF4EA` | `#173327` | Fundo suave de seleção e badges positivas |
+| `--coral` | `#E04F33` | `#FF7A59` | **Coral Marcador**: urgência real, provas próximas, streak, marcador |
+| `--coral-soft` | `#FDE8E2` | `#3A1F19` | Fundo suave de alertas urgentes |
+| `--ink` | `#141312` | `#FAF6EC` | Botões primários ("Começar", dock flutuante) |
 
-- **Personalidade tátil**: superfícies inspiradas em papel editorial quente (`#FAF8F5`) no modo claro e obsidiana profunda (`#0B0D12`) no modo escuro, com bordas limpas de 1px e zero sombras pesadas.
-- **Assinatura cromática**: Índigo Elétrico (`#4F46E5` / `#818CF8`) para foco interativo, progresso e ação primária; cartões Bento e cadeiras recebem fundos pastel controlados semânticos com contraste mínimo `4.5:1`.
-- **Tipografia com carácter**: `Bricolage Grotesque` nos títulos principais combinada com `Instrument Serif` em itálico pontual para palavras de ênfase emocional (*"Domina o teu semestre"*), `Geist` para interface e `Geist Mono` (`tabular`) para todos os dados numéricos.
+### Pastéis de Papelaria (Cadeiras, Bento & Baralho de Pastas)
+Usados como superfícies coloridas com alto contraste (`#141312` em claro, tonalidades profundas em escuro):
+- **Manteiga (`butter`)**: `#FCE99F` (escuro `#352D14`)
+- **Salva (`sage`)**: `#C9DC9F` (escuro `#212E19`)
+- **Menta (`mint`)**: `#BCEEE0` (escuro `#17312B`)
+- **Céu (`sky`)**: `#C4E0FD` (escuro `#192A3D`)
+- **Pêssego (`peach`)**: `#FAD6BA` (escuro `#382317`)
+- **Rosa Papel (`blush`)**: `#F9C5BE` (escuro `#381E21`)
 
-## 2. Acessibilidade & Ergonomia Mobile
+## 3. Tipografia & Escala Legível Mobile
+- **Famílias**:
+  - Títulos & Display: `Bricolage Grotesque Variable`, sans-serif (`tracking: -0.025em`)
+  - Ênfase Humana / Editorial: `Instrument Serif` (itálico dentro de títulos, ex: *"Estuda com calma"*)
+  - Corpo & UI: `Geist Variable`, sans-serif
+  - Números, horas, notas & datas curtas: `Geist Mono Variable` com `font-variant-numeric: tabular-nums`
+- **Regra mínima mobile**: corpo e metadados legíveis **`>= 12px`** (permitido `11px` apenas em legendas da dock inferior; **zero `text-[10px]`**).
 
-- Contraste mínimo WCAG 2.1 AA (`4.5:1` em texto normal, `3:1` em títulos grandes e ícones funcionais).
-- Navegação mobile estrita em **5 destinos etiquetados** (`Hoje`, `Cadeiras`, `Plano`, `Assistente`, `Mais`) com pílula ativa animada via `layoutId`.
-- Alvos táteis ≥ `44px`, respeitando `env(safe-area-inset-*)` e `--keyboard-height`.
-- Motion com `<MotionConfig reducedMotion="user">`: fluido, direto e desligado automaticamente quando o sistema pede redução de movimento.
+## 4. Layout & Arquitetura dos Ecrãs
+1. **Top Bar Humilde**: Saudação + avatar à esquerda; no máximo 2 ações circulares (`44x44px`) à direita.
+2. **Dock Flutuante em Cápsula (Mobile)**: Barra arredondada (`rounded-[28px]`) flutuante acima da safe-area em `#141312` (`#24211D` em dark), com 5 destinos máximos (`Hoje`, `Cadeiras`, `Plano`, `Tutor`, `Mais`) e pílula ativa deslizante (`layoutId`).
+3. **Alternância de Secções**: Hero colorido (`Color Block`) -> Grelha Bento 2x1 (`Ver ->`) -> Listas táteis (`>= 52px`) / Baralho empilhado de pastas (`FolderCardDeck`).
+4. **Definições & Privacidade**: Lista agrupada nativa (`ListGroup`/`ListRow`) com sub-ecrãs limpos (`SubpageHeader`) e cartão **"A tua privacidade em 30 segundos"**.
 
-## 3. Grafismos & Arte Original
-
-- Todas as ilustrações de onboarding e ícones da marca provêm da pasta **`Unipedia Brand`** criada no Canva (`canva_canva`) ou de SVG geométrico original Unipedia (`src/components/brand/UnipediaMarks.tsx`), sem copiar ilustrações externas.
-
-## 4. Transparência & RGPD Europeu
-
-- Qualquer funcionalidade de IA (Tutor Gemini, OCR de prints escolares) exige consentimento explícito (`aiConsent`) e exibe nota de transparência **EU AI Act**.
-- Portabilidade total em JSON (`DataCard`) e eliminação definitiva de conta/dados acessíveis na app e em URL público (`/privacidade`, `/termos`, `/eliminar-conta`).
+## 5. Motion, Ergonomia & Acesso
+- **Alvos táteis**: `>= 44px × 44px` obrigatórios em todos os botões, inputs, checkboxes de linha, pílulas e controlos (`@media (pointer: coarse)` inclui explicitamente `button`).
+- **Motion (`motion/react` + `<MotionConfig reducedMotion="user">`)**:
+  - Spring principal: `{ type: 'spring', stiffness: 360, damping: 28, mass: 0.9 }`.
+  - Onboarding com indicadores morfáveis, botão `>` que morfa em pílula `Começar`, transição expansiva `clipPath`, orbitadores suaves e *stickers* inclinados (`-4deg` / `+3deg`).
+  - Feedback háptico discreto + mini-confeti nas cores de papelaria apenas em conquistas reais (fechar meta diária ou concluir onboarding).
+- **Autenticação segura em Mobile/WebView**: Fluxo primário por **Email e Palavra-passe** (ou uso offline sem conta). Login Google estritamente opcional e nunca disparado automaticamente.

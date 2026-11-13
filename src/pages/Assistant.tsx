@@ -2,8 +2,10 @@ import {
   BookOpen,
   FileText,
   MessageSquare,
+  MoreHorizontal,
   Plus,
   RotateCcw,
+  Shield,
   Sparkles,
   Trash2,
   X,
@@ -14,8 +16,9 @@ import { Composer } from '../components/assistant/Composer';
 import { Markdown } from '../components/assistant/Markdown';
 import { QuickActions } from '../components/assistant/QuickActions';
 import WeeklyTutorModal from '../components/assistant/WeeklyTutorModal';
-import { Link } from 'react-router-dom';
-import { Badge, Button, Modal, PageHeader, cx } from '../components/ui';
+import { NotebookBuddy } from '../components/brand/UnipediaMarks';
+import { Link, useNavigate } from 'react-router-dom';
+import { ActionSheet, Badge, Button, Modal, PageHeader, cx } from '../components/ui';
 import {
   askGemini,
   buildDocumentContext,
@@ -37,6 +40,8 @@ import { newId, useStore } from '../store/useStore';
 const MAX_SENT = 20;
 
 export default function Assistant() {
+  const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
   const courses = useStore((s) => s.courses);
   const materials = useStore((s) => s.materials);
   const model = useStore((s) => s.settings.geminiModel) || 'gemini-2.5-flash';
@@ -235,36 +240,29 @@ export default function Assistant() {
       {/* Cabeçalho */}
       <div className="shrink-0 space-y-3">
         <PageHeader
-          title="Assistente Gemini"
-          subtitle={`Modelo ${model} · ${user ? 'Sincronizado na cloud' : 'Modo local'}`}
+          eyebrow="Tutor IA"
+          title="Conversa com o"
+          accentTitle="Tutor"
+          subtitle={`${model} · ${user ? 'Sincronizado na cloud' : 'Sessão local'}`}
           actions={
             <div className="flex items-center gap-2">
               <Button
                 variant="secondary"
-                size="sm"
-                onClick={() => setTutorOpen(true)}
-                title="Fazer check-in semanal com o tutor"
+                iconOnly
+                onClick={handleCreateNewConv}
+                aria-label="Nova conversa"
+                title="Nova conversa"
               >
-                <MessageSquare size={15} />
-                Check-in semanal
+                <Plus size={18} />
               </Button>
               <Button
                 variant="secondary"
-                size="sm"
-                onClick={handleCreateNewConv}
-                title="Criar nova conversa"
+                iconOnly
+                onClick={() => setMenuOpen(true)}
+                aria-label="Mais opções do Tutor"
+                title="Opções"
               >
-                <Plus size={15} />
-                Nova conversa
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setConfirmDeleteConv(true)}
-                disabled={messages.length === 0 && conversations.length <= 1}
-              >
-                <Trash2 size={15} />
-                Limpar
+                <MoreHorizontal size={18} />
               </Button>
             </div>
           }
@@ -278,7 +276,8 @@ export default function Assistant() {
             <select
               value={activeCourseId}
               onChange={(e) => setActiveCourseId(e.target.value)}
-              className="rounded-lg border border-line bg-surface px-2.5 py-1 text-xs text-fg focus:outline-none"
+              aria-label="Filtrar por cadeira"
+              className="min-h-[38px] rounded-full border border-line bg-surface px-3 py-1 text-xs font-medium text-fg focus:outline-none"
             >
               <option value="all">Todas as cadeiras</option>
               {courses.map((c) => (
@@ -294,9 +293,9 @@ export default function Assistant() {
             type="button"
             onClick={() => setShowDocPicker(true)}
             className={cx(
-              'flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs transition',
+              'flex min-h-[38px] items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition',
               attachedMaterials.length > 0
-                ? 'border-accent bg-accent-soft text-accent font-medium'
+                ? 'border-accent bg-accent-soft text-accent'
                 : 'border-line bg-surface text-muted hover:text-fg',
             )}
           >
@@ -304,20 +303,20 @@ export default function Assistant() {
             <span>
               {attachedMaterials.length === 0
                 ? 'Anexar documentos'
-                : `${attachedMaterials.length} ${attachedMaterials.length === 1 ? 'documento anexado' : 'documentos anexados'}`}
+                : `${attachedMaterials.length} anexado(s)`}
             </span>
           </button>
 
-          {/* Lista de tags de documentos anexados */}
           {attachedMaterials.map((m) => (
             <span
               key={m.id}
-              className="flex items-center gap-1 rounded-md bg-surface-2 px-2 py-0.5 text-[11px] text-muted border border-line"
+              className="flex items-center gap-1 rounded-full bg-surface-2 px-2.5 py-1 text-xs text-muted"
             >
-              <span className="truncate max-w-[120px]">{m.title}</span>
+              <span className="max-w-[120px] truncate">{m.title}</span>
               <button
                 type="button"
                 onClick={() => toggleMaterial(m.id)}
+                aria-label={`Remover ${m.title}`}
                 className="hover:text-danger"
               >
                 <X size={12} />
@@ -325,18 +324,17 @@ export default function Assistant() {
             </span>
           ))}
 
-          {/* Lista rápida de conversas se existirem mais que 1 */}
           {conversations.length > 1 && (
-            <div className="ml-auto flex items-center gap-1 overflow-x-auto max-w-[300px]">
+            <div className="ml-auto flex max-w-[260px] items-center gap-1 overflow-x-auto">
               {conversations.slice(0, 4).map((c) => (
                 <button
                   key={c.id}
                   type="button"
                   onClick={() => setActiveConvId(c.id)}
                   className={cx(
-                    'truncate max-w-[100px] rounded-lg px-2 py-1 text-[11px] transition',
+                    'max-w-[100px] truncate rounded-full px-2.5 py-1 text-xs transition',
                     c.id === activeConvId
-                      ? 'bg-accent text-accent-fg font-medium'
+                      ? 'bg-ink-cta font-medium text-ink-cta-fg'
                       : 'text-muted hover:bg-surface-2',
                   )}
                 >
@@ -353,17 +351,18 @@ export default function Assistant() {
         <ContextPanel />
         {messages.length === 0 && (
           <div className="flex flex-col items-center px-4 py-8 text-center">
-            <div className="grid size-12 place-items-center rounded-2xl bg-accent-soft text-accent">
-              <Sparkles size={22} />
+            <div className="flex size-20 items-center justify-center rounded-full bg-pastel-sage/75 shadow-card dark:bg-surface-2">
+              <NotebookBuddy mood="curious" size={56} />
             </div>
-            <h2 className="mt-4 text-base font-semibold">Olá{userName ? `, ${userName}` : ''}!</h2>
-            <p className="mt-1 max-w-sm text-sm text-muted">
-              Posso responder a dúvidas sobre a matéria, criar perguntas de exame ou rever os teus
-              apontamentos do Google Drive e materiais de estudo.
+            <h2 className="mt-4 font-display text-xl font-bold">
+              Olá{userName ? `, ${userName}` : ''}! O que vamos rever?
+            </h2>
+            <p className="mt-1.5 max-w-sm text-sm text-muted">
+              Posso explicar conceitos difíceis, criar perguntas de exame ou rever os teus apontamentos.
             </p>
             {attachedMaterials.length > 0 && (
-              <p className="mt-2 text-xs text-ok">
-                {attachedMaterials.length} documento(s) ativo(s) no contexto deste chat.
+              <p className="mt-2 text-xs font-medium text-ok">
+                {attachedMaterials.length} documento(s) ativo(s) neste chat.
               </p>
             )}
           </div>
@@ -373,21 +372,21 @@ export default function Assistant() {
           m.role === 'user' ? (
             <div
               key={m.id}
-              className="rise ml-auto max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-accent px-4 py-2.5 text-sm text-accent-fg"
+              className="rise ml-auto max-w-[85%] whitespace-pre-wrap break-words rounded-[22px] rounded-br-md bg-ink-cta px-4 py-3 text-sm text-ink-cta-fg shadow-card"
             >
               {m.text}
             </div>
           ) : (
             <div
               key={m.id}
-              className="rise max-w-[95%] rounded-2xl rounded-bl-md border border-line bg-surface px-4 py-3"
+              className="rise max-w-[95%] rounded-[22px] rounded-bl-md bg-surface px-4 py-3.5 shadow-card"
             >
               <Markdown text={m.text} />
-              <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-line/70 pt-2 text-[11px] text-muted">
-                <span>Gerado por IA ({model}) · Valida informações académicas</span>
+              <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-line/70 pt-2 text-xs text-muted">
+                <span>Gerado por IA ({model}) · Valida sempre com a sebenta</span>
                 {m.sourceDocTitles && m.sourceDocTitles.length > 0 && (
                   <span className="inline-flex items-center gap-1">
-                    <FileText size={11} />
+                    <FileText size={12} />
                     {m.sourceDocTitles.join(', ')}
                   </span>
                 )}
@@ -399,7 +398,7 @@ export default function Assistant() {
         {loading && (
           <div
             role="status"
-            className="rise flex w-fit items-center gap-2.5 rounded-2xl rounded-bl-md border border-line bg-surface px-4 py-3 text-sm text-muted"
+            className="rise flex w-fit items-center gap-2.5 rounded-[22px] rounded-bl-md bg-surface px-4 py-3 text-sm text-muted shadow-card"
           >
             <span className="flex gap-1">
               {[0, 1, 2].map((i) => (
@@ -432,17 +431,17 @@ export default function Assistant() {
 
       {/* Aviso explícito EU AI Act Art. 50 & RGPD antes de usar IA */}
       {(!aiConsent || !hasApiKey) && (
-        <div className="mt-3 flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-2xl border border-accent/30 bg-accent-soft/60 px-4 py-3 text-xs">
+        <div className="mt-3 flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-[22px] bg-pastel-butter/75 px-4 py-3 text-xs text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]">
           <div className="space-y-0.5">
-            <div className="flex items-center gap-2 font-semibold text-fg">
+            <div className="flex items-center gap-2 font-semibold">
               <Sparkles size={14} className="text-accent" />
               <span>Tutor IA (EU AI Act Art. 50)</span>
               <Badge tone="neutral">Opcional</Badge>
             </div>
-            <p className="text-muted">
+            <p className="opacity-80">
               {!aiConsent
-                ? 'Para enviar perguntas ao Google Gemini tens primeiro de autorizar o processamento por IA.'
-                : 'Consentimento ativo! Adiciona agora a tua chave pessoal Gemini (gratuita) nas Definições.'}
+                ? 'Autoriza primeiro o processamento por IA para conversar com o Gemini.'
+                : 'Consentimento ativo! Adiciona a tua chave Gemini gratuita nas Definições.'}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -453,10 +452,10 @@ export default function Assistant() {
             )}
             {!hasApiKey && (
               <Link
-                to="/definicoes"
-                className="inline-flex h-8 items-center rounded-xl border border-line bg-surface px-3 text-xs font-medium text-fg hover:bg-surface-2"
+                to="/definicoes/tutor"
+                className="inline-flex min-h-[40px] items-center rounded-full bg-surface px-3.5 text-xs font-semibold text-fg shadow-card"
               >
-                Configurar chave Gemini
+                Configurar chave
               </Link>
             )}
           </div>
@@ -475,12 +474,48 @@ export default function Assistant() {
             aria-expanded={showActions}
             className="text-xs font-medium text-muted hover:text-fg"
           >
-            {showActions ? 'Ocultar ações rápidas' : 'Mostrar ações rápidas'}
+            {showActions ? 'Ocultar sugestões' : 'Mostrar sugestões'}
           </button>
         </div>
         {showActions && <QuickActions disabled={loading} onSend={send} />}
         <Composer loading={loading} onSend={send} onStop={stop} />
       </div>
+
+      <ActionSheet
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        title="Opções do Tutor"
+        actions={[
+          {
+            id: 'checkin',
+            label: 'Check-in semanal',
+            hint: 'Avalia o ritmo e ajusta o planeador',
+            icon: <MessageSquare size={16} />,
+            onSelect: () => setTutorOpen(true),
+          },
+          {
+            id: 'docs',
+            label: 'Anexar documentos',
+            hint: 'Seleciona PDFs ou links como contexto',
+            icon: <FileText size={16} />,
+            onSelect: () => setShowDocPicker(true),
+          },
+          {
+            id: 'privacy',
+            label: 'Privacidade e chave Gemini',
+            hint: 'Gerir consentimento RGPD e modelo',
+            icon: <Shield size={16} />,
+            onSelect: () => navigate('/definicoes/tutor'),
+          },
+          {
+            id: 'clear',
+            label: 'Apagar esta conversa',
+            danger: true,
+            icon: <Trash2 size={16} />,
+            onSelect: () => setConfirmDeleteConv(true),
+          },
+        ]}
+      />
 
       {/* Modal Seletor de Documentos/Materiais */}
       <Modal

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { defaultSettings, demoData } from '../lib/seed';
+import { defaultSettings, emptyCollections } from '../lib/seed';
 import {
   syncAcademicProfile,
   syncCourseBatch,
@@ -10,11 +10,7 @@ import {
   syncUpsert,
   syncWeeklyCheckIn,
 } from '../lib/firestoreSync';
-import {
-  migrateStoreState,
-  rehydrateStoreState,
-  sanitizeMaterials,
-} from '../lib/storeMigration';
+import { migrateStoreState, rehydrateStoreState, sanitizeMaterials } from '../lib/storeMigration';
 import type {
   AcademicProfile,
   Collections,
@@ -31,9 +27,7 @@ import { buildActiveCoursesFromCurriculum } from '../lib/portugalCurriculum';
 type Key = keyof Collections;
 type Item<K extends Key> = Collections[K][number];
 
-const emptyData = (): Collections => ({
-  courses: [], assessments: [], classes: [], sessions: [], tasks: [], materials: [], events: [],
-});
+const emptyData = emptyCollections;
 
 const defaultIntegrations: Record<IntegrationKey, IntegrationStatus> = {
   google: { connected: false },
@@ -61,8 +55,6 @@ export interface AppState extends Collections {
   integrations: Record<IntegrationKey, IntegrationStatus>;
   academicProfile: AcademicProfile;
   weeklyCheckIns: WeeklyCheckIn[];
-  /** true enquanto a app mostra os dados de demonstração. */
-  isDemo: boolean;
 
   /** Cria ou atualiza (por id) um registo numa coleção. */
   upsert: <K extends Key>(key: K, item: Item<K>) => void;
@@ -70,24 +62,19 @@ export interface AppState extends Collections {
   /** Atualiza parcialmente um registo existente. */
   patch: <K extends Key>(key: K, id: ID, changes: Partial<Item<K>>) => void;
   remove: (key: Key, id: ID) => void;
-  /**
-   * Substitui todos os registos de uma fonte (ex.: re-sincronizar o CLIP) sem
-   * tocar nos de outras fontes. Só para coleções com campo `source`.
-   */
   replaceSource: <K extends 'assessments' | 'classes' | 'events'>(
-    key: K, source: Source, items: Item<K>[],
+    key: K,
+    source: Source,
+    items: Item<K>[],
   ) => void;
-  /** Substitui as sessões geradas pelo plano a partir de `fromDate` (yyyy-MM-dd), mantendo as concluídas e as manuais. */
   replaceGeneratedSessions: (fromDate: string, sessions: Collections['sessions']) => void;
   updateTopic: (courseId: ID, topicId: ID, changes: Partial<Topic>) => void;
   updateSettings: (changes: Partial<Settings>) => void;
   setIntegration: (key: IntegrationKey, status: Partial<IntegrationStatus>) => void;
-  /** Limpa ficheiros pessoais, faturas e lixo erroneamente atribuídos a Cálculo III D */
   cleanupMismatchedMaterials: () => number;
   saveAcademicProfile: (changes: Partial<AcademicProfile>) => void;
   addWeeklyCheckIn: (checkIn: WeeklyCheckIn) => void;
   applyCurriculumCourses: (profile: AcademicProfile) => void;
-  loadDemo: () => void;
   clearAll: () => void;
 }
 
@@ -96,12 +83,11 @@ export const newId = (): ID => crypto.randomUUID();
 export const useStore = create<AppState>()(
   persist(
     (set) => ({
-      ...demoData(),
+      ...emptyData(),
       settings: defaultSettings,
       integrations: defaultIntegrations,
       academicProfile: defaultAcademicProfile,
       weeklyCheckIns: [],
-      isDemo: true,
 
       upsert: (key, item) => {
         syncUpsert(key as any, item).catch(() => {});
@@ -134,7 +120,6 @@ export const useStore = create<AppState>()(
             [key]: (s[key] as { id: ID }[]).filter((x) => x.id !== id),
           };
           if (key === 'courses') {
-            // Apagar uma cadeira leva consigo tudo o que depende dela.
             next.assessments = s.assessments.filter((x) => x.courseId !== id);
             next.classes = s.classes.filter((x) => x.courseId !== id);
             next.sessions = s.sessions.filter((x) => x.courseId !== id);
@@ -217,7 +202,6 @@ export const useStore = create<AppState>()(
             syncAcademicProfile(profile).catch(() => {});
             return { academicProfile: profile };
           }
-          // Remapeia difficultCourseIds se correspondem a códigos das novas cadeiras
           const mappedDifficultIds = profile.difficultCourseIds.map((idOrCode) => {
             const found = built.find(
               (c) => c.id === idOrCode || c.code.toLowerCase() === idOrCode.toLowerCase(),
@@ -233,15 +217,13 @@ export const useStore = create<AppState>()(
           return {
             courses: built,
             academicProfile: nextProfile,
-            isDemo: false,
           };
         }),
-      loadDemo: () => set({ ...demoData(), isDemo: true }),
-      clearAll: () => set({ ...emptyData(), isDemo: false }),
+      clearAll: () => set({ ...emptyData() }),
     }),
     {
       name: 'uni-erp-v5',
-      version: 5,
+      version: 6,
       onRehydrateStorage: () => (state) => {
         rehydrateStoreState(state);
       },

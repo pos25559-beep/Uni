@@ -188,10 +188,11 @@ export default function ProfileCard() {
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
         <span className="text-xs font-medium text-muted">Tema</span>
-        <div className="inline-flex rounded-xl border border-line bg-surface-2 p-1">
+        <div className="inline-flex rounded-full bg-surface-2 p-1">
           {([
-            ['dark', 'Escuro', Moon],
+            ['system', 'Sistema', Compass],
             ['light', 'Claro', Sun],
+            ['dark', 'Escuro', Moon],
           ] as const).map(([value, label, Icon]) => (
             <Button
               key={value}

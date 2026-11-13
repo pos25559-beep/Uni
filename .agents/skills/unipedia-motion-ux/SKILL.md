@@ -1,28 +1,32 @@
 ---
 name: unipedia-motion-ux
-description: Regras oficiais de UI/UX, motion, ergonomia Android e acessibilidade da Unipedia baseadas no sistema Caderno Editorial & Geométrico Vivo. Usar ao desenhar ou evoluir qualquer ecrã, onboarding ou componente tátil.
+description: Regras oficiais de UI/UX, layout, motion, ergonomia Android e acessibilidade da Unipedia baseadas no sistema Estúdio Caderno Vivo (v3). Usar ao desenhar ou evoluir qualquer ecrã, onboarding ou componente tátil.
 ---
 
-# Unipedia Motion & UX Guide
+# Unipedia v3 — Estúdio Caderno Vivo & Motion UX
 
-## 1. Direção de Marca e Personalidade
-- **Propósito**: Ajudar estudantes do Ensino Superior e Secundário em Portugal a estudar com clareza e progredir no semestre.
-- **Linguagem visual**: *Caderno Editorial & Geométrico Vivo*.
-  - Papel quente (`#FAF8F5`) no modo claro; Obsidiana (`#0B0D12`) no modo escuro.
-  - Acento assinatura: Índigo Elétrico (`#4F46E5` claro / `#818CF8` escuro).
-  - Cor de cadeira como dado tátil (superfície pastel com contraste mínimo WCAG AA `4.5:1`).
-- **Proibição anti-slop**: Nunca copiar desenhos/ilustrações de apps externas; usar apenas grafismos originais Unipedia (Canva `Unipedia Brand` + SVG geométrico próprio). Sem glassmorphism decorativo genérico, sem sombras difusas pesadas, sem textos em inglês na UI PT-PT.
+## 1. Direção de Marca e Anti-Slop
+- **Propósito**: Ajudar estudantes do Ensino Superior e Secundário em Portugal a estudar com calma, ritmo e clareza.
+- **Paleta oficial (Zero roxo/índigo AI-slop)**:
+  - Papel Quente (`#FAF8F2`) no claro · Grafite Quente (`#141311`) no escuro.
+  - Tinta Negra (`#141312` claro · `#FAF6EC` escuro) para CTAs principais e dock flutuante.
+  - Verde Floresta Caderno (`#157F58` claro · `#4ADE80` escuro) + Coral Marcador (`#E04F33` claro · `#FF7A59` escuro).
+  - Pastéis de Papelaria (`Manteiga`, `Salva`, `Menta`, `Céu`, `Pêssego`, `Rosa Papel`) em blocos coloridos sem bordas pesadas.
+- **Anti-Slop na prática**:
+  - Alternar ritmo visual (Cartão Hero pastel + Bento 2x1 `Ver ->` + Tira de dias + Listas nativas `ListGroup`/`ListRow` + Baralho empilhado `FolderCardDeck`).
+  - Zero dados pessoais hardcoded, zero jargão técnico na interface, e sem modo de demonstração falso.
 
-## 2. Física & Orçamento de Motion (`motion/react`)
-- **Wrapper obrigatório**: `<MotionConfig reducedMotion="user">` na raiz de `App.tsx`.
-- **Presete Spring Tátil**:
-  - Cartões / Navegação: `{ type: 'spring', stiffness: 380, damping: 32, mass: 0.9 }`
-  - Pressão de botão (`whileTap`): `{ scale: 0.97 }` em botões/chips táteis.
-  - `layoutId` para pílulas ativas (`mobile-nav-pill`, filtros, tabs).
-- **Regra de ouro**: Máximo 1 foco principal animado por ecrã; nada abana em repouso.
+## 2. Física & Catálogo de Motion (`motion/react`)
+- Wrapper obrigatório: `<MotionConfig reducedMotion="user">` em `App.tsx`.
+- **Spring Estúdio**: `{ type: 'spring', stiffness: 360, damping: 28, mass: 0.9 }`.
+- **Assinaturas aprovadas**:
+  - `layoutId` em pílulas da dock flutuante (`mobile-dock-pill`), `SegmentedControl`, indicadores do onboarding e CTA circular -> cápsula (`onboarding-cta`).
+  - Transição `clipPath` expansiva ao concluir o onboarding.
+  - Abertura tátil em leque no `FolderCardDeck` e *stickers* inclinados (`-4deg` / `+3deg`).
+  - Celebração pontual com `canvas-confetti` nas cores de papelaria apenas ao fechar meta diária ou onboarding.
 
 ## 3. Ergonomia Android / Capacitor & WCAG AA
-- Barra inferior mobile: máximo **5 destinos** com ícone + rótulo (`Hoje`, `Cadeiras`, `Plano`, `Assistente`, `Mais`).
-- Alvos táteis mínimos: `44px × 44px`.
-- Safe Areas & Teclado: usar `env(safe-area-inset-top)`, `env(safe-area-inset-bottom)` e `var(--keyboard-height, 0px)`.
-- Números, notas, médias, horas e datas curtas sempre em `font-mono tabular`.
+- Alvo tátil mínimo: **`44px × 44px`** em todos os botões (`pointer: coarse` inclui `button`), inputs e linhas clicáveis (`ListRow >= 52px`).
+- Tipografia mínima em mobile: **`12px`** (evitar `text-[10px]`); números sempre em `font-mono tabular-nums`.
+- Dock flutuante em cápsula: máximo 5 destinos (`Hoje`, `Cadeiras`, `Plano`, `Tutor`, `Mais`), respeitando `env(safe-area-inset-bottom)`.
+- Autenticação primária via Email/Palavra-passe (`/entrar`) ou uso local sem conta; nunca auto-disparar Google Auth em WebView.

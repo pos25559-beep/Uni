@@ -1,8 +1,8 @@
 import { OnboardingProvider, useOnboarding } from '@onboardjs/react';
 import type { OnboardingStep } from '@onboardjs/core';
-import confetti from 'canvas-confetti';
 import {
   AlertCircle,
+  ArrowRight,
   BookOpen,
   CalendarDays,
   Camera,
@@ -14,13 +14,13 @@ import {
   ExternalLink,
   HardDrive,
   Loader2,
+  LogIn,
   Plus,
-  ShieldCheck,
-  Sparkles,
   X,
 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { parseAcademicHistoryFromScreenshot } from '../../integrations/gemini';
 import { auth } from '../../lib/firebase';
 import {
@@ -39,7 +39,7 @@ import {
 import { useStore } from '../../store/useStore';
 import type { AcademicProfile, CompletedCourseRecord } from '../../types';
 import { OnboardingSceneArt, UnipediaLogoMark } from '../brand/UnipediaMarks';
-import { UNIPEDIA_SPRING } from '../motion/Primitives';
+import { celebrateStationery, StickerBadge, UNIPEDIA_SPRING } from '../motion/Primitives';
 import { Badge, Button, Field, Input, Select, Textarea, cx } from '../ui';
 import { startUnipediaGuidedTour } from './TourManager';
 
@@ -84,35 +84,19 @@ export interface OnboardingExperienceProps {
   fullScreen?: boolean;
 }
 
-function fireCompletionConfetti() {
-  if (typeof window === 'undefined') return;
-  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
-  try {
-    void confetti({
-      particleCount: 55,
-      spread: 68,
-      origin: { y: 0.65 },
-      colors: ['#4f46e5', '#818cf8', '#10b981', '#f59e0b'],
-    });
-  } catch {
-    // Silencioso caso o ambiente headless não suporte canvas
-  }
-}
-
 function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperienceProps) {
   const settings = useStore((s) => s.settings);
   const existingCourses = useStore((s) => s.courses);
   const storedProfile = useStore((s) => s.academicProfile);
-  const isDemo = useStore((s) => s.isDemo);
   const updateSettings = useStore((s) => s.updateSettings);
   const saveAcademicProfile = useStore((s) => s.saveAcademicProfile);
   const applyCurriculumCourses = useStore((s) => s.applyCurriculumCourses);
-  const loadDemo = useStore((s) => s.loadDemo);
 
   const { currentStep, next, previous } = useOnboarding<OnboardingContextData>();
   const activeStepId = (currentStep?.id as 'welcome' | 'privacy' | 'curriculum' | 'rhythm') ?? 'welcome';
   const stepIndex = Math.max(0, STEP_META.findIndex((s) => s.id === activeStepId));
   const [direction, setDirection] = useState(1);
+  const [finishingWipe, setFinishingWipe] = useState(false);
 
   // Passo 1: RGPD & Idade mínima (13 anos PT)
   const [ageConfirmed, setAgeConfirmed] = useState<boolean>(
@@ -153,7 +137,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
           storedProfile.currentSemester || 2,
         ),
   );
-  const [replaceCoursesWithCurriculum, setReplaceCoursesWithCurriculum] = useState(!isDemo);
+  const [replaceCoursesWithCurriculum, setReplaceCoursesWithCurriculum] = useState(true);
   const [newCourseCode, setNewCourseCode] = useState('');
   const [newCourseName, setNewCourseName] = useState('');
   const [catalog, setCatalog] = useState(PORTUGAL_CURRICULA);
@@ -381,24 +365,6 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     await previous();
   };
 
-  const handleStartDemo = () => {
-    if (!ageConfirmed) return;
-    loadDemo();
-    updateSettings({
-      ageConfirmed13Plus: true,
-      gdprAcceptedAt: new Date().toISOString(),
-      gdprPolicyVersion: LEGAL_INFO.policyVersion,
-      tourCompleted: !launchTour,
-    });
-    saveAcademicProfile({ onboardingCompleted: true });
-    fireCompletionConfetti();
-    void hapticSuccess();
-    onClose();
-    if (launchTour) {
-      window.setTimeout(() => startUnipediaGuidedTour(), 360);
-    }
-  };
-
   const handleFinish = () => {
     const uniName =
       universityId === 'outra'
@@ -472,11 +438,26 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
       }).catch(() => {});
     }
 
-    fireCompletionConfetti();
+    celebrateStationery();
     void hapticSuccess();
-    onClose();
-    if (launchTour) {
-      window.setTimeout(() => startUnipediaGuidedTour(), 360);
+
+    const prefersReduced =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+    if (fullScreen && !prefersReduced) {
+      setFinishingWipe(true);
+      window.setTimeout(() => {
+        onClose();
+        if (launchTour) {
+          window.setTimeout(() => startUnipediaGuidedTour(), 260);
+        }
+      }, 360);
+    } else {
+      onClose();
+      if (launchTour) {
+        window.setTimeout(() => startUnipediaGuidedTour(), 260);
+      }
     }
   };
 
@@ -485,24 +466,59 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
   return (
     <div
       className={cx(
-        'flex flex-col bg-bg text-fg',
-        fullScreen ? 'min-h-[100dvh] w-full' : 'w-full rounded-2xl',
+        'relative flex flex-col overflow-hidden bg-bg text-fg',
+        fullScreen ? 'h-[100dvh] w-full overflow-hidden' : 'w-full rounded-[22px]',
       )}
     >
-      {/* Topo editorial com barra de progresso contínua */}
-      <header className="sticky top-0 z-10 border-b border-line bg-bg/90 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur-md sm:px-6">
+      {/* Transição expansiva estilo vídeo Pinterest ao concluir o onboarding */}
+      <AnimatePresence>
+        {finishingWipe && (
+          <motion.div
+            aria-hidden="true"
+            initial={{ clipPath: 'circle(0% at 86% 92%)' }}
+            animate={{ clipPath: 'circle(155% at 86% 92%)' }}
+            transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+            className="pointer-events-none fixed inset-0 z-[80] bg-[#157F58]"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Topo editorial minimalista com indicadores morfáveis */}
+      <header className="sticky top-0 z-10 bg-bg/92 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur-md sm:px-6">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <UnipediaLogoMark size={30} />
+            <UnipediaLogoMark size={32} />
             <div>
-              <p className="font-display text-sm font-bold leading-tight text-fg">Unipedia</p>
-              <p className="font-mono text-[10px] uppercase tracking-wider text-muted tabular">
-                Passo {stepIndex + 1} de {STEP_META.length} · {STEP_META[stepIndex]?.label}
+              <p className="font-display text-sm font-extrabold leading-tight text-fg">Unipedia</p>
+              <p className="font-mono text-xs text-muted tabular">
+                Passo {stepIndex + 1}/{STEP_META.length} · {STEP_META[stepIndex]?.label}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Indicadores morfáveis do progresso (vídeo Pinterest) */}
+            <div className="flex items-center gap-1.5" aria-hidden="true">
+              {STEP_META.map((item, idx) => {
+                const isActive = idx === stepIndex;
+                return (
+                  <motion.span
+                    key={item.id}
+                    layout
+                    transition={UNIPEDIA_SPRING}
+                    className={cx(
+                      'h-2 rounded-full transition-colors',
+                      isActive
+                        ? 'w-7 bg-accent'
+                        : idx < stepIndex
+                          ? 'w-2 bg-accent/45'
+                          : 'w-2 bg-line',
+                    )}
+                  />
+                );
+              })}
+            </div>
+
             {canSkipDirectly && (
               <Button variant="ghost" size="sm" onClick={onClose}>
                 Fechar
@@ -510,64 +526,53 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
             )}
           </div>
         </div>
-
-        {/* Barra de progresso segmentada com mola */}
-        <div className="mx-auto mt-3 grid max-w-3xl grid-cols-4 gap-1.5" aria-hidden="true">
-          {STEP_META.map((item, idx) => (
-            <div key={item.id} className="h-1.5 overflow-hidden rounded-full bg-surface-2">
-              <motion.div
-                className="h-full rounded-full bg-accent"
-                initial={false}
-                animate={{ width: idx <= stepIndex ? '100%' : '0%' }}
-                transition={UNIPEDIA_SPRING}
-              />
-            </div>
-          ))}
-        </div>
       </header>
 
       {/* Conteúdo animado do passo */}
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-5 pb-28 sm:px-6 sm:py-8">
+      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col overflow-y-auto px-4 py-3 sm:px-6 sm:py-6">
         <motion.div
           key={activeStepId}
           initial={{ opacity: 0, x: direction * 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-          className="space-y-6"
+          className="space-y-4 sm:space-y-6"
         >
             {activeStepId === 'welcome' && (
-              <div className="space-y-6">
-                <div className="overflow-hidden rounded-3xl border border-line bg-surface p-5 shadow-card sm:p-8">
-                  <div className="grid items-center gap-6 sm:grid-cols-[1.15fr_0.85fr]">
-                    <div className="space-y-4">
-                      <Badge tone="accent">Escola & Universidade · Portugal</Badge>
-                      <h1 className="font-display text-3xl font-extrabold leading-[1.08] tracking-tight text-fg sm:text-4xl">
+              <div className="space-y-3.5 sm:space-y-5">
+                <div className="relative overflow-hidden rounded-[24px] border border-line bg-surface p-4 shadow-card sm:p-7">
+                  <div className="grid items-center gap-4 sm:grid-cols-[1.15fr_0.85fr] sm:gap-6">
+                    <div className="space-y-2.5 sm:space-y-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <StickerBadge tone="butter" tilt={-3}>Escola &amp; Universidade</StickerBadge>
+                        <StickerBadge tone="mint" tilt={2}>Sem stress</StickerBadge>
+                      </div>
+                      <h1 className="font-display text-[26px] font-extrabold leading-[1.06] tracking-tight text-fg sm:text-4xl">
                         Estuda com <em className="font-editorial text-accent">calma</em>, avança com clareza.
                       </h1>
-                      <p className="text-sm leading-relaxed text-muted sm:text-base">
-                        A Unipedia reúne cadeiras ou disciplinas, prazos de avaliações, sessões diárias e um tutor focado no teu programa.
+                      <p className="text-xs leading-relaxed text-muted sm:text-base">
+                        Junta cadeiras, provas, blocos diários e apontamentos num caderno pensado para estudantes em Portugal.
                       </p>
 
-                      <ul className="grid gap-2 pt-1 text-xs font-medium text-fg sm:grid-cols-2">
-                        <li className="flex items-center gap-2 rounded-xl bg-surface-2 px-3 py-2">
-                          <CalendarDays size={15} className="shrink-0 text-accent" />
+                      <div className="flex flex-wrap gap-2 pt-0.5">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#C9DC9F]/70 px-3 py-1 text-xs font-semibold text-[#141312]">
+                          <CalendarDays size={13} className="shrink-0" />
                           Plano semanal realista
-                        </li>
-                        <li className="flex items-center gap-2 rounded-xl bg-surface-2 px-3 py-2">
-                          <BookOpen size={15} className="shrink-0 text-ok" />
-                          Secundário & Ensino Superior
-                        </li>
-                      </ul>
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#C4E0FD]/75 px-3 py-1 text-xs font-semibold text-[#141312]">
+                          <BookOpen size={13} className="shrink-0" />
+                          Secundário &amp; Superior
+                        </span>
+                      </div>
                     </div>
 
-                    <div className="flex items-center justify-center rounded-2xl bg-surface-2/70 p-4">
-                      <OnboardingSceneArt scene="welcome" className="h-44 w-full max-w-[230px]" />
+                    <div className="relative flex items-center justify-center rounded-[20px] bg-[#FAF4E4] p-3 dark:bg-surface-2">
+                      <OnboardingSceneArt scene="welcome" className="h-32 w-full max-w-[210px] sm:h-44 sm:max-w-[240px]" />
                     </div>
                   </div>
                 </div>
 
                 {/* Confirmação obrigatória RGPD & Idade mínima em Portugal (Lei n.º 58/2019, Art. 16.º) */}
-                <div className="rounded-2xl border border-line bg-surface p-4 shadow-sm">
+                <div className="rounded-[22px] border border-line bg-surface p-4 shadow-card">
                   <label className="flex cursor-pointer items-start gap-3">
                     <input
                       type="checkbox"
@@ -576,14 +581,14 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                         setAgeConfirmed(e.target.checked);
                         void hapticTap();
                       }}
-                      className="mt-1 h-4 w-4 shrink-0 rounded border-line text-accent focus:ring-accent"
+                      className="mt-1 h-5 w-5 shrink-0 rounded border-line accent-accent"
                     />
                     <span className="text-xs leading-relaxed text-fg sm:text-sm">
-                      Confirmo que tenho pelo menos <strong>{LEGAL_INFO.minimumAgePT} anos</strong> (nos termos do RGPD e da Lei n.º 58/2019) e aceito a{' '}
+                      Confirmo que tenho pelo menos <strong>{LEGAL_INFO.minimumAgePT} anos</strong> (ou autorização do encarregado de educação) e aceito a{' '}
                       <button
                         type="button"
                         onClick={() => setLegalPreview('privacy')}
-                        className="font-semibold text-accent underline underline-offset-2"
+                        className="inline-link font-semibold text-accent underline underline-offset-2"
                       >
                         Política de Privacidade
                       </button>{' '}
@@ -591,7 +596,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                       <button
                         type="button"
                         onClick={() => setLegalPreview('terms')}
-                        className="font-semibold text-accent underline underline-offset-2"
+                        className="inline-link font-semibold text-accent underline underline-offset-2"
                       >
                         Termos de Utilização
                       </button>
@@ -599,11 +604,25 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                     </span>
                   </label>
                   {!ageConfirmed && (
-                    <p className="mt-2 flex items-center gap-1.5 text-xs text-muted">
-                      <AlertCircle size={13} className="shrink-0 text-warn" />
-                      Obrigatório confirmar antes de criar o teu plano ou carregar o modo de demonstração.
+                    <p className="mt-2.5 flex items-center gap-1.5 text-xs text-muted">
+                      <AlertCircle size={14} className="shrink-0 text-coral" />
+                      Marca esta caixa para configurar o teu caderno ou entrar na tua conta.
                     </p>
                   )}
+                </div>
+
+                {/* Entrada direta para quem já tem conta na cloud */}
+                <div className="flex items-center justify-between gap-3 rounded-[20px] border border-line bg-surface-2/70 px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-fg">Já tens conta Unipedia?</p>
+                    <p className="text-xs text-muted">Recupera as tuas cadeiras e notas da nuvem.</p>
+                  </div>
+                  <Link
+                    to="/entrar"
+                    className="inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full bg-surface px-4 text-xs font-bold text-fg shadow-card transition hover:bg-surface-2"
+                  >
+                    <LogIn size={14} /> Entrar
+                  </Link>
                 </div>
               </div>
             )}
@@ -731,7 +750,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                     <Input
                       value={userName}
                       onChange={(e) => setUserName(e.target.value)}
-                      placeholder="Ex: Pedro Silva"
+                      placeholder="Ex: Mariana Costa"
                     />
                   </Field>
                   <Field label={isSecondarySchool ? 'Ano de matrícula' : 'Ano de entrada'}>
@@ -1116,42 +1135,44 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
           </motion.div>
       </main>
 
-      {/* Rodapé sticky seguro sobre o teclado e gestos do sistema */}
-      <footer className="sticky bottom-0 z-10 border-t border-line bg-surface/95 px-4 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:px-6 sm:pb-4">
-        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-2">
-          {activeStepId === 'welcome' ? (
-            <>
-              <Button
-                variant="secondary"
-                disabled={!ageConfirmed}
-                onClick={handleStartDemo}
-              >
-                <Sparkles size={15} /> Modo Demo
-              </Button>
-              <Button
-                variant="primary"
-                disabled={!ageConfirmed}
-                onClick={() => void handleGoNext()}
-              >
-                Começar configuração <ChevronRight size={16} />
-              </Button>
-            </>
+      {/* Rodapé com CTA morfável (vídeo Pinterest: círculo -> cápsula "Começar") */}
+      <footer className="sticky bottom-0 z-10 border-t border-line bg-bg/92 px-4 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:px-6 sm:pb-4">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
+          {stepIndex > 0 ? (
+            <Button variant="ghost" onClick={() => void handleGoPrev()}>
+              <ChevronLeft size={16} /> Anterior
+            </Button>
           ) : (
-            <>
-              <Button variant="ghost" onClick={() => void handleGoPrev()}>
-                <ChevronLeft size={16} /> Anterior
-              </Button>
+            <span className="text-xs font-medium text-muted">
+              Pronto em menos de 1 minuto
+            </span>
+          )}
 
-              {activeStepId !== 'rhythm' ? (
-                <Button variant="primary" onClick={() => void handleGoNext()}>
-                  Seguinte <ChevronRight size={16} />
-                </Button>
-              ) : (
-                <Button variant="primary" onClick={handleFinish}>
-                  <ShieldCheck size={16} /> Concluir e abrir o meu dia
-                </Button>
-              )}
-            </>
+          {activeStepId !== 'rhythm' ? (
+            <motion.button
+              type="button"
+              layoutId="onboarding-cta"
+              transition={UNIPEDIA_SPRING}
+              disabled={activeStepId === 'welcome' && !ageConfirmed}
+              aria-label={activeStepId === 'welcome' ? 'Avançar configuração' : 'Passo seguinte'}
+              onClick={() => void handleGoNext()}
+              whileTap={{ scale: 0.94 }}
+              className="flex size-12 items-center justify-center rounded-full bg-ink-cta text-ink-cta-fg shadow-card transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ChevronRight size={20} aria-hidden="true" />
+            </motion.button>
+          ) : (
+            <motion.button
+              type="button"
+              layoutId="onboarding-cta"
+              transition={UNIPEDIA_SPRING}
+              onClick={handleFinish}
+              whileTap={{ scale: 0.96 }}
+              className="inline-flex min-h-[48px] items-center gap-2 rounded-full bg-ink-cta px-6 text-sm font-bold text-ink-cta-fg shadow-card transition-opacity hover:opacity-90"
+            >
+              <span>Começar</span>
+              <ArrowRight size={17} aria-hidden="true" />
+            </motion.button>
           )}
         </div>
       </footer>
