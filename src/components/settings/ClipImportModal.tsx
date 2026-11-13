@@ -366,20 +366,20 @@ export default function ClipImportModal({ onClose }: { onClose: () => void }) {
   }
 
   const TABS: [Tab, string][] = [
-    ['clip', 'Horário do CLIP'],
     ['ics', 'Ficheiro .ics'],
+    ['clip', 'Colar página / HTML'],
     ['text', 'Texto'],
   ];
 
   return (
-    <Modal open onClose={onClose} title="Importar do CLIP" footer={footer}>
+    <Modal open onClose={onClose} title="Importar horário" footer={footer}>
       {done && (
         <div className="space-y-2">
           <p className="text-sm font-medium text-ok">Importação concluída.</p>
           <p className="text-sm text-muted">
             {done.classes} {done.classes === 1 ? 'aula' : 'aulas'}, {done.assessments}{' '}
             {done.assessments === 1 ? 'avaliação' : 'avaliações'} e {done.events}{' '}
-            {done.events === 1 ? 'evento' : 'eventos'} importados do CLIP.
+            {done.events === 1 ? 'evento' : 'eventos'} importados.
           </p>
         </div>
       )}
@@ -406,7 +406,7 @@ export default function ClipImportModal({ onClose }: { onClose: () => void }) {
           {tab === 'clip' && (
             <div className="space-y-4">
               <ol className="list-decimal space-y-1.5 pl-5 text-sm text-muted marker:text-fg">
-                <li>Abre o teu <b className="font-medium text-fg">Horário</b> no CLIP.</li>
+                <li>Abre o <b className="font-medium text-fg">Horário</b> no portal da tua escola ou faculdade.</li>
                 <li>Seleciona tudo (<kbd className={kbd}>Ctrl</kbd>/<kbd className={kbd}>Cmd</kbd> + <kbd className={kbd}>A</kbd>) e copia (<kbd className={kbd}>Ctrl</kbd>/<kbd className={kbd}>Cmd</kbd> + <kbd className={kbd}>C</kbd>).</li>
                 <li>Cola aqui (<kbd className={kbd}>Ctrl</kbd>/<kbd className={kbd}>Cmd</kbd> + <kbd className={kbd}>V</kbd>).</li>
               </ol>
@@ -415,7 +415,7 @@ export default function ClipImportModal({ onClose }: { onClose: () => void }) {
                 tabIndex={0}
                 role="textbox"
                 aria-multiline="true"
-                aria-label="Zona para colar o horário do CLIP"
+                aria-label="Zona para colar o horário"
                 onPaste={onPaste}
                 className="grid min-h-40 cursor-text place-items-center rounded-2xl border border-dashed border-line bg-surface-2 px-4 py-10 text-center text-sm font-medium text-muted transition hover:border-accent focus:border-accent focus:outline-none"
               >
@@ -445,7 +445,7 @@ export default function ClipImportModal({ onClose }: { onClose: () => void }) {
           {tab === 'ics' && (
             <div className="space-y-3">
               <p className="text-sm text-muted">
-                Exporta o calendário do CLIP como ficheiro .ics e escolhe-o aqui. Aulas que se repetem passam a horário; o resto vira avaliações ou eventos.
+                Exporta o teu calendário académico em formato .ics e carrega-o aqui. Aulas recorrentes entram no horário e datas de provas viram avaliações.
               </p>
               <label className={cx(
                 'flex cursor-pointer flex-col items-center gap-2 rounded-2xl border border-dashed border-line px-4 py-8 text-center text-sm text-muted transition hover:border-accent hover:text-fg',

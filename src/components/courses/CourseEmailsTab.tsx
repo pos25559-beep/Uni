@@ -95,7 +95,7 @@ export default function CourseEmailsTab({ course }: Props) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Mail size={18} className="text-muted" />
-          <h2 className="text-sm font-semibold">Avisos e Correio da Faculdade (@campus.fct.unl.pt)</h2>
+          <h2 className="text-sm font-semibold">Avisos e Correio Académico</h2>
           {connected && !needsPermission && (
             <div className="flex items-center gap-2">
               <Badge tone="accent">{courseEmails.length} mensagens</Badge>
@@ -223,7 +223,7 @@ export default function CourseEmailsTab({ course }: Props) {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="truncate text-xs font-semibold text-fg">{em.fromName}</span>
-                    {em.isClipNotice && <Badge tone="accent">Aviso CLIP</Badge>}
+                    {em.isClipNotice && <Badge tone="accent">Aviso académico</Badge>}
                     {em.unread && <span className="size-2 rounded-full bg-accent" />}
                   </div>
 

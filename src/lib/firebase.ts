@@ -32,7 +32,7 @@ export const app = !getApps().some((a) => a.name === '[DEFAULT]')
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
-// App secundária independente para a Conta Académica da Faculdade (@campus.fct.unl.pt)
+// App secundária independente para a Conta Académica institucional
 // Permite que o estudante mantenha a conta pessoal no Firebase/Drive e conecte a conta FCT para o Gmail dos professores
 export const academicApp = !getApps().some((a) => a.name === 'academic')
   ? initializeApp(firebaseConfig, 'academic')
@@ -41,7 +41,7 @@ export const academicAuth = getAuth(academicApp);
 
 // In-memory Google OAuth token cache for Google APIs (Drive, Calendar, Personal)
 let cachedGoogleToken: { token: string; expiresAt: number } | null = null;
-// Cache separado para a conta académica da faculdade (@campus.fct.unl.pt)
+// Cache separado para a conta académica institucional
 let cachedAcademicToken: { token: string; expiresAt: number; email?: string } | null = null;
 
 export function getCachedGoogleAccessToken(): string | null {
@@ -84,6 +84,10 @@ export function getAcademicGoogleAccessToken(): string | null {
 }
 
 export function getAcademicGoogleEmail(): string | null {
+  const token = getAcademicGoogleAccessToken();
+  if (!token && !auth.currentUser) {
+    return null;
+  }
   return (
     cachedAcademicToken?.email ||
     sessionStorage.getItem('campus_academic_google_email') ||
@@ -115,22 +119,24 @@ academicGoogleProvider.addScope('https://www.googleapis.com/auth/gmail.readonly'
 academicGoogleProvider.addScope('https://www.googleapis.com/auth/drive.readonly');
 academicGoogleProvider.setCustomParameters({
   prompt: 'select_account',
-  login_hint: '@campus.fct.unl.pt',
 });
 
-// Captura resultado de redirect OAuth quando regressa à app (mobile/PWA/Capacitor)
-getRedirectResult(auth)
-  .then((result) => {
-    if (!result) return;
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    if (credential?.accessToken) {
-      setGoogleAccessToken(credential.accessToken);
-      if (result.user.email?.toLowerCase().endsWith('@campus.fct.unl.pt')) {
-        setAcademicGoogleToken(credential.accessToken, result.user.email);
+// Captura resultado de redirect OAuth quando regressa à app (apenas no browser quando há callback)
+if (
+  typeof window !== 'undefined' &&
+  !Capacitor.isNativePlatform() &&
+  (window.location.search.includes('state=') || window.location.hash.includes('access_token='))
+) {
+  getRedirectResult(auth)
+    .then((result) => {
+      if (!result) return;
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (credential?.accessToken && result.user.email) {
+        setGoogleAccessToken(credential.accessToken);
       }
-    }
-  })
-  .catch(() => {});
+    })
+    .catch(() => {});
+}
 
 /** Inicia sessão na conta pessoal principal (Drive pessoal, nuvem, Gemini). */
 export async function loginWithGoogle(opts?: { forceConsent?: boolean; loginHint?: string }): Promise<User> {
@@ -152,10 +158,6 @@ export async function loginWithGoogle(opts?: { forceConsent?: boolean; loginHint
   const credential = GoogleAuthProvider.credentialFromResult(result);
   if (credential?.accessToken) {
     setGoogleAccessToken(credential.accessToken);
-    // Se o utilizador autenticado for explicitamente da FCT, atualiza também a referência académica
-    if (result.user.email?.toLowerCase().endsWith('@campus.fct.unl.pt')) {
-      setAcademicGoogleToken(credential.accessToken, result.user.email);
-    }
   }
   return result.user;
 }
@@ -177,14 +179,13 @@ export async function registerWithEmail(name: string, email: string, password: s
 }
 
 /**
- * Inicia sessão com a conta académica da faculdade (@campus.fct.unl.pt)
+ * Inicia sessão com a conta académica institucional
  * na instância secundária independente (academicAuth).
  * Desta forma, a conta pessoal principal NÃO é alterada nem desconectada!
  */
 export async function loginAcademicGoogle(opts?: { forceConsent?: boolean }): Promise<{ email: string; token: string }> {
   academicGoogleProvider.setCustomParameters({
     prompt: opts?.forceConsent ? 'consent select_account' : 'select_account',
-    login_hint: '@campus.fct.unl.pt',
   });
   if (Capacitor.isNativePlatform()) {
     await signInWithRedirect(academicAuth, academicGoogleProvider);
@@ -212,6 +213,7 @@ export async function logoutFirebase(): Promise<void> {
   cachedGoogleToken = null;
   sessionStorage.removeItem('campus_google_access_token');
   sessionStorage.removeItem('campus_google_token_exp');
+  logoutAcademicGoogle();
   await signOut(auth).catch(() => {});
 }
 

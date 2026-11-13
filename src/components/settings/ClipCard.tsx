@@ -16,33 +16,31 @@ export default function ClipCard() {
     <>
       <IntegrationCard
         icon={<GraduationCap size={18} />}
-        title="CLIP"
-        description="Horário, avaliações e eventos da universidade."
+        title="Importar horário e pauta"
+        description="Calendário .ics ou página de horário do portal da tua escola."
         status={status}
       >
         <p className="text-sm text-muted">
-          O CLIP não tem API pública nem exportação de calendário, por isso o horário importa-se copiando a página Horário.
-          Os exames só aparecem no CLIP quando a faculdade os publica (página «Exames»); até lá, adiciona-os à mão em cada cadeira.
+          Importa rapidamente o teu ficheiro de calendário (.ics) ou cola a tabela de horários do portal da tua faculdade para preencher aulas e exames.
         </p>
 
         <div className="flex flex-wrap items-center gap-3">
           <Button variant="primary" onClick={() => setOpen(true)}>
             <Upload size={16} />
-            Importar do CLIP
+            Importar horário
           </Button>
           {status.connected && (
             <span className="text-xs text-muted">
-              {classCount} aulas · {assessmentCount} avaliações · {eventCount} eventos vindos do CLIP
+              {classCount} aulas · {assessmentCount} avaliações · {eventCount} eventos importados
             </span>
           )}
         </div>
 
         <HowTo
           steps={[
-            <>Abre o teu <b className="text-fg">Horário</b> no CLIP e seleciona tudo (Ctrl/Cmd+A), depois copia (Ctrl/Cmd+C).</>,
-            <>Abre «Importar do CLIP» e cola na zona indicada (Ctrl/Cmd+V).</>,
-            <>Revê a pré-visualização: confirma a cadeira de cada aula e desmarca o que não queres.</>,
-            <>Importa. A nova importação substitui a anterior vinda do CLIP.</>,
+            <>Exporta o teu horário em formato <b className="text-fg">.ics</b> ou copia a tabela no portal académico.</>,
+            <>Carrega em «Importar horário» e escolhe o ficheiro ou cola o texto.</>,
+            <>Confirma a cadeira correspondente a cada aula e importa sem perder o resto dos teus dados.</>,
           ]}
         />
       </IntegrationCard>

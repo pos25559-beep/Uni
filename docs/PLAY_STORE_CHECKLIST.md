@@ -34,7 +34,7 @@ A declarar no Google Play Console:
 
 ## 4. Classificação Etária & IA Generativa (EU AI Act Art. 50)
 - **Idade mínima em Portugal**: 13 anos confirmados explicitamente no Passo 1 do Onboarding (Lei n.º 58/2019, Art. 16.º). Caso o público-alvo da ficha seja **Todo o Público / 13+**, garantir que a ficha Play Console indica *Público: maiores de 13 anos* (não marcar como "app infantil" a menos que haja fluxo parental verificável).
-- **Transparência IA**: Toda a resposta da Gemini API inclui a indicação *"Gerado por IA"*, requer consentimento explícito (`aiConsent`) e chave pessoal (BYOK). Sem nenhuma chave hardcoded no binário APK/AAB.
+- **Transparência IA**: Toda a resposta da Gemini API (`gemini-4-hydrogen` / `gemini-2.5-flash`) inclui a indicação *"Sugestão do Uni · Valida sempre com a sebenta"*, requer consentimento explícito (`aiConsent`) e atualmente usa chave pessoal (BYOK), sem nenhuma chave hardcoded no binário APK/AAB.
 
 ## 5. Materiais Visuais da Ficha da Loja
 Pasta de rascunhos/exports preparada em `docs/play-store-assets/`:

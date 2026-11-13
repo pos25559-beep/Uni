@@ -17,6 +17,7 @@ import Materials from './pages/Materials';
 import Planner from './pages/Planner';
 import Progress from './pages/Progress';
 import SettingsPage from './pages/Settings';
+import WelcomePage from './pages/Welcome';
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
         <Routes>
           <Route element={<AppShell />}>
             <Route index element={<Dashboard />} />
+            <Route path="bem-vindo" element={<WelcomePage />} />
             <Route path="entrar" element={<LoginPage />} />
             <Route path="cadeiras" element={<Courses />} />
             <Route path="cadeiras/:id" element={<CourseDetail />} />

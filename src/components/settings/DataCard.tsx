@@ -85,7 +85,7 @@ export default function DataCard() {
 
         <div className="space-y-3">
           <div>
-            <h3 className="text-sm font-semibold text-fg">Reposição & Privacidade (RGPD)</h3>
+            <h3 className="text-sm font-semibold text-fg">Reposição e limpeza</h3>
             <p className="mt-0.5 text-xs text-muted">
               Podes limpar o dispositivo ou eliminar definitivamente a tua conta na nuvem.
             </p>

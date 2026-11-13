@@ -1,3 +1,4 @@
+import { Browser } from '@capacitor/browser';
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { Keyboard } from '@capacitor/keyboard';
@@ -101,4 +102,19 @@ export async function hapticSuccess(): Promise<void> {
   } catch {
     // Dispositivo sem motor háptico.
   }
+}
+
+/** Abre URL dentro do navegador integrado da app (Android Custom Tabs / Safari View). */
+export async function openInAppBrowser(url: string): Promise<void> {
+  const clean = url.trim();
+  if (!clean) return;
+  if (Capacitor.isNativePlatform()) {
+    try {
+      await Browser.open({ url: clean, presentationStyle: 'popover' });
+      return;
+    } catch {
+      // Fallback caso o plugin falhe.
+    }
+  }
+  window.open(clean, '_blank', 'noopener,noreferrer');
 }

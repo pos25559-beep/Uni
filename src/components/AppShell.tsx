@@ -15,12 +15,13 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { auth, onAuthStateChanged, type User } from '../lib/firebase';
 import { hapticTap, resolveIsDark, syncNativeTheme } from '../lib/nativeBridge';
 import { useStore } from '../store/useStore';
 import AuthStatus from './auth/AuthStatus';
 import { UnipediaLogoMark } from './brand/UnipediaMarks';
-import { UNIPEDIA_SPRING } from './motion/Primitives';
+import { UNIPEDIA_BOUNCE_SPRING, UNIPEDIA_SPRING } from './motion/Primitives';
 import OnboardingModal from './onboarding/OnboardingModal';
 import { ToastViewport, cx } from './ui';
 
@@ -49,25 +50,49 @@ const mobileMoreRoutes = [
   { to: '/definicoes', label: 'Definições', hint: 'Conta, tema, IA e dados', icon: Settings },
 ];
 
-const BYPASS_ONBOARDING_PATHS = ['/entrar', '/privacidade', '/termos', '/eliminar-conta'];
+const BYPASS_ONBOARDING_PATHS = ['/bem-vindo', '/entrar', '/privacidade', '/termos', '/eliminar-conta'];
 
 export default function AppShell() {
   const theme = useStore((s) => s.settings.theme);
   const semesterName = useStore((s) => s.settings.semesterName);
+  const guestMode = Boolean(useStore((s) => s.settings.guestMode));
+  const hasSeenWelcome = Boolean(useStore((s) => s.settings.hasSeenWelcome));
   const updateSettings = useStore((s) => s.updateSettings);
   const academicProfile = useStore((s) => s.academicProfile);
   const saveAcademicProfile = useStore((s) => s.saveAcademicProfile);
 
   const location = useLocation();
+  const [firebaseUser, setFirebaseUser] = useState<User | null>(() => auth.currentUser);
+  const [authReady, setAuthReady] = useState<boolean>(() => Boolean(auth.currentUser));
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
 
   const isBypassRoute = BYPASS_ONBOARDING_PATHS.some((p) => location.pathname.startsWith(p));
+  const needsLoginGate = !isBypassRoute && !guestMode && !firebaseUser;
   const onboardingOpen =
-    !isBypassRoute && !onboardingDismissed && !academicProfile?.onboardingCompleted;
+    !isBypassRoute && !needsLoginGate && !onboardingDismissed && !academicProfile?.onboardingCompleted;
 
   const isMoreRouteActive = mobileMoreRoutes.some((r) => location.pathname.startsWith(r.to));
   const isDarkNow = resolveIsDark(theme);
+
+  useEffect(() => {
+    let active = true;
+    const fallbackTimer = window.setTimeout(() => {
+      if (active) setAuthReady(true);
+    }, 350);
+
+    const unsub = onAuthStateChanged(auth, (u) => {
+      if (!active) return;
+      window.clearTimeout(fallbackTimer);
+      setFirebaseUser(u);
+      setAuthReady(true);
+    });
+    return () => {
+      active = false;
+      window.clearTimeout(fallbackTimer);
+      unsub();
+    };
+  }, []);
 
   useEffect(() => {
     void syncNativeTheme(theme);
@@ -76,6 +101,23 @@ export default function AppShell() {
   useEffect(() => {
     setMoreOpen(false);
   }, [location.pathname]);
+
+  if (!isBypassRoute && !guestMode && !authReady) {
+    return (
+      <div className="grid min-h-dvh place-items-center bg-bg text-fg">
+        <motion.div
+          animate={{ scale: [0.95, 1.05, 0.95] }}
+          transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut' }}
+        >
+          <UnipediaLogoMark size={48} />
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (needsLoginGate && authReady) {
+    return <Navigate to={hasSeenWelcome ? '/entrar' : '/bem-vindo'} replace />;
+  }
 
   const toggleTheme = () => {
     void hapticTap();
@@ -155,7 +197,13 @@ export default function AppShell() {
             : 'pb-[calc(6.25rem+env(safe-area-inset-bottom)+var(--keyboard-height,0px))]',
         )}
       >
-        <div className="mx-auto w-full max-w-5xl px-4 py-4 md:px-8 md:py-8">
+        <div
+          className={cx(
+            location.pathname.startsWith('/bem-vindo')
+              ? 'w-full'
+              : 'mx-auto w-full max-w-5xl px-4 py-4 md:px-8 md:py-8',
+          )}
+        >
           <Outlet />
         </div>
       </main>
@@ -186,11 +234,17 @@ export default function AppShell() {
                   {isActive && (
                     <motion.span
                       layoutId="mobile-nav-pill"
-                      transition={UNIPEDIA_SPRING}
+                      transition={UNIPEDIA_BOUNCE_SPRING}
                       className="absolute inset-0 -z-0 rounded-[22px] bg-[#FAF8F2]"
                     />
                   )}
-                  <Icon size={18} className="relative z-10" aria-hidden="true" />
+                  <motion.span
+                    animate={isActive ? { y: -1.5, scale: 1.12 } : { y: 0, scale: 1 }}
+                    transition={UNIPEDIA_BOUNCE_SPRING}
+                    className="relative z-10 inline-flex"
+                  >
+                    <Icon size={18} aria-hidden="true" />
+                  </motion.span>
                   <span className="relative z-10 leading-none">{label}</span>
                 </>
               )}

@@ -3,7 +3,6 @@
 
 import {
   auth,
-  academicAuth,
   getAcademicGoogleAccessToken,
   getAcademicGoogleEmail,
   getCachedGoogleAccessToken,
@@ -65,11 +64,11 @@ export const googleService = {
 
   getAcademicAccountStatus(): AcademicAccountStatus {
     const token = getAcademicGoogleAccessToken();
-    const email = getAcademicGoogleEmail() ?? academicAuth.currentUser?.email ?? null;
+    const email = getAcademicGoogleEmail();
     return {
-      connected: Boolean(token || email),
+      connected: Boolean(token),
       hasToken: Boolean(token),
-      email,
+      email: token || auth.currentUser ? email : null,
     };
   },
 

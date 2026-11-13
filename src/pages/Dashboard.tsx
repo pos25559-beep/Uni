@@ -1,3 +1,4 @@
+import { AnimatePresence, motion } from 'motion/react';
 import { useMemo, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -12,18 +13,27 @@ import {
   Clock,
   GraduationCap,
   MessageSquare,
-  Plus,
   Settings as SettingsIcon,
   Sparkles,
+  X,
 } from 'lucide-react';
 import WeeklyTutorModal from '../components/assistant/WeeklyTutorModal';
-import { NotebookBuddy } from '../components/brand/UnipediaMarks';
+import { UniBuddy } from '../components/brand/UnipediaMarks';
 import AcademicGmailWidget from '../components/home/AcademicGmailWidget';
+import {
+  AgendaRibbonCard,
+  HighlightShapesGrid,
+  NotebookFocusSheet,
+  StickyTasksPad,
+} from '../components/home/PlayfulWidgets';
 import {
   AnimatedPage,
   BentoMetricTile,
   FolderCardDeck,
+  StaggerContainer,
+  StaggerItem,
   StickerBadge,
+  UNIPEDIA_BOUNCE_SPRING,
   celebrateStationery,
 } from '../components/motion/Primitives';
 import {
@@ -31,8 +41,6 @@ import {
   Button,
   Card,
   CourseChip,
-  EmptyState,
-  Input,
   Progress,
   Ring,
   SegmentedControl,
@@ -42,6 +50,7 @@ import {
 import { courseColors, kindLabel } from '../lib/colors';
 import { hapticSuccess, hapticTap } from '../lib/nativeBridge';
 import { analyzeTestMode } from '../lib/planner';
+import { resolveUniAccessory } from '../lib/uniAccessories';
 import {
   daysUntil,
   fmtGrade,
@@ -119,12 +128,19 @@ export default function Dashboard() {
   const tasks = useStore((s) => s.tasks);
   const events = useStore((s) => s.events);
   const settings = useStore((s) => s.settings);
+  const academicProfile = useStore((s) => s.academicProfile);
   const patch = useStore((s) => s.patch);
   const upsert = useStore((s) => s.upsert);
+
+  const uniAccessory = useMemo(
+    () => resolveUniAccessory(settings.uniAccessory, academicProfile?.degreeName, courses[0]?.name),
+    [settings.uniAccessory, academicProfile?.degreeName, courses],
+  );
 
   const [scope, setScope] = useState<'today' | 'week'>('today');
   const [draft, setDraft] = useState('');
   const [tutorOpen, setTutorOpen] = useState(false);
+  const [uniBubbleOpen, setUniBubbleOpen] = useState(false);
 
   const now = new Date();
   const today = todayStr();
@@ -254,14 +270,28 @@ export default function Dashboard() {
   const firstName = settings.userName.trim().split(/\s+/)[0] ?? '';
   const dateLabel = capitalize(format(now, "EEEE, d 'de' MMM", { locale: pt }));
   const doneSessionsCount = todaySessions.filter((s) => s.done).length;
+  const uniTip = next
+    ? `Tens ${next.title}${nextCourse ? ` (${nextCourse.shortName})` : ''} ${dayWord(daysUntil(next.date))}. Queres que prepare um plano ou resumo rápido?`
+    : todaySessions.length > 0
+      ? `Faltam ${todaySessions.length - doneSessionsCount} sessões para fechares a meta de hoje. Vamos a isso!`
+      : 'Sem sessões marcadas para hoje — adiciona as tuas cadeiras ou conversa comigo no Tutor!';
 
   return (
     <AnimatedPage className="space-y-5">
-      {/* Cabeçalho editorial com saudação e máximo 2 ações circulares */}
+      {/* Cabeçalho editorial com o Uni interativo ("Clippy") e máximo 2 ações circulares */}
       <header className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-pastel-sage/80 ring-1 ring-line/50 dark:bg-surface-2">
-            <NotebookBuddy mood={streak >= 3 || progressToday >= 1 ? 'celebrate' : 'happy'} size={34} />
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-pastel-sage/85 ring-1 ring-line/50 dark:bg-surface-2">
+            <UniBuddy
+              mood={streak >= 3 || progressToday >= 1 ? 'celebrate' : 'happy'}
+              accessory={uniAccessory}
+              size={38}
+              onClick={() => {
+                void hapticTap();
+                setUniBubbleOpen((v) => !v);
+              }}
+              ariaLabel="Falar com o Uni"
+            />
           </div>
           <div className="min-w-0">
             <p className="truncate text-xs font-medium text-muted">
@@ -287,8 +317,8 @@ export default function Dashboard() {
             variant="secondary"
             iconOnly
             onClick={() => setTutorOpen(true)}
-            aria-label="Abrir tutor semanal"
-            title="Tutor semanal"
+            aria-label="Abrir check-in com o Uni"
+            title="Check-in semanal"
           >
             <MessageSquare size={18} />
           </Button>
@@ -304,7 +334,36 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* Switcher compacto estilo "Practice | Lessons" */}
+      {/* Balão interativo do Uni ("Clippy" da Unipedia) */}
+      <AnimatePresence>
+        {uniBubbleOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.96 }}
+            transition={UNIPEDIA_BOUNCE_SPRING}
+            className="flex items-center justify-between gap-2.5 rounded-[22px] border border-line bg-surface p-3.5 shadow-card"
+          >
+            <div className="min-w-0 flex-1 space-y-0.5">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-accent">Uni · O teu tutor</p>
+              <p className="text-xs leading-relaxed text-fg">{uniTip}</p>
+            </div>
+            <Button size="sm" variant="primary" onClick={() => navigate('/assistente')}>
+              Falar com o Uni
+            </Button>
+            <button
+              type="button"
+              onClick={() => setUniBubbleOpen(false)}
+              aria-label="Fechar sugestão do Uni"
+              className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted transition hover:bg-surface-2 hover:text-fg"
+            >
+              <X size={15} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Switcher compacto com transição spring */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <SegmentedControl
           layoutId="dashboard-scope"
@@ -322,7 +381,9 @@ export default function Dashboard() {
         )}
       </div>
 
+      <StaggerContainer className="space-y-5">
       {/* Cartão Hero estilo papelaria com métricas inline */}
+      <StaggerItem>
       <section
         data-tour="bento-overview"
         className="rounded-[26px] bg-pastel-butter/75 p-5 text-[#141312] shadow-card dark:bg-surface-2 dark:text-[#FAF6EC]"
@@ -384,12 +445,14 @@ export default function Dashboard() {
           />
         </div>
       </section>
+      </StaggerItem>
 
       {/* Alertas contextuais compactos */}
       {testMode.mode !== 'normal' && (
+        <StaggerItem>
         <Link
           to="/plano"
-          className="rise flex items-center justify-between gap-3 rounded-[20px] bg-pastel-peach/80 px-4 py-3 text-[#141312] transition hover:opacity-95 dark:bg-surface-2 dark:text-[#FAF6EC]"
+          className="flex items-center justify-between gap-3 rounded-[20px] bg-pastel-peach/80 px-4 py-3 text-[#141312] transition hover:opacity-95 dark:bg-surface-2 dark:text-[#FAF6EC]"
         >
           <div className="flex min-w-0 items-center gap-3">
             <Sparkles size={18} className="shrink-0 text-coral" />
@@ -406,12 +469,14 @@ export default function Dashboard() {
           </div>
           <ArrowRight size={16} className="shrink-0" />
         </Link>
+        </StaggerItem>
       )}
 
       {topAlert && (
+        <StaggerItem>
         <Link
           to="/plano"
-          className="rise flex items-center gap-3 rounded-[20px] border border-warn/40 bg-warn/10 px-4 py-3 transition hover:bg-warn/15"
+          className="flex items-center gap-3 rounded-[20px] border border-warn/40 bg-warn/10 px-4 py-3 transition hover:bg-warn/15"
         >
           <AlertTriangle size={18} className="shrink-0 text-warn" />
           <p className="min-w-0 flex-1 text-sm">
@@ -422,9 +487,11 @@ export default function Dashboard() {
           </p>
           <ArrowRight size={16} className="shrink-0 text-muted" />
         </Link>
+        </StaggerItem>
       )}
 
       {overdue > 0 && (
+        <StaggerItem>
         <Link to="/plano" className="flex items-center gap-2 px-1 text-xs font-medium text-muted hover:text-fg">
           <Clock size={14} className="shrink-0" />
           <span>
@@ -432,9 +499,11 @@ export default function Dashboard() {
           </span>
           <ArrowRight size={12} className="shrink-0" />
         </Link>
+        </StaggerItem>
       )}
 
       {/* Bento 2x1 colorido estilo referência "Ver ->" */}
+      <StaggerItem>
       <div className="grid grid-cols-2 gap-3">
         <BentoMetricTile
           tone="sage"
@@ -455,61 +524,60 @@ export default function Dashboard() {
           onClick={() => navigate(scope === 'week' ? '/progresso' : '/cadeiras')}
         />
       </div>
+      </StaggerItem>
 
-      {/* Conteúdo principal */}
+      {/* Mosaico orgânico de formas pastel ("Daily highlights") */}
+      <StaggerItem>
+        <HighlightShapesGrid
+          focusedLabel={fmtMinutes(weekMinutes)}
+          streakDays={streak}
+          sessionsLabel={`${doneSessionsCount}/${todaySessions.length}`}
+          pendingCount={pendingTasks.length}
+          onOpenProgress={() => navigate('/progresso')}
+          onOpenPlan={() => navigate('/plano')}
+          onFocusTasks={() => {
+            const el = document.getElementById('dashboard-quick-task');
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              el.focus();
+            }
+          }}
+        />
+      </StaggerItem>
+
+      {/* Conteúdo principal em blocos lúdicos de papelaria */}
+      <StaggerItem>
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <div className="min-w-0 space-y-5">
-          <Card
-            title="Foco de hoje"
-            action={
-              <Button variant="secondary" size="sm" onClick={() => navigate('/plano')}>
-                Abrir plano
-              </Button>
-            }
+          <NotebookFocusSheet
+            isEmpty={todaySessions.length === 0}
+            onOpenPlan={() => navigate('/plano')}
+            uniAccessory={uniAccessory}
           >
-            {todaySessions.length === 0 ? (
-              <EmptyState
-                icon={<CalendarDays size={22} />}
-                title="Sem sessões para hoje"
-                hint="Gera um plano no separador Plano para distribuir a matéria."
-                action={
-                  <Button variant="primary" size="sm" onClick={() => navigate('/plano')}>
-                    Ir ao plano
-                  </Button>
-                }
-              />
-            ) : (
-              <ul className="space-y-2">
-                {todaySessions.map((s) => (
-                  <SessionRow
-                    key={s.id}
-                    session={s}
-                    course={courseById.get(s.courseId)}
-                    topic={topicTitle(s)}
-                    onToggle={() => toggleSession(s)}
-                  />
-                ))}
-              </ul>
-            )}
-          </Card>
+            <ul className="space-y-2">
+              {todaySessions.map((s) => (
+                <SessionRow
+                  key={s.id}
+                  session={s}
+                  course={courseById.get(s.courseId)}
+                  topic={topicTitle(s)}
+                  onToggle={() => toggleSession(s)}
+                />
+              ))}
+            </ul>
+          </NotebookFocusSheet>
 
-          <Card
-            title="Tarefas"
-            action={<span className="text-xs font-medium tabular text-muted">{pendingTasks.length} pendentes</span>}
+          <StickyTasksPad
+            pendingCount={pendingTasks.length}
+            draft={draft}
+            onDraftChange={setDraft}
+            onDraftKeyDown={onDraftKey}
+            inputId="dashboard-quick-task"
           >
-            <div className="relative mb-3">
-              <Plus size={16} className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-muted" />
-              <Input
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={onDraftKey}
-                placeholder="Nova tarefa — Enter para adicionar"
-                aria-label="Nova tarefa"
-                className="pl-10"
-              />
-            </div>
             {pendingTasks.length === 0 ? (
-              <EmptyState title="Sem tarefas pendentes" hint="Escreve acima para adicionar uma nota rápida." />
+              <p className="rounded-2xl bg-white/55 px-3 py-4 text-center text-xs opacity-75 dark:bg-black/20">
+                Sem tarefas pendentes — escreve acima para apontar algo rápido.
+              </p>
             ) : (
               <>
                 <ul className="space-y-1">
@@ -524,11 +592,11 @@ export default function Dashboard() {
                   ))}
                 </ul>
                 {pendingTasks.length > 6 && (
-                  <p className="mt-2 px-1 text-xs text-muted">e mais {pendingTasks.length - 6}</p>
+                  <p className="mt-2 px-1 text-xs opacity-75">e mais {pendingTasks.length - 6}</p>
                 )}
               </>
             )}
-          </Card>
+          </StickyTasksPad>
 
           {upcoming.length > 0 && (
             <Card title="Próximas avaliações">
@@ -554,44 +622,36 @@ export default function Dashboard() {
             </div>
           )}
 
-          <Card
-            title="Agenda de hoje"
-            action={<span className="text-xs tabular text-muted">{format(now, 'd MMM', { locale: pt })}</span>}
-          >
-            {agenda.length === 0 ? (
-              <EmptyState
-                icon={<CalendarDays size={22} />}
-                title="Nada agendado para hoje"
-                hint="Dia livre — boa altura para avançar no plano."
-              />
-            ) : (
-              <ol className="space-y-1">
-                {agenda.map((item) => {
-                  const isNow = !item.allDay && nowTime >= item.start && nowTime < item.end;
-                  return (
-                    <li
-                      key={item.key}
-                      className={cx('flex gap-3 rounded-xl px-2 py-2', isNow && 'bg-accent-soft')}
-                    >
-                      <div className="w-12 shrink-0 pt-0.5 text-right text-xs tabular text-muted">
-                        {item.allDay ? 'Dia' : item.start}
-                      </div>
-                      <span className={cx('mt-1.5 size-2.5 shrink-0 rounded-full ring-4 ring-surface', item.dot)} />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{item.title}</p>
-                        <p className="truncate text-xs text-muted">
-                          {[item.allDay ? 'Dia inteiro' : `${item.start}–${item.end}`, item.sub]
-                            .filter(Boolean)
-                            .join(' · ')}
-                        </p>
-                        {isNow && <span className="text-xs font-semibold text-accent">Agora</span>}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ol>
-            )}
-          </Card>
+          <AgendaRibbonCard dateBadge={format(now, 'd MMM', { locale: pt })} isEmpty={agenda.length === 0}>
+            <ol className="space-y-1">
+              {agenda.map((item) => {
+                const isNow = !item.allDay && nowTime >= item.start && nowTime < item.end;
+                return (
+                  <li
+                    key={item.key}
+                    className={cx(
+                      'flex gap-3 rounded-xl px-2 py-2',
+                      isNow && 'bg-white/80 dark:bg-black/25',
+                    )}
+                  >
+                    <div className="w-12 shrink-0 pt-0.5 text-right text-xs tabular opacity-70">
+                      {item.allDay ? 'Dia' : item.start}
+                    </div>
+                    <span className={cx('mt-1.5 size-2.5 shrink-0 rounded-full ring-4 ring-white/80 dark:ring-black/30', item.dot)} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{item.title}</p>
+                      <p className="truncate text-xs opacity-75">
+                        {[item.allDay ? 'Dia inteiro' : `${item.start}–${item.end}`, item.sub]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </p>
+                      {isNow && <span className="text-xs font-semibold text-accent">Agora</span>}
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          </AgendaRibbonCard>
 
           <AcademicGmailWidget />
 
@@ -606,6 +666,8 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+      </StaggerItem>
+      </StaggerContainer>
 
       <WeeklyTutorModal open={tutorOpen} onClose={() => setTutorOpen(false)} />
     </AnimatedPage>

@@ -46,7 +46,7 @@ type TabKey =
   | 'tarefas';
 
 const tabs: { key: TabKey; label: string }[] = [
-  { key: 'guia', label: 'Guia & Regras (CLIP)' },
+  { key: 'guia', label: 'Guia & Regras' },
   { key: 'repositorio', label: 'Repositório & Materiais' },
   { key: 'materia', label: 'Matéria' },
   { key: 'avaliacoes', label: 'Avaliações' },
@@ -103,8 +103,8 @@ export default function CourseDetail() {
   const progress = topicProgress(course);
 
   const links = [
-    { label: 'CLIP Oficial', url: course.clipUrl, icon: GraduationCap },
-    { label: 'Drive LEMc', url: course.sharedDriveUrl || course.driveFolderUrl, icon: HardDrive },
+    { label: 'Portal da cadeira', url: course.clipUrl, icon: GraduationCap },
+    { label: 'Pasta de materiais', url: course.sharedDriveUrl || course.driveFolderUrl, icon: HardDrive },
     { label: 'NotebookLM', url: course.notebookUrl, icon: BookOpen },
   ].filter((l): l is { label: string; url: string; icon: typeof HardDrive } => Boolean(l.url));
 

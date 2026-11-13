@@ -5,6 +5,8 @@ import { useStore } from '../../store/useStore';
 import { computeWeightedAverage } from '../../lib/portugalCurriculum';
 import { fmtMinutes } from '../../lib/selectors';
 import { weekdayShort } from '../../lib/colors';
+import { UNI_ACCESSORIES, UNI_PERSONAS } from '../../lib/uniAccessories';
+import { UniBuddy } from '../brand/UnipediaMarks';
 import OnboardingModal from '../onboarding/OnboardingModal';
 import { startUnipediaGuidedTour } from '../onboarding/TourManager';
 import { Badge, Button, Card, Field, Input, cx } from '../ui';
@@ -205,6 +207,74 @@ export default function ProfileCard() {
               {label}
             </Button>
           ))}
+        </div>
+      </div>
+
+      {/* Visual & Personalidade do Uni */}
+      <div className="mt-4 space-y-3 border-t border-line pt-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <span className="text-xs font-medium text-muted">Estilo do Uni</span>
+            <p className="text-[11px] text-muted">
+              Muda o chapéu ou adereço automaticamente pela cadeira ou fixa o teu preferido.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => updateSettings({ uniAccessory: 'auto' })}
+            className={cx(
+              'min-h-[34px] rounded-full border px-3 text-xs font-semibold transition',
+              (settings.uniAccessory ?? 'auto') === 'auto'
+                ? 'border-accent bg-accent-soft text-accent'
+                : 'border-line bg-surface-2 text-muted hover:text-fg',
+            )}
+          >
+            Automático por cadeira
+          </button>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {UNI_ACCESSORIES.map((acc) => {
+            const active = settings.uniAccessory === acc.id;
+            return (
+              <button
+                key={acc.id}
+                type="button"
+                onClick={() => updateSettings({ uniAccessory: acc.id })}
+                className={cx(
+                  'flex items-center gap-1.5 rounded-2xl border px-2.5 py-1.5 text-xs font-medium transition',
+                  active
+                    ? 'border-accent bg-accent-soft text-accent'
+                    : 'border-line bg-surface-2/60 text-fg hover:bg-surface-2',
+                )}
+              >
+                <UniBuddy mood="happy" accessory={acc.id} size={28} interactive={false} />
+                <span>{acc.shortLabel}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+          <span className="text-xs font-medium text-muted">Personalidade no Tutor</span>
+          <div className="inline-flex flex-wrap gap-1 rounded-full bg-surface-2 p-1">
+            {UNI_PERSONAS.map((p) => {
+              const active = (settings.uniPersona ?? 'amigo') === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => updateSettings({ uniPersona: p.id })}
+                  className={cx(
+                    'min-h-[34px] rounded-full px-3 text-xs font-semibold transition',
+                    active ? 'bg-ink-cta text-ink-cta-fg' : 'text-muted hover:text-fg',
+                  )}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 

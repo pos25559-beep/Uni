@@ -17,7 +17,7 @@ export const KIND_META: Record<CalKind, { label: string; plural: string; icon: L
 export const KIND_ORDER: CalKind[] = ['aula', 'avaliacao', 'estudo', 'evento', 'tarefa'];
 
 export const SOURCE_LABEL: Record<Source, string> = {
-  local: 'Local', clip: 'CLIP', google: 'Google', outlook: 'Outlook',
+  local: 'Local', clip: 'Portal', google: 'Google', outlook: 'Outlook',
 };
 
 /** Classes visuais de um item: cor da cadeira; avaliações com borda forte; tarefas tracejadas. */

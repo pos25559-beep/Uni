@@ -123,8 +123,8 @@ export default function CourseFormModal({ course, onClose }: Props) {
           <Field label="Pasta no Google Drive">
             <Input type="url" value={driveFolderUrl} onChange={(e) => setDriveFolderUrl(e.target.value)} placeholder="https://drive.google.com/…" />
           </Field>
-          <Field label="CLIP">
-            <Input type="url" value={clipUrl} onChange={(e) => setClipUrl(e.target.value)} placeholder="https://clip.…" />
+          <Field label="Portal da cadeira">
+            <Input type="url" value={clipUrl} onChange={(e) => setClipUrl(e.target.value)} placeholder="https://…" />
           </Field>
         </fieldset>
       </form>

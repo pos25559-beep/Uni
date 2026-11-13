@@ -15,10 +15,11 @@ import { ContextPanel } from '../components/assistant/ContextPanel';
 import { Composer } from '../components/assistant/Composer';
 import { Markdown } from '../components/assistant/Markdown';
 import { QuickActions } from '../components/assistant/QuickActions';
+import UniNotebookDrawer from '../components/assistant/UniNotebookDrawer';
 import WeeklyTutorModal from '../components/assistant/WeeklyTutorModal';
-import { NotebookBuddy } from '../components/brand/UnipediaMarks';
+import { UniBuddy } from '../components/brand/UnipediaMarks';
 import { Link, useNavigate } from 'react-router-dom';
-import { ActionSheet, Badge, Button, Modal, PageHeader, cx } from '../components/ui';
+import { ActionSheet, Badge, Button, Modal, PageHeader, PillSelect, cx } from '../components/ui';
 import {
   askGemini,
   buildDocumentContext,
@@ -26,6 +27,7 @@ import {
   SYSTEM_PROMPT,
 } from '../integrations/gemini';
 import type { ChatMessage } from '../integrations/gemini';
+import { courseColors } from '../lib/colors';
 import {
   appendMessage,
   deleteConversation,
@@ -35,6 +37,7 @@ import {
   type Conversation,
 } from '../lib/geminiConversations';
 import { auth, onAuthStateChanged, type User } from '../lib/firebase';
+import { resolveUniAccessory, UNI_PERSONAS } from '../lib/uniAccessories';
 import { newId, useStore } from '../store/useStore';
 
 const MAX_SENT = 20;
@@ -44,7 +47,9 @@ export default function Assistant() {
   const [menuOpen, setMenuOpen] = useState(false);
   const courses = useStore((s) => s.courses);
   const materials = useStore((s) => s.materials);
-  const model = useStore((s) => s.settings.geminiModel) || 'gemini-2.5-flash';
+  const academicProfile = useStore((s) => s.academicProfile);
+  const uniPreference = useStore((s) => s.settings.uniAccessory);
+  const uniPersona = useStore((s) => s.settings.uniPersona ?? 'amigo');
   const aiConsent = useStore((s) => Boolean(s.settings.aiConsent));
   const hasApiKey = useStore((s) => Boolean(s.settings.geminiApiKey?.trim()));
   const updateSettings = useStore((s) => s.updateSettings);
@@ -57,6 +62,7 @@ export default function Assistant() {
   const [activeCourseId, setActiveCourseId] = useState<string>('all');
   const [selectedMaterialIds, setSelectedMaterialIds] = useState<string[]>([]);
   const [showDocPicker, setShowDocPicker] = useState(false);
+  const [notebookOpen, setNotebookOpen] = useState(false);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
@@ -96,6 +102,7 @@ export default function Assistant() {
   useEffect(() => () => abortRef.current?.abort(), []);
 
   useEffect(() => {
+    if (messages.length === 0 && !loading && !error) return;
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages.length, loading, error]);
 
@@ -104,6 +111,29 @@ export default function Assistant() {
     () => conversations.find((c) => c.id === activeConvId),
     [conversations, activeConvId],
   );
+
+  // Cadeira e visual ativo do Uni
+  const activeCourse = useMemo(
+    () => (activeCourseId === 'all' ? undefined : courses.find((c) => c.id === activeCourseId)),
+    [courses, activeCourseId],
+  );
+  const uniAccessory = useMemo(
+    () =>
+      resolveUniAccessory(
+        uniPreference,
+        activeCourse?.name,
+        activeCourse?.shortName,
+        academicProfile?.degreeName,
+      ),
+    [uniPreference, activeCourse, academicProfile?.degreeName],
+  );
+  const uniWelcomeMood = loading
+    ? 'thinking'
+    : uniPersona === 'calmo'
+      ? 'calm'
+      : uniPersona === 'exigente'
+        ? 'curious'
+        : 'happy';
 
   // Materiais filtrados pela cadeira selecionada
   const availableMaterials = useMemo(() => {
@@ -160,10 +190,14 @@ export default function Assistant() {
         const firstUser = recent.findIndex((m) => m.role === 'user');
         const payload = firstUser > 0 ? recent.slice(firstUser) : recent;
 
-        // Contexto com resumo do semestre + contexto dos documentos
+        // Contexto com resumo do semestre + personalidade e área do Uni
         const studyContext = buildStudyContext(useStore.getState());
         const docContext = buildDocumentContext(attachedMaterials);
-        const system = SYSTEM_PROMPT(studyContext, docContext);
+        const system = SYSTEM_PROMPT(studyContext, docContext, {
+          persona: uniPersona,
+          accessory: uniAccessory,
+          studentName: userName,
+        });
 
         const reply = await askGemini({ messages: payload, system, signal: controller.signal });
         const now = new Date().toISOString();
@@ -179,7 +213,7 @@ export default function Assistant() {
         setIntegration('gemini', { connected: true, lastSync: now, error: undefined });
       } catch (err) {
         if (controller.signal.aborted) return;
-        const message = err instanceof Error ? err.message : 'Erro ao contactar a Gemini.';
+        const message = err instanceof Error ? err.message : 'O Uni teve um percalço ao responder.';
         setError(message);
         setIntegration('gemini', { error: message });
       } finally {
@@ -189,7 +223,7 @@ export default function Assistant() {
         }
       }
     },
-    [activeConvId, attachedMaterials, setIntegration],
+    [activeConvId, attachedMaterials, setIntegration, uniAccessory, uniPersona, userName],
   );
 
   const send = async (text: string) => {
@@ -240,10 +274,10 @@ export default function Assistant() {
       {/* Cabeçalho */}
       <div className="shrink-0 space-y-3">
         <PageHeader
-          eyebrow="Tutor IA"
+          eyebrow="O teu companheiro de estudo"
           title="Conversa com o"
-          accentTitle="Tutor"
-          subtitle={`${model} · ${user ? 'Sincronizado na cloud' : 'Sessão local'}`}
+          accentTitle="Uni"
+          subtitle={user ? 'Sincronizado na tua conta' : 'Neste dispositivo'}
           actions={
             <div className="flex items-center gap-2">
               <Button
@@ -268,81 +302,112 @@ export default function Assistant() {
           }
         />
 
-        {/* Barra de Filtro de Cadeira e Documentos */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-line pb-3 text-xs">
-          {/* Seletor de Cadeira */}
-          <div className="flex items-center gap-1.5">
-            <BookOpen size={14} className="text-muted" />
-            <select
+        {/* Barra de Filtro Tátil, Caderno do Uni e Personalidade */}
+        <div className="space-y-2 border-b border-line pb-3 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            <PillSelect
               value={activeCourseId}
-              onChange={(e) => setActiveCourseId(e.target.value)}
-              aria-label="Filtrar por cadeira"
-              className="min-h-[38px] rounded-full border border-line bg-surface px-3 py-1 text-xs font-medium text-fg focus:outline-none"
+              onChange={setActiveCourseId}
+              icon={<BookOpen size={14} />}
+              ariaLabel="Filtrar por cadeira"
+              options={[
+                { value: 'all', label: 'Todas as cadeiras', hint: 'Vista geral do semestre' },
+                ...courses.map((c) => ({
+                  value: c.id,
+                  label: c.shortName || c.name,
+                  hint: c.name !== c.shortName ? c.name : undefined,
+                  dotClass: courseColors[c.color]?.dot,
+                })),
+              ]}
+            />
+
+            <button
+              type="button"
+              onClick={() => setShowDocPicker(true)}
+              className={cx(
+                'flex min-h-[42px] items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition',
+                attachedMaterials.length > 0
+                  ? 'border-accent bg-accent-soft text-accent'
+                  : 'border-line bg-surface text-muted hover:text-fg',
+              )}
             >
-              <option value="all">Todas as cadeiras</option>
-              {courses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+              <FileText size={14} />
+              <span>
+                {attachedMaterials.length === 0
+                  ? 'Anexar'
+                  : `${attachedMaterials.length} anexado(s)`}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setNotebookOpen(true)}
+              className="flex min-h-[42px] items-center gap-1.5 rounded-full border border-[#141312]/10 bg-[#FCE99F]/85 px-3.5 py-1.5 text-xs font-semibold text-[#141312] transition hover:brightness-95 dark:border-white/10 dark:bg-surface-2 dark:text-[#FAF6EC]"
+            >
+              <Sparkles size={13} className="text-accent" />
+              <span>Caderno</span>
+            </button>
           </div>
 
-          {/* Botão de Documentos Anexados */}
-          <button
-            type="button"
-            onClick={() => setShowDocPicker(true)}
-            className={cx(
-              'flex min-h-[38px] items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition',
-              attachedMaterials.length > 0
-                ? 'border-accent bg-accent-soft text-accent'
-                : 'border-line bg-surface text-muted hover:text-fg',
-            )}
-          >
-            <FileText size={14} />
-            <span>
-              {attachedMaterials.length === 0
-                ? 'Anexar documentos'
-                : `${attachedMaterials.length} anexado(s)`}
-            </span>
-          </button>
-
-          {attachedMaterials.map((m) => (
-            <span
-              key={m.id}
-              className="flex items-center gap-1 rounded-full bg-surface-2 px-2.5 py-1 text-xs text-muted"
-            >
-              <span className="max-w-[120px] truncate">{m.title}</span>
-              <button
-                type="button"
-                onClick={() => toggleMaterial(m.id)}
-                aria-label={`Remover ${m.title}`}
-                className="hover:text-danger"
-              >
-                <X size={12} />
-              </button>
-            </span>
-          ))}
-
-          {conversations.length > 1 && (
-            <div className="ml-auto flex max-w-[260px] items-center gap-1 overflow-x-auto">
-              {conversations.slice(0, 4).map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => setActiveConvId(c.id)}
-                  className={cx(
-                    'max-w-[100px] truncate rounded-full px-2.5 py-1 text-xs transition',
-                    c.id === activeConvId
-                      ? 'bg-ink-cta font-medium text-ink-cta-fg'
-                      : 'text-muted hover:bg-surface-2',
-                  )}
-                >
-                  {c.title}
-                </button>
-              ))}
+          {/* Seletor rápido de tom/personalidade do Uni */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="inline-flex items-center gap-1 rounded-full bg-surface-2/85 p-1">
+              {UNI_PERSONAS.map((p) => {
+                const active = uniPersona === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => updateSettings({ uniPersona: p.id })}
+                    title={p.hint}
+                    className={cx(
+                      'min-h-[30px] rounded-full px-2.5 text-[11px] font-semibold transition',
+                      active ? 'bg-ink-cta text-ink-cta-fg' : 'text-muted hover:text-fg',
+                    )}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
             </div>
-          )}
+
+            {attachedMaterials.map((m) => (
+              <span
+                key={m.id}
+                className="flex items-center gap-1 rounded-full bg-surface-2 px-2.5 py-1 text-xs text-muted"
+              >
+                <span className="max-w-[110px] truncate">{m.title}</span>
+                <button
+                  type="button"
+                  onClick={() => toggleMaterial(m.id)}
+                  aria-label={`Remover ${m.title}`}
+                  className="hover:text-danger"
+                >
+                  <X size={12} />
+                </button>
+              </span>
+            ))}
+
+            {conversations.length > 1 && (
+              <div className="ml-auto flex max-w-[240px] items-center gap-1 overflow-x-auto">
+                {conversations.slice(0, 4).map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setActiveConvId(c.id)}
+                    className={cx(
+                      'max-w-[95px] truncate rounded-full px-2.5 py-1 text-xs transition',
+                      c.id === activeConvId
+                        ? 'bg-ink-cta font-medium text-ink-cta-fg'
+                        : 'text-muted hover:bg-surface-2',
+                    )}
+                  >
+                    {c.title}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -350,15 +415,20 @@ export default function Assistant() {
       <div className="mt-3 min-h-0 flex-1 space-y-4 overflow-y-auto px-1 py-2">
         <ContextPanel />
         {messages.length === 0 && (
-          <div className="flex flex-col items-center px-4 py-8 text-center">
-            <div className="flex size-20 items-center justify-center rounded-full bg-pastel-sage/75 shadow-card dark:bg-surface-2">
-              <NotebookBuddy mood="curious" size={56} />
+          <div className="flex flex-col items-center px-4 py-4 text-center sm:py-6">
+            <div className="flex size-22 shrink-0 items-center justify-center rounded-full bg-pastel-sage/85 shadow-card dark:bg-surface-2">
+              <UniBuddy
+                mood={uniWelcomeMood}
+                accessory={uniAccessory}
+                size={62}
+                ariaLabel="Uni — o teu companheiro IA"
+              />
             </div>
             <h2 className="mt-4 font-display text-xl font-bold">
               Olá{userName ? `, ${userName}` : ''}! O que vamos rever?
             </h2>
             <p className="mt-1.5 max-w-sm text-sm text-muted">
-              Posso explicar conceitos difíceis, criar perguntas de exame ou rever os teus apontamentos.
+              Sou o Uni! Posso explicar conceitos difíceis, criar perguntas de exame ou rever os teus apontamentos.
             </p>
             {attachedMaterials.length > 0 && (
               <p className="mt-2 text-xs font-medium text-ok">
@@ -383,7 +453,7 @@ export default function Assistant() {
             >
               <Markdown text={m.text} />
               <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-line/70 pt-2 text-xs text-muted">
-                <span>Gerado por IA ({model}) · Valida sempre com a sebenta</span>
+                <span>Sugestão do Uni · Valida sempre com a sebenta</span>
                 {m.sourceDocTitles && m.sourceDocTitles.length > 0 && (
                   <span className="inline-flex items-center gap-1">
                     <FileText size={12} />
@@ -398,18 +468,10 @@ export default function Assistant() {
         {loading && (
           <div
             role="status"
-            className="rise flex w-fit items-center gap-2.5 rounded-[22px] rounded-bl-md bg-surface px-4 py-3 text-sm text-muted shadow-card"
+            className="rise flex w-fit items-center gap-2.5 rounded-[22px] rounded-bl-md bg-surface px-4 py-2.5 text-sm text-muted shadow-card"
           >
-            <span className="flex gap-1">
-              {[0, 1, 2].map((i) => (
-                <span
-                  key={i}
-                  className="size-1.5 animate-bounce rounded-full bg-accent"
-                  style={{ animationDelay: `${i * 150}ms` }}
-                />
-              ))}
-            </span>
-            a pensar…
+            <UniBuddy mood="thinking" accessory={uniAccessory} size={30} interactive={false} />
+            <span>O Uni está a pensar…</span>
           </div>
         )}
 
@@ -429,25 +491,25 @@ export default function Assistant() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Aviso explícito EU AI Act Art. 50 & RGPD antes de usar IA */}
+      {/* Aviso amigável para ativar o Uni */}
       {(!aiConsent || !hasApiKey) && (
         <div className="mt-3 flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-[22px] bg-pastel-butter/75 px-4 py-3 text-xs text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]">
           <div className="space-y-0.5">
             <div className="flex items-center gap-2 font-semibold">
               <Sparkles size={14} className="text-accent" />
-              <span>Tutor IA (EU AI Act Art. 50)</span>
+              <span>Ativar o Uni</span>
               <Badge tone="neutral">Opcional</Badge>
             </div>
             <p className="opacity-80">
               {!aiConsent
-                ? 'Autoriza primeiro o processamento por IA para conversar com o Gemini.'
-                : 'Consentimento ativo! Adiciona a tua chave Gemini gratuita nas Definições.'}
+                ? 'Permite que o Uni responda usando a tua chave pessoal do Gemini.'
+                : 'Tudo pronto! Cola a tua chave Gemini gratuita nas Definições.'}
             </p>
           </div>
           <div className="flex items-center gap-2">
             {!aiConsent && (
               <Button size="sm" variant="primary" onClick={() => updateSettings({ aiConsent: true })}>
-                Autorizar IA
+                Ativar Uni
               </Button>
             )}
             {!hasApiKey && (
@@ -502,8 +564,8 @@ export default function Assistant() {
           },
           {
             id: 'privacy',
-            label: 'Privacidade e chave Gemini',
-            hint: 'Gerir consentimento RGPD e modelo',
+            label: 'Preferências e chave Gemini',
+            hint: 'Gerir permissões e modelo do Uni',
             icon: <Shield size={16} />,
             onSelect: () => navigate('/definicoes/tutor'),
           },
@@ -586,6 +648,23 @@ export default function Assistant() {
       </Modal>
 
       <WeeklyTutorModal open={tutorOpen} onClose={() => setTutorOpen(false)} />
+      <UniNotebookDrawer
+        open={notebookOpen}
+        onClose={() => setNotebookOpen(false)}
+        courseName={activeCourse?.shortName || activeCourse?.name}
+        attachedMaterials={attachedMaterials}
+        accessory={uniAccessory}
+        persona={uniPersona}
+        onSendToChat={(markdown) => {
+          void appendMessage(activeConvId, {
+            id: newId(),
+            role: 'model',
+            text: markdown,
+            at: new Date().toISOString(),
+            sourceDocTitles: attachedMaterials.map((m) => m.title),
+          });
+        }}
+      />
     </div>
   );
 }

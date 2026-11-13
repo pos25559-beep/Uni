@@ -87,7 +87,7 @@ export function clearAcademicEmailsCache(): void {
 
 /**
  * Consulta detalhada do Gmail que identifica se faltam permissões de escopo (403).
- * Prioriza a conta académica conectada (@campus.fct.unl.pt).
+ * Prioriza a conta académica conectada.
  * Usa cache em memória (10 minutos) a menos que `forceRefresh` seja verdadeiro.
  */
 export async function fetchAcademicEmailsDetailed(
@@ -109,9 +109,14 @@ export async function fetchAcademicEmailsDetailed(
   }
 
   try {
-    // Procura abrangente de emails académicos e avisos de docentes da NOVA FCT
-    const q =
-      'from:(clip OR fct OR unl.pt OR docente OR professor) OR subject:(fct OR teste OR exame OR nota OR pauta OR aula OR cadeira OR lemc OR calculo OR analise OR fluidos OR solidos OR fabad OR tep OR snti OR am3 OR c3d OR ms2 OR mdf)';
+    // Procura abrangente de emails académicos usando também as siglas/nomes das cadeiras do utilizador
+    const courseKeywords = courses
+      .flatMap((c) => [c.shortName, c.code].filter(Boolean))
+      .map((k) => k!.replace(/[^a-zA-Z0-9À-ÿ]/g, '').trim())
+      .filter((k) => k.length >= 2)
+      .slice(0, 8);
+    const subjectTerms = ['teste', 'exame', 'nota', 'pauta', 'aula', 'cadeira', 'trabalho', 'entrega', ...courseKeywords];
+    const q = `from:(professor OR docente OR secretaria) OR subject:(${subjectTerms.join(' OR ')})`;
     const url = `${GMAIL_API}?q=${encodeURIComponent(q)}&maxResults=30`;
 
     const listData = await googleFetch<GmailListResponse>(url, token);
@@ -203,4 +208,50 @@ export async function fetchAcademicEmailsDetailed(
 export async function fetchAcademicEmails(courses: Course[]): Promise<AcademicEmail[]> {
   const res = await fetchAcademicEmailsDetailed(courses);
   return res.emails;
+}
+
+/** Interpreta um ficheiro real .eml (RFC 2822) para pré-visualização e criação de tarefa local. */
+export function parseEmlToAcademicEmail(rawText: string, courses: Course[], idSeed?: string): AcademicEmail {
+  const normalized = rawText.replace(/\r\n/g, '\n');
+  const splitIdx = normalized.indexOf('\n\n');
+  const headerBlock = splitIdx >= 0 ? normalized.slice(0, splitIdx) : normalized;
+  const bodyBlock = splitIdx >= 0 ? normalized.slice(splitIdx + 2) : '';
+
+  const readHeader = (name: string): string => {
+    const re = new RegExp(`^${name}:\\s*(.+(?:\\n[ \\t].+)*)`, 'im');
+    const match = re.exec(headerBlock);
+    return match ? match[1].replace(/\n[ \t]+/g, ' ').trim() : '';
+  };
+
+  const from = readHeader('From') || 'Remetente desconhecido';
+  const subject = readHeader('Subject') || '(Sem assunto)';
+  const dateRaw = readHeader('Date');
+  const parsedDate = dateRaw && !Number.isNaN(Date.parse(dateRaw)) ? new Date(dateRaw).toISOString() : new Date().toISOString();
+
+  let fromName = from;
+  const matchName = /(.*?)\s*<.*?>/.exec(from);
+  if (matchName && matchName[1].trim()) {
+    fromName = matchName[1].replace(/["']/g, '').trim();
+  }
+
+  const plainBody = bodyBlock
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const snippet = plainBody.slice(0, 260) || '(Mensagem sem pré-visualização de texto)';
+  const courseId = detectCourseFromEmail(subject, snippet, from, courses);
+
+  return {
+    id: idSeed ?? `eml-${Date.now()}`,
+    threadId: idSeed ?? `eml-${Date.now()}`,
+    from,
+    fromName,
+    subject,
+    snippet,
+    date: parsedDate,
+    courseId,
+    isClipNotice: false,
+    unread: true,
+    labels: ['IMPORTADO'],
+  };
 }

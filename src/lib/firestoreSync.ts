@@ -109,10 +109,10 @@ function sanitizeSettingsPayload(
 function sanitizeAcademicProfile(profile: AcademicProfile): Record<string, unknown> {
   return stripUndefined({
     onboardingCompleted: Boolean(profile.onboardingCompleted),
-    universityId: (profile.universityId || 'nova-fct').slice(0, 100),
-    universityName: (profile.universityName || 'Universidade Portuguesa').slice(0, 200),
-    degreeId: (profile.degreeId || 'lemc').slice(0, 100),
-    degreeName: (profile.degreeName || 'Licenciatura').slice(0, 200),
+    universityId: (profile.universityId || 'outra').slice(0, 100),
+    universityName: (profile.universityName || '').slice(0, 200),
+    degreeId: (profile.degreeId || 'outro').slice(0, 100),
+    degreeName: (profile.degreeName || '').slice(0, 200),
     entryYear: Math.max(2000, Math.min(2100, Number(profile.entryYear) || new Date().getFullYear())),
     currentAcademicYear: ([1, 2, 3].includes(profile.currentAcademicYear)
       ? profile.currentAcademicYear

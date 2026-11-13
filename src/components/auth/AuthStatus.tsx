@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { auth, logoutFirebase, onAuthStateChanged, type User } from '../../lib/firebase';
 import { migrateLocalDataToCloud } from '../../lib/firestoreSync';
+import { useStore } from '../../store/useStore';
 import { showToast } from '../ui';
 
 /**
@@ -12,10 +13,17 @@ import { showToast } from '../ui';
 export default function AuthStatus() {
   const [user, setUser] = useState<User | null>(() => auth.currentUser);
   const [syncing, setSyncing] = useState(false);
+  const updateSettings = useStore((s) => s.updateSettings);
 
   useEffect(() => {
     return onAuthStateChanged(auth, setUser);
   }, []);
+
+  const handleLogout = async () => {
+    await logoutFirebase();
+    updateSettings({ guestMode: false, userName: '' });
+    showToast('Sessão terminada.', 'neutral');
+  };
 
   const handleManualSync = async () => {
     setSyncing(true);
@@ -41,7 +49,7 @@ export default function AuthStatus() {
           </span>
           <div className="min-w-0">
             <p className="truncate text-xs font-bold text-fg">Entrar ou criar conta</p>
-            <p className="truncate text-xs text-muted">Email + Palavra-passe · Opcional</p>
+            <p className="truncate text-xs text-muted">Guarda e sincroniza o teu caderno</p>
           </div>
         </div>
         <ChevronRight size={16} className="shrink-0 text-muted" aria-hidden="true" />
@@ -81,7 +89,7 @@ export default function AuthStatus() {
           </button>
           <button
             type="button"
-            onClick={() => void logoutFirebase()}
+            onClick={() => void handleLogout()}
             aria-label="Terminar sessão"
             className="flex size-10 items-center justify-center rounded-full text-muted transition hover:bg-coral-soft hover:text-coral"
           >

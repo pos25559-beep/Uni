@@ -9,9 +9,11 @@ export const defaultSettings: Settings = {
   dailyStudyMinutes: 120,
   studyDays: [1, 2, 3, 4, 5, 6],
   geminiApiKey: '',
-  geminiModel: 'gemini-2.5-flash',
+  geminiModel: 'gemini-4-hydrogen',
   googleClientId: '',
   msClientId: '',
+  uniAccessory: 'auto',
+  uniPersona: 'amigo',
 };
 
 export const emptyCollections = (): Collections => ({

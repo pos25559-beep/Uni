@@ -112,30 +112,37 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
 
   // Passo 3: Escola / Universidade & Currículo
   const [userName, setUserName] = useState(settings.userName);
-  const [universityId, setUniversityId] = useState(storedProfile.universityId || 'nova-fct');
+  const [universityId, setUniversityId] = useState(storedProfile.universityId || 'outra');
   const [customUniversity, setCustomUniversity] = useState(
     storedProfile.universityId === 'outra' ? storedProfile.universityName : '',
   );
-  const [degreeId, setDegreeId] = useState(storedProfile.degreeId || 'lemc');
+  const [degreeId, setDegreeId] = useState(storedProfile.degreeId || 'outro');
   const [customDegree, setCustomDegree] = useState(
     storedProfile.degreeId === 'outro' ? storedProfile.degreeName : '',
   );
-  const [entryYear, setEntryYear] = useState<number>(storedProfile.entryYear || 2024);
+  const [entryYear, setEntryYear] = useState<number>(
+    storedProfile.entryYear || new Date().getFullYear(),
+  );
   const [currentAcademicYear, setCurrentAcademicYear] = useState<1 | 2 | 3>(
-    storedProfile.currentAcademicYear || 2,
+    storedProfile.currentAcademicYear || 1,
   );
   const [currentSemester, setCurrentSemester] = useState<1 | 2>(
-    storedProfile.currentSemester || 2,
+    storedProfile.currentSemester || 1,
   );
   const [records, setRecords] = useState<CompletedCourseRecord[]>(() =>
     storedProfile.completedCourses.length > 0
       ? storedProfile.completedCourses
-      : buildInitialCompletedRecords(
-          storedProfile.universityId || 'nova-fct',
-          storedProfile.degreeId || 'lemc',
-          storedProfile.currentAcademicYear || 2,
-          storedProfile.currentSemester || 2,
-        ),
+      : storedProfile.universityId &&
+          storedProfile.universityId !== 'outra' &&
+          storedProfile.degreeId &&
+          storedProfile.degreeId !== 'outro'
+        ? buildInitialCompletedRecords(
+            storedProfile.universityId,
+            storedProfile.degreeId,
+            storedProfile.currentAcademicYear || 1,
+            storedProfile.currentSemester || 1,
+          )
+        : [],
   );
   const [replaceCoursesWithCurriculum, setReplaceCoursesWithCurriculum] = useState(true);
   const [newCourseCode, setNewCourseCode] = useState('');
@@ -634,7 +641,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                     <OnboardingSceneArt scene="privacy" className="h-36 w-full max-w-[190px]" />
                   </div>
                   <div className="space-y-2">
-                    <Badge tone="ok">RGPD & Zero Rastreio</Badge>
+                    <Badge tone="ok">100% Privado & Sem Anúncios</Badge>
                     <h2 className="font-display text-2xl font-bold tracking-tight text-fg">
                       Os teus estudos ficam no <em className="font-editorial text-accent">teu controlo</em>
                     </h2>
@@ -700,7 +707,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                   </div>
                 </div>
 
-                {/* Consentimento opcional EU AI Act Art. 50 / RGPD */}
+                {/* Permissão opcional do Uni (IA) */}
                 <div className="rounded-2xl border border-line bg-surface p-4">
                   <label className="flex cursor-pointer items-start gap-3">
                     <input
@@ -715,12 +722,12 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                     <div className="space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-sm font-semibold text-fg">
-                          Ativar Assistente IA & Leitura de Pautas (Opcional)
+                          Ativar o Uni (Tutor IA e leitura de pautas)
                         </span>
-                        <Badge tone="neutral">EU AI Act Art. 50</Badge>
+                        <Badge tone="neutral">Opcional</Badge>
                       </div>
                       <p className="text-xs leading-relaxed text-muted">
-                        Quando ativado e após inserires a tua própria chave Gemini gratuita nas Definições, as perguntas que escreves no Assistente são enviadas à API Google Gemini para gerar planos e explicações marcadas como conteúdo gerado por IA.
+                        Quando ativado e com a tua chave gratuita Gemini nas Definições, o Uni pode resumir pautas, gerar planos e responder às tuas dúvidas.
                       </p>
                     </div>
                   </label>
@@ -931,18 +938,18 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                           </p>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <select
+                          <Select
                             aria-label={`Estado de ${r.name}`}
                             value={r.status}
                             onChange={(e) =>
                               updateRecordStatus(r.id, e.target.value as CompletedCourseRecord['status'])
                             }
-                            className="h-8 rounded-lg border border-line bg-surface px-2 text-xs text-fg"
+                            className="h-8 w-auto min-w-[104px] rounded-lg py-0 pl-2.5 pr-7 text-xs"
                           >
                             <option value="aprovada">Aprovada</option>
                             <option value="a_fazer">A fazer</option>
                             <option value="por_fazer">Por fazer</option>
-                          </select>
+                          </Select>
                           {r.status === 'aprovada' && (
                             <input
                               type="number"
@@ -1188,7 +1195,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
           <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-line bg-surface p-5 shadow-float sm:rounded-3xl sm:p-6">
             <div className="flex items-center justify-between gap-3 border-b border-line pb-3">
               <h3 className="font-display text-lg font-bold text-fg">
-                {legalPreview === 'privacy' ? 'Política de Privacidade (RGPD)' : 'Termos de Utilização'}
+                {legalPreview === 'privacy' ? 'Política de Privacidade' : 'Termos de Utilização'}
               </h3>
               <button
                 type="button"

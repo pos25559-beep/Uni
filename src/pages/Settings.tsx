@@ -77,20 +77,20 @@ export default function SettingsPage() {
     return (
       <AnimatedPage className="space-y-5">
         <SubpageHeader
-          title="Tutor IA & Gemini"
-          subtitle="Consentimento RGPD / EU AI Act e chave pessoal"
+          title="Uni · Tutor IA"
+          subtitle="Permissão de IA e chave Google Gemini"
           backTo="/definicoes"
         />
-        <ListGroup title="Autorização de processamento">
+        <ListGroup title="Autorização do Uni">
           <ListRow
             icon={<Sparkles size={18} />}
-            title="Usar Tutor IA (Gemini)"
-            subtitle="Autorizas o envio de perguntas e apontamentos escolhidos por ti à API Google Gemini."
+            title="Usar Uni com IA (Gemini)"
+            subtitle="Permite o envio de perguntas e apontamentos escolhidos por ti à API Google Gemini."
             trailing={
               <Switch
                 checked={Boolean(settings.aiConsent)}
                 onCheckedChange={(v) => updateSettings({ aiConsent: v })}
-                label="Autorizar processamento por IA"
+                label="Autorizar o Uni a usar Gemini"
               />
             }
           />
@@ -104,7 +104,7 @@ export default function SettingsPage() {
     return (
       <AnimatedPage className="space-y-5">
         <SubpageHeader
-          title="Dados, cópias & RGPD"
+          title="Dados e cópias de segurança"
           subtitle="Exporta, restaura ou limpa os teus dados em segurança"
           backTo="/definicoes"
         />
@@ -156,7 +156,11 @@ export default function SettingsPage() {
         <ListRow
           icon={<GraduationCap size={18} />}
           title="Curso e histórico académico"
-          subtitle={`${academicProfile.universityName} · ${academicProfile.degreeName}`}
+          subtitle={
+            academicProfile.universityName || academicProfile.degreeName
+              ? [academicProfile.universityName, academicProfile.degreeName].filter(Boolean).join(' · ')
+              : 'Escolher escola ou universidade'
+          }
           onClick={() => setWizardOpen(true)}
         />
         <ListRow
@@ -171,18 +175,18 @@ export default function SettingsPage() {
       </ListGroup>
 
       {/* Grupo 2: Ligações & IA */}
-      <ListGroup title="Ligações & Tutor IA">
+      <ListGroup title="Ligações & Uni">
         <ListRow
           icon={<Cloud size={18} />}
-          title="Google, Drive, PC & CLIP"
-          subtitle="Calendário, Gmail académico, Google Drive, pasta local e CLIP"
+          title="Ligações e importação"
+          subtitle="Calendário, email, Drive, pasta local e horários (.ics)"
           badge={googleConnected ? 'Ligado' : undefined}
           badgeTone="ok"
           onClick={() => navigate('/definicoes/ligacoes')}
         />
         <ListRow
           icon={<Sparkles size={18} />}
-          title="Tutor IA (Google Gemini)"
+          title="Uni · Tutor IA (Gemini)"
           subtitle={settings.geminiApiKey ? `Modelo ${settings.geminiModel}` : 'Configurar chave pessoal gratuita'}
           badge={settings.aiConsent ? 'Ativo' : 'Pausado'}
           badgeTone={settings.aiConsent ? 'accent' : 'neutral'}
@@ -191,7 +195,7 @@ export default function SettingsPage() {
       </ListGroup>
 
       {/* Grupo 3: Privacidade & Dados */}
-      <ListGroup title="Privacidade & Dados (RGPD)">
+      <ListGroup title="Privacidade & Dados">
         <ListRow
           icon={<Database size={18} />}
           title="Exportar cópia e gerir dados"
@@ -201,7 +205,7 @@ export default function SettingsPage() {
         <ListRow
           icon={<Shield size={18} />}
           title="Política de Privacidade"
-          subtitle="Resumo em 30 segundos + direitos RGPD"
+          subtitle="Como protegemos os teus dados"
           onClick={() => navigate('/privacidade')}
         />
         <ListRow

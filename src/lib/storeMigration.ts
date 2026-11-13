@@ -64,37 +64,60 @@ export function sanitizeMaterials(
   return { clean, removedCount };
 }
 
+const LEGACY_NAME_RE = /^\s*pedro(\s+de)?(\s+oliveira)?(\s+silva)?\s*$/i;
+
+function isLegacyAuthorName(name?: string): boolean {
+  return Boolean(name && LEGACY_NAME_RE.test(name));
+}
+
+function emptyAcademicProfile(): AcademicProfile {
+  return {
+    onboardingCompleted: false,
+    universityId: 'outra',
+    universityName: '',
+    degreeId: 'outro',
+    degreeName: '',
+    entryYear: new Date().getFullYear(),
+    currentAcademicYear: 1,
+    currentSemester: 1,
+    difficultCourseIds: [],
+    difficultTopicsNotes: '',
+    completedCourses: [],
+  };
+}
+
 /** Garante integridade dos campos obrigatórios após rehidratação do localStorage. */
 export function rehydrateStoreState(
   state: {
     courses?: Course[];
     materials?: Material[];
     academicProfile?: AcademicProfile;
+    settings?: { userName?: string; semesterName?: string };
     weeklyCheckIns?: WeeklyCheckIn[];
   } | undefined,
 ): void {
   if (!state) return;
 
   if (!state.academicProfile) {
-    state.academicProfile = {
-      onboardingCompleted: false,
-      universityId: 'nova-fct',
-      universityName: 'NOVA FCT — Faculdade de Ciências e Tecnologia',
-      degreeId: 'lemc',
-      degreeName: 'Licenciatura em Engenharia Mecânica (LEMc)',
-      entryYear: 2024,
-      currentAcademicYear: 2,
-      currentSemester: 2,
-      difficultCourseIds: [],
-      difficultTopicsNotes: '',
-      completedCourses: [],
-    };
+    state.academicProfile = emptyAcademicProfile();
   }
   if (!Array.isArray(state.weeklyCheckIns)) {
     state.weeklyCheckIns = [];
   }
 
   const courses = Array.isArray(state.courses) ? state.courses : [];
+  if (state.settings) {
+    if (isLegacyAuthorName(state.settings.userName)) {
+      state.settings.userName = '';
+    }
+    if (
+      courses.length === 0 &&
+      state.settings.semesterName?.includes('(LEMc)')
+    ) {
+      state.settings.semesterName = 'Semestre atual';
+    }
+  }
+
   if (Array.isArray(state.materials)) {
     const { clean } = sanitizeMaterials(state.materials, courses);
     state.materials = clean;
@@ -104,12 +127,12 @@ export function rehydrateStoreState(
 }
 
 /**
- * Executa a migração limpa de versões anteriores para a v6 (sem dados demo nem dados pessoais).
+ * Executa a migração limpa de versões anteriores para a v7 (sem dados demo nem dados pessoais).
  */
-export function migrateStoreState(persistedState: unknown, _version: number) {
+export function migrateStoreState(persistedState: unknown, version: number) {
   const base = (persistedState && typeof persistedState === 'object' ? persistedState : {}) as Record<string, unknown> & Partial<Collections> & {
     isDemo?: boolean;
-    settings?: { userName?: string };
+    settings?: { userName?: string; semesterName?: string; guestMode?: boolean };
     academicProfile?: AcademicProfile;
   };
 
@@ -117,7 +140,7 @@ export function migrateStoreState(persistedState: unknown, _version: number) {
   if (base.isDemo && !base.academicProfile?.onboardingCompleted) {
     return {
       ...emptyCollections(),
-      academicProfile: base.academicProfile,
+      academicProfile: emptyAcademicProfile(),
       weeklyCheckIns: [],
     };
   }
@@ -134,8 +157,26 @@ export function migrateStoreState(persistedState: unknown, _version: number) {
   const { clean } = sanitizeMaterials(rawMaterials, cleanedCourses);
 
   const nextSettings = base.settings ? { ...base.settings } : undefined;
-  if (nextSettings?.userName === 'Pedro de Oliveira Silva') {
-    nextSettings.userName = '';
+  if (nextSettings) {
+    if (isLegacyAuthorName(nextSettings.userName)) {
+      nextSettings.userName = '';
+    }
+    if (cleanedCourses.length === 0 && nextSettings.semesterName?.includes('(LEMc)')) {
+      nextSettings.semesterName = 'Semestre atual';
+    }
+    if (version < 7 && nextSettings.guestMode === undefined) {
+      nextSettings.guestMode = false;
+    }
+  }
+
+  let nextProfile = base.academicProfile;
+  if (
+    nextProfile &&
+    !nextProfile.onboardingCompleted &&
+    nextProfile.universityId === 'nova-fct' &&
+    nextProfile.degreeId === 'lemc'
+  ) {
+    nextProfile = emptyAcademicProfile();
   }
 
   const rest = { ...base };
@@ -144,6 +185,7 @@ export function migrateStoreState(persistedState: unknown, _version: number) {
   return {
     ...rest,
     ...(nextSettings ? { settings: nextSettings } : {}),
+    ...(nextProfile ? { academicProfile: nextProfile } : {}),
     courses: cleanedCourses,
     materials: clean,
   };

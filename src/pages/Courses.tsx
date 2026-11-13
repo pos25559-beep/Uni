@@ -1,9 +1,9 @@
-import { GraduationCap, Layers, LayoutGrid, Plus } from 'lucide-react';
+import { GraduationCap, Layers, LayoutGrid, Plus, Upload } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CourseCard from '../components/courses/CourseCard';
 import CourseFormModal from '../components/courses/CourseFormModal';
-import { AnimatedPage, FolderCardDeck } from '../components/motion/Primitives';
+import { AnimatedPage, FolderCardDeck, StaggerContainer, StaggerItem } from '../components/motion/Primitives';
 import ClipImportModal from '../components/settings/ClipImportModal';
 import { Button, EmptyState, PageHeader, SegmentedControl } from '../components/ui';
 import { fmtGrade, gradeSummary, semesterAverage, upcomingAssessments } from '../lib/selectors';
@@ -15,7 +15,7 @@ export default function Courses() {
   const courses = useStore((s) => s.courses);
   const assessments = useStore((s) => s.assessments);
   const [form, setForm] = useState<Course | 'new' | null>(null);
-  const [clipOpen, setClipOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [view, setView] = useState<'deck' | 'grid'>('deck');
 
   const summaries = useMemo(
@@ -35,21 +35,16 @@ export default function Courses() {
   const average = useMemo(() => semesterAverage(courses, assessments), [courses, assessments]);
 
   return (
-    <AnimatedPage className="space-y-5">
+    <AnimatedPage className="space-y-6">
       <PageHeader
         eyebrow="Caderno académico"
         title="As tuas"
         accentTitle="cadeiras"
         subtitle={`${courses.length} ${courses.length === 1 ? 'cadeira' : 'cadeiras'} · ${totalEcts} ECTS · média ${fmtGrade(average)}`}
         actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="secondary" onClick={() => setClipOpen(true)}>
-              <GraduationCap size={16} /> CLIP
-            </Button>
-            <Button variant="primary" onClick={() => setForm('new')}>
-              <Plus size={16} /> Nova cadeira
-            </Button>
-          </div>
+          <Button variant="primary" onClick={() => setForm('new')}>
+            <Plus size={16} /> Nova cadeira
+          </Button>
         }
       />
 
@@ -57,11 +52,11 @@ export default function Courses() {
         <EmptyState
           icon={<GraduationCap size={28} />}
           title="Ainda não tens cadeiras"
-          hint="Acrescenta as cadeiras deste semestre à mão ou importa a pauta diretamente do CLIP."
+          hint="Adiciona as tuas cadeiras ou disciplinas à mão, ou importa o teu horário (.ics) para começar."
           action={
             <div className="flex flex-wrap items-center justify-center gap-2">
-              <Button variant="secondary" onClick={() => setClipOpen(true)}>
-                <GraduationCap size={16} /> Importar do CLIP
+              <Button variant="secondary" onClick={() => setImportOpen(true)}>
+                <Upload size={16} /> Importar horário
               </Button>
               <Button variant="primary" onClick={() => setForm('new')}>
                 <Plus size={16} /> Nova cadeira
@@ -70,30 +65,34 @@ export default function Courses() {
           }
         />
       ) : (
-        <>
-          <div className="flex items-center justify-between gap-3">
-            <SegmentedControl
-              layoutId="courses-view-tabs"
-              value={view}
-              onChange={(id) => setView(id as 'deck' | 'grid')}
-              items={[
-                { id: 'deck', label: 'Pastas', icon: <Layers size={14} />, count: courses.length },
-                { id: 'grid', label: 'Grelha', icon: <LayoutGrid size={14} /> },
-              ]}
-            />
-            <span className="hidden text-xs font-medium text-muted sm:inline">
-              Toca numa pasta para abrir notas, tópicos e exames
-            </span>
-          </div>
+        <StaggerContainer className="space-y-5">
+          <StaggerItem>
+            <div className="flex items-center justify-between gap-3">
+              <SegmentedControl
+                layoutId="courses-view-tabs"
+                value={view}
+                onChange={(id) => setView(id as 'deck' | 'grid')}
+                items={[
+                  { id: 'deck', label: 'Pastas', icon: <Layers size={14} />, count: courses.length },
+                  { id: 'grid', label: 'Grelha', icon: <LayoutGrid size={14} /> },
+                ]}
+              />
+              <span className="hidden text-xs font-medium text-muted sm:inline">
+                Toca numa pasta para abrir notas, tópicos e exames
+              </span>
+            </div>
+          </StaggerItem>
 
           {view === 'deck' && (
-            <FolderCardDeck
-              courses={courses}
-              onOpenCourse={(id) => navigate(`/cadeiras/${id}`)}
-            />
+            <StaggerItem>
+              <FolderCardDeck
+                courses={courses}
+                onOpenCourse={(id) => navigate(`/cadeiras/${id}`)}
+              />
+            </StaggerItem>
           )}
 
-          <div className={view === 'deck' ? 'pt-2' : ''}>
+          <StaggerItem className={view === 'deck' ? 'pt-2' : ''}>
             {view === 'deck' && (
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="font-display text-base font-bold">Todas as cadeiras</h2>
@@ -110,15 +109,15 @@ export default function Courses() {
                 />
               ))}
             </div>
-          </div>
-        </>
+          </StaggerItem>
+        </StaggerContainer>
       )}
 
       {form && (
         <CourseFormModal course={form === 'new' ? undefined : form} onClose={() => setForm(null)} />
       )}
 
-      {clipOpen && <ClipImportModal onClose={() => setClipOpen(false)} />}
+      {importOpen && <ClipImportModal onClose={() => setImportOpen(false)} />}
     </AnimatedPage>
   );
 }

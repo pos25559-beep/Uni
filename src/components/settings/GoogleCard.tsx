@@ -58,8 +58,8 @@ export default function GoogleCard() {
     <>
       <IntegrationCard
         icon={<HardDrive size={18} />}
-        title="Google & Contas Dual (Pessoal e Académica)"
-        description="Gere as tuas duas contas de forma independente: conta pessoal para Google Drive, nuvem e Gemini AI; e conta académica (@campus.fct.unl.pt) para avisos dos docentes no Gmail e CLIP."
+        title="Google &amp; Contas Dual (Pessoal e Académica)"
+        description="Gere as tuas duas contas de forma independente: conta pessoal para Google Drive, agenda e Tutor; e email académico para receber avisos de docentes."
         status={effectiveStatus}
       >
         <div className="space-y-4">
@@ -107,7 +107,7 @@ export default function GoogleCard() {
                     disabled={personalBusy || scanningDrive}
                   >
                     {scanningDrive ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
-                    Varrer Drive e LEMc
+                    Analisar pastas do Drive
                   </Button>
                   <Button
                     size="sm"
@@ -170,7 +170,7 @@ export default function GoogleCard() {
                 <div>
                   <div className="flex items-center gap-2">
                     <p className="font-semibold text-fg text-sm">
-                      Conta Académica (Gmail Institucional &amp; CLIP)
+                      Conta Académica (Email Escolar / Universitário)
                     </p>
                     {isAcademicConnected ? (
                       <Badge tone="ok">Ativa</Badge>
@@ -179,7 +179,7 @@ export default function GoogleCard() {
                     )}
                   </div>
                   <p className="text-muted text-xs">
-                    {academicEmail || 'Opcional · Email institucional da tua faculdade'}
+                    {isAcademicConnected && academicEmail ? academicEmail : 'Opcional · Qualquer email Google escolar ou pessoal'}
                   </p>
                 </div>
               </div>
@@ -228,7 +228,7 @@ export default function GoogleCard() {
                   disabled={academicBusy}
                 >
                   {academicBusy ? <Loader2 size={13} className="animate-spin" /> : <Mail size={13} />}
-                  Ligar Conta Académica FCT (@campus.fct.unl.pt)
+                  Ligar Email Académico
                 </Button>
               )}
             </div>

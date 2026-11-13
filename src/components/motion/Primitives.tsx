@@ -10,9 +10,15 @@ import { cx } from '../ui';
 
 export const UNIPEDIA_SPRING = {
   type: 'spring' as const,
-  stiffness: 360,
-  damping: 28,
-  mass: 0.9,
+  stiffness: 380,
+  damping: 24,
+  mass: 0.85,
+};
+
+export const UNIPEDIA_BOUNCE_SPRING = {
+  type: 'spring' as const,
+  stiffness: 420,
+  damping: 20,
 };
 
 /** Celebração leve com cores de papelaria Unipedia (respeita reduced-motion). */
@@ -37,9 +43,62 @@ export function celebrateStationery() {
 export function AnimatedPage({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+      initial={{ opacity: 0, y: 16, scale: 0.985 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={UNIPEDIA_SPRING}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+/** Contentor que cria entrada escalonada fluida dos blocos do ecrã. */
+export function StaggerContainer({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={{
+        hidden: {},
+        visible: {
+          transition: {
+            staggerChildren: 0.06,
+            delayChildren: 0.04,
+          },
+        },
+      }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+export function StaggerItem({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <motion.div
+      variants={{
+        hidden: { opacity: 0, y: 14, scale: 0.97 },
+        visible: {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          transition: UNIPEDIA_SPRING,
+        },
+      }}
       className={className}
     >
       {children}

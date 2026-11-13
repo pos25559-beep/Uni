@@ -27,9 +27,9 @@ export default function GeminiCard() {
 
   const test = async () => {
     const key = apiKey.trim() || (import.meta.env.DEV ? (import.meta.env.VITE_GEMINI_API_KEY ?? '') : '');
-    const wanted = model.trim() || 'gemini-2.5-flash';
+    const wanted = model.trim() || 'gemini-4-hydrogen';
     if (!aiConsent) {
-      setLocalError('Ativa primeiro o consentimento de processamento por IA abaixo (EU AI Act / RGPD).');
+      setLocalError('Ativa primeiro a autorização para o Uni usar Gemini abaixo.');
       return;
     }
     if (!key) {
@@ -73,7 +73,7 @@ export default function GeminiCard() {
     >
       <HowTo
         steps={[
-          <>Ativa o consentimento RGPD / EU AI Act para enviar contexto académico ao teu modelo Gemini.</>,
+          <>Ativa a autorização abaixo para o Uni responder às tuas dúvidas com o Gemini.</>,
           <>Cria a tua chave gratuita em <a className="text-accent underline-offset-2 hover:underline" href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">aistudio.google.com/apikey</a> e cola abaixo.</>,
           <>Clica em «Testar ligação» para validar os modelos disponíveis.</>,
         ]}
@@ -87,7 +87,7 @@ export default function GeminiCard() {
           className="mt-0.5 size-4 rounded accent-accent"
         />
         <span>
-          <strong className="text-fg">Consentimento IA (RGPD &amp; EU AI Act):</strong> autorizo o envio de perguntas e prints escolhidos por mim à API Google Gemini.
+          <strong className="text-fg">Autorizar o Uni:</strong> permito o envio das perguntas e apontamentos escolhidos por mim para a API Google Gemini.
         </span>
       </label>
 
@@ -112,11 +112,35 @@ export default function GeminiCard() {
         </div>
       </Field>
 
-      <Field label="Modelo">
+      <Field label="Modelo do Uni (predefinido: Gemini 4 Hydrogen)">
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {[
+            { id: 'gemini-4-hydrogen', label: 'Gemini 4 Hydrogen (Recomendado)' },
+            { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Suplente)' },
+          ].map((preset) => {
+            const active = (model || 'gemini-4-hydrogen') === preset.id;
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => updateSettings({ geminiModel: preset.id })}
+                className={cx(
+                  'min-h-[36px] rounded-full border px-3 py-1 text-xs font-semibold transition',
+                  active
+                    ? 'border-accent bg-accent-soft text-accent'
+                    : 'border-line bg-surface-2 text-muted hover:text-fg',
+                )}
+              >
+                {preset.label}
+              </button>
+            );
+          })}
+        </div>
         <Input
           value={model}
           autoComplete="off"
           spellCheck={false}
+          placeholder="gemini-4-hydrogen"
           onChange={(e) => updateSettings({ geminiModel: e.target.value })}
         />
       </Field>

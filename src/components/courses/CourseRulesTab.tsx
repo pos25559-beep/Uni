@@ -14,13 +14,12 @@ export default function CourseRulesTab({ course, onOpenClipModal }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho do CLIP e Fórmula */}
+      {/* Cabeçalho das Regras e Fórmula */}
       <div className="rounded-2xl border border-line bg-surface p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <GraduationCap size={20} className={colors.text} />
-            <h2 className="text-base font-semibold">Regulamento e Avaliação Oficial (CLIP)</h2>
-            <Badge tone="accent">FCT NOVA</Badge>
+            <h2 className="text-base font-semibold">Regras e Avaliação da Cadeira</h2>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {course.clipUrl && (
@@ -30,13 +29,13 @@ export default function CourseRulesTab({ course, onOpenClipModal }: Props) {
                 rel="noreferrer"
                 className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-line bg-surface-2 px-3 text-xs font-medium text-fg hover:border-muted/50"
               >
-                Abrir ficha no CLIP
+                Abrir portal da cadeira
                 <ExternalLink size={12} className="text-muted" />
               </a>
             )}
             {onOpenClipModal && (
               <Button size="sm" variant="secondary" onClick={onOpenClipModal}>
-                Atualizar do CLIP
+                Atualizar regras
               </Button>
             )}
           </div>
@@ -74,7 +73,7 @@ export default function CourseRulesTab({ course, onOpenClipModal }: Props) {
           </div>
         ) : (
           <div className="mt-4 rounded-xl border border-line bg-surface-2 p-4 text-sm text-muted">
-            Ainda não foram registadas as regras específicas do CLIP para esta cadeira.
+            Ainda não foram registadas regras específicas de avaliação para esta cadeira.
           </div>
         )}
       </div>
@@ -87,7 +86,7 @@ export default function CourseRulesTab({ course, onOpenClipModal }: Props) {
             <div>
               <span className="font-semibold text-fg">Regime de Presenças:</span>
               <p className="mt-1 leading-relaxed text-muted">
-                {rules?.attendanceRule ?? 'Regime geral da FCT NOVA: frequência obrigatória às aulas práticas/laboratoriais.'}
+                {rules?.attendanceRule ?? 'Regime de frequência conforme definido pelo docente da unidade curricular.'}
               </p>
             </div>
 

@@ -46,10 +46,13 @@ Usados como superfícies coloridas com alto contraste (`#141312` em claro, tonal
 - **Regra mínima mobile**: corpo e metadados legíveis **`>= 12px`** (permitido `11px` apenas em legendas da dock inferior; **zero `text-[10px]`**).
 
 ## 4. Layout & Arquitetura dos Ecrãs
-1. **Top Bar Humilde**: Saudação + avatar à esquerda; no máximo 2 ações circulares (`44x44px`) à direita.
-2. **Dock Flutuante em Cápsula (Mobile)**: Barra arredondada (`rounded-[28px]`) flutuante acima da safe-area em `#141312` (`#24211D` em dark), com 5 destinos máximos (`Hoje`, `Cadeiras`, `Plano`, `Tutor`, `Mais`) e pílula ativa deslizante (`layoutId`).
-3. **Alternância de Secções**: Hero colorido (`Color Block`) -> Grelha Bento 2x1 (`Ver ->`) -> Listas táteis (`>= 52px`) / Baralho empilhado de pastas (`FolderCardDeck`).
-4. **Definições & Privacidade**: Lista agrupada nativa (`ListGroup`/`ListRow`) com sub-ecrãs limpos (`SubpageHeader`) e cartão **"A tua privacidade em 30 segundos"**.
+1. **Pré-login Editorial (`/bem-vindo`) & Entrada (`/entrar`)**: Carrossel de apresentação em cores pastel quentes (`#FAD6BA`, `#C4E0FD`, `#FCE99F`) com atalho imediato para criar conta ou entrar; em `/entrar`, o balão do Uni abre em popover sobreposto para manter o rodapé legal sempre visível.
+2. **Top Bar Humilde**: Saudação + avatar do **Uni** interativo à esquerda; no máximo 2 ações circulares (`44x44px`) à direita.
+3. **Dock Flutuante em Cápsula (Mobile)**: Barra arredondada (`rounded-[28px]`) flutuante acima da safe-area em `#141312` (`#24211D` em dark), com 5 destinos máximos (`Hoje`, `Cadeiras`, `Plano`, `Tutor`, `Mais`) e pílula ativa deslizante (`layoutId`).
+4. **Blocos Lúdicos de Papelaria no Hoje**: Hero colorido (`Color Block`) -> Grelha Bento 2x1 (`Ver ->`) -> Mosaico orgânico (`HighlightShapesGrid`) -> Caderno pautado (`NotebookFocusSheet`), post-it amarelo (`StickyTasksPad`), fita pêssego (`AgendaRibbonCard`) e postal azul-céu (`AcademicGmailWidget`) ao lado do baralho empilhado de pastas (`FolderCardDeck`).
+5. **Uni com Acessórios & Personalidade**: O componente `UniBuddy` adapta o visual por área do conhecimento (`math`, `tech`, `health`, `arts`, `science`, `humanities`, `default`) automaticamente ou por escolha em Definições, moldando também o tom de tutor no **Tutor** (`Amigo`, `Exigente`, `Anti-stress`) e o **Caderno do Uni**.
+6. **Controlos Táteis Personalizados**: Seletores importantes (como filtro de cadeira no Tutor) usam `PillSelect` em vez de menus nativos crus do browser.
+7. **Definições & Privacidade**: Lista agrupada nativa (`ListGroup`/`ListRow`) com sub-ecrãs limpos (`SubpageHeader`) e cartão **"A tua privacidade em 30 segundos"**.
 
 ## 5. Motion, Ergonomia & Acesso
 - **Alvos táteis**: `>= 44px × 44px` obrigatórios em todos os botões, inputs, checkboxes de linha, pílulas e controlos (`@media (pointer: coarse)` inclui explicitamente `button`).

@@ -16,7 +16,7 @@ export default function ClipCourseModal({ course, onClose }: Props) {
   const [formula, setFormula] = useState(course.rules?.evaluationFormula ?? 'NF = 0.5 * T1 + 0.5 * T2');
   const [minGrade, setMinGrade] = useState(course.rules?.minimumGradeRule ?? 'Média dos testes >= 9.5; sem notas < 8.0.');
   const [attendance, setAttendance] = useState(course.rules?.attendanceRule ?? 'Presença em pelo menos 2/3 das aulas práticas.');
-  const [clipUrl, setClipUrl] = useState(course.clipUrl ?? 'https://clip.fct.unl.pt');
+  const [clipUrl, setClipUrl] = useState(course.clipUrl ?? '');
 
   const handleParseClip = () => {
     const text = rawText.trim();
@@ -65,7 +65,7 @@ export default function ClipCourseModal({ course, onClose }: Props) {
     <Modal
       open={true}
       onClose={onClose}
-      title={`Atualizar Regras Oficiais do CLIP — ${course.name}`}
+      title={`Atualizar Regras da Cadeira — ${course.name}`}
       footer={
         <div className="flex w-full items-center justify-between">
           <div className="text-xs text-muted">
@@ -83,14 +83,14 @@ export default function ClipCourseModal({ course, onClose }: Props) {
       <div className="space-y-4">
         <div className="rounded-xl border border-line bg-surface-2/60 p-3 text-xs text-muted">
           <p className="leading-relaxed">
-            Como o CLIP da FCT NOVA exige autenticação institucional, podes copiar e colar o texto da Ficha de Unidade Curricular ou regras publicadas pelo docente. O sistema extrai automaticamente a fórmula da nota e notas mínimas.
+            Cola aqui o texto do programa ou regras de avaliação publicadas pelo docente ou pelo portal académico da tua escola. Os critérios principais são extraídos automaticamente.
           </p>
         </div>
 
         {/* Leitor inteligente */}
         <div>
           <div className="mb-1 flex items-center justify-between">
-            <label className="text-xs font-semibold text-fg">Conteúdo copiado do CLIP (Regulamento / Ficha de UC):</label>
+            <label className="text-xs font-semibold text-fg">Texto das regras ou ficha da cadeira:</label>
             <button
               type="button"
               onClick={handleParseClip}
@@ -103,7 +103,7 @@ export default function ClipCourseModal({ course, onClose }: Props) {
             rows={4}
             value={rawText}
             onChange={(e) => setRawText(e.target.value)}
-            placeholder="Cola aqui o texto das regras de avaliação do CLIP..."
+            placeholder="Cola aqui o texto das regras de avaliação da cadeira..."
             className="w-full rounded-xl border border-line bg-surface p-3 font-sans text-xs leading-relaxed text-fg placeholder:text-muted focus:border-accent focus:outline-none"
           />
         </div>
@@ -141,11 +141,11 @@ export default function ClipCourseModal({ course, onClose }: Props) {
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-fg">Link da Página da Cadeira no CLIP:</label>
+            <label className="mb-1 block text-xs font-semibold text-fg">Link da página ou portal da cadeira:</label>
             <Input
               value={clipUrl}
               onChange={(e) => setClipUrl(e.target.value)}
-              placeholder="https://clip.fct.unl.pt/..."
+              placeholder="https://..."
               className="text-xs"
             />
           </div>

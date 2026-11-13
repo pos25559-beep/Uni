@@ -192,7 +192,7 @@ export interface Settings {
   geminiModel: string;
   googleClientId: string;
   msClientId: string;
-  /** Email institucional para avisos dos docentes e Gmail (@campus.fct.unl.pt). */
+  /** Email institucional para avisos dos docentes e Gmail académico. */
   academicEmail?: string;
   /** Email pessoal para o Gemini AI e sincronização cloud (@gmail.com). */
   personalEmail?: string;
@@ -204,10 +204,18 @@ export interface Settings {
   gdprPolicyVersion?: string;
   /** Confirmação mínima de idade (>= 13 anos em Portugal, Lei n.º 58/2019). */
   ageConfirmed13Plus?: boolean;
-  /** Consentimento explícito para envio de contexto/prints à Google Gemini API (EU AI Act Art. 50). */
+  /** Consentimento explícito para envio de contexto/prints à Google Gemini API. */
   aiConsent?: boolean;
   /** Preferência explícita por sincronização cloud (Firebase Firestore). */
   cloudSyncConsent?: boolean;
+  /** Indica se o utilizador escolheu continuar offline sem criar conta no ecrã inicial. */
+  guestMode?: boolean;
+  /** Indica se o utilizador já viu o carrossel de pré-login (/bem-vindo). */
+  hasSeenWelcome?: boolean;
+  /** Visual/acessório escolhido para o mascote Uni ('auto' adapta-se ao curso/cadeira). */
+  uniAccessory?: 'auto' | 'default' | 'math' | 'tech' | 'health' | 'arts' | 'science' | 'humanities';
+  /** Personalidade do Uni nas respostas do Tutor. */
+  uniPersona?: 'amigo' | 'exigente' | 'calmo';
   /** Indica se o tour guiado pós-onboarding já foi concluído. */
   tourCompleted?: boolean;
 }

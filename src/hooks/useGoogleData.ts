@@ -3,7 +3,7 @@ import { googleService, type AcademicEmail } from '../services/googleService';
 import { useStore } from '../store/useStore';
 
 /**
- * Hook para leitura e ligação ao correio académico da faculdade (@campus.fct.unl.pt).
+ * Hook para leitura e ligação ao correio académico institucional.
  * Reutiliza a cache em memória entre trocas de cadeiras sem chamadas redundantes à API.
  */
 export function useAcademicEmails(triggerKey?: string) {
@@ -164,7 +164,7 @@ export function useGoogleAccounts() {
   const personal = googleService.getPersonalAccountStatus();
   const academic = googleService.getAcademicAccountStatus();
   const isPersonalConnected = personal.connected;
-  const isAcademicConnected = Boolean(academic.hasToken || academicEmail);
+  const isAcademicConnected = Boolean(academic.hasToken);
 
   const loginPersonal = useCallback(async () => {
     setPersonalBusy(true);

@@ -47,9 +47,9 @@ export function startUnipediaGuidedTour(onComplete?: () => void): void {
     {
       element: '[data-tour="nav-assistente"]',
       popover: {
-        title: 'Tutor IA (opcional · RGPD)',
+        title: 'Uni · O teu Tutor IA',
         description:
-          'Tira dúvidas com base no teu contexto real, sempre com controlo explícito de privacidade.',
+          'Tira dúvidas com base nas tuas cadeiras e apontamentos sempre que quiseres.',
         side: 'top',
         align: 'center',
       },

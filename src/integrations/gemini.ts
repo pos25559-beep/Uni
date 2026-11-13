@@ -10,6 +10,7 @@ import {
   todayStr, upcomingAssessments,
 } from '../lib/selectors';
 import { statusLabel } from '../lib/colors';
+import type { UniAccessoryId, UniPersonaMode } from '../lib/uniAccessories';
 
 export interface ChatMessage {
   id: string;
@@ -28,18 +29,19 @@ interface GenerateResponse {
 
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const MAX_CONTEXT_CHARS = 4500;
-const DEFAULT_MODEL = 'gemini-2.5-flash';
+const DEFAULT_MODEL = 'gemini-4-hydrogen';
+const FALLBACK_MODEL = 'gemini-2.5-flash';
 
 export class AiConsentRequiredError extends Error {
   constructor() {
-    super('Para usar o Gemini IA tens primeiro de ativar o consentimento de processamento por IA nas Definições.');
+    super('Ativa primeiro o Uni nas Definições para que ele possa responder às tuas perguntas.');
     this.name = 'AiConsentRequiredError';
   }
 }
 
 export class MissingGeminiKeyError extends Error {
   constructor() {
-    super('Configura a tua chave Gemini API nas Definições → Gemini IA (ou ativa em desenvolvimento) para usar este assistente.');
+    super('Cola a tua chave pessoal do Gemini nas Definições para acordar o Uni.');
     this.name = 'MissingGeminiKeyError';
   }
 }
@@ -53,10 +55,52 @@ function resolveGeminiConfig() {
   if (!key) {
     throw new MissingGeminiKeyError();
   }
-  const model = (!geminiModel || geminiModel.startsWith('gemini-2.0') || geminiModel.startsWith('gemini-3.8'))
-    ? DEFAULT_MODEL
-    : geminiModel.trim();
+  const raw = geminiModel.trim();
+  const model = !raw || raw.startsWith('gemini-2.0') || raw.startsWith('gemini-3.8') ? DEFAULT_MODEL : raw;
   return { key, model };
+}
+
+async function callGenerateWithFallback(args: {
+  key: string;
+  model: string;
+  body: Record<string, unknown>;
+  signal?: AbortSignal;
+}): Promise<GenerateResponse> {
+  const runOnce = async (targetModel: string) => {
+    const res = await fetch(`${API_BASE}/${encodeURIComponent(targetModel)}:generateContent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': args.key },
+      body: JSON.stringify(args.body),
+      signal: args.signal,
+    });
+    const data = (await res.json().catch(() => null)) as GenerateResponse | null;
+    return { res, data };
+  };
+
+  const primary = await runOnce(args.model);
+  if (primary.res.ok) {
+    return primary.data ?? {};
+  }
+
+  const msg = primary.data?.error?.message?.toLowerCase() ?? '';
+  const shouldFallback =
+    args.model === DEFAULT_MODEL &&
+    (primary.res.status === 404 ||
+      primary.res.status === 400 ||
+      primary.res.status === 403 ||
+      msg.includes('not found') ||
+      msg.includes('not supported') ||
+      msg.includes('model'));
+
+  if (shouldFallback) {
+    const backup = await runOnce(FALLBACK_MODEL);
+    if (backup.res.ok) {
+      return backup.data ?? {};
+    }
+    throw new Error(backup.data?.error?.message ?? `Erro ${backup.res.status} ao contactar o Uni.`);
+  }
+
+  throw new Error(primary.data?.error?.message ?? `Erro ${primary.res.status} ao contactar o Uni.`);
 }
 
 export interface ExtractedHistoryItem {
@@ -85,10 +129,10 @@ Regras:
 - Se tiver reprovado ou falta realizar, status = "por_fazer".
 - Não inventes cadeiras que não estejam na imagem.`;
 
-  const res = await fetch(`${API_BASE}/${encodeURIComponent(model)}:generateContent`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-    body: JSON.stringify({
+  const data = await callGenerateWithFallback({
+    key,
+    model,
+    body: {
       contents: [
         {
           role: 'user',
@@ -103,13 +147,8 @@ Regras:
         maxOutputTokens: 2048,
         responseMimeType: 'application/json',
       },
-    }),
+    },
   });
-
-  const data = (await res.json()) as GenerateResponse;
-  if (!res.ok || data.error) {
-    throw new Error(data.error?.message || `Erro Gemini Vision ${res.status}`);
-  }
 
   const rawText = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? '[]';
   const jsonMatch = /\[[\s\S]*\]/.exec(rawText);
@@ -146,34 +185,29 @@ export async function askGemini(args: {
 }): Promise<string> {
   const { key, model } = resolveGeminiConfig();
 
-  const res = await fetch(`${API_BASE}/${encodeURIComponent(model)}:generateContent`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-    body: JSON.stringify({
+  const data = await callGenerateWithFallback({
+    key,
+    model,
+    body: {
       systemInstruction: { parts: [{ text: args.system }] },
       contents: args.messages.map((m) => ({ role: m.role, parts: [{ text: m.text }] })),
-      generationConfig: { temperature: 0.6 },
-    }),
+      generationConfig: { temperature: 0.65 },
+    },
     signal: args.signal,
   });
-
-  const data = (await res.json().catch(() => null)) as GenerateResponse | null;
-  if (!res.ok) {
-    throw new Error(data?.error?.message ?? `Erro ${res.status} ao contactar a Gemini.`);
-  }
 
   const candidate = data?.candidates?.[0];
   if (!candidate) {
     const reason = data?.promptFeedback?.blockReason;
     throw new Error(
       reason
-        ? `A Gemini bloqueou o pedido (${reason}). Reformula a pergunta.`
-        : 'A Gemini não devolveu nenhuma resposta. Tenta de novo.',
+        ? `O Uni pediu para reformulares a pergunta (${reason}).`
+        : 'O Uni não devolveu resposta agora. Tenta de novo.',
     );
   }
 
   const text = (candidate.content?.parts ?? []).map((p) => p.text ?? '').join('').trim();
-  if (!text) throw new Error('A Gemini devolveu uma resposta vazia. Tenta de novo.');
+  if (!text) throw new Error('O Uni devolveu uma resposta vazia. Tenta de novo.');
   return text;
 }
 
@@ -311,17 +345,104 @@ export function buildDocumentContext(materials: Material[]): string {
   return lines.join('\n');
 }
 
-export const SYSTEM_PROMPT = (context: string, docContext?: string): string => `És um tutor de estudo exigente mas encorajador, a ajudar um estudante universitário a preparar o seu semestre.
+const PERSONA_INSTRUCTIONS: Record<UniPersonaMode, string> = {
+  amigo:
+    'Estilo Amigo: próximo, bem-humorado sem exageros, celebra pequenas vitórias do estudante e explica conceitos com exemplos do dia-a-dia.',
+  exigente:
+    'Estilo Exigente (Modo Exame): direto ao ponto, rigoroso nas definições e provas, cobra raciocínio ao estudante antes de dar a solução final.',
+  calmo:
+    'Estilo Anti-Stress: voz tranquila e paciente, parte tarefas grandes em micro-passos de 15 minutos e acalma o ritmo antes de provas difíceis.',
+};
 
-Regras:
-- Responde sempre em português europeu (pt-PT).
-- Sê conciso e concreto: prefere passos, números e prioridades a discursos longos.
-- Baseia os conselhos nos dados do resumo e nos documentos anexados abaixo. Se um dado não estiver disponível, diz que não o tens em vez de inventar factos sobre as cadeiras ou o estudante.
+const AREA_VOICE_HINTS: Record<UniAccessoryId, string> = {
+  default: 'Companheiro versátil do caderno escolar.',
+  math: 'Com chapéu π de Matemática: raciocínio lógico passo a passo, intuição geométrica e verificação de contas.',
+  tech: 'Com auscultadores de Engenharia & Programação: pensamento estruturado, pseudocódigo limpo e depuração metódica.',
+  health: 'Com estetoscópio de Saúde & Biociências: liga conceitos anatómicos/fisiológicos a casos práticos.',
+  arts: 'Com boina de Artes & Design: visual, criativo, atento a referências e composição.',
+  science: 'Com óculos de laboratório: rigor experimental, unidades, hipóteses e fenómeno físico/químico.',
+  humanities: 'Com óculos clássicos de Letras, Direito & Economia: clareza argumentativa, tese-síntese e contexto histórico.',
+};
+
+export const SYSTEM_PROMPT = (
+  context: string,
+  docContext?: string,
+  opts?: { persona?: UniPersonaMode; accessory?: UniAccessoryId; studentName?: string },
+): string => {
+  const persona = opts?.persona ?? 'amigo';
+  const accessory = opts?.accessory ?? 'default';
+  const firstName = opts?.studentName?.trim().split(/\s+/)[0] || '';
+
+  return `Tu és o Uni, o companheiro de estudo exclusivo da Unipedia${firstName ? ` a ajudar ${firstName}` : ''}.
+Identidade obrigatória:
+- Fala sempre como «o Uni» na primeira pessoa. Nunca digas "como modelo de IA", "como assistente virtual" nem "sou o Gemini".
+- ${PERSONA_INSTRUCTIONS[persona]}
+- Visual e área ativa: ${AREA_VOICE_HINTS[accessory]}
+- Responde sempre em português europeu (pt-PT), de forma concisa, concreta e calorosa.
+- Baseia conselhos nos dados do resumo e nos documentos/fontes anexados abaixo. Se algo não estiver nos dados, assume com naturalidade em vez de inventar.
 - Usa Markdown: títulos curtos (###), listas e **negrito** para destacar o essencial.
-- Em quizzes: faz UMA pergunta de cada vez e espera pela resposta do estudante antes de a corrigir e de avançar.
-- Se o estudante pedir algo fora do estudo, responde brevemente e volta ao tema.
+- Em quizzes: faz UMA pergunta de cada vez e espera pela resposta antes de corrigir e avançar.
+- Se a conversa fugir do estudo, brinca brevemente como o Uni e traz o foco de volta às cadeiras.
 ${docContext ? `\n${docContext}\n` : ''}
-Resumo do semestre do estudante (dados da app, atuais neste momento):
+Resumo atual do caderno do estudante:
 """
 ${context}
 """`;
+};
+
+export interface NotebookSourceInput {
+  title: string;
+  content: string;
+}
+
+export async function generateNotebookBrief(args: {
+  mode: 'guide' | 'quiz' | 'summary';
+  sources: NotebookSourceInput[];
+  courseName?: string;
+  persona?: UniPersonaMode;
+  accessory?: UniAccessoryId;
+}): Promise<string> {
+  const { key, model } = resolveGeminiConfig();
+  const formattedSources = args.sources
+    .filter((s) => s.content.trim())
+    .map((s, i) => `### [Fonte ${i + 1}: ${s.title}]\n${s.content.trim().slice(0, 5000)}`)
+    .join('\n\n');
+
+  if (!formattedSources) {
+    throw new Error('Adiciona pelo menos uma fonte ou nota ao teu Caderno antes de gerar.');
+  }
+
+  const goalPrompt =
+    args.mode === 'guide'
+      ? 'Cria um **Guia de Estudo Estruturado** claro com conceitos-chave, armadilhas comuns de teste e plano rápido de revisão, citando sempre as fontes como [Fonte N].'
+      : args.mode === 'quiz'
+        ? 'Cria **5 perguntas de treino de exame** com resposta e explicação curta escondida em secção final, citando a origem de cada uma como [Fonte N].'
+        : 'Faz um **Resumo Executivo por Tópicos** direto e memorável, citando de onde veio cada ideia como [Fonte N].';
+
+  const system = `És o Uni a organizar um Caderno de Estudo estilo Gemini Notebook${args.courseName ? ` para ${args.courseName}` : ''}.
+${PERSONA_INSTRUCTIONS[args.persona ?? 'amigo']}
+${AREA_VOICE_HINTS[args.accessory ?? 'default']}
+Regras estritas:
+- Baseia-te exclusivamente nas fontes fornecidas pelo estudante.
+- Cita sempre as fontes relevantes no texto usando [Fonte 1], [Fonte 2], etc.
+- Escreve em português europeu (pt-PT) com Markdown limpo.`;
+
+  const data = await callGenerateWithFallback({
+    key,
+    model,
+    body: {
+      systemInstruction: { parts: [{ text: system }] },
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: `${goalPrompt}\n\nFONTES DO CADERNO:\n${formattedSources}` }],
+        },
+      ],
+      generationConfig: { temperature: 0.45 },
+    },
+  });
+
+  const text = (data?.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? '').join('').trim();
+  if (!text) throw new Error('Não foi possível gerar o caderno agora. Tenta novamente.');
+  return text;
+}

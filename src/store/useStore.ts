@@ -38,13 +38,13 @@ const defaultIntegrations: Record<IntegrationKey, IntegrationStatus> = {
 
 export const defaultAcademicProfile: AcademicProfile = {
   onboardingCompleted: false,
-  universityId: 'nova-fct',
-  universityName: 'NOVA FCT — Faculdade de Ciências e Tecnologia',
-  degreeId: 'lemc',
-  degreeName: 'Licenciatura em Engenharia Mecânica (LEMc)',
-  entryYear: 2024,
-  currentAcademicYear: 2,
-  currentSemester: 2,
+  universityId: 'outra',
+  universityName: '',
+  degreeId: 'outro',
+  degreeName: '',
+  entryYear: new Date().getFullYear(),
+  currentAcademicYear: 1,
+  currentSemester: 1,
   difficultCourseIds: [],
   difficultTopicsNotes: '',
   completedCourses: [],
@@ -223,7 +223,7 @@ export const useStore = create<AppState>()(
     }),
     {
       name: 'uni-erp-v5',
-      version: 6,
+      version: 7,
       onRehydrateStorage: () => (state) => {
         rehydrateStoreState(state);
       },

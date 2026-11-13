@@ -1,5 +1,5 @@
 // Kit de UI partilhado Unipedia v3 ("Estúdio Caderno Vivo").
-import { ArrowLeft, ChevronRight, Loader2, X } from 'lucide-react';
+import { ArrowLeft, Check, ChevronDown, ChevronRight, Loader2, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useId, useRef, useState } from 'react';
 import type {
@@ -30,12 +30,12 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
-      <div className="min-w-0 flex-1">
+    <header className="mb-6 flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
+      <div className="min-w-[210px] flex-1 space-y-1">
         {eyebrow && (
-          <p className="mb-0.5 text-xs font-semibold uppercase tracking-wider text-muted">{eyebrow}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">{eyebrow}</p>
         )}
-        <h1 className="font-display text-2xl font-bold tracking-tight text-fg sm:text-[28px]">
+        <h1 className="font-display text-[28px] font-bold leading-[1.08] tracking-tight text-fg sm:text-[32px]">
           {title}
           {accentTitle ? (
             <>
@@ -44,7 +44,7 @@ export function PageHeader({
             </>
           ) : null}
         </h1>
-        {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
+        {subtitle && <p className="pt-0.5 text-sm leading-relaxed text-muted">{subtitle}</p>}
       </div>
       {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
     </header>
@@ -235,7 +235,7 @@ export function CourseChip({ course, className }: { course?: Course; className?:
   );
 }
 
-/** Barra de progresso linear acessível. `value` 0–1. */
+/** Barra de progresso linear animada com mola suave. `value` 0–1. */
 export function Progress({
   value,
   color = 'bg-accent',
@@ -254,12 +254,17 @@ export function Progress({
       aria-valuemin={0}
       aria-valuemax={100}
     >
-      <div className={cx('h-full rounded-full transition-[width] duration-500', color)} style={{ width: `${pct}%` }} />
+      <motion.div
+        className={cx('h-full rounded-full', color)}
+        initial={{ width: 0 }}
+        animate={{ width: `${pct}%` }}
+        transition={{ type: 'spring', stiffness: 220, damping: 24 }}
+      />
     </div>
   );
 }
 
-/** Anel de progresso acessível (`role="progressbar"`). `value` 0–1. */
+/** Anel de progresso acessível com animação suave de desenho. `value` 0–1. */
 export function Ring({
   value,
   size = 64,
@@ -291,7 +296,7 @@ export function Ring({
     >
       <svg width={size} height={size} className="-rotate-90" aria-hidden="true">
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--surface-2)" strokeWidth={stroke} />
-        <circle
+        <motion.circle
           cx={size / 2}
           cy={size / 2}
           r={r}
@@ -300,8 +305,9 @@ export function Ring({
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={c}
-          strokeDashoffset={c * (1 - v)}
-          style={{ transition: 'stroke-dashoffset 0.6s ease' }}
+          initial={{ strokeDashoffset: c }}
+          animate={{ strokeDashoffset: c * (1 - v) }}
+          transition={{ type: 'spring', stiffness: 160, damping: 22, delay: 0.12 }}
         />
       </svg>
       <div className="absolute inset-0 grid place-items-center text-xs font-bold tabular">{children}</div>
@@ -827,10 +833,147 @@ export function Select({
   ...props
 }: SelectHTMLAttributes<HTMLSelectElement> & { error?: boolean }) {
   return (
-    <select
-      {...props}
-      className={cx(control, 'h-11', error && 'border-coral focus:border-coral', className)}
-    />
+    <div className="relative">
+      <select
+        {...props}
+        className={cx(
+          control,
+          'h-11 appearance-none pr-9',
+          error && 'border-coral focus:border-coral',
+          className,
+        )}
+      />
+      <ChevronDown
+        size={15}
+        className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-muted"
+        aria-hidden="true"
+      />
+    </div>
+  );
+}
+
+export interface PillSelectOption {
+  value: string;
+  label: string;
+  hint?: string;
+  dotClass?: string;
+}
+
+/**
+ * Seletor em pílula nativo do sistema Estúdio Caderno Vivo (substitui <select> do navegador).
+ */
+export function PillSelect({
+  value,
+  options,
+  onChange,
+  icon,
+  ariaLabel,
+  className,
+}: {
+  value: string;
+  options: PillSelectOption[];
+  onChange: (value: string) => void;
+  icon?: ReactNode;
+  ariaLabel: string;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const selected = options.find((o) => o.value === value) ?? options[0];
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('touchstart', onDown);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('touchstart', onDown);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={wrapRef} className={cx('relative inline-block', className)}>
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={ariaLabel}
+        onClick={() => {
+          void hapticTap();
+          setOpen((v) => !v);
+        }}
+        className={cx(
+          'inline-flex min-h-[42px] max-w-[210px] items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition',
+          open
+            ? 'border-accent bg-accent-soft text-accent shadow-card'
+            : 'border-line bg-surface text-fg hover:bg-surface-2',
+        )}
+      >
+        {icon && <span className="shrink-0 text-muted">{icon}</span>}
+        {selected?.dotClass && <span className={cx('size-2 shrink-0 rounded-full', selected.dotClass)} />}
+        <span className="truncate">{selected?.label ?? ''}</span>
+        <ChevronDown
+          size={14}
+          className={cx('shrink-0 text-muted transition-transform', open && 'rotate-180 text-accent')}
+        />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            role="listbox"
+            aria-label={ariaLabel}
+            initial={{ opacity: 0, y: 6, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.96 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 28 }}
+            className="absolute left-0 z-40 mt-2 max-h-64 min-w-[230px] max-w-[85vw] overflow-y-auto rounded-[22px] border border-line bg-surface p-1.5 shadow-float"
+          >
+            {options.map((opt) => {
+              const active = opt.value === value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  role="option"
+                  aria-selected={active}
+                  onClick={() => {
+                    void hapticTap();
+                    onChange(opt.value);
+                    setOpen(false);
+                  }}
+                  className={cx(
+                    'flex min-h-[44px] w-full items-center justify-between gap-2.5 rounded-2xl px-3 py-2 text-left text-xs transition',
+                    active
+                      ? 'bg-accent-soft font-semibold text-accent'
+                      : 'text-fg hover:bg-surface-2',
+                  )}
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    {opt.dotClass && <span className={cx('size-2.5 shrink-0 rounded-full', opt.dotClass)} />}
+                    <div className="min-w-0">
+                      <p className="truncate">{opt.label}</p>
+                      {opt.hint && <p className="truncate text-[11px] font-normal text-muted">{opt.hint}</p>}
+                    </div>
+                  </div>
+                  {active && <Check size={14} className="shrink-0 text-accent" />}
+                </button>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
