@@ -233,7 +233,7 @@ export function useGoogleAccounts() {
       if (res.added > 0) {
         setMessage(`Varredura concluída: ${res.added} novos materiais académicos adicionados às tuas cadeiras!`);
       } else {
-        setMessage('Varredura concluída: todas as pastas do Google Drive e do LEMc já se encontram sincronizadas.');
+        setMessage('Varredura concluída: todas as pastas do Google Drive associadas já se encontram sincronizadas.');
       }
     } catch (err: unknown) {
       setMessage(err instanceof Error ? err.message : 'Erro ao varrer o Google Drive.');

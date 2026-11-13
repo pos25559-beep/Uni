@@ -1,4 +1,4 @@
-import { ArrowRight, BookOpen, CalendarDays, CheckCircle2, Sparkles } from 'lucide-react';
+import { ArrowRight, BookOpen, CalendarDays, CheckCircle2, HardDrive, Mail, Sparkles } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -36,6 +36,15 @@ const SLIDES: Slide[] = [
     accent: 'no sítio certo',
     description:
       'Distribui sessões pelos teus dias livres, acompanha exames próximos e transforma avisos em tarefas com um toque.',
+  },
+  {
+    id: 'google-ecosystem',
+    bgClass: 'bg-[#D6ECDC] dark:bg-[#172B22]',
+    eyebrow: 'Ecossistema Google opcional',
+    title: 'As tuas apps Google,',
+    accent: 'já ligadas',
+    description:
+      'Ao entrar com Google associas Drive, Agenda, Gmail académico e o Tutor Uni num só sítio — sem perderes tempo a copiar links.',
   },
   {
     id: 'uni',
@@ -195,6 +204,63 @@ export default function WelcomePage() {
             )}
 
             {step === 2 && (
+              <div className="relative flex w-full max-w-[330px] flex-col gap-2 text-left">
+                {[
+                  {
+                    icon: HardDrive,
+                    title: 'Google Drive nas cadeiras',
+                    detail: 'Sebentas, fichas e PDFs encontrados sem procuras.',
+                    tone: 'bg-[#FAF8F2] dark:bg-[#23201B]',
+                    iconClass: 'text-[#157F58] dark:text-[#4ADE80]',
+                  },
+                  {
+                    icon: CalendarDays,
+                    title: 'Google Agenda sincronizada',
+                    detail: 'Provas, aulas e entregas no teu plano semanal.',
+                    tone: 'bg-[#C4E0FD] text-[#141312]',
+                    iconClass: 'text-[#141312]',
+                  },
+                  {
+                    icon: Mail,
+                    title: 'Correio académico no Hoje',
+                    detail: 'Mudanças de sala e avisos sempre à mão.',
+                    tone: 'bg-[#FCE99F] text-[#141312]',
+                    iconClass: 'text-[#141312]',
+                  },
+                  {
+                    icon: Sparkles,
+                    title: 'Uni Nativo + Gemini Notebook',
+                    detail: 'Tutor com fontes e acesso direto aos teus cadernos.',
+                    tone: 'bg-[#C9DC9F] text-[#141312]',
+                    iconClass: 'text-[#157F58]',
+                  },
+                ].map((item, idx) => {
+                  const Icon = item.icon;
+                  return (
+                    <motion.div
+                      key={item.title}
+                      initial={{ opacity: 0, y: 14 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ ...UNIPEDIA_BOUNCE_SPRING, delay: idx * 0.06 }}
+                      className={cx(
+                        'flex items-center gap-3 rounded-[20px] px-3.5 py-2.5 shadow-card',
+                        item.tone,
+                      )}
+                    >
+                      <div className="grid size-8 shrink-0 place-items-center rounded-xl bg-black/5 dark:bg-white/10">
+                        <Icon size={16} className={item.iconClass} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold leading-tight">{item.title}</p>
+                        <p className="mt-0.5 text-[11px] leading-snug opacity-75">{item.detail}</p>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+
+            {step === 3 && (
               <div className="flex w-full flex-col items-center space-y-4">
                 <div className="relative flex size-36 items-center justify-center rounded-full bg-white/55 shadow-card dark:bg-black/20">
                   <UniBuddy
@@ -238,7 +304,7 @@ export default function WelcomePage() {
             )}
 
             <div className="space-y-2.5 px-2">
-              <StickerBadge tone={step === 2 ? 'sage' : 'butter'} tilt={-1.5}>
+              <StickerBadge tone={step === 2 || step === 3 ? 'sage' : 'butter'} tilt={-1.5}>
                 {slide.eyebrow}
               </StickerBadge>
               <h1 className="font-display text-[30px] font-extrabold leading-[1.1] tracking-tight sm:text-4xl">

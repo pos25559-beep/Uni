@@ -1,5 +1,7 @@
 import { Capacitor } from '@capacitor/core';
+import { getAI, GoogleAIBackend, type AI } from 'firebase/ai';
 import { initializeApp, getApps, getApp } from 'firebase/app';
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 import {
   createUserWithEmailAndPassword,
   deleteUser,
@@ -18,12 +20,13 @@ import {
 import { getFirestore } from 'firebase/firestore';
 
 export const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyCBfXOeOqvHsqCaAqY-RGYjcp9i-j_l6Jo',
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyCEhC7Ppe8BsFitlgqfYeSgHFfN_sUS4ro',
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'campus-erp-84964.firebaseapp.com',
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'campus-erp-84964',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'campus-erp-84964.appspot.com',
+  storageBucket:
+    import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'campus-erp-84964.firebasestorage.app',
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '829850599388',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:829850599388:web:campus-erp',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:829850599388:web:d8a99af3adb0ce0f839919',
 };
 
 export const app = !getApps().some((a) => a.name === '[DEFAULT]')
@@ -31,6 +34,36 @@ export const app = !getApps().some((a) => a.name === '[DEFAULT]')
   : getApp();
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+let appCheckInitialized = false;
+let nativeAIInstance: AI | null = null;
+
+/**
+ * Inicializa o Firebase App Check (quando configurado) e devolve o cliente nativo Firebase AI Logic.
+ */
+export function getNativeAI(): AI {
+  if (typeof window !== 'undefined' && !appCheckInitialized) {
+    appCheckInitialized = true;
+    if (import.meta.env.DEV) {
+      (window as unknown as Record<string, unknown>).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+    }
+    const siteKey =
+      (import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY as string | undefined) ||
+      '6Lfx7B4uAAAAACgDpIV44UBaXW-HkLrlqZYF6DdY';
+    if (siteKey?.trim()) {
+      try {
+        initializeAppCheck(app, {
+          provider: new ReCaptchaEnterpriseProvider(siteKey.trim()),
+          isTokenAutoRefreshEnabled: true,
+        });
+      } catch {
+        // Ignora caso já tenha sido inicializado em HMR
+      }
+    }
+  }
+  nativeAIInstance ??= getAI(app, { backend: new GoogleAIBackend() });
+  return nativeAIInstance;
+}
 
 // App secundária independente para a Conta Académica institucional
 // Permite que o estudante mantenha a conta pessoal no Firebase/Drive e conecte a conta FCT para o Gmail dos professores
@@ -85,14 +118,15 @@ export function getAcademicGoogleAccessToken(): string | null {
 
 export function getAcademicGoogleEmail(): string | null {
   const token = getAcademicGoogleAccessToken();
-  if (!token && !auth.currentUser) {
+  const personalToken = getCachedGoogleAccessToken();
+  if (!token && !personalToken && !auth.currentUser) {
     return null;
   }
   return (
     cachedAcademicToken?.email ||
     sessionStorage.getItem('campus_academic_google_email') ||
     academicAuth.currentUser?.email ||
-    null
+    (personalToken ? auth.currentUser?.email ?? null : null)
   );
 }
 
@@ -133,6 +167,11 @@ if (
       const credential = GoogleAuthProvider.credentialFromResult(result);
       if (credential?.accessToken && result.user.email) {
         setGoogleAccessToken(credential.accessToken);
+        try {
+          sessionStorage.setItem('unipedia_google_just_signed_in', '1');
+        } catch {
+          // ignore
+        }
       }
     })
     .catch(() => {});

@@ -117,8 +117,8 @@ export default function CourseFormModal({ course, onClose }: Props) {
 
         <fieldset className="space-y-3 rounded-xl border border-line p-4">
           <legend className="px-1 text-xs font-medium text-muted">Ligações</legend>
-          <Field label="NotebookLM">
-            <Input type="url" value={notebookUrl} onChange={(e) => setNotebookUrl(e.target.value)} placeholder="https://notebooklm.google.com/…" />
+          <Field label="NotebookLM (URL privado opcional)">
+            <Input type="url" value={notebookUrl} onChange={(e) => setNotebookUrl(e.target.value)} placeholder="Vazio = abre a tua biblioteca" />
           </Field>
           <Field label="Pasta no Google Drive">
             <Input type="url" value={driveFolderUrl} onChange={(e) => setDriveFolderUrl(e.target.value)} placeholder="https://drive.google.com/…" />

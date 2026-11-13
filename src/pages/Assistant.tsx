@@ -18,15 +18,18 @@ import { QuickActions } from '../components/assistant/QuickActions';
 import UniNotebookDrawer from '../components/assistant/UniNotebookDrawer';
 import WeeklyTutorModal from '../components/assistant/WeeklyTutorModal';
 import { UniBuddy } from '../components/brand/UnipediaMarks';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ActionSheet, Badge, Button, Modal, PageHeader, PillSelect, cx } from '../components/ui';
 import {
-  askGemini,
   buildDocumentContext,
   buildStudyContext,
+  hasCustomGeminiKey,
+  streamGeminiChat,
   SYSTEM_PROMPT,
+  type ChatAttachment,
+  type ChatMessage,
 } from '../integrations/gemini';
-import type { ChatMessage } from '../integrations/gemini';
+import { getDailyQuotaSnapshot } from '../lib/aiQuota';
 import { courseColors } from '../lib/colors';
 import {
   appendMessage,
@@ -51,7 +54,7 @@ export default function Assistant() {
   const uniPreference = useStore((s) => s.settings.uniAccessory);
   const uniPersona = useStore((s) => s.settings.uniPersona ?? 'amigo');
   const aiConsent = useStore((s) => Boolean(s.settings.aiConsent));
-  const hasApiKey = useStore((s) => Boolean(s.settings.geminiApiKey?.trim()));
+  const hasCustomKey = useStore((s) => Boolean(s.settings.geminiApiKey?.trim()) || hasCustomGeminiKey());
   const updateSettings = useStore((s) => s.updateSettings);
   const userName = useStore((s) => s.settings.userName);
   const setIntegration = useStore((s) => s.setIntegration);
@@ -65,8 +68,14 @@ export default function Assistant() {
   const [notebookOpen, setNotebookOpen] = useState(false);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [streamingText, setStreamingText] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [quotaTick, setQuotaTick] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const quota = useMemo(() => {
+    void quotaTick;
+    return getDailyQuotaSnapshot(hasCustomKey);
+  }, [hasCustomKey, quotaTick]);
   const [confirmDeleteConv, setConfirmDeleteConv] = useState(false);
   const [showActions, setShowActions] = useState(false);
   const [tutorOpen, setTutorOpen] = useState(false);
@@ -102,9 +111,9 @@ export default function Assistant() {
   useEffect(() => () => abortRef.current?.abort(), []);
 
   useEffect(() => {
-    if (messages.length === 0 && !loading && !error) return;
+    if (messages.length === 0 && !loading && !error && !streamingText) return;
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [messages.length, loading, error]);
+  }, [messages.length, loading, error, streamingText]);
 
   // Conversa ativa atual
   const currentConv = useMemo(
@@ -180,10 +189,11 @@ export default function Assistant() {
   };
 
   const run = useCallback(
-    async (list: ChatMessage[]) => {
+    async (list: ChatMessage[], targetConvId: string, attachments?: ChatAttachment[]) => {
       const controller = new AbortController();
       abortRef.current = controller;
       setLoading(true);
+      setStreamingText('');
       setError(null);
       try {
         const recent = list.slice(-MAX_SENT);
@@ -199,17 +209,27 @@ export default function Assistant() {
           studentName: userName,
         });
 
-        const reply = await askGemini({ messages: payload, system, signal: controller.signal });
+        const reply = await streamGeminiChat({
+          messages: payload,
+          system,
+          attachments,
+          signal: controller.signal,
+          onToken: (partial) => setStreamingText(partial),
+        });
         const now = new Date().toISOString();
         const modelMsg: ChatMessage = {
           id: newId(),
           role: 'model',
-          text: reply,
+          text: reply || 'Não consegui gerar texto desta vez. Podes tentar novamente?',
           at: now,
-          sourceDocTitles: attachedMaterials.map((m) => m.title),
+          sourceDocTitles: [
+            ...attachedMaterials.map((m) => m.title),
+            ...(attachments?.map((a) => a.name) ?? []),
+          ],
         };
 
-        await appendMessage(activeConvId, modelMsg);
+        setStreamingText(null);
+        await appendMessage(targetConvId, modelMsg);
         setIntegration('gemini', { connected: true, lastSync: now, error: undefined });
       } catch (err) {
         if (controller.signal.aborted) return;
@@ -217,16 +237,18 @@ export default function Assistant() {
         setError(message);
         setIntegration('gemini', { error: message });
       } finally {
+        setQuotaTick((n) => n + 1);
         if (abortRef.current === controller) {
           abortRef.current = null;
+          setStreamingText(null);
           setLoading(false);
         }
       }
     },
-    [activeConvId, attachedMaterials, setIntegration, uniAccessory, uniPersona, userName],
+    [attachedMaterials, setIntegration, uniAccessory, uniPersona, userName],
   );
 
-  const send = async (text: string) => {
+  const send = async (text: string, attachments?: ChatAttachment[]) => {
     if (loading) return;
 
     let convId = activeConvId;
@@ -253,20 +275,22 @@ export default function Assistant() {
       role: 'user',
       text,
       at: new Date().toISOString(),
+      attachmentNames: attachments?.map((a) => a.name),
     };
 
     await appendMessage(convId, userMsg);
-    void run([...messages, userMsg]);
+    void run([...messages, userMsg], convId, attachments);
   };
 
   const stop = () => {
     abortRef.current?.abort();
     abortRef.current = null;
+    setStreamingText(null);
     setLoading(false);
   };
 
   const retry = () => {
-    if (!loading && messages.length > 0) void run(messages);
+    if (!loading && messages.length > 0) void run(messages, activeConvId);
   };
 
   return (
@@ -371,6 +395,12 @@ export default function Assistant() {
               })}
             </div>
 
+            <span className="rounded-full bg-surface-2/90 px-2.5 py-1 text-[11px] font-medium tabular text-muted">
+              {quota.bypassed
+                ? 'Chave própria · Ilimitado'
+                : `${quota.chatRemaining}/${quota.chatLimit} mensagens hoje`}
+            </span>
+
             {attachedMaterials.map((m) => (
               <span
                 key={m.id}
@@ -442,9 +472,21 @@ export default function Assistant() {
           m.role === 'user' ? (
             <div
               key={m.id}
-              className="rise ml-auto max-w-[85%] whitespace-pre-wrap break-words rounded-[22px] rounded-br-md bg-ink-cta px-4 py-3 text-sm text-ink-cta-fg shadow-card"
+              className="rise ml-auto max-w-[85%] space-y-1.5 whitespace-pre-wrap break-words rounded-[22px] rounded-br-md bg-ink-cta px-4 py-3 text-sm text-ink-cta-fg shadow-card"
             >
-              {m.text}
+              <p>{m.text}</p>
+              {m.attachmentNames && m.attachmentNames.length > 0 && (
+                <div className="flex flex-wrap gap-1 pt-0.5 text-[11px] opacity-85">
+                  {m.attachmentNames.map((name) => (
+                    <span
+                      key={name}
+                      className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5"
+                    >
+                      <FileText size={10} /> {name}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
             <div
@@ -465,7 +507,17 @@ export default function Assistant() {
           ),
         )}
 
-        {loading && (
+        {loading && streamingText && (
+          <div className="rise max-w-[95%] rounded-[22px] rounded-bl-md bg-surface px-4 py-3.5 shadow-card">
+            <Markdown text={streamingText} />
+            <div className="mt-2 flex items-center gap-1.5 text-[11px] text-accent">
+              <Sparkles size={11} className="animate-pulse" />
+              <span>O Uni está a escrever…</span>
+            </div>
+          </div>
+        )}
+
+        {loading && !streamingText && (
           <div
             role="status"
             className="rise flex w-fit items-center gap-2.5 rounded-[22px] rounded-bl-md bg-surface px-4 py-2.5 text-sm text-muted shadow-card"
@@ -491,36 +543,22 @@ export default function Assistant() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Aviso amigável para ativar o Uni */}
-      {(!aiConsent || !hasApiKey) && (
+      {/* Aviso amigável de 1 toque para ativar o Uni nativo (zero chave obrigatória) */}
+      {!aiConsent && (
         <div className="mt-3 flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-[22px] bg-pastel-butter/75 px-4 py-3 text-xs text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]">
           <div className="space-y-0.5">
             <div className="flex items-center gap-2 font-semibold">
               <Sparkles size={14} className="text-accent" />
               <span>Ativar o Uni</span>
-              <Badge tone="neutral">Opcional</Badge>
+              <Badge tone="accent">Incluído</Badge>
             </div>
             <p className="opacity-80">
-              {!aiConsent
-                ? 'Permite que o Uni responda usando a tua chave pessoal do Gemini.'
-                : 'Tudo pronto! Cola a tua chave Gemini gratuita nas Definições.'}
+              Pronto a usar com 1 toque (até {quota.chatLimit} mensagens/dia). Aceita apenas o envio das tuas perguntas para o Tutor responder.
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            {!aiConsent && (
-              <Button size="sm" variant="primary" onClick={() => updateSettings({ aiConsent: true })}>
-                Ativar Uni
-              </Button>
-            )}
-            {!hasApiKey && (
-              <Link
-                to="/definicoes/tutor"
-                className="inline-flex min-h-[40px] items-center rounded-full bg-surface px-3.5 text-xs font-semibold text-fg shadow-card"
-              >
-                Configurar chave
-              </Link>
-            )}
-          </div>
+          <Button size="sm" variant="primary" onClick={() => updateSettings({ aiConsent: true })}>
+            Ativar Uni
+          </Button>
         </div>
       )}
 
@@ -564,7 +602,7 @@ export default function Assistant() {
           },
           {
             id: 'privacy',
-            label: 'Preferências e chave Gemini',
+            label: 'Preferências do Uni',
             hint: 'Gerir permissões e modelo do Uni',
             icon: <Shield size={16} />,
             onSelect: () => navigate('/definicoes/tutor'),

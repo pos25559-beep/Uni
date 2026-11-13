@@ -46,6 +46,7 @@ import {
 } from '../lib/firebase';
 import { migrateLocalDataToCloud } from '../lib/firestoreSync';
 import { hapticSuccess, hapticTap } from '../lib/nativeBridge';
+import { googleService } from '../services/googleService';
 import { useStore } from '../store/useStore';
 
 const UNI_GREETINGS = [
@@ -189,9 +190,18 @@ export default function LoginPage() {
         guestMode: false,
         hasSeenWelcome: true,
         ...(u.displayName ? { userName: u.displayName } : {}),
+        ...(u.email ? { personalEmail: u.email } : {}),
       });
+      const st = useStore.getState();
+      st.setIntegration('google', {
+        connected: true,
+        account: u.email ?? undefined,
+        lastSync: new Date().toISOString(),
+        error: undefined,
+      });
+      void googleService.syncGoogleEcosystemAfterLogin(st.courses).catch(() => {});
       void hapticSuccess();
-      showToast('Bem-vindo! Sessão Google ativa.');
+      showToast('Bem-vindo! Conta Google e serviços associados.');
       navigate('/');
     } catch (err: unknown) {
       const eObj = err as { code?: string; message?: string };

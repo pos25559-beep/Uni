@@ -1,16 +1,27 @@
-// Cliente mínimo da API Gemini (generateContent) e construção do contexto de estudo.
-// A chave vive apenas nas Definições (localStorage) e é enviada só no cabeçalho do pedido.
+// Cliente híbrido da API Gemini: usa Firebase AI Logic de forma nativa (sem chave API manual)
+// com App Check e quota conservadora, ou chave pessoal opcional em Definições → Avançado.
 import { format, parseISO } from 'date-fns';
 import { pt } from 'date-fns/locale';
-import { useStore } from '../store/useStore';
-import type { AppState } from '../store/useStore';
-import type { Material } from '../types';
+import { getGenerativeModel, type Content, type GenerationConfig, type Part } from 'firebase/ai';
+import { statusLabel } from '../lib/colors';
+import { consumeDailyQuota, refundDailyQuota, type QuotaKind } from '../lib/aiQuota';
+import { getNativeAI } from '../lib/firebase';
 import {
   daysUntil, fmtGrade, fmtMinutes, gradeSummary, minutesThisWeek, readiness, studyStreak,
   todayStr, upcomingAssessments,
 } from '../lib/selectors';
-import { statusLabel } from '../lib/colors';
 import type { UniAccessoryId, UniPersonaMode } from '../lib/uniAccessories';
+import { useStore } from '../store/useStore';
+import type { AppState } from '../store/useStore';
+import type { Material } from '../types';
+
+export interface ChatAttachment {
+  id: string;
+  name: string;
+  mimeType: string;
+  dataBase64: string;
+  sizeBytes: number;
+}
 
 export interface ChatMessage {
   id: string;
@@ -19,6 +30,7 @@ export interface ChatMessage {
   /** ISO datetime */
   at: string;
   sourceDocTitles?: string[];
+  attachmentNames?: string[];
 }
 
 interface GenerateResponse {
@@ -29,78 +41,336 @@ interface GenerateResponse {
 
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const MAX_CONTEXT_CHARS = 4500;
+const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
 const DEFAULT_MODEL = 'gemini-4-hydrogen';
 const FALLBACK_MODEL = 'gemini-2.5-flash';
 
 export class AiConsentRequiredError extends Error {
   constructor() {
-    super('Ativa primeiro o Uni nas Definições para que ele possa responder às tuas perguntas.');
+    super('Ativa primeiro o Uni com 1 toque para que ele possa responder às tuas perguntas.');
     this.name = 'AiConsentRequiredError';
   }
 }
 
-export class MissingGeminiKeyError extends Error {
-  constructor() {
-    super('Cola a tua chave pessoal do Gemini nas Definições para acordar o Uni.');
-    this.name = 'MissingGeminiKeyError';
+export function getCustomGeminiKey(): string {
+  const saved = useStore.getState().settings.geminiApiKey.trim();
+  if (saved) return saved;
+  return import.meta.env.DEV ? String(import.meta.env.VITE_GEMINI_API_KEY ?? '').trim() : '';
+}
+
+export function hasCustomGeminiKey(): boolean {
+  return Boolean(getCustomGeminiKey());
+}
+
+/** Converte uma imagem ou PDF anexado pelo utilizador em parte multimodal pronta para o Gemini. */
+export async function fileToChatAttachment(file: File): Promise<ChatAttachment> {
+  const isImage = file.type.startsWith('image/');
+  const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+  if (!isImage && !isPdf) {
+    throw new Error(`Formato não suportado (${file.name}). Anexa imagens (PNG/JPG/WebP) ou PDFs.`);
   }
+  if (file.size > MAX_ATTACHMENT_BYTES) {
+    throw new Error(`O ficheiro "${file.name}" excede 8 MB. Escolhe uma versão mais leve.`);
+  }
+
+  const dataBase64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result ?? '');
+      const comma = result.indexOf(',');
+      resolve(comma >= 0 ? result.slice(comma + 1) : result);
+    };
+    reader.onerror = () => reject(new Error(`Não foi possível ler "${file.name}".`));
+    reader.readAsDataURL(file);
+  });
+
+  return {
+    id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    name: file.name,
+    mimeType: isPdf ? 'application/pdf' : file.type || 'image/jpeg',
+    dataBase64,
+    sizeBytes: file.size,
+  };
 }
 
 function resolveGeminiConfig() {
-  const { geminiApiKey, geminiModel, aiConsent } = useStore.getState().settings;
+  const { geminiModel, aiConsent } = useStore.getState().settings;
   if (!aiConsent) {
     throw new AiConsentRequiredError();
   }
-  const key = geminiApiKey.trim() || (import.meta.env.DEV ? (import.meta.env.VITE_GEMINI_API_KEY ?? '') : '');
-  if (!key) {
-    throw new MissingGeminiKeyError();
-  }
+  const customKey = getCustomGeminiKey();
   const raw = geminiModel.trim();
   const model = !raw || raw.startsWith('gemini-2.0') || raw.startsWith('gemini-3.8') ? DEFAULT_MODEL : raw;
-  return { key, model };
+  return { customKey, model };
 }
 
-async function callGenerateWithFallback(args: {
+function shouldFallbackModel(errorMessage: string, statusCode?: number): boolean {
+  const lower = errorMessage.toLowerCase();
+  return (
+    statusCode === 404 ||
+    statusCode === 400 ||
+    lower.includes('not found') ||
+    lower.includes('not supported') ||
+    lower.includes('model')
+  );
+}
+
+function friendlyNativeAiError(err: unknown): Error {
+  const raw = err instanceof Error ? err.message : String(err ?? '');
+  const lower = raw.toLowerCase();
+  if (
+    lower.includes('firebasevertexai') ||
+    lower.includes('api has not been used') ||
+    lower.includes('permission_denied') ||
+    lower.includes('app check') ||
+    lower.includes('403')
+  ) {
+    return new Error(
+      'O serviço nativo Firebase AI Logic ainda aguarda ativação no projeto Firebase (ou App Check). Podes ativar na Consola Firebase ou usar temporariamente uma chave em Definições → Tutor → Avançado.',
+    );
+  }
+  return err instanceof Error ? err : new Error('Não foi possível contactar o Uni agora. Tenta novamente.');
+}
+
+function buildContentsWithAttachments(
+  messages: { role: 'user' | 'model'; text: string }[],
+  attachments?: ChatAttachment[],
+): Content[] {
+  const lastUserIdx = [...messages].reverse().findIndex((m) => m.role === 'user');
+  const attachIndex = lastUserIdx >= 0 ? messages.length - 1 - lastUserIdx : messages.length - 1;
+
+  return messages.map((m, idx) => {
+    const parts: Part[] = [{ type: 'text', text: m.text }];
+    if (idx === attachIndex && attachments && attachments.length > 0) {
+      for (const att of attachments) {
+        parts.push({
+          type: 'inlineData',
+          inlineData: {
+            mimeType: att.mimeType,
+            data: att.dataBase64,
+          },
+        });
+      }
+    }
+    return { role: m.role, parts };
+  });
+}
+
+function toRestContents(contents: Content[]) {
+  return contents.map((c) => ({
+    role: c.role,
+    parts: c.parts.map((p) =>
+      p.type === 'inlineData'
+        ? { inlineData: p.inlineData }
+        : { text: 'text' in p ? p.text : '' },
+    ),
+  }));
+}
+
+async function callDirectRest(args: {
   key: string;
   model: string;
-  body: Record<string, unknown>;
+  contents: Content[];
+  system?: string;
+  generationConfig?: GenerationConfig;
   signal?: AbortSignal;
-}): Promise<GenerateResponse> {
+}): Promise<string> {
   const runOnce = async (targetModel: string) => {
     const res = await fetch(`${API_BASE}/${encodeURIComponent(targetModel)}:generateContent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': args.key },
-      body: JSON.stringify(args.body),
+      body: JSON.stringify({
+        ...(args.system ? { systemInstruction: { parts: [{ text: args.system }] } } : {}),
+        contents: toRestContents(args.contents),
+        generationConfig: args.generationConfig,
+      }),
       signal: args.signal,
     });
     const data = (await res.json().catch(() => null)) as GenerateResponse | null;
     return { res, data };
   };
 
-  const primary = await runOnce(args.model);
-  if (primary.res.ok) {
-    return primary.data ?? {};
-  }
-
-  const msg = primary.data?.error?.message?.toLowerCase() ?? '';
-  const shouldFallback =
-    args.model === DEFAULT_MODEL &&
-    (primary.res.status === 404 ||
-      primary.res.status === 400 ||
-      primary.res.status === 403 ||
-      msg.includes('not found') ||
-      msg.includes('not supported') ||
-      msg.includes('model'));
-
-  if (shouldFallback) {
-    const backup = await runOnce(FALLBACK_MODEL);
-    if (backup.res.ok) {
-      return backup.data ?? {};
+  let attempt = await runOnce(args.model);
+  if (!attempt.res.ok && args.model === DEFAULT_MODEL) {
+    const errMsg = attempt.data?.error?.message ?? '';
+    if (shouldFallbackModel(errMsg, attempt.res.status)) {
+      attempt = await runOnce(FALLBACK_MODEL);
     }
-    throw new Error(backup.data?.error?.message ?? `Erro ${backup.res.status} ao contactar o Uni.`);
   }
 
-  throw new Error(primary.data?.error?.message ?? `Erro ${primary.res.status} ao contactar o Uni.`);
+  if (!attempt.res.ok) {
+    throw new Error(attempt.data?.error?.message ?? `Erro ${attempt.res.status} ao contactar o Uni.`);
+  }
+
+  const candidate = attempt.data?.candidates?.[0];
+  if (!candidate) {
+    const reason = attempt.data?.promptFeedback?.blockReason;
+    throw new Error(
+      reason
+        ? `O Uni pediu para reformulares a pergunta (${reason}).`
+        : 'O Uni não devolveu resposta agora. Tenta de novo.',
+    );
+  }
+  return (candidate.content?.parts ?? []).map((p) => p.text ?? '').join('').trim();
+}
+
+async function callDirectRestStream(args: {
+  key: string;
+  model: string;
+  contents: Content[];
+  system: string;
+  generationConfig?: GenerationConfig;
+  signal?: AbortSignal;
+  onToken: (accumulatedText: string) => void;
+}): Promise<string> {
+  const openStream = async (targetModel: string) => {
+    return fetch(`${API_BASE}/${encodeURIComponent(targetModel)}:streamGenerateContent?alt=sse`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': args.key },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: args.system }] },
+        contents: toRestContents(args.contents),
+        generationConfig: args.generationConfig,
+      }),
+      signal: args.signal,
+    });
+  };
+
+  let res = await openStream(args.model);
+  if (!res.ok && args.model === DEFAULT_MODEL) {
+    const errBody = (await res.json().catch(() => null)) as GenerateResponse | null;
+    const msg = errBody?.error?.message ?? '';
+    if (shouldFallbackModel(msg, res.status)) {
+      res = await openStream(FALLBACK_MODEL);
+    } else {
+      throw new Error(msg || `Erro ${res.status} ao contactar o Uni.`);
+    }
+  }
+  if (!res.ok || !res.body) {
+    const errBody = (await res.json().catch(() => null)) as GenerateResponse | null;
+    throw new Error(errBody?.error?.message ?? `Erro ${res.status} ao contactar o Uni.`);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let accumulated = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+    for (const line of lines) {
+      if (!line.startsWith('data:')) continue;
+      const jsonStr = line.slice(5).trim();
+      if (!jsonStr || jsonStr === '[DONE]') continue;
+      try {
+        const chunk = JSON.parse(jsonStr) as GenerateResponse;
+        const delta = (chunk.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? '').join('');
+        if (delta) {
+          accumulated += delta;
+          args.onToken(accumulated);
+        }
+      } catch {
+        // Ignora blocos parciais malformados até próximo evento
+      }
+    }
+  }
+
+  return accumulated.trim();
+}
+
+async function runNativeGenerate(args: {
+  model: string;
+  contents: Content[];
+  system?: string;
+  generationConfig?: GenerationConfig;
+  signal?: AbortSignal;
+}): Promise<string> {
+  const ai = getNativeAI();
+  const runWithModel = async (targetModel: string) => {
+    const gm = getGenerativeModel(ai, {
+      model: targetModel,
+      ...(args.system ? { systemInstruction: args.system } : {}),
+      generationConfig: args.generationConfig,
+    });
+    const result = await gm.generateContent({ contents: args.contents }, { signal: args.signal });
+    return result.response.text().trim();
+  };
+
+  try {
+    return await runWithModel(args.model);
+  } catch (err) {
+    if (args.model === DEFAULT_MODEL && err instanceof Error && shouldFallbackModel(err.message)) {
+      try {
+        return await runWithModel(FALLBACK_MODEL);
+      } catch (fallbackErr) {
+        throw friendlyNativeAiError(fallbackErr);
+      }
+    }
+    throw friendlyNativeAiError(err);
+  }
+}
+
+async function runNativeStream(args: {
+  model: string;
+  contents: Content[];
+  system: string;
+  generationConfig?: GenerationConfig;
+  signal?: AbortSignal;
+  onToken: (accumulatedText: string) => void;
+}): Promise<string> {
+  const ai = getNativeAI();
+  const streamWithModel = async (targetModel: string) => {
+    const gm = getGenerativeModel(ai, {
+      model: targetModel,
+      systemInstruction: args.system,
+      generationConfig: args.generationConfig,
+    });
+    const streamRes = await gm.generateContentStream(
+      { contents: args.contents },
+      { signal: args.signal },
+    );
+    let accumulated = '';
+    for await (const chunk of streamRes.stream) {
+      const piece = chunk.text();
+      if (piece) {
+        accumulated += piece;
+        args.onToken(accumulated);
+      }
+    }
+    return accumulated.trim();
+  };
+
+  try {
+    return await streamWithModel(args.model);
+  } catch (err) {
+    if (args.model === DEFAULT_MODEL && err instanceof Error && shouldFallbackModel(err.message)) {
+      try {
+        return await streamWithModel(FALLBACK_MODEL);
+      } catch (fallbackErr) {
+        throw friendlyNativeAiError(fallbackErr);
+      }
+    }
+    throw friendlyNativeAiError(err);
+  }
+}
+
+async function withQuotaAndFallback<T>(
+  kind: QuotaKind,
+  customKey: string,
+  fn: () => Promise<T>,
+): Promise<T> {
+  const bypassed = Boolean(customKey);
+  consumeDailyQuota(kind, bypassed);
+  try {
+    return await fn();
+  } catch (err) {
+    refundDailyQuota(kind, bypassed);
+    throw err;
+  }
 }
 
 export interface ExtractedHistoryItem {
@@ -111,16 +381,15 @@ export interface ExtractedHistoryItem {
   status: 'aprovada' | 'a_fazer' | 'por_fazer';
 }
 
-/** Analisa um print/captura do portal académico (ex.: CLIP, Fénix, Sigarra) com Gemini Vision. */
+/** Analisa um print/captura do portal académico com Gemini Vision (nativo ou chave própria). */
 export async function parseAcademicHistoryFromScreenshot(
   base64Data: string,
   mimeType: string,
 ): Promise<ExtractedHistoryItem[]> {
-  const { key, model } = resolveGeminiConfig();
-
+  const { customKey, model } = resolveGeminiConfig();
   const cleanBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
 
-  const prompt = `Extrai todas as unidades curriculares (cadeiras) visíveis nesta captura de ecrã de um portal universitário português (ex: CLIP, Fénix, Sigarra, Moodle).
+  const prompt = `Extrai todas as unidades curriculares (cadeiras) visíveis nesta captura de ecrã de um portal académico em português.
 Devolve APENAS um array JSON válido onde cada item segue exatamente o formato:
 {"code": "string opcional", "name": "nome completo da cadeira", "grade": número entre 0 e 20 ou null se ainda não tiver nota, "ects": número ou 6, "status": "aprovada" | "a_fazer" | "por_fazer"}
 Regras:
@@ -129,30 +398,27 @@ Regras:
 - Se tiver reprovado ou falta realizar, status = "por_fazer".
 - Não inventes cadeiras que não estejam na imagem.`;
 
-  const data = await callGenerateWithFallback({
-    key,
-    model,
-    body: {
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            { text: prompt },
-            { inlineData: { mimeType, data: cleanBase64 } },
-          ],
-        },
+  const contents: Content[] = [
+    {
+      role: 'user',
+      parts: [
+        { type: 'text', text: prompt },
+        { type: 'inlineData', inlineData: { mimeType, data: cleanBase64 } },
       ],
-      generationConfig: {
-        temperature: 0.1,
-        maxOutputTokens: 2048,
-        responseMimeType: 'application/json',
-      },
     },
-  });
+  ];
+  const generationConfig: GenerationConfig = {
+    temperature: 0.1,
+    maxOutputTokens: 2048,
+    responseMimeType: 'application/json',
+  };
 
-  const rawText = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? '[]';
-  const jsonMatch = /\[[\s\S]*\]/.exec(rawText);
-  const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : rawText) as unknown;
+  const rawText = customKey
+    ? await callDirectRest({ key: customKey, model, contents, generationConfig })
+    : await runNativeGenerate({ model, contents, generationConfig });
+
+  const jsonMatch = /\[[\s\S]*\]/.exec(rawText || '[]');
+  const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : rawText || '[]') as unknown;
   if (!Array.isArray(parsed)) return [];
 
   return parsed
@@ -179,34 +445,71 @@ Regras:
 }
 
 export async function askGemini(args: {
-  messages: ChatMessage[];
+  messages: { role: 'user' | 'model'; text: string }[];
   system: string;
+  attachments?: ChatAttachment[];
   signal?: AbortSignal;
 }): Promise<string> {
-  const { key, model } = resolveGeminiConfig();
+  const { customKey, model } = resolveGeminiConfig();
+  const contents = buildContentsWithAttachments(args.messages, args.attachments);
+  const generationConfig: GenerationConfig = { temperature: 0.65 };
 
-  const data = await callGenerateWithFallback({
-    key,
-    model,
-    body: {
-      systemInstruction: { parts: [{ text: args.system }] },
-      contents: args.messages.map((m) => ({ role: m.role, parts: [{ text: m.text }] })),
-      generationConfig: { temperature: 0.65 },
-    },
-    signal: args.signal,
-  });
+  const text = await withQuotaAndFallback('chat', customKey, () =>
+    customKey
+      ? callDirectRest({
+          key: customKey,
+          model,
+          contents,
+          system: args.system,
+          generationConfig,
+          signal: args.signal,
+        })
+      : runNativeGenerate({
+          model,
+          contents,
+          system: args.system,
+          generationConfig,
+          signal: args.signal,
+        }),
+  );
 
-  const candidate = data?.candidates?.[0];
-  if (!candidate) {
-    const reason = data?.promptFeedback?.blockReason;
-    throw new Error(
-      reason
-        ? `O Uni pediu para reformulares a pergunta (${reason}).`
-        : 'O Uni não devolveu resposta agora. Tenta de novo.',
-    );
-  }
+  if (!text) throw new Error('O Uni devolveu uma resposta vazia. Tenta de novo.');
+  return text;
+}
 
-  const text = (candidate.content?.parts ?? []).map((p) => p.text ?? '').join('').trim();
+/** Resposta em tempo real (streaming palavra a palavra) para o Tutor com suporte multimodal. */
+export async function streamGeminiChat(args: {
+  messages: { role: 'user' | 'model'; text: string }[];
+  system: string;
+  attachments?: ChatAttachment[];
+  signal?: AbortSignal;
+  onToken: (accumulatedText: string) => void;
+}): Promise<string> {
+  const { customKey, model } = resolveGeminiConfig();
+  const contents = buildContentsWithAttachments(args.messages, args.attachments);
+  const generationConfig: GenerationConfig = { temperature: 0.65 };
+
+  const text = await withQuotaAndFallback('chat', customKey, () =>
+    customKey
+      ? callDirectRestStream({
+          key: customKey,
+          model,
+          contents,
+          system: args.system,
+          generationConfig,
+          signal: args.signal,
+          onToken: args.onToken,
+        })
+      : runNativeStream({
+          model,
+          contents,
+          system: args.system,
+          generationConfig,
+          signal: args.signal,
+          onToken: args.onToken,
+        }),
+  );
+
   if (!text) throw new Error('O Uni devolveu uma resposta vazia. Tenta de novo.');
   return text;
 }
@@ -398,51 +701,50 @@ export interface NotebookSourceInput {
 export async function generateNotebookBrief(args: {
   mode: 'guide' | 'quiz' | 'summary';
   sources: NotebookSourceInput[];
+  attachments?: ChatAttachment[];
   courseName?: string;
   persona?: UniPersonaMode;
   accessory?: UniAccessoryId;
 }): Promise<string> {
-  const { key, model } = resolveGeminiConfig();
+  const { customKey, model } = resolveGeminiConfig();
   const formattedSources = args.sources
     .filter((s) => s.content.trim())
     .map((s, i) => `### [Fonte ${i + 1}: ${s.title}]\n${s.content.trim().slice(0, 5000)}`)
     .join('\n\n');
 
-  if (!formattedSources) {
-    throw new Error('Adiciona pelo menos uma fonte ou nota ao teu Caderno antes de gerar.');
+  const hasAttachments = Boolean(args.attachments && args.attachments.length > 0);
+  if (!formattedSources && !hasAttachments) {
+    throw new Error('Adiciona texto, apontamentos ou um PDF/foto ao teu Caderno antes de gerar.');
   }
 
   const goalPrompt =
     args.mode === 'guide'
-      ? 'Cria um **Guia de Estudo Estruturado** claro com conceitos-chave, armadilhas comuns de teste e plano rápido de revisão, citando sempre as fontes como [Fonte N].'
+      ? 'Cria um **Guia de Estudo Estruturado** claro com conceitos-chave, armadilhas comuns de teste e plano rápido de revisão, citando sempre as fontes como [Fonte N] ou o nome do ficheiro.'
       : args.mode === 'quiz'
-        ? 'Cria **5 perguntas de treino de exame** com resposta e explicação curta escondida em secção final, citando a origem de cada uma como [Fonte N].'
-        : 'Faz um **Resumo Executivo por Tópicos** direto e memorável, citando de onde veio cada ideia como [Fonte N].';
+        ? 'Cria **5 perguntas de treino de exame** com resposta e explicação curta escondida em secção final, citando a origem de cada uma como [Fonte N] ou nome do ficheiro.'
+        : 'Faz um **Resumo Executivo por Tópicos** direto e memorável, citando de onde veio cada ideia como [Fonte N] ou nome do ficheiro.';
 
   const system = `És o Uni a organizar um Caderno de Estudo estilo Gemini Notebook${args.courseName ? ` para ${args.courseName}` : ''}.
 ${PERSONA_INSTRUCTIONS[args.persona ?? 'amigo']}
 ${AREA_VOICE_HINTS[args.accessory ?? 'default']}
 Regras estritas:
-- Baseia-te exclusivamente nas fontes fornecidas pelo estudante.
-- Cita sempre as fontes relevantes no texto usando [Fonte 1], [Fonte 2], etc.
+- Baseia-te exclusivamente nas fontes e anexos fornecidos pelo estudante.
+- Cita sempre as fontes relevantes no texto usando [Fonte 1], [Fonte 2] ou o nome do documento.
 - Escreve em português europeu (pt-PT) com Markdown limpo.`;
 
-  const data = await callGenerateWithFallback({
-    key,
-    model,
-    body: {
-      systemInstruction: { parts: [{ text: system }] },
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: `${goalPrompt}\n\nFONTES DO CADERNO:\n${formattedSources}` }],
-        },
-      ],
-      generationConfig: { temperature: 0.45 },
-    },
-  });
+  const userPrompt = formattedSources
+    ? `${goalPrompt}\n\nFONTES DO CADERNO:\n${formattedSources}`
+    : `${goalPrompt}\n\nAnalisa os ficheiros anexados como fontes principais do caderno.`;
 
-  const text = (data?.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? '').join('').trim();
+  const contents = buildContentsWithAttachments([{ role: 'user', text: userPrompt }], args.attachments);
+  const generationConfig: GenerationConfig = { temperature: 0.45 };
+
+  const text = await withQuotaAndFallback('notebook', customKey, () =>
+    customKey
+      ? callDirectRest({ key: customKey, model, contents, system, generationConfig })
+      : runNativeGenerate({ model, contents, system, generationConfig }),
+  );
+
   if (!text) throw new Error('Não foi possível gerar o caderno agora. Tenta novamente.');
   return text;
 }

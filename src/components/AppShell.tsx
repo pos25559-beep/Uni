@@ -18,6 +18,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { auth, onAuthStateChanged, type User } from '../lib/firebase';
 import { hapticTap, resolveIsDark, syncNativeTheme } from '../lib/nativeBridge';
+import { googleService } from '../services/googleService';
 import { useStore } from '../store/useStore';
 import AuthStatus from './auth/AuthStatus';
 import { UnipediaLogoMark } from './brand/UnipediaMarks';
@@ -86,6 +87,29 @@ export default function AppShell() {
       window.clearTimeout(fallbackTimer);
       setFirebaseUser(u);
       setAuthReady(true);
+      if (u && u.providerData.some((p) => p.providerId === 'google.com')) {
+        try {
+          if (sessionStorage.getItem('unipedia_google_just_signed_in') === '1') {
+            sessionStorage.removeItem('unipedia_google_just_signed_in');
+            const st = useStore.getState();
+            st.setIntegration('google', {
+              connected: true,
+              account: u.email ?? undefined,
+              lastSync: new Date().toISOString(),
+              error: undefined,
+            });
+            st.updateSettings({
+              guestMode: false,
+              hasSeenWelcome: true,
+              ...(u.displayName && !st.settings.userName ? { userName: u.displayName } : {}),
+              ...(u.email ? { personalEmail: u.email } : {}),
+            });
+            void googleService.syncGoogleEcosystemAfterLogin(st.courses).catch(() => {});
+          }
+        } catch {
+          // ignore storage failure
+        }
+      }
     });
     return () => {
       active = false;

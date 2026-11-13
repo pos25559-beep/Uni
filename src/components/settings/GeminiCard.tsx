@@ -1,8 +1,10 @@
-import { Eye, EyeOff, ExternalLink, Sparkles } from 'lucide-react';
+import { ChevronDown, Eye, EyeOff, ExternalLink, Sparkles } from 'lucide-react';
 import { useState } from 'react';
+import { hasCustomGeminiKey } from '../../integrations/gemini';
+import { getDailyQuotaSnapshot } from '../../lib/aiQuota';
 import { useStore } from '../../store/useStore';
-import { Button, Field, Input, cx } from '../ui';
-import { HowTo, IntegrationCard, errorMessage } from './shared';
+import { Badge, Button, Field, Input, cx } from '../ui';
+import { IntegrationCard, errorMessage } from './shared';
 
 interface TestResult {
   available: boolean;
@@ -25,15 +27,22 @@ export default function GeminiCard() {
   const [result, setResult] = useState<TestResult | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
 
+  const customKeyActive = hasCustomGeminiKey();
+  const quota = getDailyQuotaSnapshot();
+  const effectiveStatus = {
+    ...status,
+    connected: aiConsent && (!customKeyActive || status.connected),
+  };
+
   const test = async () => {
     const key = apiKey.trim() || (import.meta.env.DEV ? (import.meta.env.VITE_GEMINI_API_KEY ?? '') : '');
     const wanted = model.trim() || 'gemini-4-hydrogen';
     if (!aiConsent) {
-      setLocalError('Ativa primeiro a autorização para o Uni usar Gemini abaixo.');
+      setLocalError('Ativa primeiro a autorização para o Uni abaixo.');
       return;
     }
     if (!key) {
-      setLocalError('Insere a tua chave Google AI Studio pessoal para testar a ligação.');
+      setLocalError('Insere uma chave pessoal do Google AI Studio na secção Avançado para testar.');
       return;
     }
     setTesting(true);
@@ -67,138 +76,175 @@ export default function GeminiCard() {
   return (
     <IntegrationCard
       icon={<Sparkles size={18} />}
-      title="Gemini"
-      description="Assistente e resumos com o modelo da Google."
-      status={status}
+      title="Uni & Gemini"
+      description="Tutor nativo com Firebase AI Logic — pronto a usar sem chave API."
+      status={effectiveStatus}
     >
-      <HowTo
-        steps={[
-          <>Ativa a autorização abaixo para o Uni responder às tuas dúvidas com o Gemini.</>,
-          <>Cria a tua chave gratuita em <a className="text-accent underline-offset-2 hover:underline" href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">aistudio.google.com/apikey</a> e cola abaixo.</>,
-          <>Clica em «Testar ligação» para validar os modelos disponíveis.</>,
-        ]}
-      />
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-surface-2 px-3 py-2.5 text-xs">
+        <div>
+          <p className="font-semibold text-fg">
+            {customKeyActive ? 'Modo Avançado (Chave Pessoal)' : 'Uni Nativo Incluído'}
+          </p>
+          <p className="mt-0.5 text-[11px] text-muted">
+            {customKeyActive
+              ? 'Sem limite diário da app · a usar a tua quota AI Studio.'
+              : `${quota.chatRemaining}/${quota.chatLimit} mensagens e ${quota.notebookRemaining}/${quota.notebookLimit} cadernos disponíveis hoje.`}
+          </p>
+        </div>
+        <Badge tone={aiConsent ? 'ok' : 'neutral'}>
+          {customKeyActive ? 'Chave própria' : 'Nativo'}
+        </Badge>
+      </div>
 
       <label className="flex items-start gap-2.5 rounded-xl border border-line bg-surface-2 px-3 py-2.5 text-xs">
         <input
           type="checkbox"
           checked={aiConsent}
-          onChange={(e) => updateSettings({ aiConsent: e.target.checked })}
+          onChange={(e) => {
+            const next = e.target.checked;
+            updateSettings({ aiConsent: next });
+            setIntegration('gemini', {
+              connected: next,
+              ...(next ? { lastSync: new Date().toISOString(), error: undefined } : {}),
+            });
+          }}
           className="mt-0.5 size-4 rounded accent-accent"
         />
         <span>
-          <strong className="text-fg">Autorizar o Uni:</strong> permito o envio das perguntas e apontamentos escolhidos por mim para a API Google Gemini.
+          <strong className="text-fg">Ativar o Uni:</strong> permito o processamento das perguntas, imagens e PDFs escolhidos por mim através da IA do Uni.
         </span>
       </label>
 
-      <Field label="Chave API Gemini (guardada localmente no teu dispositivo)">
-        <div className="flex gap-2">
-          <Input
-            type={showKey ? 'text' : 'password'}
-            value={apiKey}
-            placeholder="Cola a tua chave do Google AI Studio (AIza...)"
-            autoComplete="off"
-            spellCheck={false}
-            className="min-w-0 flex-1"
-            onChange={(e) => updateSettings({ geminiApiKey: e.target.value.trim() })}
-          />
-          <Button
-            variant="secondary"
-            onClick={() => setShowKey((v) => !v)}
-            aria-label={showKey ? 'Ocultar chave' : 'Mostrar chave'}
-          >
-            {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
-          </Button>
-        </div>
-      </Field>
+      <details className="group rounded-xl border border-line bg-surface-2/60 p-3">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-fg">
+          <span>Avançado: usar chave pessoal (AI Studio) ou trocar modelo</span>
+          <ChevronDown size={15} className="text-muted transition group-open:rotate-180" />
+        </summary>
 
-      <Field label="Modelo do Uni (predefinido: Gemini 4 Hydrogen)">
-        <div className="mb-2 flex flex-wrap gap-1.5">
-          {[
-            { id: 'gemini-4-hydrogen', label: 'Gemini 4 Hydrogen (Recomendado)' },
-            { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Suplente)' },
-          ].map((preset) => {
-            const active = (model || 'gemini-4-hydrogen') === preset.id;
-            return (
-              <button
-                key={preset.id}
-                type="button"
-                onClick={() => updateSettings({ geminiModel: preset.id })}
-                className={cx(
-                  'min-h-[36px] rounded-full border px-3 py-1 text-xs font-semibold transition',
-                  active
-                    ? 'border-accent bg-accent-soft text-accent'
-                    : 'border-line bg-surface-2 text-muted hover:text-fg',
-                )}
+        <div className="mt-3 space-y-3 border-t border-line pt-3">
+          <p className="text-[11px] text-muted">
+            Opcional: para uso intensivo sem limite diário de {quota.chatLimit} mensagens/{quota.notebookLimit} cadernos, podes colar uma chave gratuita em{' '}
+            <a
+              className="text-accent underline-offset-2 hover:underline"
+              href="https://aistudio.google.com/apikey"
+              target="_blank"
+              rel="noreferrer"
+            >
+              aistudio.google.com/apikey
+            </a>
+            .
+          </p>
+
+          <Field label="Chave API Gemini pessoal (opcional)">
+            <div className="flex gap-2">
+              <Input
+                type={showKey ? 'text' : 'password'}
+                value={apiKey}
+                placeholder="Deixa vazio para usar o Uni Nativo"
+                autoComplete="off"
+                spellCheck={false}
+                className="min-w-0 flex-1"
+                onChange={(e) => updateSettings({ geminiApiKey: e.target.value.trim() })}
+              />
+              <Button
+                variant="secondary"
+                onClick={() => setShowKey((v) => !v)}
+                aria-label={showKey ? 'Ocultar chave' : 'Mostrar chave'}
               >
-                {preset.label}
-              </button>
-            );
-          })}
-        </div>
-        <Input
-          value={model}
-          autoComplete="off"
-          spellCheck={false}
-          placeholder="gemini-4-hydrogen"
-          onChange={(e) => updateSettings({ geminiModel: e.target.value })}
-        />
-      </Field>
+                {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
+              </Button>
+            </div>
+          </Field>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Button variant="primary" onClick={test} disabled={testing}>
-          <Sparkles size={16} />
-          {testing ? 'A testar…' : 'Testar ligação'}
-        </Button>
-        <a
-          href="https://aistudio.google.com/apikey"
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1 text-xs font-medium text-accent underline-offset-2 hover:underline"
-        >
-          Obter chave <ExternalLink size={12} />
-        </a>
-      </div>
-
-      {localError && <p className="break-words text-sm text-danger">{localError}</p>}
-
-      {result && (
-        <div className="space-y-2 rounded-xl border border-line bg-surface-2 p-3">
-          {result.available ? (
-            <p className="text-sm text-ok">Ligação ok. O modelo «{model}» está disponível.</p>
-          ) : (
-            <p className="text-sm text-warn">
-              Ligação ok, mas o modelo «{model}» não aparece na lista ({result.total} modelos).
-            </p>
-          )}
-          {result.suggestions.length > 0 && (
-            <div>
-              <span className="text-xs text-muted">Modelos Gemini disponíveis (clica para usar):</span>
-              <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {result.suggestions.map((name) => (
+          <Field label="Modelo do Uni (predefinido: Gemini 4 Hydrogen)">
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {[
+                { id: 'gemini-4-hydrogen', label: 'Gemini 4 Hydrogen (Recomendado)' },
+                { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Suplente)' },
+              ].map((preset) => {
+                const active = (model || 'gemini-4-hydrogen') === preset.id;
+                return (
                   <button
-                    key={name}
+                    key={preset.id}
                     type="button"
-                    onClick={() => updateSettings({ geminiModel: name })}
+                    onClick={() => updateSettings({ geminiModel: preset.id })}
                     className={cx(
-                      'rounded-full border px-2.5 py-1 text-xs transition',
-                      name === model
+                      'min-h-[36px] rounded-full border px-3 py-1 text-xs font-semibold transition',
+                      active
                         ? 'border-accent bg-accent-soft text-accent'
-                        : 'border-line bg-surface text-muted hover:text-fg',
+                        : 'border-line bg-surface-2 text-muted hover:text-fg',
                     )}
                   >
-                    {name}
+                    {preset.label}
                   </button>
-                ))}
-              </div>
+                );
+              })}
+            </div>
+            <Input
+              value={model}
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="gemini-4-hydrogen"
+              onChange={(e) => updateSettings({ geminiModel: e.target.value })}
+            />
+          </Field>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="secondary" onClick={test} disabled={testing}>
+              <Sparkles size={15} />
+              {testing ? 'A testar…' : 'Testar chave pessoal'}
+            </Button>
+            <a
+              href="https://aistudio.google.com/apikey"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-xs font-medium text-accent underline-offset-2 hover:underline"
+            >
+              Obter chave <ExternalLink size={12} />
+            </a>
+          </div>
+
+          {localError && <p className="break-words text-xs text-danger">{localError}</p>}
+
+          {result && (
+            <div className="space-y-2 rounded-xl border border-line bg-surface p-3">
+              {result.available ? (
+                <p className="text-xs text-ok">Ligação ok. O modelo «{model}» está disponível.</p>
+              ) : (
+                <p className="text-xs text-warn">
+                  Ligação ok, mas o modelo «{model}» não aparece na lista ({result.total} modelos).
+                </p>
+              )}
+              {result.suggestions.length > 0 && (
+                <div>
+                  <span className="text-[11px] text-muted">Modelos disponíveis (clica para usar):</span>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {result.suggestions.map((name) => (
+                      <button
+                        key={name}
+                        type="button"
+                        onClick={() => updateSettings({ geminiModel: name })}
+                        className={cx(
+                          'rounded-full border px-2.5 py-1 text-xs transition',
+                          name === model
+                            ? 'border-accent bg-accent-soft text-accent'
+                            : 'border-line bg-surface-2 text-muted hover:text-fg',
+                        )}
+                      >
+                        {name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
-        </div>
-      )}
 
-      <p className="text-xs text-muted">
-        A chave fica guardada só neste navegador (localStorage) e só é enviada à API da Google.
-      </p>
+          <p className="text-[11px] text-muted">
+            Qualquer chave pessoal fica guardada apenas neste dispositivo (localStorage) e nunca é partilhada.
+          </p>
+        </div>
+      </details>
     </IntegrationCard>
   );
 }

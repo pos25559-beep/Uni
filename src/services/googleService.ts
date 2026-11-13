@@ -162,6 +162,30 @@ export const googleService = {
   syncCalendar(): Promise<number> {
     return syncGoogleCalendar();
   },
+
+  /**
+   * Associação automática pós-login Google: sincroniza Agenda, Drive e Email
+   * com os tokens já autorizados no login, sem pedir novos popups ao utilizador.
+   */
+  async syncGoogleEcosystemAfterLogin(courses: Course[]): Promise<{
+    calendarCount: number;
+    driveAdded: number;
+    emailsCount: number;
+  }> {
+    if (!getCachedGoogleAccessToken()) {
+      return { calendarCount: 0, driveAdded: 0, emailsCount: 0 };
+    }
+    const [calRes, driveRes, mailRes] = await Promise.allSettled([
+      this.syncCalendar(),
+      courses.length > 0 ? this.scanDriveForCourses(courses, false) : Promise.resolve({ added: 0 }),
+      this.fetchAcademicEmails(courses, false),
+    ]);
+    return {
+      calendarCount: calRes.status === 'fulfilled' ? calRes.value : 0,
+      driveAdded: driveRes.status === 'fulfilled' ? driveRes.value.added : 0,
+      emailsCount: mailRes.status === 'fulfilled' ? mailRes.value.emails.length : 0,
+    };
+  },
 };
 
 export type { AcademicEmail, AutoScanResult, CloudFile, GmailFetchDetailedResult };

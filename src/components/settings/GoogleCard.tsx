@@ -13,13 +13,11 @@ import {
 import { useState } from 'react';
 import { useGoogleAccounts } from '../../hooks/useGoogleData';
 import { useStore } from '../../store/useStore';
-import { Badge, Button, Field, Input, Modal } from '../ui';
+import { Badge, Button, Modal } from '../ui';
 import { IntegrationCard } from './shared';
 
 export default function GoogleCard() {
   const status = useStore((s) => s.integrations.google);
-  const personalNotebookUrl = useStore((s) => s.settings.personalNotebookUrl);
-  const updateSettings = useStore((s) => s.updateSettings);
 
   const [confirmOff, setConfirmOff] = useState(false);
 
@@ -232,22 +230,6 @@ export default function GoogleCard() {
                 </Button>
               )}
             </div>
-          </div>
-
-          {/* Configuração de Caderno NotebookLM Pessoal */}
-          <div className="pt-1">
-            <Field label="Link do teu Caderno NotebookLM Pessoal (opcional)">
-              <Input
-                value={personalNotebookUrl ?? ''}
-                placeholder="https://notebooklm.google.com/notebook/..."
-                autoComplete="off"
-                spellCheck={false}
-                onChange={(e) => updateSettings({ personalNotebookUrl: e.target.value.trim() })}
-              />
-            </Field>
-            <p className="mt-1 text-[11px] text-muted">
-              Cola aqui o link de partilha do teu caderno no NotebookLM (criado com a tua conta pessoal) para acederes com 1 clique a partir da barra lateral e de cada cadeira.
-            </p>
           </div>
 
           {message && (

@@ -17,15 +17,15 @@ export default function NotebookCard() {
         <div className="min-w-0">
           <h3 className="text-sm font-semibold">Gemini Notebook &amp; Caderno do Uni</h3>
           <p className="mt-0.5 text-xs text-muted">
-            Gera guias e resumos com citações das tuas fontes dentro da Unipedia e abre os teus cadernos Gemini Notebook sem sair da app.
+            Os teus cadernos com conversas do Gemini não precisam de link de partilha: abre a tua biblioteca privada na tua sessão Google ou cria guias nativos aqui dentro no Caderno do Uni.
           </p>
         </div>
       </div>
 
-      <Field label="Link do teu Gemini Notebook (opcional)">
+      <Field label="Atalho direto para um caderno (URL privado opcional)">
         <Input
           value={personalNotebookUrl}
-          placeholder="https://notebooklm.google.com/notebook/..."
+          placeholder="Deixa vazio para abrir todos os teus cadernos privados"
           autoComplete="off"
           spellCheck={false}
           onChange={(e) => updateSettings({ personalNotebookUrl: e.target.value.trim() })}
@@ -48,7 +48,7 @@ export default function NotebookCard() {
             )
           }
         >
-          <ExternalLink size={14} /> Abrir Gemini Notebook na app
+          <ExternalLink size={14} /> Abrir os meus cadernos
         </Button>
       </div>
     </Card>

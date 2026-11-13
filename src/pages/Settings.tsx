@@ -78,14 +78,14 @@ export default function SettingsPage() {
       <AnimatedPage className="space-y-5">
         <SubpageHeader
           title="Uni · Tutor IA"
-          subtitle="Permissão de IA e chave Google Gemini"
+          subtitle="Tutor nativo, autorização de IA e opções avançadas"
           backTo="/definicoes"
         />
         <ListGroup title="Autorização do Uni">
           <ListRow
             icon={<Sparkles size={18} />}
             title="Usar Uni com IA (Gemini)"
-            subtitle="Permite o envio de perguntas e apontamentos escolhidos por ti à API Google Gemini."
+            subtitle="Permite que o Uni responda às tuas perguntas e processe os ficheiros que anexares."
             trailing={
               <Switch
                 checked={Boolean(settings.aiConsent)}
@@ -187,7 +187,11 @@ export default function SettingsPage() {
         <ListRow
           icon={<Sparkles size={18} />}
           title="Uni · Tutor IA (Gemini)"
-          subtitle={settings.geminiApiKey ? `Modelo ${settings.geminiModel}` : 'Configurar chave pessoal gratuita'}
+          subtitle={
+            settings.geminiApiKey
+              ? `Chave pessoal · ${settings.geminiModel}`
+              : `Uni Nativo · ${settings.geminiModel}`
+          }
           badge={settings.aiConsent ? 'Ativo' : 'Pausado'}
           badgeTone={settings.aiConsent ? 'accent' : 'neutral'}
           onClick={() => navigate('/definicoes/tutor')}

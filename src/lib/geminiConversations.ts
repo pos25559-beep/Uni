@@ -23,18 +23,48 @@ export interface Conversation {
 const LOCAL_CONVERSATIONS_KEY = 'uni-erp-conversations-meta';
 const LOCAL_MESSAGES_PREFIX = 'uni-erp-conv-msgs-';
 
+const localConvListeners = new Set<(list: Conversation[]) => void>();
+const localMsgListeners = new Map<string, Set<(messages: ChatMessage[]) => void>>();
+
+function readLocalConversations(): Conversation[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_CONVERSATIONS_KEY);
+    return raw ? (JSON.parse(raw) as Conversation[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function readLocalMessages(conversationId: string): ChatMessage[] {
+  try {
+    const raw = localStorage.getItem(`${LOCAL_MESSAGES_PREFIX}${conversationId}`);
+    return raw ? (JSON.parse(raw) as ChatMessage[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function emitLocalConversations(list: Conversation[]) {
+  for (const cb of localConvListeners) {
+    cb(list);
+  }
+}
+
+function emitLocalMessages(conversationId: string, messages: ChatMessage[]) {
+  const listeners = localMsgListeners.get(conversationId);
+  if (!listeners) return;
+  for (const cb of listeners) {
+    cb(messages);
+  }
+}
+
 /**
  * Carrega a lista de conversas guardadas (do Firestore se autenticado, ou do localStorage).
  */
 export async function getConversations(): Promise<Conversation[]> {
   const user = auth.currentUser;
   if (!user) {
-    try {
-      const raw = localStorage.getItem(LOCAL_CONVERSATIONS_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
+    return readLocalConversations();
   }
 
   const colRef = collection(db, 'users', user.uid, 'conversations');
@@ -49,8 +79,11 @@ export async function getConversations(): Promise<Conversation[]> {
 export function subscribeConversations(callback: (list: Conversation[]) => void): () => void {
   const user = auth.currentUser;
   if (!user) {
-    getConversations().then(callback);
-    return () => {};
+    localConvListeners.add(callback);
+    callback(readLocalConversations());
+    return () => {
+      localConvListeners.delete(callback);
+    };
   }
 
   const colRef = collection(db, 'users', user.uid, 'conversations');
@@ -68,10 +101,16 @@ export function subscribeConversations(callback: (list: Conversation[]) => void)
 export async function upsertConversation(conv: Conversation): Promise<void> {
   const user = auth.currentUser;
   if (!user) {
-    const list = await getConversations();
+    const list = readLocalConversations();
     const existingIdx = list.findIndex((c) => c.id === conv.id);
     const updated = existingIdx >= 0 ? list.map((c) => (c.id === conv.id ? conv : c)) : [conv, ...list];
-    localStorage.setItem(LOCAL_CONVERSATIONS_KEY, JSON.stringify(updated));
+    updated.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    try {
+      localStorage.setItem(LOCAL_CONVERSATIONS_KEY, JSON.stringify(updated));
+    } catch {
+      // storage quota
+    }
+    emitLocalConversations(updated);
     return;
   }
 
@@ -85,10 +124,15 @@ export async function upsertConversation(conv: Conversation): Promise<void> {
 export async function deleteConversation(conversationId: string): Promise<void> {
   const user = auth.currentUser;
   if (!user) {
-    const list = await getConversations();
-    const filtered = list.filter((c) => c.id !== conversationId);
-    localStorage.setItem(LOCAL_CONVERSATIONS_KEY, JSON.stringify(filtered));
-    localStorage.removeItem(`${LOCAL_MESSAGES_PREFIX}${conversationId}`);
+    const filtered = readLocalConversations().filter((c) => c.id !== conversationId);
+    try {
+      localStorage.setItem(LOCAL_CONVERSATIONS_KEY, JSON.stringify(filtered));
+      localStorage.removeItem(`${LOCAL_MESSAGES_PREFIX}${conversationId}`);
+    } catch {
+      // storage quota
+    }
+    emitLocalMessages(conversationId, []);
+    emitLocalConversations(filtered);
     return;
   }
 
@@ -105,13 +149,20 @@ export function subscribeMessages(
 ): () => void {
   const user = auth.currentUser;
   if (!user) {
-    try {
-      const raw = localStorage.getItem(`${LOCAL_MESSAGES_PREFIX}${conversationId}`);
-      callback(raw ? JSON.parse(raw) : []);
-    } catch {
-      callback([]);
+    let set = localMsgListeners.get(conversationId);
+    if (!set) {
+      set = new Set();
+      localMsgListeners.set(conversationId, set);
     }
-    return () => {};
+    set.add(callback);
+    callback(readLocalMessages(conversationId));
+    return () => {
+      const current = localMsgListeners.get(conversationId);
+      current?.delete(callback);
+      if (current && current.size === 0) {
+        localMsgListeners.delete(conversationId);
+      }
+    };
   }
 
   const msgsRef = collection(db, 'users', user.uid, 'conversations', conversationId, 'messages');
@@ -131,13 +182,24 @@ export async function appendMessage(
 ): Promise<void> {
   const user = auth.currentUser;
   if (!user) {
+    const updated = [...readLocalMessages(conversationId), message];
     try {
-      const raw = localStorage.getItem(`${LOCAL_MESSAGES_PREFIX}${conversationId}`);
-      const list: ChatMessage[] = raw ? JSON.parse(raw) : [];
-      const updated = [...list, message];
       localStorage.setItem(`${LOCAL_MESSAGES_PREFIX}${conversationId}`, JSON.stringify(updated));
     } catch {
       // storage quota
+    }
+    emitLocalMessages(conversationId, updated);
+    const convs = readLocalConversations();
+    if (convs.some((c) => c.id === conversationId)) {
+      const updatedConvs = convs
+        .map((c) => (c.id === conversationId ? { ...c, updatedAt: message.at } : c))
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+      try {
+        localStorage.setItem(LOCAL_CONVERSATIONS_KEY, JSON.stringify(updatedConvs));
+      } catch {
+        // storage quota
+      }
+      emitLocalConversations(updatedConvs);
     }
     return;
   }
