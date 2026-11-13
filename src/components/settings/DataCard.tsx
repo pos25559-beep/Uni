@@ -29,7 +29,7 @@ export default function DataCard() {
     try {
       const s = useStore.getState();
       const payload = {
-        app: 'campus',
+        app: 'unipedia',
         version: 1,
         exportedAt: new Date().toISOString(),
         collections: {
@@ -41,6 +41,8 @@ export default function DataCard() {
           materials: s.materials,
           events: s.events,
         },
+        academicProfile: s.academicProfile,
+        weeklyCheckIns: s.weeklyCheckIns,
         // A chave Gemini nunca sai no ficheiro.
         settings: { ...s.settings, geminiApiKey: '' },
       };
@@ -48,7 +50,7 @@ export default function DataCard() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `campus-copia-${format(new Date(), 'yyyy-MM-dd')}.json`;
+      a.download = `unipedia-copia-${format(new Date(), 'yyyy-MM-dd')}.json`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -165,7 +167,7 @@ export default function DataCard() {
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => setPending('demo')}>
               <Database size={16} />
-              Carregar dados de demonstração
+              Carregar cadeiras e horário do Pedro (LEMc)
             </Button>
             <Button variant="danger" onClick={() => setPending('clear')}>
               <Trash2 size={16} />
@@ -181,12 +183,12 @@ export default function DataCard() {
       <Modal
         open={pending !== null}
         onClose={() => setPending(null)}
-        title={pending === 'clear' ? 'Apagar todos os dados?' : 'Carregar dados de demonstração?'}
+        title={pending === 'clear' ? 'Apagar todos os dados?' : 'Carregar horário do Pedro (LEMc)?'}
         footer={
           <>
             <Button onClick={() => setPending(null)}>Cancelar</Button>
             <Button variant={pending === 'clear' ? 'danger' : 'primary'} onClick={confirmPending}>
-              {pending === 'clear' ? 'Apagar tudo' : 'Carregar demonstração'}
+              {pending === 'clear' ? 'Apagar tudo' : 'Carregar horário LEMc'}
             </Button>
           </>
         }
@@ -194,7 +196,7 @@ export default function DataCard() {
         <p className="text-sm text-muted">
           {pending === 'clear'
             ? 'Remove cadeiras, avaliações, aulas, sessões, tarefas, materiais e eventos deste navegador. Não se pode desfazer: exporta uma cópia antes, se precisares. As definições mantêm-se.'
-            : 'Os teus dados atuais serão substituídos pelos dados de exemplo. Exporta uma cópia antes, se precisares.'}
+            : 'Substitui os dados atuais pelas 6 cadeiras, horários e datas de testes reais do teu 1.º Semestre de LEMc (CLIP).'}
         </p>
       </Modal>
     </Card>

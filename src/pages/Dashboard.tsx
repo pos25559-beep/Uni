@@ -4,16 +4,19 @@ import { Link, useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import {
-  AlertTriangle, ArrowRight, CalendarClock, CalendarDays, Check, Clock, Flame, GraduationCap, Plus,
+  AlertTriangle, ArrowRight, CalendarClock, CalendarDays, Check, Clock, Flame, GraduationCap, MessageSquare, Plus, Sparkles,
 } from 'lucide-react';
 import { Badge, Button, Card, CourseChip, EmptyState, Input, PageHeader, Progress, Ring, Stat, cx } from '../components/ui';
+import WeeklyTutorModal from '../components/assistant/WeeklyTutorModal';
 import { courseColors, kindLabel } from '../lib/colors';
+import { analyzeTestMode } from '../lib/planner';
 import {
   daysUntil, fmtGrade, fmtMinutes, gradeSummary, minutesThisWeek, readiness, semesterAverage,
   sessionMinutes, studyStreak, todayStr, topicProgress, upcomingAssessments, urgency,
 } from '../lib/selectors';
 import { newId, useStore } from '../store/useStore';
 import type { Assessment, Course, StudySession, Task } from '../types';
+import AcademicGmailWidget from '../components/home/AcademicGmailWidget';
 
 const greeting = (hour: number) => (hour < 12 ? 'Bom dia' : hour < 19 ? 'Boa tarde' : 'Boa noite');
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -162,6 +165,11 @@ export default function Dashboard() {
   // --- Tarefas --------------------------------------------------------------
   const pendingTasks = useMemo(() => tasks.filter((t) => !t.done).sort(compareTasks), [tasks]);
   const [draft, setDraft] = useState('');
+  const [tutorOpen, setTutorOpen] = useState(false);
+  const testMode = useMemo(
+    () => analyzeTestMode(courses, assessments, today),
+    [courses, assessments, today],
+  );
 
   const addTask = () => {
     const title = draft.trim();
@@ -170,6 +178,7 @@ export default function Dashboard() {
     setDraft('');
   };
   const onDraftKey = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
     if (e.key === 'Enter') addTask();
   };
   const toggleTask = (t: Task) => patch('tasks', t.id, { done: !t.done });
@@ -181,7 +190,34 @@ export default function Dashboard() {
       <PageHeader
         title={`${greeting(now.getHours())}${settings.userName ? `, ${settings.userName}` : ''}`}
         subtitle={subtitle}
+        actions={
+          <Button variant="secondary" size="sm" onClick={() => setTutorOpen(true)}>
+            <MessageSquare size={15} /> Tutor semanal
+          </Button>
+        }
       />
+
+      {testMode.mode !== 'normal' && (
+        <Link
+          to="/plano"
+          className="rise mb-4 flex items-center justify-between gap-3 rounded-2xl border border-accent/40 bg-accent-soft/50 px-4 py-3 transition hover:bg-accent-soft"
+        >
+          <div className="flex items-center gap-3">
+            <Sparkles size={18} className="shrink-0 text-accent" />
+            <div className="text-sm">
+              <span className="font-semibold">
+                {testMode.mode === 'single_test' ? 'Modo Teste ativo (< 10 dias)' : 'Modo Teste Múltiplo ativo (< 10 dias)'}
+              </span>
+              <span className="ml-2 text-muted">
+                {testMode.urgentAssessments
+                  .map((u) => `${u.course.shortName} (${u.daysLeft === 0 ? 'hoje' : `${u.daysLeft}d`})`)
+                  .join(' · ')}
+              </span>
+            </div>
+          </div>
+          <ArrowRight size={16} className="shrink-0 text-accent" />
+        </Link>
+      )}
 
       {topAlert && (
         <Link
@@ -366,6 +402,8 @@ export default function Dashboard() {
             )}
           </Card>
 
+          <AcademicGmailWidget />
+
           <Card title="Cadeiras">
             {courses.length === 0 ? (
               <EmptyState title="Ainda sem cadeiras" hint="Adiciona cadeiras para acompanhar matéria e notas." />
@@ -379,6 +417,7 @@ export default function Dashboard() {
           </Card>
         </div>
       </div>
+      <WeeklyTutorModal open={tutorOpen} onClose={() => setTutorOpen(false)} />
     </>
   );
 }

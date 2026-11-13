@@ -32,6 +32,7 @@ export default function TopicsTab({ course }: Props) {
     patch('courses', course.id, { topics: topics.filter((t) => t.id !== topicId) });
 
   const onAddKey = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
     if (e.key === 'Enter') { e.preventDefault(); addTopic(); }
   };
 
@@ -56,7 +57,10 @@ export default function TopicsTab({ course }: Props) {
                     if (!v) { e.target.value = t.title; return; }
                     if (v !== t.title) updateTopic(course.id, t.id, { title: v });
                   }}
-                  onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+                  onKeyDown={(e) => {
+                    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+                    if (e.key === 'Enter') e.currentTarget.blur();
+                  }}
                   className="min-w-0 flex-1 rounded-lg bg-transparent px-1 py-0.5 text-sm font-medium text-fg hover:bg-surface focus:bg-surface focus:outline-none focus:ring-1 focus:ring-accent"
                 />
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2">

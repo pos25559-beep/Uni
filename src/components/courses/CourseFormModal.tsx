@@ -24,7 +24,6 @@ export default function CourseFormModal({ course, onClose }: Props) {
   const [color, setColor] = useState<CourseColor>(course?.color ?? 'violet');
   const [notebookUrl, setNotebookUrl] = useState(course?.notebookUrl ?? '');
   const [driveFolderUrl, setDriveFolderUrl] = useState(course?.driveFolderUrl ?? '');
-  const [oneDriveFolderUrl, setOneDriveFolderUrl] = useState(course?.oneDriveFolderUrl ?? '');
   const [clipUrl, setClipUrl] = useState(course?.clipUrl ?? '');
   const [errors, setErrors] = useState<{ name?: string; shortName?: string; ects?: string; targetGrade?: string }>({});
 
@@ -52,7 +51,6 @@ export default function CourseFormModal({ course, onClose }: Props) {
       color,
       notebookUrl: opt(notebookUrl),
       driveFolderUrl: opt(driveFolderUrl),
-      oneDriveFolderUrl: opt(oneDriveFolderUrl),
       clipUrl: opt(clipUrl),
     } satisfies Course);
     onClose();
@@ -124,9 +122,6 @@ export default function CourseFormModal({ course, onClose }: Props) {
           </Field>
           <Field label="Pasta no Google Drive">
             <Input type="url" value={driveFolderUrl} onChange={(e) => setDriveFolderUrl(e.target.value)} placeholder="https://drive.google.com/…" />
-          </Field>
-          <Field label="Pasta no OneDrive">
-            <Input type="url" value={oneDriveFolderUrl} onChange={(e) => setOneDriveFolderUrl(e.target.value)} placeholder="https://onedrive.live.com/…" />
           </Field>
           <Field label="CLIP">
             <Input type="url" value={clipUrl} onChange={(e) => setClipUrl(e.target.value)} placeholder="https://clip.…" />

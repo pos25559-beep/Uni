@@ -5,8 +5,16 @@ import type { Assessment, Course, StudySession, Topic } from '../types';
 export const todayStr = () => format(new Date(), 'yyyy-MM-dd');
 export const toDateStr = (d: Date) => format(d, 'yyyy-MM-dd');
 
-/** Dias de calendário até uma data ISO (negativo = já passou). */
-export const daysUntil = (iso: string) => differenceInCalendarDays(parseISO(iso), new Date());
+/** Dias de calendário até uma data ISO (negativo = já passou). À prova de nulos ou strings inválidas. */
+export const daysUntil = (iso?: string | null) => {
+  if (!iso || typeof iso !== 'string') return -999;
+  try {
+    const d = parseISO(iso);
+    return isNaN(d.getTime()) ? -999 : differenceInCalendarDays(d, new Date());
+  } catch {
+    return -999;
+  }
+};
 
 export interface GradeSummary {
   /** Média ponderada só do que já foi avaliado (0–20) ou null. */

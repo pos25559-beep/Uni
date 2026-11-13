@@ -4,6 +4,7 @@ import { format, parseISO } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { useStore } from '../store/useStore';
 import type { AppState } from '../store/useStore';
+import type { Material } from '../types';
 import {
   daysUntil, fmtGrade, fmtMinutes, gradeSummary, minutesThisWeek, readiness, studyStreak,
   todayStr, upcomingAssessments,
@@ -16,6 +17,7 @@ export interface ChatMessage {
   text: string;
   /** ISO datetime */
   at: string;
+  sourceDocTitles?: string[];
 }
 
 interface GenerateResponse {
@@ -25,7 +27,91 @@ interface GenerateResponse {
 }
 
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
-const MAX_CONTEXT_CHARS = 2500;
+const MAX_CONTEXT_CHARS = 4500;
+const DEFAULT_GEMINI_KEY = 'AIzaSyCBfXOeOqvHsqCaAqY-RGYjcp9i-j_l6Jo';
+const DEFAULT_MODEL = 'gemini-3.8-flash';
+
+export interface ExtractedHistoryItem {
+  code?: string;
+  name: string;
+  grade?: number;
+  ects?: number;
+  status: 'aprovada' | 'a_fazer' | 'por_fazer';
+}
+
+/** Analisa um print/captura do portal académico (ex.: CLIP, Fénix, Sigarra) com Gemini Vision. */
+export async function parseAcademicHistoryFromScreenshot(
+  base64Data: string,
+  mimeType: string,
+): Promise<ExtractedHistoryItem[]> {
+  const { geminiApiKey, geminiModel } = useStore.getState().settings;
+  const key = geminiApiKey.trim() || import.meta.env.VITE_GEMINI_API_KEY || DEFAULT_GEMINI_KEY;
+  const model = (!geminiModel || geminiModel.startsWith('gemini-2.')) ? DEFAULT_MODEL : geminiModel.trim();
+
+  const cleanBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
+
+  const prompt = `Extrai todas as unidades curriculares (cadeiras) visíveis nesta captura de ecrã de um portal universitário português (ex: CLIP, Fénix, Sigarra, Moodle).
+Devolve APENAS um array JSON válido onde cada item segue exatamente o formato:
+{"code": "string opcional", "name": "nome completo da cadeira", "grade": número entre 0 e 20 ou null se ainda não tiver nota, "ects": número ou 6, "status": "aprovada" | "a_fazer" | "por_fazer"}
+Regras:
+- Se tiver nota >= 10 (ou "Aprovado"), status = "aprovada".
+- Se estiver inscrito no semestre atual sem nota final, status = "a_fazer".
+- Se tiver reprovado ou falta realizar, status = "por_fazer".
+- Não inventes cadeiras que não estejam na imagem.`;
+
+  const res = await fetch(`${API_BASE}/${encodeURIComponent(model)}:generateContent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+    body: JSON.stringify({
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            { text: prompt },
+            { inlineData: { mimeType, data: cleanBase64 } },
+          ],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 2048,
+        responseMimeType: 'application/json',
+      },
+    }),
+  });
+
+  const data = (await res.json()) as GenerateResponse;
+  if (!res.ok || data.error) {
+    throw new Error(data.error?.message || `Erro Gemini Vision ${res.status}`);
+  }
+
+  const rawText = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? '[]';
+  const jsonMatch = /\[[\s\S]*\]/.exec(rawText);
+  const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : rawText) as unknown;
+  if (!Array.isArray(parsed)) return [];
+
+  return parsed
+    .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === 'object' && 'name' in item))
+    .map((item) => {
+      const gradeNum = typeof item.grade === 'number' && !Number.isNaN(item.grade) ? item.grade : undefined;
+      const ectsNum = typeof item.ects === 'number' && !Number.isNaN(item.ects) ? item.ects : 6;
+      const statusRaw = String(item.status ?? '');
+      const status: ExtractedHistoryItem['status'] =
+        statusRaw === 'aprovada' || statusRaw === 'a_fazer' || statusRaw === 'por_fazer'
+          ? statusRaw
+          : gradeNum && gradeNum >= 10
+            ? 'aprovada'
+            : 'a_fazer';
+
+      return {
+        code: typeof item.code === 'string' && item.code.trim() ? item.code.trim() : undefined,
+        name: String(item.name).trim(),
+        grade: gradeNum,
+        ects: ectsNum,
+        status,
+      };
+    });
+}
 
 export async function askGemini(args: {
   messages: ChatMessage[];
@@ -33,10 +119,10 @@ export async function askGemini(args: {
   signal?: AbortSignal;
 }): Promise<string> {
   const { geminiApiKey, geminiModel } = useStore.getState().settings;
-  const key = geminiApiKey.trim();
-  if (!key) throw new Error('Falta a chave da API Gemini. Configura-a nas Definições.');
+  const key = geminiApiKey.trim() || import.meta.env.VITE_GEMINI_API_KEY || DEFAULT_GEMINI_KEY;
+  const model = (!geminiModel || geminiModel.startsWith('gemini-2.')) ? DEFAULT_MODEL : geminiModel.trim();
 
-  const res = await fetch(`${API_BASE}/${encodeURIComponent(geminiModel)}:generateContent`, {
+  const res = await fetch(`${API_BASE}/${encodeURIComponent(model)}:generateContent`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
     body: JSON.stringify({
@@ -69,14 +155,37 @@ export async function askGemini(args: {
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
-/** Resumo em texto simples do estado da app, enviado ao modelo (máx. ~2500 caracteres). */
+/** Resumo em texto simples do estado da app, enviado ao modelo. */
 export function buildStudyContext(state: AppState): string {
-  const { courses, assessments, sessions, tasks, settings } = state;
+  const { courses, assessments, sessions, tasks, settings, academicProfile, weeklyCheckIns } = state;
   const today = todayStr();
   const lines: string[] = [];
 
   lines.push(`Data de hoje: ${format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: pt })}`);
   lines.push(`Semestre: ${settings.semesterName}${state.isDemo ? ' (dados de demonstração)' : ''}`);
+
+  if (academicProfile) {
+    lines.push('', 'PERFIL ACADÉMICO DO ESTUDANTE (UNIPEDIA):');
+    lines.push(`- Faculdade/Curso: ${academicProfile.universityName} — ${academicProfile.degreeName}`);
+    lines.push(`- Ingresso: ${academicProfile.entryYear} · Ano atual: ${academicProfile.currentAcademicYear}.º ano, ${academicProfile.currentSemester}.º semestre`);
+    if (academicProfile.difficultCourseIds.length > 0) {
+      const hardNames = academicProfile.difficultCourseIds.map(
+        (id) => courses.find((c) => c.id === id)?.shortName ?? id,
+      );
+      lines.push(`- Cadeiras onde tem mais dificuldade: ${hardNames.join(', ')}`);
+    }
+    if (academicProfile.difficultTopicsNotes?.trim()) {
+      lines.push(`- Dificuldades declaradas pelo aluno: ${academicProfile.difficultTopicsNotes.trim()}`);
+    }
+    const approved = academicProfile.completedCourses.filter((c) => c.status === 'aprovada');
+    if (approved.length > 0) {
+      const preview = approved
+        .slice(0, 12)
+        .map((c) => `${c.code}${typeof c.grade === 'number' ? ` (${c.grade}v)` : ''}`)
+        .join(', ');
+      lines.push(`- Histórico de cadeiras já concluídas (${approved.length}): ${preview}`);
+    }
+  }
 
   lines.push('', 'CADEIRAS:');
   if (courses.length === 0) lines.push('- Sem cadeiras registadas.');
@@ -88,7 +197,8 @@ export function buildStudyContext(state: AppState): string {
     const current = g.current === null
       ? 'sem notas ainda'
       : `média atual ${fmtGrade(g.current)} (${Math.round(g.gradedWeight)}% avaliado)`;
-    lines.push(`- ${c.name} (${c.ects} ECTS): ${current}; objetivo ${fmtGrade(c.targetGrade)}${needed}.`);
+    const hardTag = academicProfile?.difficultCourseIds.includes(c.id) ? ' [PRIORIDADE/DIFICULDADE]' : '';
+    lines.push(`- ${c.name} (${c.ects} ECTS)${hardTag}: ${current}; objetivo ${fmtGrade(c.targetGrade)}${needed}.`);
     if (c.topics.length > 0) {
       const topics = c.topics.map((t) => `${t.title} [${statusLabel[t.status].toLowerCase()}, confiança ${t.confidence}/5]`);
       lines.push(`  Matéria: ${topics.join('; ')}.`);
@@ -97,6 +207,14 @@ export function buildStudyContext(state: AppState): string {
 
   lines.push('', 'PRÓXIMAS AVALIAÇÕES:');
   const upcoming = upcomingAssessments(assessments).slice(0, 8);
+  const urgentSoon = upcoming.filter((a) => daysUntil(a.date) <= 10);
+  if (urgentSoon.length === 1) {
+    const c = courses.find((x) => x.id === urgentSoon[0].courseId);
+    lines.push(`- MODO TESTE ATIVO (<10 dias): Foco intensivo em ${c?.shortName ?? urgentSoon[0].title} (${urgentSoon[0].title}).`);
+  } else if (urgentSoon.length >= 2) {
+    const names = urgentSoon.map((a) => courses.find((c) => c.id === a.courseId)?.shortName ?? a.title);
+    lines.push(`- MODO TESTE MÚLTIPLO ATIVO (<10 dias): Equilibrar ${urgentSoon.length} avaliações urgentes (${names.join(' vs ')}).`);
+  }
   if (upcoming.length === 0) lines.push('- Nenhuma avaliação futura registada.');
   for (const a of upcoming) {
     const course = courses.find((c) => c.id === a.courseId);
@@ -104,6 +222,24 @@ export function buildStudyContext(state: AppState): string {
     const when = days === 0 ? 'hoje' : days === 1 ? 'amanhã' : `em ${days} dias (${format(parseISO(a.date), 'd MMM', { locale: pt })})`;
     const ready = Math.round(readiness(a, course) * 100);
     lines.push(`- ${course?.shortName ?? 'Geral'} – ${a.title} (${a.kind}) ${when}; peso ${a.weight}%; preparação ${ready}%.`);
+  }
+
+  if (weeklyCheckIns && weeklyCheckIns.length > 0) {
+    const latest = weeklyCheckIns[0];
+    lines.push('', `ÚLTIMO CHECK-IN SEMANAL (${latest.weekOf}):`);
+    lines.push(`- Estado do aluno: ${latest.mood}`);
+    if (latest.understoodTopics.length > 0) {
+      lines.push(`- O que já consolidou: ${latest.understoodTopics.join(', ')}`);
+    }
+    if (latest.classDifficulties.length > 0) {
+      lines.push(`- O que não entendeu na aula: ${latest.classDifficulties.join(', ')}`);
+    }
+    if (latest.pendingNextWeek.length > 0) {
+      lines.push(`- Ficou para a próxima semana: ${latest.pendingNextWeek.join(', ')}`);
+    }
+    if (latest.notes.trim()) {
+      lines.push(`- Notas do aluno: ${latest.notes.trim()}`);
+    }
   }
 
   lines.push('', 'PLANO DE HOJE:');
@@ -140,16 +276,27 @@ export function buildStudyContext(state: AppState): string {
   return text.length > MAX_CONTEXT_CHARS ? `${text.slice(0, MAX_CONTEXT_CHARS - 20)}\n[…resumo truncado]` : text;
 }
 
-export const SYSTEM_PROMPT = (context: string): string => `És um tutor de estudo exigente mas encorajador, a ajudar um estudante universitário a preparar o seu semestre.
+/** Resumo dos documentos/materiais associados para fornecer contexto de estudo detalhado ao Gemini. */
+export function buildDocumentContext(materials: Material[]): string {
+  if (!materials || materials.length === 0) return '';
+  const lines: string[] = ['DOCUMENTOS E MATERIAIS DE ESTUDO DISPONÍVEIS:'];
+  for (const m of materials) {
+    const prov = m.provider.toUpperCase();
+    lines.push(`- [${prov}] ${m.title}: ${m.url}`);
+  }
+  return lines.join('\n');
+}
+
+export const SYSTEM_PROMPT = (context: string, docContext?: string): string => `És um tutor de estudo exigente mas encorajador, a ajudar um estudante universitário a preparar o seu semestre.
 
 Regras:
 - Responde sempre em português europeu (pt-PT).
 - Sê conciso e concreto: prefere passos, números e prioridades a discursos longos.
-- Baseia os conselhos nos dados do resumo abaixo. Se um dado não estiver no resumo (por exemplo, o conteúdo de uma aula ou a matéria de uma avaliação), diz que não o tens, em vez de inventar factos sobre as cadeiras ou o estudante.
+- Baseia os conselhos nos dados do resumo e nos documentos anexados abaixo. Se um dado não estiver disponível, diz que não o tens em vez de inventar factos sobre as cadeiras ou o estudante.
 - Usa Markdown: títulos curtos (###), listas e **negrito** para destacar o essencial.
 - Em quizzes: faz UMA pergunta de cada vez e espera pela resposta do estudante antes de a corrigir e de avançar.
 - Se o estudante pedir algo fora do estudo, responde brevemente e volta ao tema.
-
+${docContext ? `\n${docContext}\n` : ''}
 Resumo do semestre do estudante (dados da app, atuais neste momento):
 """
 ${context}

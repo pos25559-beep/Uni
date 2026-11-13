@@ -1,0 +1,18 @@
+{
+  "auth": {
+    "providers": {
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Unipedia",
+        "supportEmail": "pos25559@gmail.com",
+        "authorizedRedirectUris": [
+          "https://campus-erp-84964.firebaseapp.com/__/auth/handler",
+          "http://localhost:5173",
+          "http://localhost:4000"
+        ]
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  }
+}

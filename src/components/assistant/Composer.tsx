@@ -33,8 +33,9 @@ export function Composer({ disabled, loading, onSend, onStop }: Props) {
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      if (e.nativeEvent.isComposing || e.keyCode === 229) return;
       submit();
     }
   };
@@ -48,7 +49,7 @@ export function Composer({ disabled, loading, onSend, onStop }: Props) {
         disabled={disabled}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={onKeyDown}
-        placeholder={disabled ? 'Configura a chave da Gemini para conversar' : 'Pergunta qualquer coisa sobre o teu semestre…'}
+        placeholder="Pergunta qualquer coisa sobre o teu semestre ou documentos…"
         aria-label="Mensagem para o assistente"
         style={{ minHeight: 40 }}
         className="max-h-40 min-w-0 flex-1 resize-none bg-transparent px-2 py-2 text-sm text-fg placeholder:text-muted/70 focus:outline-none disabled:cursor-not-allowed"

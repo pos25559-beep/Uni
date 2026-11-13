@@ -1,0 +1,821 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // This security rules file assumes the following data structures:
+    //
+    // Collection: users/{userId}
+    // Document ID: Firebase Auth UID ({userId})
+    // Fields:
+    //   - uid: string (optional, immutable, must match {userId})
+    //   - id: string (optional, immutable, must match {userId})
+    //   - email: string (optional, valid email format, max 100 chars)
+    //   - displayName: string (optional, max 100 chars)
+    //   - photoURL: string (optional, valid URL, max 500 chars)
+    //   - userName: string (optional, max 100 chars)
+    //   - theme: string (optional, 'light' | 'dark')
+    //   - semesterName: string (optional, max 100 chars)
+    //   - semesterStart: string/timestamp (optional, date format, max 35 chars)
+    //   - semesterEnd: string/timestamp (optional, date format, max 35 chars)
+    //   - dailyStudyMinutes: number (optional, 0 - 1440)
+    //   - studyDays: list of numbers (optional, max 7 items, 0 - 6)
+    //   - geminiApiKey: string (optional, max 200 chars)
+    //   - geminiModel: string (optional, max 100 chars)
+    //   - googleClientId: string (optional, max 200 chars)
+    //   - msClientId: string (optional, max 200 chars)
+    //   - academicEmail: string (optional, valid email format, max 150 chars)
+    //   - personalEmail: string (optional, valid email format, max 150 chars)
+    //   - personalNotebookUrl: string (optional, valid URL, max 1000 chars)
+    //   - settings: map (optional, containing settings key-values)
+    //   - createdAt: timestamp/string (optional, immutable)
+    //   - updatedAt: timestamp/string (optional)
+    //
+    // Collection: users/{userId}/profile/{profileId}
+    // Document ID: profileId (e.g. 'academic')
+    // Fields:
+    //   - onboardingCompleted: bool (required)
+    //   - universityId: string (required, 1 - 100 chars)
+    //   - universityName: string (required, 1 - 200 chars)
+    //   - degreeId: string (required, 1 - 100 chars)
+    //   - degreeName: string (required, 1 - 200 chars)
+    //   - entryYear: number (required, 2000 - 2100)
+    //   - currentAcademicYear: number (required, 1 | 2 | 3)
+    //   - currentSemester: number (required, 1 | 2)
+    //   - difficultCourseIds: list (required, max 50 items)
+    //   - difficultTopicsNotes: string (optional, max 4000 chars)
+    //   - completedCourses: list (required, max 100 items)
+    //   - userId: string (optional, immutable, must match {userId})
+    //   - createdAt: timestamp/string (optional, immutable)
+    //   - updatedAt: timestamp/string (optional)
+    //
+    // Collection: users/{userId}/weeklyCheckIns/{checkInId}
+    // Document ID: checkInId (string, max 100 chars)
+    // Fields:
+    //   - id: string (optional, immutable, max 100 chars)
+    //   - weekOf: string/timestamp (required, date or timestamp, max 35 chars)
+    //   - mood: string (required, 'confiante'|'estavel'|'pressionado'|'atrasado')
+    //   - understoodTopics: list (required, max 50 items)
+    //   - classDifficulties: list (required, max 50 items)
+    //   - pendingNextWeek: list (required, max 50 items)
+    //   - hardCourseIds: list (required, max 50 items)
+    //   - notes: string (required, 0 - 4000 chars)
+    //   - userId: string (optional, immutable, must match {userId})
+    //   - createdAt: timestamp/string (optional, immutable)
+    //   - updatedAt: timestamp/string (optional)
+    //
+    // Collection: users/{userId}/courses/{courseId}
+    // Document ID: courseId (string, max 100 chars)
+    // Fields:
+    //   - id: string (optional, immutable, max 100 chars)
+    //   - code: string (required, 1 - 30 chars) - Course code (e.g. 'AM2')
+    //   - name: string (required, 1 - 150 chars) - Full name
+    //   - shortName: string (required, 1 - 50 chars) - Abbreviation
+    //   - ects: number (required, 0 - 60) - ECTS credits
+    //   - color: string (required, 'violet'|'sky'|'emerald'|'amber'|'rose'|'cyan'|'orange'|'lime')
+    //   - teacher: string (optional, max 150 chars)
+    //   - targetGrade: number (required, 0 - 20)
+    //   - topics: list of maps (required, max 100 items)
+    //   - clipUrl: string (optional, valid URL, max 1000 chars)
+    //   - notebookUrl: string (optional, valid URL, max 1000 chars)
+    //   - driveFolderId: string (optional, max 150 chars)
+    //   - driveFolderUrl: string (optional, valid URL, max 1000 chars)
+    //   - oneDriveFolderUrl: string (optional, valid URL, max 1000 chars)
+    //   - sharedDriveUrl: string (optional, valid URL, max 1000 chars)
+    //   - sharedOneDriveUrl: string (optional, valid URL, max 1000 chars)
+    //   - rules: map (optional, course evaluation/syllabus rules)
+    //   - userId: string (optional, immutable, must match {userId})
+    //   - createdAt: timestamp/string (optional, immutable)
+    //   - updatedAt: timestamp/string (optional)
+    //
+    // Collection: users/{userId}/assessments/{assessmentId}
+    // Document ID: assessmentId (string, max 100 chars)
+    // Fields:
+    //   - id: string (optional, immutable, max 100 chars)
+    //   - courseId: string (required, 1 - 100 chars) - Associated course
+    //   - kind: string (required, 'exame'|'teste'|'trabalho'|'projeto'|'quiz')
+    //   - title: string (required, 1 - 200 chars)
+    //   - date: string/timestamp (required, ISO datetime or timestamp, max 35 chars)
+    //   - weight: number (required, 0 - 100) - Percentage weight
+    //   - grade: number (optional, 0 - 20) - Achieved grade
+    //   - topicIds: list of strings (required, max 100 items)
+    //   - location: string (optional, max 150 chars)
+    //   - notes: string (optional, max 2000 chars)
+    //   - source: string (required, 'local'|'clip'|'google'|'outlook')
+    //   - userId: string (optional, immutable, must match {userId})
+    //   - createdAt: timestamp/string (optional, immutable)
+    //   - updatedAt: timestamp/string (optional)
+    //
+    // Collection: users/{userId}/classes/{classId}
+    // Document ID: classId (string, max 100 chars)
+    // Fields:
+    //   - id: string (optional, immutable, max 100 chars)
+    //   - courseId: string (required, 1 - 100 chars)
+    //   - type: string (required, 'T'|'TP'|'P'|'OT')
+    //   - weekday: number (required, 0 - 6)
+    //   - start: string (required, HH:mm format, 4 - 10 chars)
+    //   - end: string (required, HH:mm format, 4 - 10 chars)
+    //   - room: string (optional, max 100 chars)
+    //   - source: string (required, 'local'|'clip'|'google'|'outlook')
+    //   - userId: string (optional, immutable, must match {userId})
+    //   - createdAt: timestamp/string (optional, immutable)
+    //   - updatedAt: timestamp/string (optional)
+    //
+    // Collection: users/{userId}/sessions/{sessionId}
+    // Document ID: sessionId (string, max 100 chars)
+    // Fields:
+    //   - id: string (optional, immutable, max 100 chars)
+    //   - courseId: string (required, 1 - 100 chars)
+    //   - topicId: string (optional, max 100 chars)
+    //   - assessmentId: string (optional, max 100 chars)
+    //   - date: string/timestamp (required, yyyy-MM-dd or timestamp, max 35 chars)
+    //   - start: string (optional, HH:mm format, max 10 chars)
+    //   - minutes: number (required, 0 - 1440)
+    //   - done: bool (required)
+    //   - actualMinutes: number (optional, 0 - 1440)
+    //   - notes: string (optional, max 2000 chars)
+    //   - generated: bool (required)
+    //   - userId: string (optional, immutable, must match {userId})
+    //   - createdAt: timestamp/string (optional, immutable)
+    //   - updatedAt: timestamp/string (optional)
+    //
+    // Collection: users/{userId}/tasks/{taskId}
+    // Document ID: taskId (string, max 100 chars)
+    // Fields:
+    //   - id: string (optional, immutable, max 100 chars)
+    //   - courseId: string (optional, max 100 chars)
+    //   - title: string (required, 1 - 300 chars)
+    //   - due: string/timestamp (optional, yyyy-MM-dd or timestamp, max 35 chars)
+    //   - done: bool (required)
+    //   - priority: number (required, 1 | 2 | 3)
+    //   - userId: string (optional, immutable, must match {userId})
+    //   - createdAt: timestamp/string (optional, immutable)
+    //   - updatedAt: timestamp/string (optional)
+    //
+    // Collection: users/{userId}/materials/{materialId}
+    // Document ID: materialId (string, max 100 chars)
+    // Fields:
+    //   - id: string (optional, immutable, max 100 chars)
+    //   - courseId: string (optional, max 100 chars)
+    //   - title: string (required, 1 - 300 chars)
+    //   - url: string (required, valid http/https URL or upload path/blob up to 1000 chars)
+    //   - provider: string (required, 'gdrive'|'onedrive'|'notebooklm'|'clip'|'link'|'upload')
+    //   - mimeType: string (optional, max 100 chars)
+    //   - fileName: string (optional, 1 - 300 chars)
+    //   - fileSize: number (optional, 0 - 500000000)
+    //   - category: string (optional, 'teste_antigo'|'exame_antigo'|'ficha'|'sebenta'|'slide_oficial'|'relatorio'|'outro')
+    //   - year: string (optional, 1 - 30 chars)
+    //   - epoch: string (optional, 1 - 50 chars)
+    //   - hasSolution: bool (optional)
+    //   - modifiedAt: string/timestamp (optional, max 35 chars)
+    //   - pinned: bool (optional)
+    //   - userId: string (optional, immutable, must match {userId})
+    //   - createdAt: timestamp/string (optional, immutable)
+    //   - updatedAt: timestamp/string (optional)
+    //
+    // Collection: users/{userId}/events/{eventId}
+    // Document ID: eventId (string, max 100 chars)
+    // Fields:
+    //   - id: string (optional, immutable, max 100 chars)
+    //   - title: string (required, 1 - 300 chars)
+    //   - start: string/timestamp (required, ISO datetime or timestamp, max 35 chars)
+    //   - end: string/timestamp (required, ISO datetime or timestamp, max 35 chars)
+    //   - allDay: bool (optional)
+    //   - source: string (required, 'local'|'clip'|'google'|'outlook')
+    //   - location: string (optional, max 150 chars)
+    //   - courseId: string (optional, max 100 chars)
+    //   - userId: string (optional, immutable, must match {userId})
+    //   - createdAt: timestamp/string (optional, immutable)
+    //   - updatedAt: timestamp/string (optional)
+    //
+    // Collection: users/{userId}/conversations/{conversationId}
+    // Document ID: conversationId (string, max 100 chars)
+    // Fields:
+    //   - id: string (optional, immutable, max 100 chars)
+    //   - title: string (optional, max 200 chars)
+    //   - userId: string (optional, immutable, must match {userId})
+    //   - createdAt: timestamp/string (optional, immutable)
+    //   - updatedAt: timestamp/string (optional)
+    //
+    // Collection: users/{userId}/conversations/{conversationId}/messages/{messageId}
+    // Document ID: messageId (string, max 100 chars)
+    // Fields:
+    //   - id: string (optional, immutable, max 100 chars)
+    //   - conversationId: string (optional, immutable, max 100 chars)
+    //   - role: string (required, 'user'|'model'|'assistant'|'system')
+    //   - text: string (required, 1 - 20000 chars)
+    //   - at: string/timestamp (required, max 35 chars)
+    //   - userId: string (optional, immutable, must match {userId})
+    //   - createdAt: timestamp/string (optional, immutable)
+    //
+    // Collection: curricula/{curriculumId}
+    // Document ID: curriculumId (string)
+    // Fields:
+    //   - id: string (optional, immutable, max 100 chars)
+    //   - universityId: string (required, 1 - 200 chars)
+    //   - universityName: string (required, 1 - 200 chars)
+    //   - universityShortName: string (optional, 1 - 200 chars)
+    //   - degreeId: string (required, 1 - 200 chars)
+    //   - degreeName: string (required, 1 - 200 chars)
+    //   - degreeShortName: string (optional, 1 - 200 chars)
+    //   - courses: list (required, max 80 items)
+    //   - createdBy: string (required, immutable, 1 - 200 chars, must match auth uid)
+    //   - createdAt: timestamp/string (optional, immutable)
+    //   - updatedAt: timestamp/string (optional)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    // Check if the user is authenticated
+    function isAuthenticated() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    // Check if user owns the resource (for user-owned documents)
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Check if user is owner based on document's uid field
+    function isDocOwner() {
+      return isAuthenticated() && ('uid' in resource.data) && request.auth.uid == resource.data.uid;
+    }
+
+    // Verify UID hasn't been tampered with on create
+    function uidUnchanged() {
+      return !('uid' in request.resource.data) ||
+        request.resource.data.uid == request.auth.uid;
+    }
+
+    // Ensure uid field is not modified on update
+    function uidNotModified() {
+      return !('uid' in request.resource.data) ||
+        request.resource.data.uid == resource.data.uid;
+    }
+
+    // Validate required fields exist in request payload
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    // Validate string length for a specific field in request payload
+    function validStringLength(field, minLen, maxLen) {
+      return (field in request.resource.data) &&
+        request.resource.data[field] is string &&
+        request.resource.data[field].size() >= minLen &&
+        request.resource.data[field].size() <= maxLen;
+    }
+
+    // Validate URL format (must start with https:// or http://) and bounded size
+    function isValidUrl(url) {
+      return url is string &&
+        (url.matches("^https://.*") || url.matches("^http://.*")) &&
+        url.size() <= 1000;
+    }
+
+    // Validate email format and bounded size
+    function isValidEmail(email) {
+      return email is string &&
+        email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$") &&
+        email.size() <= 100;
+    }
+
+    // Validate ISO 8601 date string format
+    function isValidDateString(dateStr) {
+      return dateStr is string &&
+        dateStr.matches("^\\d{4}-\\d{2}-\\d{2}.*$") &&
+        dateStr.size() <= 35;
+    }
+
+    // Validate date or timestamp type
+    function isValidDateOrTimestamp(val) {
+      return (val is timestamp) ||
+        (val is string && val.size() >= 4 && val.size() <= 35);
+    }
+
+    // Validate that a string path is correctly scoped to the user's ID
+    function isScopedPath(path) {
+      return path is string && path.matches("^users/" + request.auth.uid + "/.*");
+    }
+
+    // Validate that a field value is positive
+    function isPositive(field) {
+      return (field in request.resource.data) &&
+        request.resource.data[field] is number &&
+        request.resource.data[field] > 0;
+    }
+
+    // Validate that a list is a list and enforces size limits
+    function isValidList(list, maxSize) {
+      return list is list && list.size() <= maxSize;
+    }
+
+    // Validate optional string in a map
+    function isValidOptionalString(data, field, minLen, maxLen) {
+      return !(field in data) ||
+        (data[field] is string &&
+         data[field].size() >= minLen &&
+         data[field].size() <= maxLen);
+    }
+
+    // Validate optional number in a map
+    function isValidOptionalNumber(data, field, minVal, maxVal) {
+      return !(field in data) ||
+        (data[field] is number &&
+         data[field] >= minVal &&
+         data[field] <= maxVal);
+    }
+
+    // Validate optional boolean in a map
+    function isValidOptionalBool(data, field) {
+      return !(field in data) || (data[field] is bool);
+    }
+
+    // Validate optional date or timestamp in a map
+    function isValidOptionalDateOrTimestamp(data, field) {
+      return !(field in data) || isValidDateOrTimestamp(data[field]);
+    }
+
+    // Validate optional URL in a map
+    function isValidOptionalUrl(data, field) {
+      return !(field in data) || isValidUrl(data[field]);
+    }
+
+    // Validate optional email in a map with bounded length
+    function isValidOptionalEmail(data, field, maxLen) {
+      return !(field in data) ||
+        (data[field] is string &&
+         data[field].matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$") &&
+         data[field].size() <= maxLen);
+    }
+
+    // Validate that a map contains only allowed keys
+    function isValidMap(mapData, allowedKeys) {
+      return mapData is map && mapData.keys().hasOnly(allowedKeys);
+    }
+
+    // Validate that the document contains only the allowed fields
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // Validate that the document hasn't changed in immutable fields
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    // Validate that a timestamp is recent (within the last 5 minutes)
+    function isRecent(time) {
+      return time is timestamp &&
+        time > request.time - duration.value(5, 'm') &&
+        time <= request.time;
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    // Validates nested settings map
+    function isValidSettingsMap(settings) {
+      return settings is map &&
+        settings.keys().hasOnly([
+          'userName', 'theme', 'semesterName', 'semesterStart', 'semesterEnd',
+          'dailyStudyMinutes', 'studyDays', 'geminiApiKey', 'geminiModel',
+          'googleClientId', 'msClientId', 'academicEmail', 'personalEmail',
+          'personalNotebookUrl'
+        ]) &&
+        isValidOptionalString(settings, 'userName', 0, 100) &&
+        (!('theme' in settings) || settings.theme in ['light', 'dark']) &&
+        isValidOptionalString(settings, 'semesterName', 1, 100) &&
+        isValidOptionalDateOrTimestamp(settings, 'semesterStart') &&
+        isValidOptionalDateOrTimestamp(settings, 'semesterEnd') &&
+        isValidOptionalNumber(settings, 'dailyStudyMinutes', 0, 1440) &&
+        (!('studyDays' in settings) || (settings.studyDays is list && settings.studyDays.size() <= 7)) &&
+        isValidOptionalString(settings, 'geminiApiKey', 0, 200) &&
+        isValidOptionalString(settings, 'geminiModel', 0, 100) &&
+        isValidOptionalString(settings, 'googleClientId', 0, 200) &&
+        isValidOptionalString(settings, 'msClientId', 0, 200) &&
+        isValidOptionalEmail(settings, 'academicEmail', 150) &&
+        isValidOptionalEmail(settings, 'personalEmail', 150) &&
+        isValidOptionalUrl(settings, 'personalNotebookUrl');
+    }
+
+    // Validates user profile & settings document
+    function isValidUser(data, userId) {
+      return data.keys().hasOnly([
+          'uid', 'id', 'email', 'displayName', 'photoURL', 'userName',
+          'theme', 'semesterName', 'semesterStart', 'semesterEnd',
+          'dailyStudyMinutes', 'studyDays', 'geminiApiKey', 'geminiModel',
+          'googleClientId', 'msClientId', 'academicEmail', 'personalEmail',
+          'personalNotebookUrl', 'settings', 'createdAt', 'updatedAt'
+        ]) &&
+        (!('uid' in data) || data.uid == userId) &&
+        (!('id' in data) || data.id == userId) &&
+        (!('email' in data) || isValidEmail(data.email)) &&
+        isValidOptionalString(data, 'displayName', 1, 100) &&
+        isValidOptionalUrl(data, 'photoURL') &&
+        isValidOptionalString(data, 'userName', 0, 100) &&
+        (!('theme' in data) || data.theme in ['light', 'dark']) &&
+        isValidOptionalString(data, 'semesterName', 1, 100) &&
+        isValidOptionalDateOrTimestamp(data, 'semesterStart') &&
+        isValidOptionalDateOrTimestamp(data, 'semesterEnd') &&
+        isValidOptionalNumber(data, 'dailyStudyMinutes', 0, 1440) &&
+        (!('studyDays' in data) || (data.studyDays is list && data.studyDays.size() <= 7)) &&
+        isValidOptionalString(data, 'geminiApiKey', 0, 200) &&
+        isValidOptionalString(data, 'geminiModel', 0, 100) &&
+        isValidOptionalString(data, 'googleClientId', 0, 200) &&
+        isValidOptionalString(data, 'msClientId', 0, 200) &&
+        isValidOptionalEmail(data, 'academicEmail', 150) &&
+        isValidOptionalEmail(data, 'personalEmail', 150) &&
+        isValidOptionalUrl(data, 'personalNotebookUrl') &&
+        (!('settings' in data) || isValidSettingsMap(data.settings)) &&
+        isValidOptionalDateOrTimestamp(data, 'createdAt') &&
+        isValidOptionalDateOrTimestamp(data, 'updatedAt');
+    }
+
+    // Validates course document
+    function isValidCourse(data, userId) {
+      return data.keys().hasOnly([
+          'id', 'code', 'name', 'shortName', 'ects', 'color', 'teacher',
+          'targetGrade', 'topics', 'clipUrl', 'notebookUrl', 'driveFolderId',
+          'driveFolderUrl', 'oneDriveFolderUrl', 'sharedDriveUrl',
+          'sharedOneDriveUrl', 'rules', 'userId', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasAll(['code', 'name', 'shortName', 'ects', 'color', 'targetGrade', 'topics']) &&
+        isValidOptionalString(data, 'id', 1, 100) &&
+        data.code is string && data.code.size() > 0 && data.code.size() <= 30 &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 150 &&
+        data.shortName is string && data.shortName.size() > 0 && data.shortName.size() <= 50 &&
+        data.ects is number && data.ects >= 0 && data.ects <= 60 &&
+        data.color in ['violet', 'sky', 'emerald', 'amber', 'rose', 'cyan', 'orange', 'lime'] &&
+        data.targetGrade is number && data.targetGrade >= 0 && data.targetGrade <= 20 &&
+        data.topics is list && data.topics.size() <= 100 &&
+        isValidOptionalString(data, 'teacher', 1, 150) &&
+        isValidOptionalUrl(data, 'clipUrl') &&
+        isValidOptionalUrl(data, 'notebookUrl') &&
+        isValidOptionalString(data, 'driveFolderId', 1, 150) &&
+        isValidOptionalUrl(data, 'driveFolderUrl') &&
+        isValidOptionalUrl(data, 'oneDriveFolderUrl') &&
+        isValidOptionalUrl(data, 'sharedDriveUrl') &&
+        isValidOptionalUrl(data, 'sharedOneDriveUrl') &&
+        (!('rules' in data) || (data.rules is map && data.rules.size() <= 30)) &&
+        (!('userId' in data) || data.userId == userId) &&
+        isValidOptionalDateOrTimestamp(data, 'createdAt') &&
+        isValidOptionalDateOrTimestamp(data, 'updatedAt');
+    }
+
+    // Validates assessment document
+    function isValidAssessment(data, userId) {
+      return data.keys().hasOnly([
+          'id', 'courseId', 'kind', 'title', 'date', 'weight', 'grade',
+          'topicIds', 'location', 'notes', 'source', 'userId', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasAll(['courseId', 'kind', 'title', 'date', 'weight', 'topicIds', 'source']) &&
+        isValidOptionalString(data, 'id', 1, 100) &&
+        data.courseId is string && data.courseId.size() > 0 && data.courseId.size() <= 100 &&
+        data.kind in ['exame', 'teste', 'trabalho', 'projeto', 'quiz'] &&
+        data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+        isValidDateOrTimestamp(data.date) &&
+        data.weight is number && data.weight >= 0 && data.weight <= 100 &&
+        data.topicIds is list && data.topicIds.size() <= 100 &&
+        data.source in ['local', 'clip', 'google', 'outlook'] &&
+        isValidOptionalNumber(data, 'grade', 0, 20) &&
+        isValidOptionalString(data, 'location', 1, 150) &&
+        isValidOptionalString(data, 'notes', 0, 2000) &&
+        (!('userId' in data) || data.userId == userId) &&
+        isValidOptionalDateOrTimestamp(data, 'createdAt') &&
+        isValidOptionalDateOrTimestamp(data, 'updatedAt');
+    }
+
+    // Validates class slot document
+    function isValidClass(data, userId) {
+      return data.keys().hasOnly([
+          'id', 'courseId', 'type', 'weekday', 'start', 'end',
+          'room', 'source', 'userId', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasAll(['courseId', 'type', 'weekday', 'start', 'end', 'source']) &&
+        isValidOptionalString(data, 'id', 1, 100) &&
+        data.courseId is string && data.courseId.size() > 0 && data.courseId.size() <= 100 &&
+        data.type in ['T', 'TP', 'P', 'OT'] &&
+        data.weekday is number && data.weekday >= 0 && data.weekday <= 6 &&
+        data.start is string && data.start.size() >= 4 && data.start.size() <= 10 &&
+        data.end is string && data.end.size() >= 4 && data.end.size() <= 10 &&
+        data.source in ['local', 'clip', 'google', 'outlook'] &&
+        isValidOptionalString(data, 'room', 1, 100) &&
+        (!('userId' in data) || data.userId == userId) &&
+        isValidOptionalDateOrTimestamp(data, 'createdAt') &&
+        isValidOptionalDateOrTimestamp(data, 'updatedAt');
+    }
+
+    // Validates study session document
+    function isValidSession(data, userId) {
+      return data.keys().hasOnly([
+          'id', 'courseId', 'topicId', 'assessmentId', 'date', 'start',
+          'minutes', 'done', 'actualMinutes', 'notes', 'generated',
+          'userId', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasAll(['courseId', 'date', 'minutes', 'done', 'generated']) &&
+        isValidOptionalString(data, 'id', 1, 100) &&
+        data.courseId is string && data.courseId.size() > 0 && data.courseId.size() <= 100 &&
+        isValidDateOrTimestamp(data.date) &&
+        data.minutes is number && data.minutes >= 0 && data.minutes <= 1440 &&
+        data.done is bool &&
+        data.generated is bool &&
+        isValidOptionalString(data, 'topicId', 1, 100) &&
+        isValidOptionalString(data, 'assessmentId', 1, 100) &&
+        isValidOptionalString(data, 'start', 4, 10) &&
+        isValidOptionalNumber(data, 'actualMinutes', 0, 1440) &&
+        isValidOptionalString(data, 'notes', 0, 2000) &&
+        (!('userId' in data) || data.userId == userId) &&
+        isValidOptionalDateOrTimestamp(data, 'createdAt') &&
+        isValidOptionalDateOrTimestamp(data, 'updatedAt');
+    }
+
+    // Validates task document
+    function isValidTask(data, userId) {
+      return data.keys().hasOnly([
+          'id', 'courseId', 'title', 'due', 'done', 'priority',
+          'userId', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasAll(['title', 'done', 'priority']) &&
+        isValidOptionalString(data, 'id', 1, 100) &&
+        data.title is string && data.title.size() > 0 && data.title.size() <= 300 &&
+        data.done is bool &&
+        data.priority in [1, 2, 3] &&
+        isValidOptionalString(data, 'courseId', 1, 100) &&
+        isValidOptionalDateOrTimestamp(data, 'due') &&
+        (!('userId' in data) || data.userId == userId) &&
+        isValidOptionalDateOrTimestamp(data, 'createdAt') &&
+        isValidOptionalDateOrTimestamp(data, 'updatedAt');
+    }
+
+    // Validates material document
+    function isValidMaterial(data, userId) {
+      return data.keys().hasOnly([
+          'id', 'courseId', 'title', 'url', 'provider', 'mimeType',
+          'fileName', 'fileSize', 'category', 'year', 'epoch', 'hasSolution',
+          'modifiedAt', 'pinned', 'userId', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasAll(['title', 'url', 'provider']) &&
+        isValidOptionalString(data, 'id', 1, 100) &&
+        data.title is string && data.title.size() > 0 && data.title.size() <= 300 &&
+        data.provider in ['gdrive', 'onedrive', 'notebooklm', 'clip', 'link', 'upload'] &&
+        (isValidUrl(data.url) || (data.provider == 'upload' && data.url is string && data.url.size() <= 1000)) &&
+        isValidOptionalString(data, 'courseId', 1, 100) &&
+        isValidOptionalString(data, 'mimeType', 1, 100) &&
+        isValidOptionalString(data, 'fileName', 1, 300) &&
+        isValidOptionalNumber(data, 'fileSize', 0, 500000000) &&
+        (!('category' in data) || data.category in ['teste_antigo', 'exame_antigo', 'ficha', 'sebenta', 'slide_oficial', 'relatorio', 'outro']) &&
+        isValidOptionalString(data, 'year', 1, 30) &&
+        isValidOptionalString(data, 'epoch', 1, 50) &&
+        isValidOptionalBool(data, 'hasSolution') &&
+        isValidOptionalDateOrTimestamp(data, 'modifiedAt') &&
+        isValidOptionalBool(data, 'pinned') &&
+        (!('userId' in data) || data.userId == userId) &&
+        isValidOptionalDateOrTimestamp(data, 'createdAt') &&
+        isValidOptionalDateOrTimestamp(data, 'updatedAt');
+    }
+
+    // Validates calendar event document
+    function isValidCalendarEvent(data, userId) {
+      return data.keys().hasOnly([
+          'id', 'title', 'start', 'end', 'allDay', 'source',
+          'location', 'courseId', 'userId', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasAll(['title', 'start', 'end', 'source']) &&
+        isValidOptionalString(data, 'id', 1, 100) &&
+        data.title is string && data.title.size() > 0 && data.title.size() <= 300 &&
+        isValidDateOrTimestamp(data.start) &&
+        isValidDateOrTimestamp(data.end) &&
+        data.source in ['local', 'clip', 'google', 'outlook'] &&
+        isValidOptionalBool(data, 'allDay') &&
+        isValidOptionalString(data, 'location', 1, 150) &&
+        isValidOptionalString(data, 'courseId', 1, 100) &&
+        (!('userId' in data) || data.userId == userId) &&
+        isValidOptionalDateOrTimestamp(data, 'createdAt') &&
+        isValidOptionalDateOrTimestamp(data, 'updatedAt');
+    }
+
+    // Validates conversation document
+    function isValidConversation(data, userId) {
+      return data.keys().hasOnly(['id', 'title', 'userId', 'createdAt', 'updatedAt']) &&
+        isValidOptionalString(data, 'id', 1, 100) &&
+        isValidOptionalString(data, 'title', 1, 200) &&
+        (!('userId' in data) || data.userId == userId) &&
+        isValidOptionalDateOrTimestamp(data, 'createdAt') &&
+        isValidOptionalDateOrTimestamp(data, 'updatedAt');
+    }
+
+    // Validates chat message document
+    function isValidMessage(data, userId, conversationId) {
+      return data.keys().hasOnly(['id', 'conversationId', 'role', 'text', 'at', 'userId', 'createdAt']) &&
+        data.keys().hasAll(['role', 'text', 'at']) &&
+        isValidOptionalString(data, 'id', 1, 100) &&
+        (!('conversationId' in data) || data.conversationId == conversationId) &&
+        data.role in ['user', 'model', 'assistant', 'system'] &&
+        data.text is string && data.text.size() > 0 && data.text.size() <= 20000 &&
+        isValidDateOrTimestamp(data.at) &&
+        (!('userId' in data) || data.userId == userId) &&
+        isValidOptionalDateOrTimestamp(data, 'createdAt');
+    }
+
+    // Validates academic profile document (/users/{userId}/profile/{profileId})
+    function isValidAcademicProfile(data, userId) {
+      return data.keys().hasOnly([
+          'onboardingCompleted', 'universityId', 'universityName', 'degreeId',
+          'degreeName', 'entryYear', 'currentAcademicYear', 'currentSemester',
+          'difficultCourseIds', 'difficultTopicsNotes', 'completedCourses',
+          'userId', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasAll([
+          'onboardingCompleted', 'universityId', 'universityName', 'degreeId',
+          'degreeName', 'entryYear', 'currentAcademicYear', 'currentSemester',
+          'difficultCourseIds', 'completedCourses'
+        ]) &&
+        data.onboardingCompleted is bool &&
+        data.universityId is string && data.universityId.size() > 0 && data.universityId.size() <= 100 &&
+        data.universityName is string && data.universityName.size() > 0 && data.universityName.size() <= 200 &&
+        data.degreeId is string && data.degreeId.size() > 0 && data.degreeId.size() <= 100 &&
+        data.degreeName is string && data.degreeName.size() > 0 && data.degreeName.size() <= 200 &&
+        data.entryYear is number && data.entryYear >= 2000 && data.entryYear <= 2100 &&
+        data.currentAcademicYear in [1, 2, 3] &&
+        data.currentSemester in [1, 2] &&
+        data.difficultCourseIds is list && data.difficultCourseIds.size() <= 50 &&
+        data.completedCourses is list && data.completedCourses.size() <= 100 &&
+        isValidOptionalString(data, 'difficultTopicsNotes', 0, 4000) &&
+        (!('userId' in data) || data.userId == userId) &&
+        isValidOptionalDateOrTimestamp(data, 'createdAt') &&
+        isValidOptionalDateOrTimestamp(data, 'updatedAt');
+    }
+
+    // Validates weekly check-in document (/users/{userId}/weeklyCheckIns/{checkInId})
+    function isValidWeeklyCheckIn(data, userId) {
+      return data.keys().hasOnly([
+          'id', 'weekOf', 'createdAt', 'updatedAt', 'mood', 'understoodTopics',
+          'classDifficulties', 'pendingNextWeek', 'hardCourseIds', 'notes', 'userId'
+        ]) &&
+        data.keys().hasAll([
+          'weekOf', 'mood', 'understoodTopics', 'classDifficulties',
+          'pendingNextWeek', 'hardCourseIds', 'notes'
+        ]) &&
+        isValidOptionalString(data, 'id', 1, 100) &&
+        isValidDateOrTimestamp(data.weekOf) &&
+        data.mood in ['confiante', 'estavel', 'pressionado', 'atrasado'] &&
+        data.understoodTopics is list && data.understoodTopics.size() <= 50 &&
+        data.classDifficulties is list && data.classDifficulties.size() <= 50 &&
+        data.pendingNextWeek is list && data.pendingNextWeek.size() <= 50 &&
+        data.hardCourseIds is list && data.hardCourseIds.size() <= 50 &&
+        data.notes is string && data.notes.size() <= 4000 &&
+        (!('userId' in data) || data.userId == userId) &&
+        isValidOptionalDateOrTimestamp(data, 'createdAt') &&
+        isValidOptionalDateOrTimestamp(data, 'updatedAt');
+    }
+
+    // Validates shared Portuguese curriculum document (/curricula/{curriculumId})
+    function isValidCurriculum(data) {
+      return data.keys().hasOnly([
+          'id', 'universityId', 'universityName', 'universityShortName',
+          'degreeId', 'degreeName', 'degreeShortName', 'courses',
+          'createdBy', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasAll([
+          'universityId', 'universityName', 'degreeId', 'degreeName',
+          'courses', 'createdBy'
+        ]) &&
+        isValidOptionalString(data, 'id', 1, 100) &&
+        data.universityId is string && data.universityId.size() > 0 && data.universityId.size() <= 200 &&
+        data.universityName is string && data.universityName.size() > 0 && data.universityName.size() <= 200 &&
+        isValidOptionalString(data, 'universityShortName', 1, 200) &&
+        data.degreeId is string && data.degreeId.size() > 0 && data.degreeId.size() <= 200 &&
+        data.degreeName is string && data.degreeName.size() > 0 && data.degreeName.size() <= 200 &&
+        isValidOptionalString(data, 'degreeShortName', 1, 200) &&
+        data.courses is list && data.courses.size() <= 80 &&
+        data.createdBy is string && data.createdBy.size() > 0 && data.createdBy.size() <= 200 &&
+        isValidOptionalDateOrTimestamp(data, 'createdAt') &&
+        isValidOptionalDateOrTimestamp(data, 'updatedAt');
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    // Root-level default deny for any unmatched collections/paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // -------------------------------------------------------------
+    // User Scope (/users/{userId})
+    // -------------------------------------------------------------
+    match /users/{userId} {
+      // User Profile & Settings Document
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(request.resource.data, userId);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data, userId) && areImmutableFieldsUnchanged(['uid', 'id', 'createdAt']);
+      allow delete: if isOwner(userId);
+
+      // Courses Subcollection
+      match /courses/{courseId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidCourse(request.resource.data, userId);
+        allow update: if isOwner(userId) && isValidCourse(request.resource.data, userId) && areImmutableFieldsUnchanged(['id', 'userId', 'createdAt']);
+        allow delete: if isOwner(userId);
+      }
+
+      // Assessments Subcollection
+      match /assessments/{assessmentId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidAssessment(request.resource.data, userId);
+        allow update: if isOwner(userId) && isValidAssessment(request.resource.data, userId) && areImmutableFieldsUnchanged(['id', 'userId', 'createdAt']);
+        allow delete: if isOwner(userId);
+      }
+
+      // Classes Subcollection
+      match /classes/{classId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidClass(request.resource.data, userId);
+        allow update: if isOwner(userId) && isValidClass(request.resource.data, userId) && areImmutableFieldsUnchanged(['id', 'userId', 'createdAt']);
+        allow delete: if isOwner(userId);
+      }
+
+      // Study Sessions Subcollection
+      match /sessions/{sessionId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidSession(request.resource.data, userId);
+        allow update: if isOwner(userId) && isValidSession(request.resource.data, userId) && areImmutableFieldsUnchanged(['id', 'userId', 'createdAt']);
+        allow delete: if isOwner(userId);
+      }
+
+      // Tasks Subcollection
+      match /tasks/{taskId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidTask(request.resource.data, userId);
+        allow update: if isOwner(userId) && isValidTask(request.resource.data, userId) && areImmutableFieldsUnchanged(['id', 'userId', 'createdAt']);
+        allow delete: if isOwner(userId);
+      }
+
+      // Materials Subcollection
+      match /materials/{materialId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidMaterial(request.resource.data, userId);
+        allow update: if isOwner(userId) && isValidMaterial(request.resource.data, userId) && areImmutableFieldsUnchanged(['id', 'userId', 'createdAt']);
+        allow delete: if isOwner(userId);
+      }
+
+      // Calendar Events Subcollection
+      match /events/{eventId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidCalendarEvent(request.resource.data, userId);
+        allow update: if isOwner(userId) && isValidCalendarEvent(request.resource.data, userId) && areImmutableFieldsUnchanged(['id', 'userId', 'createdAt']);
+        allow delete: if isOwner(userId);
+      }
+
+      // Conversations Subcollection
+      match /conversations/{conversationId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidConversation(request.resource.data, userId);
+        allow update: if isOwner(userId) && isValidConversation(request.resource.data, userId) && areImmutableFieldsUnchanged(['id', 'userId', 'createdAt']);
+        allow delete: if isOwner(userId);
+
+        // Nested Messages Subcollection
+        match /messages/{messageId} {
+          allow read: if isOwner(userId);
+          allow create: if isOwner(userId) && isValidMessage(request.resource.data, userId, conversationId);
+          allow update: if isOwner(userId) && isValidMessage(request.resource.data, userId, conversationId) && areImmutableFieldsUnchanged(['id', 'conversationId', 'userId', 'createdAt', 'role']);
+          allow delete: if isOwner(userId);
+        }
+      }
+
+      // Academic Profile Subcollection (e.g. /users/{userId}/profile/academic)
+      match /profile/{profileId} {
+        allow read, delete: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidAcademicProfile(request.resource.data, userId);
+        allow update: if isOwner(userId) && isValidAcademicProfile(request.resource.data, userId) && areImmutableFieldsUnchanged(['userId', 'createdAt']);
+      }
+
+      // Weekly Check-Ins Subcollection
+      match /weeklyCheckIns/{checkInId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidWeeklyCheckIn(request.resource.data, userId);
+        allow update: if isOwner(userId) && isValidWeeklyCheckIn(request.resource.data, userId) && areImmutableFieldsUnchanged(['id', 'userId', 'createdAt']);
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Shared Curricula (/curricula/{curriculumId})
+    // -------------------------------------------------------------
+    match /curricula/{curriculumId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidCurriculum(request.resource.data) && request.resource.data.createdBy == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.createdBy == request.auth.uid && isValidCurriculum(request.resource.data) && areImmutableFieldsUnchanged(['id', 'createdBy', 'createdAt']);
+      allow delete: if isAuthenticated() && resource.data.createdBy == request.auth.uid;
+    }
+  }
+}

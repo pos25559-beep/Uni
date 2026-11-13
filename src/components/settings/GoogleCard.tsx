@@ -1,112 +1,285 @@
-import { Calendar, Unplug } from 'lucide-react';
+import {
+  Calendar,
+  CheckCircle2,
+  GraduationCap,
+  HardDrive,
+  KeyRound,
+  Loader2,
+  Mail,
+  RefreshCw,
+  Sparkles,
+  Trash2,
+} from 'lucide-react';
 import { useState } from 'react';
-import { signOutGoogle } from '../../integrations/googleAuth';
-import { syncGoogleCalendar } from '../../integrations/gcal';
+import { useGoogleAccounts } from '../../hooks/useGoogleData';
 import { useStore } from '../../store/useStore';
-import { Button, Field, Input, Modal } from '../ui';
-import { CopyField, HowTo, IntegrationCard } from './shared';
+import { Badge, Button, Field, Input, Modal } from '../ui';
+import { IntegrationCard } from './shared';
 
 export default function GoogleCard() {
   const status = useStore((s) => s.integrations.google);
-  const clientId = useStore((s) => s.settings.googleClientId);
+  const personalNotebookUrl = useStore((s) => s.settings.personalNotebookUrl);
   const updateSettings = useStore((s) => s.updateSettings);
-  const replaceSource = useStore((s) => s.replaceSource);
-  const setIntegration = useStore((s) => s.setIntegration);
 
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const [confirmOff, setConfirmOff] = useState(false);
 
-  const origin = window.location.origin;
+  const {
+    personalEmail,
+    academicEmail,
+    isPersonalConnected,
+    isAcademicConnected,
+    personalBusy,
+    academicBusy,
+    scanningDrive,
+    message,
+    loginPersonal,
+    switchPersonal,
+    logoutPersonal,
+    scanDrive,
+    cleanJunk,
+    connectAcademic,
+    disconnectAcademic,
+    syncCalendar,
+    disconnectAll,
+  } = useGoogleAccounts();
 
-  const sync = async () => {
-    setBusy(true);
-    setMessage(null);
-    try {
-      const n = await syncGoogleCalendar();
-      setMessage(`${n} ${n === 1 ? 'evento importado' : 'eventos importados'}`);
-    } catch {
-      // O erro fica guardado na integração e aparece no cartão de estado.
-    } finally {
-      setBusy(false);
-    }
+  const effectiveStatus = {
+    ...status,
+    connected: isPersonalConnected || isAcademicConnected,
+    error: isPersonalConnected || isAcademicConnected ? undefined : status.error,
   };
 
-  const disconnect = () => {
-    signOutGoogle();
-    replaceSource('events', 'google', []);
-    setIntegration('google', { connected: false, lastSync: undefined, error: undefined });
+  const handleDisconnectAll = () => {
+    disconnectAll();
     setConfirmOff(false);
-    setMessage(null);
   };
 
   return (
     <>
       <IntegrationCard
-        icon={<Calendar size={18} />}
-        title="Google (Drive + Agenda)"
-        description="Eventos da Google Agenda e ficheiros do Drive."
-        status={status}
+        icon={<HardDrive size={18} />}
+        title="Google & Contas Dual (Pessoal e Académica)"
+        description="Gere as tuas duas contas de forma independente: conta pessoal para Google Drive, nuvem e Gemini AI; e conta académica (@campus.fct.unl.pt) para avisos dos docentes no Gmail e CLIP."
+        status={effectiveStatus}
       >
-        <HowTo
-          steps={[
-            <>Abre <a className="text-accent underline-offset-2 hover:underline" href="https://console.cloud.google.com" target="_blank" rel="noreferrer">console.cloud.google.com</a> e cria um projeto.</>,
-            <>Em «APIs e serviços» → «Biblioteca», ativa a <b className="text-fg">Google Drive API</b> e a <b className="text-fg">Google Calendar API</b>.</>,
-            <>Em «Ecrã de consentimento OAuth», escolhe <b className="text-fg">Externo</b> e adiciona a tua conta Google como utilizador de teste.</>,
-            <>Em «Credenciais», escolhe «Criar credenciais» → «ID do cliente OAuth» e o tipo <b className="text-fg">Aplicação Web</b>.</>,
-            <>Em «Origens JavaScript autorizadas», adiciona a origem mostrada abaixo.</>,
-            <>Copia o Client ID gerado e cola-o aqui.</>,
-          ]}
-        />
+        <div className="space-y-4">
+          {/* 1. Conta Pessoal Principal */}
+          <div className="rounded-xl border border-line bg-surface-2/40 p-4 space-y-3 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <div className="grid size-9 place-items-center rounded-lg bg-accent-soft text-accent font-semibold">
+                  <HardDrive size={17} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-fg text-sm">
+                      Conta Principal (Pessoal)
+                    </p>
+                    {isPersonalConnected ? (
+                      <Badge tone="ok">Ligada</Badge>
+                    ) : (
+                      <Badge tone="warn">Por ligar</Badge>
+                    )}
+                  </div>
+                  <p className="text-muted text-xs">
+                    {personalEmail || (isPersonalConnected ? 'Sessão Google pessoal ativa' : 'pos25559@gmail.com')}
+                  </p>
+                </div>
+              </div>
 
-        <div className="space-y-1.5">
-          <span className="block text-xs font-medium text-muted">Origem JavaScript autorizada</span>
-          <CopyField value={origin} label="a origem" />
-        </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Badge tone="accent">Google Drive</Badge>
+                <Badge tone="accent">Gemini AI</Badge>
+                <Badge tone="accent">Agenda</Badge>
+                <Badge tone="accent">Nuvem</Badge>
+              </div>
+            </div>
 
-        <Field label="Client ID">
-          <Input
-            value={clientId}
-            placeholder="xxxxxxxx.apps.googleusercontent.com"
-            autoComplete="off"
-            spellCheck={false}
-            onChange={(e) => updateSettings({ googleClientId: e.target.value.trim() })}
-          />
-        </Field>
+            <p className="text-muted leading-relaxed">
+              Utilizada para ler as tuas pastas pessoais do Drive, aceder ao drive partilhado do LEMc (Mec Bolinhas), sincronizar o teu plano na nuvem e alimentar os cadernos do NotebookLM.
+            </p>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="primary" onClick={sync} disabled={busy || !clientId.trim()}>
-            <Calendar size={16} />
-            {busy ? 'A sincronizar…' : 'Ligar e sincronizar agenda'}
-          </Button>
-          {status.connected && (
-            <Button variant="danger" onClick={() => setConfirmOff(true)} disabled={busy}>
-              <Unplug size={16} />
-              Desligar
-            </Button>
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-line/60">
+              {isPersonalConnected ? (
+                <>
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={scanDrive}
+                    disabled={personalBusy || scanningDrive}
+                  >
+                    {scanningDrive ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                    Varrer Drive e LEMc
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={cleanJunk}
+                    disabled={personalBusy || scanningDrive}
+                    title="Remove faturas, recibos e ficheiros pessoais erroneamente importados"
+                  >
+                    <Trash2 size={13} />
+                    Limpar Ficheiros Irrelevantes
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={syncCalendar}
+                    disabled={personalBusy || scanningDrive}
+                  >
+                    <Calendar size={13} />
+                    Sincronizar Agenda
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={switchPersonal}
+                    disabled={personalBusy || scanningDrive}
+                  >
+                    Trocar Conta Pessoal
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={logoutPersonal}
+                    disabled={personalBusy || scanningDrive}
+                    className="text-danger hover:text-danger"
+                  >
+                    Terminar Sessão Pessoal
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={loginPersonal}
+                  disabled={personalBusy}
+                >
+                  <KeyRound size={13} />
+                  Iniciar Sessão com Conta Pessoal
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* 2. Conta Académica da Faculdade */}
+          <div className="rounded-xl border border-line bg-surface-2/40 p-4 space-y-3 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <div className="grid size-9 place-items-center rounded-lg bg-amber-500/10 text-amber-500 font-semibold">
+                  <GraduationCap size={18} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-fg text-sm">
+                      Conta Académica FCT (Gmail dos Professores & CLIP)
+                    </p>
+                    {isAcademicConnected ? (
+                      <Badge tone="ok">Ativa</Badge>
+                    ) : (
+                      <Badge tone="warn">Por ligar</Badge>
+                    )}
+                  </div>
+                  <p className="text-muted text-xs">
+                    {academicEmail || 'po.silva@campus.fct.unl.pt'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Badge tone="accent">Gmail Professores</Badge>
+                <Badge tone="accent">Avisos CLIP</Badge>
+                <Badge tone="accent">Só Leitura</Badge>
+              </div>
+            </div>
+
+            <p className="text-muted leading-relaxed">
+              Lê os emails reais dos docentes sobre salas, convocações de testes, pautas e horários de dúvidas. Funciona em paralelo com a tua conta pessoal sem misturar sessões.
+            </p>
+
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-line/60">
+              {isAcademicConnected ? (
+                <>
+                  <div className="flex items-center gap-1.5 text-ok font-medium">
+                    <CheckCircle2 size={14} />
+                    <span>Conectada: {academicEmail || 'po.silva@campus.fct.unl.pt'}</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={connectAcademic}
+                    disabled={academicBusy}
+                  >
+                    {academicBusy ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+                    Reautenticar / Renovar Token
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={disconnectAcademic}
+                    disabled={academicBusy}
+                    className="text-danger hover:text-danger"
+                  >
+                    Desligar Conta Académica
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={connectAcademic}
+                  disabled={academicBusy}
+                >
+                  {academicBusy ? <Loader2 size={13} className="animate-spin" /> : <Mail size={13} />}
+                  Ligar Conta Académica FCT (@campus.fct.unl.pt)
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Configuração de Caderno NotebookLM Pessoal */}
+          <div className="pt-1">
+            <Field label="Link do teu Caderno NotebookLM Pessoal (opcional)">
+              <Input
+                value={personalNotebookUrl ?? ''}
+                placeholder="https://notebooklm.google.com/notebook/..."
+                autoComplete="off"
+                spellCheck={false}
+                onChange={(e) => updateSettings({ personalNotebookUrl: e.target.value.trim() })}
+              />
+            </Field>
+            <p className="mt-1 text-[11px] text-muted">
+              Cola aqui o link de partilha do teu caderno no NotebookLM (criado com a tua conta pessoal) para acederes com 1 clique a partir da barra lateral e de cada cadeira.
+            </p>
+          </div>
+
+          {message && (
+            <div className="rounded-lg bg-surface-2 p-2.5 text-xs text-ok font-medium border border-line">
+              {message}
+            </div>
           )}
+
+          <p className="text-[11px] text-muted">
+            Acesso só de leitura. Os tokens de acesso vivem apenas em memória e sessionStorage e nunca são gravados em bases de dados públicas.
+          </p>
         </div>
-
-        {message && <p className="text-sm text-ok">{message}</p>}
-
-        <p className="text-xs text-muted">
-          Acesso só de leitura. O token fica apenas em memória e é pedido de novo ao recarregar a página.
-        </p>
       </IntegrationCard>
 
       <Modal
         open={confirmOff}
         onClose={() => setConfirmOff(false)}
-        title="Desligar a Google?"
+        title="Desligar as contas Google?"
         footer={
           <>
             <Button onClick={() => setConfirmOff(false)}>Cancelar</Button>
-            <Button variant="danger" onClick={disconnect}>Desligar e apagar eventos</Button>
+            <Button variant="danger" onClick={handleDisconnectAll}>
+              Desligar e apagar eventos
+            </Button>
           </>
         }
       >
         <p className="text-sm text-muted">
-          Os eventos importados da Google Agenda serão removidos desta app. Os da tua conta Google não são alterados.
+          Os eventos importados da Google Agenda serão removidos desta aplicação. As tuas contas Google não sofrerão alterações.
         </p>
       </Modal>
     </>

@@ -1,15 +1,16 @@
 import { addDays, addWeeks, format, parseISO, startOfWeek } from 'date-fns';
 import { pt } from 'date-fns/locale';
-import { AlertTriangle, CalendarDays, ChevronLeft, ChevronRight, Clock, Plus, Sparkles } from 'lucide-react';
+import { AlertTriangle, CalendarDays, ChevronLeft, ChevronRight, Clock, Flame, MessageSquare, Plus, Sparkles } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import WeeklyTutorModal from '../components/assistant/WeeklyTutorModal';
 import CourseDistribution from '../components/planner/CourseDistribution';
 import DayColumn from '../components/planner/DayColumn';
 import FocusTimer from '../components/planner/FocusTimer';
 import SessionModal from '../components/planner/SessionModal';
-import { Button, Card, CourseChip, EmptyState, Modal, PageHeader, Stat } from '../components/ui';
+import { Badge, Button, Card, CourseChip, EmptyState, Modal, PageHeader, Stat } from '../components/ui';
 import { weekdayShort } from '../lib/colors';
-import { generatePlan, planSummary } from '../lib/planner';
+import { analyzeTestMode, generatePlan, planSummary } from '../lib/planner';
 import { fmtMinutes, sessionMinutes, todayStr } from '../lib/selectors';
 import { useStore } from '../store/useStore';
 import type { StudySession } from '../types';
@@ -36,6 +37,8 @@ export default function Planner() {
   const events = useStore((s) => s.events);
   const sessions = useStore((s) => s.sessions);
   const settings = useStore((s) => s.settings);
+  const academicProfile = useStore((s) => s.academicProfile);
+  const weeklyCheckIns = useStore((s) => s.weeklyCheckIns);
   const replaceGeneratedSessions = useStore((s) => s.replaceGeneratedSessions);
   const upsertMany = useStore((s) => s.upsertMany);
   const patch = useStore((s) => s.patch);
@@ -45,8 +48,14 @@ export default function Planner() {
   const today = useMemo(() => todayStr(), []);
   const [weekOffset, setWeekOffset] = useState(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [tutorOpen, setTutorOpen] = useState(false);
   const [modal, setModal] = useState<{ session?: StudySession; date: string } | null>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
+
+  const testMode = useMemo(
+    () => analyzeTestMode(courses, assessments, today),
+    [courses, assessments, today],
+  );
 
   // Semana visível (segunda a domingo).
   const weekDays = useMemo(
@@ -116,6 +125,8 @@ export default function Planner() {
       days: 14,
       // Mantém concluídas, manuais e as sessões de dias anteriores (atrasadas).
       existing: sessions.filter((s) => !s.generated || s.done || s.date < today),
+      difficultCourseIds: academicProfile.difficultCourseIds,
+      weeklyCheckIns,
     });
     replaceGeneratedSessions(today, plan);
     setConfirmOpen(false);
@@ -136,6 +147,9 @@ export default function Planner() {
         subtitle={`${fmtMinutes(settings.dailyStudyMinutes)} por dia · ${studyDaysLabel(settings.studyDays)}`}
         actions={
           <>
+            <Button onClick={() => setTutorOpen(true)}>
+              <MessageSquare size={16} /> Check-in semanal
+            </Button>
             <Button onClick={() => setModal({ date: today })} disabled={courses.length === 0}>
               <Plus size={16} /> Nova sessão
             </Button>
@@ -145,6 +159,46 @@ export default function Planner() {
           </>
         }
       />
+
+      {testMode.mode !== 'normal' && (
+        <div
+          className={
+            testMode.mode === 'single_test'
+              ? 'mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-warn/40 bg-warn/10 px-4 py-3'
+              : 'mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-danger/40 bg-danger/10 px-4 py-3'
+          }
+        >
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 rounded-xl bg-surface p-2 text-warn">
+              <Flame size={18} />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-semibold">
+                  {testMode.mode === 'single_test'
+                    ? 'Modo Teste ativo (menos de 10 dias)'
+                    : `Modo Teste Múltiplo ativo (${testMode.urgentCourseIds.length} cadeiras em < 10 dias)`}
+                </span>
+                <Badge tone={testMode.mode === 'single_test' ? 'warn' : 'danger'}>
+                  {testMode.mode === 'single_test' ? 'Foco intensivo' : 'Equilíbrio de testes'}
+                </Badge>
+              </div>
+              <p className="mt-1 text-xs text-muted">
+                {testMode.mode === 'single_test'
+                  ? `Foco total em ${testMode.urgentAssessments[0].course.shortName} (${testMode.urgentAssessments[0].assessment.title} em ${testMode.urgentAssessments[0].daysLeft} dias). `
+                  : 'O plano equilibra blocos diários entre '}
+                {testMode.mode === 'multi_test' &&
+                  testMode.urgentAssessments
+                    .map((u) => `${u.course.shortName} (${u.daysLeft}d)`)
+                    .join(' · ')}
+              </p>
+            </div>
+          </div>
+          <Button size="sm" variant="primary" onClick={generate}>
+            <Sparkles size={14} /> Recalcular em Modo Teste
+          </Button>
+        </div>
+      )}
 
       {sessions.length === 0 ? (
         <EmptyState
@@ -298,6 +352,11 @@ export default function Planner() {
           onClose={() => setFocusId(null)}
         />
       )}
+
+      <WeeklyTutorModal
+        open={tutorOpen}
+        onClose={() => setTutorOpen(false)}
+      />
 
       <Modal
         open={confirmOpen}

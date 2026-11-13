@@ -1,17 +1,21 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Cloud, FolderOpen, HardDrive, Pin, Plus, Search } from 'lucide-react';
+import { FileUp, FolderOpen, HardDrive, Loader2, Pin, Plus, Search, Sparkles } from 'lucide-react';
 import { Button, CourseChip, EmptyState, Input, PageHeader, Select, cx } from '../components/ui';
 import { useStore } from '../store/useStore';
 import { providerLabel } from '../lib/colors';
 import type { Material, MaterialProvider } from '../types';
 import AddLinkModal from '../components/materials/AddLinkModal';
-import CloudPicker, { DRIVE_SOURCE, ONEDRIVE_SOURCE } from '../components/materials/CloudPicker';
+import FileUploadModal from '../components/materials/FileUploadModal';
+import DeviceImportModal from '../components/materials/DeviceImportModal';
+import CloudPicker, { DRIVE_SOURCE } from '../components/materials/CloudPicker';
 import type { CloudSource } from '../components/materials/CloudPicker';
 import MaterialRow from '../components/materials/MaterialRow';
 import NotebookLMCard from '../components/materials/NotebookLMCard';
+import MaterialViewerModal from '../components/materials/MaterialViewerModal';
+import { useDriveAutoScan } from '../hooks/useGoogleData';
 
 type ProviderFilter = MaterialProvider | 'all';
-const providerFilters: ProviderFilter[] = ['all', 'gdrive', 'onedrive', 'notebooklm', 'clip', 'link'];
+const providerFilters: ProviderFilter[] = ['all', 'upload', 'gdrive', 'notebooklm', 'clip', 'link'];
 const chipLabel: Record<ProviderFilter, string> = { ...providerLabel, all: 'Todos' };
 
 const byTitle = (a: Material, b: Material) => a.title.localeCompare(b.title, 'pt');
@@ -24,9 +28,22 @@ export default function Materials() {
   const [courseFilter, setCourseFilter] = useState('all');
   const [providerFilter, setProviderFilter] = useState<ProviderFilter>('all');
   const [addOpen, setAddOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [deviceImportOpen, setDeviceImportOpen] = useState(false);
   const [picker, setPicker] = useState<CloudSource | null>(null);
+  const [viewingMaterial, setViewingMaterial] = useState<Material | null>(null);
+
+  const {
+    scanning: scanningDrive,
+    feedback: scanFeedback,
+    isDriveConnected: isGoogleConnected,
+    runScan: handleAutoScanDrive,
+    clearFeedback,
+  } = useDriveAutoScan();
 
   const closeAdd = useCallback(() => setAddOpen(false), []);
+  const closeUpload = useCallback(() => setUploadOpen(false), []);
+  const closeDeviceImport = useCallback(() => setDeviceImportOpen(false), []);
   const closePicker = useCallback(() => setPicker(null), []);
 
   const courseById = useMemo(() => new Map(courses.map((c) => [c.id, c])), [courses]);
@@ -43,8 +60,10 @@ export default function Materials() {
   }, [materials, query, courseFilter, courseById]);
 
   const counts = useMemo(() => {
-    const c: Record<ProviderFilter, number> = { all: scoped.length, gdrive: 0, onedrive: 0, notebooklm: 0, clip: 0, link: 0 };
-    for (const m of scoped) c[m.provider] += 1;
+    const c: Record<ProviderFilter, number> = { all: scoped.length, upload: 0, gdrive: 0, onedrive: 0, notebooklm: 0, clip: 0, link: 0 };
+    for (const m of scoped) {
+      if (m.provider in c) c[m.provider] += 1;
+    }
     return c;
   }, [scoped]);
 
@@ -83,7 +102,13 @@ export default function Materials() {
   const renderRows = (list: Material[]) => (
     <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
       {list.map((m) => (
-        <MaterialRow key={m.id} material={m} courses={courses} course={courseById.get(m.courseId ?? '')} />
+        <MaterialRow
+          key={m.id}
+          material={m}
+          courses={courses}
+          course={courseById.get(m.courseId ?? '')}
+          onView={setViewingMaterial}
+        />
       ))}
     </ul>
   );
@@ -95,14 +120,32 @@ export default function Materials() {
         subtitle={`${materials.length} ${materials.length === 1 ? 'material' : 'materiais'} na biblioteca`}
         actions={(
           <>
-            <Button variant="primary" onClick={() => setAddOpen(true)}>
-              <Plus size={16} /> Adicionar link
+            <Button variant="primary" onClick={() => setDeviceImportOpen(true)}>
+              <HardDrive size={16} /> Importar do Computador (HD)
             </Button>
-            <Button onClick={() => setPicker(DRIVE_SOURCE)}>
-              <HardDrive size={16} /> Importar do Drive
+            <Button
+              variant="secondary"
+              onClick={handleAutoScanDrive}
+              disabled={scanningDrive}
+            >
+              {scanningDrive ? (
+                <>
+                  <Loader2 size={16} className="animate-spin text-accent" /> A Varrer Drive...
+                </>
+              ) : (
+                <>
+                  <Sparkles size={16} className="text-accent" /> Varrer Google Drive
+                </>
+              )}
             </Button>
-            <Button onClick={() => setPicker(ONEDRIVE_SOURCE)}>
-              <Cloud size={16} /> Importar do OneDrive
+            <Button variant="ghost" onClick={() => setPicker(DRIVE_SOURCE)}>
+              <FolderOpen size={16} /> Explorar Pastas
+            </Button>
+            <Button onClick={() => setUploadOpen(true)}>
+              <FileUp size={16} /> Ficheiro Único
+            </Button>
+            <Button onClick={() => setAddOpen(true)}>
+              <Plus size={16} /> Adicionar Link
             </Button>
           </>
         )}
@@ -110,6 +153,40 @@ export default function Materials() {
 
       <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
         <div className="min-w-0 space-y-4">
+          {/* Banner de Ligação / Varredura do Google Drive */}
+          {!isGoogleConnected ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-accent/30 bg-accent-soft p-4 text-xs">
+              <div className="flex items-center gap-3">
+                <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent text-accent-fg">
+                  <Sparkles size={18} />
+                </div>
+                <div>
+                  <p className="font-semibold text-fg text-sm">Queres ligar o teu Google Drive?</p>
+                  <p className="text-muted">
+                    O sistema autónomo faz uma primeira varredura no teu Drive e nas pastas partilhadas do curso (LEMc) para associar testes, exames e slides às tuas cadeiras.
+                  </p>
+                </div>
+              </div>
+              <Button variant="primary" size="sm" onClick={handleAutoScanDrive} disabled={scanningDrive}>
+                {scanningDrive ? <Loader2 size={14} className="animate-spin" /> : <HardDrive size={14} />}
+                Ligar e Fazer Varredura Autónoma
+              </Button>
+            </div>
+          ) : scanFeedback ? (
+            <div className="flex items-center justify-between gap-3 rounded-2xl border border-accent/30 bg-accent-soft p-3.5 text-xs text-fg">
+              <div className="flex items-center gap-2">
+                <Sparkles size={15} className="text-accent shrink-0" />
+                <span>{scanFeedback}</span>
+              </div>
+              <button
+                type="button"
+                onClick={clearFeedback}
+                className="text-muted hover:text-fg font-semibold text-xs"
+              >
+                ✕
+              </button>
+            </div>
+          ) : null}
           <div className="flex flex-col gap-3 sm:flex-row">
             <div className="relative flex-1">
               <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
@@ -161,7 +238,7 @@ export default function Materials() {
             <EmptyState
               icon={<FolderOpen size={24} />}
               title="A biblioteca está vazia"
-              hint="Adiciona um link ou importa ficheiros do Google Drive ou do OneDrive para os teres sempre à mão."
+              hint="Adiciona um link ou importa ficheiros do teu Computador (HD) ou do Google Drive para os teres sempre à mão."
               action={(
                 <Button variant="primary" onClick={() => setAddOpen(true)}>
                   <Plus size={16} /> Adicionar link
@@ -205,7 +282,15 @@ export default function Materials() {
       </div>
 
       {addOpen && <AddLinkModal onClose={closeAdd} />}
+      {uploadOpen && <FileUploadModal onClose={closeUpload} />}
+      {deviceImportOpen && <DeviceImportModal onClose={closeDeviceImport} />}
       {picker && <CloudPicker source={picker} onClose={closePicker} />}
+      {viewingMaterial && (
+        <MaterialViewerModal
+          material={viewingMaterial}
+          onClose={() => setViewingMaterial(null)}
+        />
+      )}
     </>
   );
 }

@@ -33,18 +33,21 @@ Abre em `http://localhost:5173`. A app arranca com dados de demonstração; em
 
 | Fonte | Como entra | Estado |
 |---|---|---|
+| Firebase / Cloud Firestore | Sincronização em tempo real na nuvem por utilizador | Ativo (`campus-erp-84964`) |
+| Google Sign-In (Firebase Auth) | 1 clique na barra lateral (com scopes Drive e Calendar) | Ativo |
+| Google Agenda / Drive | OAuth integrado via Google Sign-In ou Client ID | Ativo |
+| Gemini IA (`gemini-3.8-flash`) | Chave do projeto por omissão ou chave própria nas Definições | Ativo |
 | CLIP (NOVA FCT) | Copiar a página do Horário e colar na app (ou carregar o `.html`) | Sem API pública; exames à mão |
-| Google Agenda / Drive | OAuth no browser, só leitura (precisa de um Client ID teu) | Por testar com conta real |
 | OneDrive | MSAL no browser, só leitura (precisa de um Client ID teu) | Por testar com conta real |
-| Gemini | Chave da API guardada só no browser | Por testar com chave real |
 | NotebookLM | Links por cadeira | Sem API pública |
 
 Os passos de configuração de cada fonte estão na própria página de Definições.
 
 ## Dados e privacidade
 
-Não há servidor. Tudo fica no `localStorage` do browser (chave `uni-erp-v1`),
-incluindo a chave do Gemini. A cópia de segurança exportada não inclui a chave.
+A app suporta dois modos:
+1. **Modo Cloud (Firebase)**: Ao entrar com a conta Google, os teus dados de estudo (cadeiras, tarefas, sessões, horários) e as conversas com o Gemini são guardados e sincronizados em tempo real no Cloud Firestore sob `/users/{userId}`, com regras de segurança estritas ([firestore.rules](firestore.rules)).
+2. **Modo Local**: Sem início de sessão, tudo permanece no `localStorage` do browser (`uni-erp-v1`).
 
 ## Estrutura
 

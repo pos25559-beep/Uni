@@ -1,6 +1,6 @@
 // Kit de UI partilhado. Todas as páginas devem compor estes blocos para manter consistência.
 import { X } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import type {
   ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes,
 } from 'react';
@@ -145,33 +145,88 @@ export function EmptyState({ icon, title, hint, action }: { icon?: ReactNode; ti
   );
 }
 
-export function Modal({ open, onClose, title, children, footer }: {
-  open: boolean; onClose: () => void; title: string; children: ReactNode; footer?: ReactNode;
+export function Modal({
+  open,
+  onClose,
+  title,
+  children,
+  footer,
+  maxWidthClass = 'sm:max-w-lg',
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  children: ReactNode;
+  footer?: ReactNode;
+  maxWidthClass?: string;
 }) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
+  const pressedOutsideRef = useRef(false);
+
   useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (open && !dialog.open) {
+      dialog.showModal();
+    } else if (!open && dialog.open) {
+      dialog.close();
+    }
+  }, [open]);
+
   if (!open) return null;
+
+  const isOutsideDialog = (clientX: number, clientY: number) => {
+    const dialog = dialogRef.current;
+    if (!dialog) return false;
+    const rect = dialog.getBoundingClientRect();
+    return (
+      clientX < rect.left ||
+      clientX > rect.right ||
+      clientY < rect.top ||
+      clientY > rect.bottom
+    );
+  };
+
   return (
-    <div className="fixed inset-0 z-50 grid place-items-end bg-black/50 p-0 backdrop-blur-sm sm:place-items-center sm:p-4" onMouseDown={onClose}>
-      <div
-        role="dialog" aria-modal="true" aria-label={title}
-        className="rise flex max-h-[90vh] w-full flex-col rounded-t-2xl border border-line bg-surface sm:max-w-lg sm:rounded-2xl"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-line px-5 py-4">
-          <h2 className="text-base font-semibold">{title}</h2>
-          <button type="button" onClick={onClose} aria-label="Fechar" className="rounded-lg p-1 text-muted hover:bg-surface-2 hover:text-fg">
-            <X size={18} />
-          </button>
-        </div>
-        <div className="space-y-4 overflow-y-auto px-5 py-4">{children}</div>
-        {footer && <div className="flex justify-end gap-2 border-t border-line px-5 py-4">{footer}</div>}
+    <dialog
+      ref={dialogRef}
+      aria-labelledby={titleId}
+      onClose={onClose}
+      onCancel={(e) => {
+        e.preventDefault();
+        onClose();
+      }}
+      onPointerDown={(e) => {
+        if (!('closedBy' in HTMLDialogElement.prototype)) {
+          pressedOutsideRef.current = isOutsideDialog(e.clientX, e.clientY);
+        }
+      }}
+      onPointerUp={(e) => {
+        if (
+          !('closedBy' in HTMLDialogElement.prototype) &&
+          pressedOutsideRef.current &&
+          isOutsideDialog(e.clientX, e.clientY)
+        ) {
+          onClose();
+        }
+        pressedOutsideRef.current = false;
+      }}
+      {...({ closedby: 'any' } as Record<string, unknown>)}
+      className={cx(
+        'rise m-auto mb-0 w-full max-w-none open:flex max-h-[90dvh] flex-col rounded-t-2xl border border-line bg-surface p-0 text-fg shadow-2xl backdrop:bg-black/50 backdrop:backdrop-blur-sm sm:mb-auto sm:rounded-2xl',
+        maxWidthClass,
+      )}
+    >
+      <div className="flex items-center justify-between border-b border-line px-5 py-4">
+        <h2 id={titleId} className="text-base font-semibold">{title}</h2>
+        <button type="button" onClick={onClose} aria-label="Fechar" className="rounded-lg p-1 text-muted hover:bg-surface-2 hover:text-fg">
+          <X size={18} aria-hidden="true" />
+        </button>
       </div>
-    </div>
+      <div className="space-y-4 overflow-y-auto px-5 py-4">{children}</div>
+      {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-line px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:pb-4">{footer}</div>}
+    </dialog>
   );
 }
 

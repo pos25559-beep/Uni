@@ -2,6 +2,7 @@ import { GraduationCap, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import CourseCard from '../components/courses/CourseCard';
 import CourseFormModal from '../components/courses/CourseFormModal';
+import ClipImportModal from '../components/settings/ClipImportModal';
 import { Button, EmptyState, PageHeader } from '../components/ui';
 import { upcomingAssessments, fmtGrade, gradeSummary, semesterAverage } from '../lib/selectors';
 import { useStore } from '../store/useStore';
@@ -10,7 +11,11 @@ import type { Assessment, Course } from '../types';
 export default function Courses() {
   const courses = useStore((s) => s.courses);
   const assessments = useStore((s) => s.assessments);
+  const loadDemo = useStore((s) => s.loadDemo);
   const [form, setForm] = useState<Course | 'new' | null>(null);
+  const [clipOpen, setClipOpen] = useState(false);
+
+  const hasOldDemo = courses.some((c) => c.id === 'am2' || c.id === 'so');
 
   const summaries = useMemo(
     () => new Map(courses.map((c) => [c.id, gradeSummary(c, assessments)])),
@@ -34,21 +39,42 @@ export default function Courses() {
         title="Cadeiras"
         subtitle={`${courses.length} cadeiras · ${totalEcts} ECTS · média ${fmtGrade(average)}`}
         actions={
-          <Button variant="primary" onClick={() => setForm('new')}>
-            <Plus size={16} /> Nova cadeira
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" onClick={() => setClipOpen(true)}>
+              <GraduationCap size={16} /> Importar do CLIP
+            </Button>
+            <Button variant="primary" onClick={() => setForm('new')}>
+              <Plus size={16} /> Nova cadeira
+            </Button>
+          </div>
         }
       />
+
+      {hasOldDemo && (
+        <div className="mb-4 flex items-center justify-between rounded-2xl border border-line bg-surface-2 p-4 text-sm">
+          <p className="text-muted">
+            Estás a visualizar o modelo de exemplo antigo. Desejas carregar as tuas 6 cadeiras reais de LEMc com os 18 PDFs e slides?
+          </p>
+          <Button variant="primary" size="sm" onClick={() => loadDemo()}>
+            Carregar cadeiras de LEMc
+          </Button>
+        </div>
+      )}
 
       {courses.length === 0 ? (
         <EmptyState
           icon={<GraduationCap size={28} />}
           title="Ainda não tens cadeiras"
-          hint="Acrescenta as cadeiras deste semestre para acompanhar notas, matéria e avaliações."
+          hint="Acrescenta as cadeiras deste semestre ou importa diretamente do CLIP."
           action={
-            <Button variant="primary" onClick={() => setForm('new')}>
-              <Plus size={16} /> Nova cadeira
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" onClick={() => setClipOpen(true)}>
+                <GraduationCap size={16} /> Importar do CLIP
+              </Button>
+              <Button variant="primary" onClick={() => setForm('new')}>
+                <Plus size={16} /> Nova cadeira
+              </Button>
+            </div>
           }
         />
       ) : (
@@ -67,6 +93,8 @@ export default function Courses() {
       {form && (
         <CourseFormModal course={form === 'new' ? undefined : form} onClose={() => setForm(null)} />
       )}
+
+      {clipOpen && <ClipImportModal onClose={() => setClipOpen(false)} />}
     </>
   );
 }

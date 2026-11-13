@@ -1,9 +1,9 @@
 import { PageHeader } from '../components/ui';
 import ClipCard from '../components/settings/ClipCard';
 import DataCard from '../components/settings/DataCard';
+import DeviceStorageCard from '../components/settings/DeviceStorageCard';
 import GeminiCard from '../components/settings/GeminiCard';
 import GoogleCard from '../components/settings/GoogleCard';
-import MicrosoftCard from '../components/settings/MicrosoftCard';
 import NotebookCard from '../components/settings/NotebookCard';
 import ProfileCard from '../components/settings/ProfileCard';
 
@@ -25,7 +25,7 @@ export default function SettingsPage() {
           </div>
           <div className="grid gap-5 lg:grid-cols-2">
             <GoogleCard />
-            <MicrosoftCard />
+            <DeviceStorageCard />
             <GeminiCard />
             <ClipCard />
             <NotebookCard />

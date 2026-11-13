@@ -20,8 +20,10 @@ export function parseWebUrl(raw: string): URL | null {
   }
 }
 
-/** href seguro (só http/https) para links guardados; undefined se o URL for inválido. */
+/** href seguro (só http/https, caminhos relativos ou blob:) para links guardados. */
 export function safeHref(raw: string): string | undefined {
+  if (!raw) return undefined;
+  if (raw.startsWith('blob:') || raw.startsWith('/') || raw.startsWith('./')) return raw;
   return parseWebUrl(raw)?.toString();
 }
 
@@ -42,6 +44,7 @@ const providerIcon: Record<MaterialProvider, LucideIcon> = {
   notebooklm: BookOpen,
   clip: GraduationCap,
   link: Link2,
+  upload: FileText,
 };
 
 /** Ícone pelo tipo de ficheiro; se não for reconhecido, ícone do fornecedor. */

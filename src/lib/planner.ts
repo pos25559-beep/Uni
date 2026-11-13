@@ -2,7 +2,16 @@
 import { differenceInCalendarDays, differenceInMinutes, format, parseISO } from 'date-fns';
 import { newId } from '../store/useStore';
 import type {
-  Assessment, CalendarEvent, ClassSlot, Course, ID, Settings, StudySession, Topic,
+  Assessment,
+  CalendarEvent,
+  ClassSlot,
+  Course,
+  ID,
+  Settings,
+  StudySession,
+  TestModeStatus,
+  Topic,
+  WeeklyCheckIn,
 } from '../types';
 import { sessionMinutes } from './selectors';
 
@@ -21,6 +30,10 @@ export interface PlanInput {
    * e o tempo já estudado diminui o esforço que falta em cada tópico.
    */
   existing?: StudySession[];
+  /** Cadeiras declaradas pelo estudante como mais difíceis (recebem prioridade adicional). */
+  difficultCourseIds?: ID[];
+  /** Check-ins semanais do tutor para reforçar tópicos difíceis recentes. */
+  weeklyCheckIns?: WeeklyCheckIn[];
 }
 
 interface Block {
@@ -44,6 +57,7 @@ const BREAK = 10;
 const MAX_BLOCKS_PER_DAY = 4;
 const MAX_BLOCKS_PER_COURSE = 2;
 const HORIZON_DAYS = 45;
+const TEST_MODE_DAYS = 10;
 const SPACED_MINUTES = 25;
 const SPACED_AFTER_DAYS = 7;
 const LIGHT_CLASS_LOAD_MIN = 240;
@@ -68,15 +82,74 @@ const fmtTime = (min: number) => `${pad(Math.floor(min / 60))}:${pad(min % 60)}`
 /** Minutos "ocupados" por uma sessão: realizados se concluída, planeados caso contrário. */
 const occupied = (s: StudySession) => (s.done ? sessionMinutes(s) : s.minutes);
 
+/** Analisa se o estudante está em Modo Teste (< 10 dias para 1 ou 2+ avaliações). */
+export function analyzeTestMode(
+  courses: Course[],
+  assessments: Assessment[],
+  from: string,
+): TestModeStatus {
+  const refDay = parseDay(from);
+  const courseById = new Map(courses.map((c) => [c.id, c]));
+
+  const urgentAssessments = assessments
+    .filter((a) => a.grade === undefined)
+    .map((assessment) => {
+      const course = courseById.get(assessment.courseId);
+      if (!course) return null;
+      const daysLeft = differenceInCalendarDays(parseDay(assessment.date), refDay);
+      if (daysLeft < 0 || daysLeft > TEST_MODE_DAYS) return null;
+      return { assessment, course, daysLeft };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null)
+    .sort((a, b) => a.daysLeft - b.daysLeft || b.assessment.weight - a.assessment.weight);
+
+  const urgentCourseIds = Array.from(new Set(urgentAssessments.map((u) => u.course.id)));
+  const mode: TestModeStatus['mode'] =
+    urgentCourseIds.length === 0
+      ? 'normal'
+      : urgentCourseIds.length === 1
+        ? 'single_test'
+        : 'multi_test';
+
+  return { mode, urgentAssessments, urgentCourseIds };
+}
+
 /**
  * Gera sessões de estudo para `days` dias a partir de `from`.
  * Determinístico: sem aleatoriedade; empates resolvem-se pela ordem das avaliações e dos tópicos.
+ * Adapta-se automaticamente a dificuldades declaradas, check-ins semanais e Modo Teste (< 10 dias).
  */
 export function generatePlan(input: PlanInput): StudySession[] {
-  const { courses, assessments, classes, events, settings, from, existing = [] } = input;
+  const {
+    courses,
+    assessments,
+    classes,
+    events,
+    settings,
+    from,
+    existing = [],
+    difficultCourseIds = [],
+    weeklyCheckIns = [],
+  } = input;
   const days = input.days ?? 14;
   const start = parseDay(from);
   const courseById = new Map(courses.map((c) => [c.id, c]));
+  const difficultSet = new Set(difficultCourseIds);
+
+  const latestCheckIn = weeklyCheckIns[0];
+  const difficultCheckInCourseSet = new Set(latestCheckIn?.hardCourseIds ?? []);
+  const checkInTopicHints = [
+    ...(latestCheckIn?.classDifficulties ?? []),
+    ...(latestCheckIn?.pendingNextWeek ?? []),
+  ]
+    .map((s) => s.toLowerCase().trim())
+    .filter(Boolean);
+
+  const isTopicHighlightedByCheckIn = (topicTitle: string) => {
+    if (checkInTopicHints.length === 0) return false;
+    const lower = topicTitle.toLowerCase();
+    return checkInTopicHints.some((hint) => lower.includes(hint) || hint.includes(lower));
+  };
 
   // Esforço restante por tópico, no início do plano (já descontado o que foi concluído).
   const effort = new Map<ID, number>();
@@ -85,7 +158,8 @@ export function generatePlan(input: PlanInput): StudySession[] {
       const studied = existing
         .filter((s) => s.done && s.topicId === t.id)
         .reduce((sum, s) => sum + sessionMinutes(s), 0);
-      const estimate = effortBase[t.status] * (1.3 - t.confidence * 0.1);
+      const checkInExtra = isTopicHighlightedByCheckIn(t.title) ? 35 : 0;
+      const estimate = effortBase[t.status] * (1.3 - t.confidence * 0.1) + checkInExtra;
       effort.set(t.id, Math.max(0, Math.round(estimate) - studied));
     }
   }
@@ -130,18 +204,35 @@ export function generatePlan(input: PlanInput): StudySession[] {
     let remaining = Math.max(0, budget - alreadyUsed);
     const blocks: Block[] = [];
     const perCourse = new Map<ID, number>();
-    const courseOk = (courseId: ID) => (perCourse.get(courseId) ?? 0) < MAX_BLOCKS_PER_COURSE;
+
+    // Avaliações activas neste dia (dentro do horizonte).
+    const active = items
+      .map((it) => ({ ...it, daysLeft: differenceInCalendarDays(it.due, day) }))
+      .filter((it) => it.daysLeft >= 0 && it.daysLeft <= HORIZON_DAYS);
+
+    // Deteção dinâmica de Modo Teste (<= 10 dias) para este dia.
+    const urgentToday = active.filter((it) => it.daysLeft <= TEST_MODE_DAYS);
+    const urgentCourseIdsToday = new Set(urgentToday.map((u) => u.courseId));
+    const singleTestMode = urgentCourseIdsToday.size === 1;
+    const multiTestMode = urgentCourseIdsToday.size >= 2;
+
+    const courseOk = (courseId: ID) => {
+      const count = perCourse.get(courseId) ?? 0;
+      if (singleTestMode && urgentCourseIdsToday.has(courseId)) {
+        return count < MAX_BLOCKS_PER_DAY;
+      }
+      if (multiTestMode && urgentCourseIdsToday.has(courseId) && urgentCourseIdsToday.size >= 3) {
+        return count < 2;
+      }
+      return count < MAX_BLOCKS_PER_COURSE;
+    };
+
     const canTake = () => remaining >= MIN_BLOCK && blocks.length < MAX_BLOCKS_PER_DAY;
     const add = (b: Block) => {
       blocks.push(b);
       perCourse.set(b.courseId, (perCourse.get(b.courseId) ?? 0) + 1);
       remaining -= b.minutes;
     };
-
-    // Avaliações activas neste dia (dentro do horizonte).
-    const active = items
-      .map((it) => ({ ...it, daysLeft: differenceInCalendarDays(it.due, day) }))
-      .filter((it) => it.daysLeft >= 0 && it.daysLeft <= HORIZON_DAYS);
 
     // Revisão geral na véspera de cada avaliação.
     for (const it of active) {
@@ -162,10 +253,27 @@ export function generatePlan(input: PlanInput): StudySession[] {
         // Curva acentuada: o que está a dias de distância pesa bem mais do que o que está a semanas.
         const timeFactor = 1 / (1 + it.daysLeft / 3) ** 1.5;
         const weightFactor = 0.5 + it.assessment.weight / 100;
+        const isDifficult = difficultSet.has(it.courseId) || difficultCheckInCourseSet.has(it.courseId);
+        const difficultyFactor = isDifficult ? 1.35 : 1.0;
+
+        let modeFactor = 1.0;
+        if (singleTestMode) {
+          modeFactor = urgentCourseIdsToday.has(it.courseId) ? 3.5 : 0.25;
+        } else if (multiTestMode) {
+          if (urgentCourseIdsToday.has(it.courseId)) {
+            const alreadyAssigned = perCourse.get(it.courseId) ?? 0;
+            // Penaliza repetição excessiva no mesmo dia para equilibrar 2+ testes próximos
+            modeFactor = 2.2 / (1 + alreadyAssigned * 1.4);
+          } else {
+            modeFactor = 0.35;
+          }
+        }
+
         for (const t of it.topics) {
           if ((effort.get(t.id) ?? 0) <= 0) continue;
-          const needFactor = needBase[t.status] * (1.2 - t.confidence * 0.15);
-          const score = timeFactor * weightFactor * needFactor;
+          const checkInBoost = isTopicHighlightedByCheckIn(t.title) ? 0.35 : 0;
+          const needFactor = (needBase[t.status] + checkInBoost) * (1.2 - t.confidence * 0.15);
+          const score = timeFactor * weightFactor * difficultyFactor * modeFactor * needFactor;
           if (!best || score > best.score) best = { score, item: it, topic: t };
         }
       }
@@ -178,6 +286,9 @@ export function generatePlan(input: PlanInput): StudySession[] {
         topicId: best.topic.id,
         assessmentId: best.item.assessment.id,
         minutes,
+        ...(urgentCourseIdsToday.has(best.item.courseId)
+          ? { notes: singleTestMode ? 'Foco Modo Teste' : 'Equilíbrio Modo Teste' }
+          : {}),
       });
       effort.set(best.topic.id, Math.max(0, eff - minutes));
     }

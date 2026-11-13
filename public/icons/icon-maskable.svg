@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="unipedia-bg-m" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#141827" />
+      <stop offset="100%" stop-color="#0b0d12" />
+    </linearGradient>
+    <linearGradient id="unipedia-accent-m" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818cf8" />
+      <stop offset="100%" stop-color="#4f46e5" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#unipedia-bg-m)" />
+  <!-- Conteúdo dentro da zona segura de 66% para ícone maskable Android -->
+  <g transform="translate(88 88) scale(0.65625)">
+    <path d="M256 120L96 196L256 272L416 196L256 120Z" fill="url(#unipedia-accent-m)" />
+    <path d="M156 244V322C156 355 201 384 256 384C311 384 356 355 356 322V244L256 292L156 244Z" fill="#e0e7ff" />
+    <path d="M392 214V316" stroke="#c7d2fe" stroke-width="14" stroke-linecap="round" />
+    <circle cx="392" cy="326" r="16" fill="#818cf8" />
+  </g>
+</svg>

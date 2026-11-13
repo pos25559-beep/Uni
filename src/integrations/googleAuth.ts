@@ -1,10 +1,12 @@
-// Autenticação Google partilhada (Drive + Calendar) via Google Identity Services.
+// Autenticação Google partilhada (Drive + Calendar) via Google Identity Services ou Firebase Google Auth.
 // Só leitura. O token vive em memória — nunca é guardado em disco.
 import { useStore } from '../store/useStore';
+import { getCachedGoogleAccessToken, setGoogleAccessToken, logoutFirebase } from '../lib/firebase';
 
 export const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/drive.readonly',
   'https://www.googleapis.com/auth/calendar.readonly',
+  'https://www.googleapis.com/auth/gmail.readonly',
 ].join(' ');
 
 interface TokenResponse { access_token?: string; expires_in?: number; error?: string; error_description?: string }
@@ -41,11 +43,16 @@ function loadScript(): Promise<void> {
   return scriptPromise;
 }
 
-/** Devolve um access token válido, pedindo consentimento ao utilizador se necessário. */
+/** Devolve um access token válido, verificando primeiro a sessão Firebase e depois o Google Identity Services. */
 export async function getGoogleToken(): Promise<string> {
+  const fbToken = getCachedGoogleAccessToken();
+  if (fbToken) return fbToken;
+
   if (cached && cached.expiresAt > Date.now() + 60_000) return cached.token;
   const clientId = useStore.getState().settings.googleClientId.trim();
-  if (!clientId) throw new Error('Falta o Client ID da Google. Configura-o nas Definições.');
+  if (!clientId) {
+    throw new Error('Inicia sessão com a tua conta Google no topo ou configura o Client ID nas Definições.');
+  }
   await loadScript();
   return new Promise((resolve, reject) => {
     const client = window.google!.accounts.oauth2.initTokenClient({
@@ -57,6 +64,7 @@ export async function getGoogleToken(): Promise<string> {
           return;
         }
         cached = { token: r.access_token, expiresAt: Date.now() + (r.expires_in ?? 3600) * 1000 };
+        setGoogleAccessToken(r.access_token, r.expires_in ?? 3600);
         resolve(r.access_token);
       },
       error_callback: (e) => reject(new Error(e.message ?? 'Login Google cancelado.')),
@@ -66,8 +74,8 @@ export async function getGoogleToken(): Promise<string> {
 }
 
 /** fetch autenticado para as APIs Google; lança Error com a mensagem da API em caso de falha. */
-export async function googleFetch<T>(url: string): Promise<T> {
-  const token = await getGoogleToken();
+export async function googleFetch<T>(url: string, tokenOverride?: string): Promise<T> {
+  const token = tokenOverride || (await getGoogleToken());
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) {
     const body = await res.json().catch(() => null) as { error?: { message?: string } } | null;
@@ -79,4 +87,5 @@ export async function googleFetch<T>(url: string): Promise<T> {
 export function signOutGoogle() {
   if (cached) window.google?.accounts.oauth2.revoke(cached.token);
   cached = null;
+  logoutFirebase().catch(() => {});
 }

@@ -57,21 +57,55 @@
   --radius-2xl: 10px;
 }
 
-html, body, #root { height: 100%; }
+html, body, #root {
+  min-block-size: 100dvh;
+  height: 100%;
+}
 
 body {
   margin: 0;
   background: var(--bg);
   color: var(--fg);
   font-family: var(--font-sans);
+  overflow-wrap: anywhere;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+img, video {
+  max-inline-size: 100%;
+  block-size: auto;
 }
 
 h1 {
   font-family: var(--font-display);
   font-variation-settings: "opsz" 48, "wdth" 92;
   letter-spacing: -0.02em;
+}
+
+h1, h2, h3 {
+  text-wrap: balance;
+}
+
+p, li {
+  text-wrap: pretty;
+}
+
+/* Impede o scroll da página por baixo de modais <dialog> e garante alvos táteis >= 44px em ecrãs táteis. */
+dialog:modal {
+  overscroll-behavior: contain;
+}
+
+dialog::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+@media (pointer: coarse) {
+  :where(select, textarea, input:not([type="checkbox"], [type="radio"]), [role="button"], nav a) {
+    min-block-size: 44px;
+    min-inline-size: 44px;
+  }
 }
 
 * { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }

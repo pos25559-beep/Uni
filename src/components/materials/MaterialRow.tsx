@@ -1,16 +1,18 @@
-import { ExternalLink, Pin, PinOff, Trash2 } from 'lucide-react';
+import { Download, ExternalLink, Pin, PinOff, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Badge, Button, Select, cx } from '../ui';
 import { ConfirmModal } from '../courses/ConfirmModal';
 import { useStore } from '../../store/useStore';
 import { courseColors, providerLabel } from '../../lib/colors';
+import { getFileUrl, formatBytes, deleteFile } from '../../lib/fileStorage';
 import type { Course, Material } from '../../types';
 import { materialIcon, relativeDate, safeHref } from './meta';
 
-export default function MaterialRow({ material: m, courses, course }: {
+export default function MaterialRow({ material: m, courses, course, onView }: {
   material: Material;
   courses: Course[];
   course: Course | undefined;
+  onView?: (m: Material) => void;
 }) {
   const patch = useStore((s) => s.patch);
   const remove = useStore((s) => s.remove);
@@ -20,6 +22,31 @@ export default function MaterialRow({ material: m, courses, course }: {
   const Icon = materialIcon(m);
   const href = safeHref(m.url);
   const modified = relativeDate(m.modifiedAt);
+
+  const handleOpen = async () => {
+    if (onView) {
+      onView(m);
+      return;
+    }
+    if (m.url && (m.url.startsWith('/') || m.url.startsWith('http://') || m.url.startsWith('https://'))) {
+      window.open(m.url, '_blank');
+      return;
+    }
+    if (m.provider === 'upload') {
+      const blobUrl = await getFileUrl(m.id);
+      if (blobUrl) window.open(blobUrl, '_blank');
+      else alert('Ficheiro não encontrado no armazenamento local.');
+    } else if (href) {
+      window.open(href, '_blank');
+    }
+  };
+
+  const handleRemove = async () => {
+    if (m.provider === 'upload') {
+      await deleteFile(m.id).catch(() => {});
+    }
+    remove('materials', m.id);
+  };
 
   return (
     <li className="flex gap-3 px-4 py-3">
@@ -32,22 +59,23 @@ export default function MaterialRow({ material: m, courses, course }: {
       </div>
 
       <div className="min-w-0 flex-1">
-        {href ? (
-          <a
-            href={href}
-            target="_blank"
-            rel="noreferrer"
-            className="group flex min-w-0 items-center gap-1.5 text-sm font-medium text-fg hover:text-accent"
-          >
-            <span className="truncate">{m.title}</span>
+        <button
+          type="button"
+          onClick={handleOpen}
+          className="group flex min-w-0 items-center gap-1.5 text-left text-sm font-medium text-fg hover:text-accent"
+        >
+          <span className="truncate">{m.title}</span>
+          {m.provider === 'upload' ? (
+            <Download size={12} className="shrink-0 text-muted opacity-70 group-hover:opacity-100" />
+          ) : (
             <ExternalLink size={12} className="shrink-0 text-muted opacity-0 transition group-hover:opacity-100" />
-          </a>
-        ) : (
-          <span className="block truncate text-sm font-medium">{m.title}</span>
-        )}
+          )}
+        </button>
 
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
           <Badge>{providerLabel[m.provider]}</Badge>
+          {m.fileName && <span className="text-fg/80">{m.fileName}</span>}
+          {m.fileSize && <span>({formatBytes(m.fileSize)})</span>}
           {modified && <span>Modificado {modified}</span>}
         </div>
 
@@ -81,9 +109,9 @@ export default function MaterialRow({ material: m, courses, course }: {
       {confirming && (
         <ConfirmModal
           title="Remover material"
-          message={`Remover "${m.title}" da biblioteca? O ficheiro na nuvem não é apagado.`}
+          message={`Remover "${m.title}" da biblioteca? O ficheiro não poderá ser recuperado.`}
           confirmLabel="Remover"
-          onConfirm={() => remove('materials', m.id)}
+          onConfirm={handleRemove}
           onClose={() => setConfirming(false)}
         />
       )}

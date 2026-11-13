@@ -25,12 +25,8 @@ export default function GeminiCard() {
   const [localError, setLocalError] = useState<string | null>(null);
 
   const test = async () => {
-    const key = apiKey.trim();
-    const wanted = model.trim();
-    if (!key) {
-      setLocalError('Falta a chave API.');
-      return;
-    }
+    const key = apiKey.trim() || 'AIzaSyCBfXOeOqvHsqCaAqY-RGYjcp9i-j_l6Jo';
+    const wanted = model.trim() || 'gemini-3.8-flash';
     setTesting(true);
     setResult(null);
     setLocalError(null);
@@ -68,17 +64,18 @@ export default function GeminiCard() {
     >
       <HowTo
         steps={[
-          <>Cria uma chave API em <a className="text-accent underline-offset-2 hover:underline" href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">aistudio.google.com/apikey</a>.</>,
-          <>Cola a chave abaixo. Fica guardada apenas neste navegador.</>,
-          <>Confirma o nome do modelo (ex.: gemini-2.5-flash) e clica em «Testar ligação».</>,
+          <>O projeto já tem a chave Cloud padrão configurada com o modelo <b className="text-fg">gemini-3.8-flash</b>.</>,
+          <>Se preferires usar uma chave pessoal, cria em <a className="text-accent underline-offset-2 hover:underline" href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">aistudio.google.com/apikey</a> e cola abaixo.</>,
+          <>Clica em «Testar ligação» para validar os modelos disponíveis.</>,
         ]}
       />
 
-      <Field label="Chave API">
+      <Field label="Chave API (opcional se usares a chave do projeto)">
         <div className="flex gap-2">
           <Input
             type={showKey ? 'text' : 'password'}
             value={apiKey}
+            placeholder="Chave Cloud padrão ativa (ou cola chave AI Studio)"
             autoComplete="off"
             spellCheck={false}
             className="min-w-0 flex-1"

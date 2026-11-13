@@ -131,7 +131,10 @@ function GradeInput({ value, onCommit }: { value?: number; onCommit: (grade: num
           if (!Number.isFinite(n)) return;
           if (n !== value) onCommit(n);
         }}
-        onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+        onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+          if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+          if (e.key === 'Enter') e.currentTarget.blur();
+        }}
       />
     </label>
   );

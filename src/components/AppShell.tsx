@@ -1,10 +1,12 @@
 import {
   BookOpen, CalendarDays, ChartNoAxesColumn, FolderOpen, GraduationCap, LayoutDashboard, Moon, Settings, Sparkles, Sun, Target,
 } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { cx } from './ui';
+import AuthStatus from './auth/AuthStatus';
+import OnboardingModal from './onboarding/OnboardingModal';
 
 const nav = [
   { to: '/', label: 'Hoje', icon: LayoutDashboard, end: true },
@@ -22,21 +24,30 @@ export default function AppShell() {
   const semesterName = useStore((s) => s.settings.semesterName);
   const updateSettings = useStore((s) => s.updateSettings);
   const isDemo = useStore((s) => s.isDemo);
+  const academicProfile = useStore((s) => s.academicProfile);
+  const saveAcademicProfile = useStore((s) => s.saveAcademicProfile);
+
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+  const onboardingOpen = !onboardingDismissed && !academicProfile?.onboardingCompleted;
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
 
   return (
-    <div className="flex h-full">
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-line bg-surface px-3 py-5 md:flex">
+    <div className="flex min-h-dvh h-dvh">
+      <aside className="hidden w-64 shrink-0 flex-col border-r border-line bg-surface px-3 py-5 md:flex">
         <div className="mb-6 flex items-center gap-2.5 px-2">
           <div className="grid size-9 place-items-center rounded-xl bg-accent text-accent-fg">
             <GraduationCap size={20} />
           </div>
-          <div className="leading-tight">
-            <div className="text-sm font-semibold">Campus</div>
-            <div className="text-xs text-muted">{semesterName}</div>
+          <div className="min-w-0 leading-tight">
+            <div className="text-sm font-semibold">Unipedia</div>
+            <div className="truncate text-xs text-muted">
+              {academicProfile?.onboardingCompleted && academicProfile.universityId
+                ? `${academicProfile.universityName.split('—')[0].trim()} · ${semesterName}`
+                : semesterName}
+            </div>
           </div>
         </div>
         <nav className="flex flex-1 flex-col gap-1">
@@ -53,6 +64,9 @@ export default function AppShell() {
             </NavLink>
           ))}
         </nav>
+
+        <AuthStatus />
+
         {isDemo && (
           <NavLink to="/definicoes" className="mb-3 rounded-xl border border-dashed border-line px-3 py-2 text-xs text-muted hover:text-fg">
             A mostrar dados de demonstração. Liga as tuas fontes nas Definições.
@@ -68,22 +82,32 @@ export default function AppShell() {
         </button>
       </aside>
 
-      <main className="min-w-0 flex-1 overflow-y-auto pb-20 md:pb-0">
+      <main className="min-w-0 flex-1 overflow-y-auto pt-[env(safe-area-inset-top)] pb-[calc(5rem+env(safe-area-inset-bottom))] md:pt-0 md:pb-0">
         <div className="mx-auto w-full max-w-6xl px-4 py-6 md:px-8 md:py-8">
           <Outlet />
         </div>
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex justify-around border-t border-line bg-surface/95 px-1 py-1.5 backdrop-blur md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex flex-wrap justify-around border-t border-line bg-surface/95 px-2 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden">
         {nav.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to} to={to} end={end} aria-label={label}
             className={({ isActive }) => cx('rounded-xl p-2.5', isActive ? 'bg-accent-soft text-accent' : 'text-muted')}
           >
-            <Icon size={20} />
+            <Icon size={20} aria-hidden="true" />
           </NavLink>
         ))}
       </nav>
+
+      <OnboardingModal
+        open={onboardingOpen}
+        onClose={() => {
+          setOnboardingDismissed(true);
+          if (!academicProfile?.onboardingCompleted) {
+            saveAcademicProfile({ onboardingCompleted: true });
+          }
+        }}
+      />
     </div>
   );
 }

@@ -1,28 +1,24 @@
-// Modal reutilizável para importar ficheiros de uma nuvem (Google Drive ou OneDrive).
+// Modal para navegar e importar ficheiros do Google Drive (pastas pessoais e pastas partilhadas).
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ChevronRight, Folder, LoaderCircle, Settings as SettingsIcon } from 'lucide-react';
+import { ChevronRight, Folder, HardDrive, LoaderCircle } from 'lucide-react';
 import { Badge, Button, EmptyState, Field, Input, Modal, Select, cx } from '../ui';
 import { useStore } from '../../store/useStore';
-import { listDriveFolder, listRecentDriveFiles, searchDriveFiles } from '../../integrations/drive';
-import type { CloudFile } from '../../integrations/drive';
-import { listOneDriveFolder, listRecentOneDriveFiles, searchOneDriveFiles } from '../../integrations/onedrive';
+import { googleService, type CloudFile } from '../../services/googleService';
 import type { Material } from '../../types';
 import { materialIcon, relativeDate } from './meta';
 
-type Tab = 'recent' | 'search' | 'folders';
+type Tab = 'folders' | 'shared' | 'recent' | 'search';
 
-/** Funções de uma nuvem que o seletor usa. Parametriza o componente por fornecedor. */
 export interface CloudSource {
-  provider: 'gdrive' | 'onedrive';
-  integration: 'google' | 'microsoft';
+  provider: 'gdrive';
+  integration: 'google';
   label: string;
-  /** Campo das Definições com o Client ID. */
-  clientIdKey: 'googleClientId' | 'msClientId';
+  clientIdKey: 'googleClientId';
   clientIdName: string;
   listFolder: (folderId?: string) => Promise<CloudFile[]>;
   search: (text: string) => Promise<CloudFile[]>;
   recent: () => Promise<CloudFile[]>;
+  shared: () => Promise<CloudFile[]>;
 }
 
 export const DRIVE_SOURCE: CloudSource = {
@@ -31,26 +27,17 @@ export const DRIVE_SOURCE: CloudSource = {
   label: 'Google Drive',
   clientIdKey: 'googleClientId',
   clientIdName: 'Google',
-  listFolder: (folderId) => listDriveFolder(folderId),
-  search: searchDriveFiles,
-  recent: listRecentDriveFiles,
-};
-
-export const ONEDRIVE_SOURCE: CloudSource = {
-  provider: 'onedrive',
-  integration: 'microsoft',
-  label: 'OneDrive',
-  clientIdKey: 'msClientId',
-  clientIdName: 'Microsoft',
-  listFolder: (folderId) => listOneDriveFolder(folderId),
-  search: searchOneDriveFiles,
-  recent: listRecentOneDriveFiles,
+  listFolder: (folderId) => googleService.listDriveFolder(folderId),
+  search: (text) => googleService.searchDriveFiles(text),
+  recent: () => googleService.listRecentDriveFiles(),
+  shared: () => googleService.listSharedWithMe(),
 };
 
 const tabs: { id: Tab; label: string }[] = [
+  { id: 'folders', label: 'O meu Disco' },
+  { id: 'shared', label: 'Partilhados comigo' },
   { id: 'recent', label: 'Recentes' },
   { id: 'search', label: 'Procurar' },
-  { id: 'folders', label: 'Pastas' },
 ];
 
 export default function CloudPicker({ source, onClose }: { source: CloudSource; onClose: () => void }) {
@@ -59,8 +46,9 @@ export default function CloudPicker({ source, onClose }: { source: CloudSource; 
   const upsertMany = useStore((s) => s.upsertMany);
   const setIntegration = useStore((s) => s.setIntegration);
 
-  const configured = clientId.trim() !== '';
-  const [tab, setTab] = useState<Tab>('recent');
+  const isFirebaseAuthed = googleService.isDriveConnected();
+  const configured = isFirebaseAuthed || clientId.trim() !== '';
+  const [tab, setTab] = useState<Tab>('folders');
   const [text, setText] = useState('');
   const [submitted, setSubmitted] = useState('');
   const [stack, setStack] = useState<{ id?: string; name: string }[]>([{ name: 'Raiz' }]);
@@ -78,6 +66,7 @@ export default function CloudPicker({ source, onClose }: { source: CloudSource; 
     let run: Promise<CloudFile[]> | null = null;
     if (tab === 'recent') run = source.recent();
     else if (tab === 'search') run = submitted ? source.search(submitted) : null;
+    else if (tab === 'shared' && !folderId) run = source.shared();
     else run = source.listFolder(folderId);
 
     if (!run) {
@@ -232,16 +221,23 @@ export default function CloudPicker({ source, onClose }: { source: CloudSource; 
     >
       {!configured ? (
         <EmptyState
-          icon={<SettingsIcon size={22} />}
-          title={`Falta o Client ID da ${source.clientIdName}`}
-          hint="Para importar ficheiros tens de configurar o Client ID nas Definições."
+          icon={<HardDrive size={24} />}
+          title="Google Drive não ligado"
+          hint="Inicia sessão com a tua conta Google para acederes diretamente às tuas pastas pessoais e pastas partilhadas do Drive."
           action={(
-            <Link
-              to="/definicoes"
-              className="inline-flex h-10 items-center justify-center rounded-xl bg-accent px-4 text-sm font-medium text-accent-fg hover:opacity-90"
+            <Button
+              variant="primary"
+              onClick={async () => {
+                try {
+                  await googleService.connectPersonalAccount();
+                  setReloadTick((t) => t + 1);
+                } catch (err) {
+                  console.warn(err);
+                }
+              }}
             >
-              Abrir Definições
-            </Link>
+              <HardDrive size={14} /> Entrar com a Google
+            </Button>
           )}
         />
       ) : (
