@@ -1,7 +1,6 @@
 import { Download } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useStore } from '../../store/useStore';
-import { APP_PALETTES } from '../../lib/academicCredits';
 import { fmtMinutes } from '../../lib/selectors';
 import { weekdayShort } from '../../lib/colors';
 import { UNI_ACCESSORIES, UNI_PERSONAS } from '../../lib/uniAccessories';
@@ -218,48 +217,8 @@ export default function ProfileCard() {
           </div>
         </div>
 
-        {/* Paleta de cores & Companheiros discretos */}
+        {/* Companheiros discretos no ecrã */}
         <div className="space-y-3 border-t border-line pt-4">
-          <div>
-            <span className="text-xs font-medium text-muted">Paleta de cores</span>
-            <p className="text-xs text-muted">
-              Escolhe entre o caderno quente ou paletas mais minimalistas e sóbrias.
-            </p>
-            <div className="mt-2 grid gap-2 sm:grid-cols-2">
-              {APP_PALETTES.map((pal) => {
-                const active = (settings.themePalette ?? 'caderno') === pal.id;
-                return (
-                  <button
-                    key={pal.id}
-                    type="button"
-                    onClick={() => updateSettings({ themePalette: pal.id })}
-                    className={cx(
-                      'flex min-h-[44px] items-center gap-2.5 rounded-2xl border px-3 py-2 text-left transition',
-                      active
-                        ? 'border-accent bg-accent-soft/60 text-fg'
-                        : 'border-line bg-surface-2/60 text-fg hover:bg-surface-2',
-                    )}
-                  >
-                    <span className="flex shrink-0 items-center gap-1" aria-hidden="true">
-                      <span
-                        className="size-4 rounded-full border border-black/15"
-                        style={{ backgroundColor: pal.bgHex }}
-                      />
-                      <span
-                        className="size-4 rounded-full border border-black/15"
-                        style={{ backgroundColor: pal.accentHex }}
-                      />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-xs font-semibold">{pal.name}</span>
-                      <span className="block truncate text-xs text-muted">{pal.tagline}</span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
             <div>
               <span className="text-xs font-medium text-muted">Unis discretos no ecrã</span>

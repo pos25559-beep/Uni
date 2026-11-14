@@ -20,6 +20,8 @@ import {
   listSharedWithMe,
   scanAndAutoLinkGoogleDrive,
   searchDriveFiles,
+  type AutoScanOptions,
+  type AutoScanProgress,
   type AutoScanResult,
   type CloudFile,
 } from '../integrations/drive';
@@ -121,15 +123,15 @@ export const googleService = {
   async scanDriveForCourses(
     courses: Course[],
     ensureAuth = false,
-    extraFolderUrls: string[] = [],
+    extraOrOpts: string[] | AutoScanOptions = [],
   ): Promise<AutoScanResult> {
-    if (ensureAuth && !this.isDriveConnected()) {
+    if (ensureAuth && !this.isDriveConnected() && !getAcademicGoogleAccessToken()) {
       await this.connectPersonalAccount(false, auth.currentUser?.email ?? undefined);
-      if (!this.isDriveConnected()) {
+      if (!this.isDriveConnected() && !getAcademicGoogleAccessToken()) {
         throw new Error('A Google não devolveu permissão de leitura do Drive. Aceita o acesso ao Google Drive na janela de autenticação.');
       }
     }
-    return scanAndAutoLinkGoogleDrive(courses, extraFolderUrls);
+    return scanAndAutoLinkGoogleDrive(courses, extraOrOpts);
   },
 
   listDriveFolder(folderId?: string): Promise<CloudFile[]> {
@@ -202,4 +204,4 @@ export const googleService = {
   },
 };
 
-export type { AcademicEmail, AutoScanResult, CloudFile, GmailFetchDetailedResult };
+export type { AcademicEmail, AutoScanOptions, AutoScanProgress, AutoScanResult, CloudFile, GmailFetchDetailedResult };

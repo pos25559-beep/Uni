@@ -89,11 +89,10 @@ export default function SettingsPage() {
       <AnimatedPage className="space-y-5">
         <SubpageHeader
           title="Perfil e estudo"
-          subtitle="Nome, datas do semestre, meta diária, lembretes e aparência"
+          subtitle="Nome, datas do semestre, meta diária e estilo do Uni"
           backTo="/definicoes"
         />
         <ProfileCard />
-        <NotificationsCard />
       </AnimatedPage>
     );
   }
@@ -102,11 +101,11 @@ export default function SettingsPage() {
     return (
       <AnimatedPage className="space-y-5">
         <SubpageHeader
-          title="Notificações do Uni"
+          title="Lembretes inteligentes do Uni"
           subtitle="Sequência diária, revisões espaçadas, provas e aulas"
           backTo="/definicoes"
         />
-        <NotificationsCard />
+        <NotificationsCard hideHeader />
       </AnimatedPage>
     );
   }
@@ -318,14 +317,47 @@ export default function SettingsPage() {
             ]}
           />
         </div>
+
+        <div className="space-y-2 border-t border-black/10 pt-3 dark:border-white/10">
+          <p className="font-display text-sm font-bold">Paleta de cores</p>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {APP_PALETTES.map((pal) => {
+              const active = (settings.themePalette ?? 'caderno') === pal.id;
+              return (
+                <button
+                  key={pal.id}
+                  type="button"
+                  onClick={() => updateSettings({ themePalette: pal.id })}
+                  className={
+                    active
+                      ? 'flex min-h-[44px] items-center gap-2 rounded-2xl border border-accent bg-white/90 px-3 py-2 text-left text-xs font-semibold text-[#141312] shadow-card dark:bg-surface dark:text-fg'
+                      : 'flex min-h-[44px] items-center gap-2 rounded-2xl border border-black/10 bg-white/45 px-3 py-2 text-left text-xs font-medium text-[#141312]/85 transition hover:bg-white/75 dark:border-white/10 dark:bg-black/20 dark:text-fg/85'
+                  }
+                >
+                  <span className="flex shrink-0 items-center gap-1" aria-hidden="true">
+                    <span
+                      className="size-3.5 rounded-full border border-black/15"
+                      style={{ backgroundColor: pal.bgHex }}
+                    />
+                    <span
+                      className="size-3.5 rounded-full border border-black/15"
+                      style={{ backgroundColor: pal.accentHex }}
+                    />
+                  </span>
+                  <span className="min-w-0 truncate">{pal.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </section>
 
       {/* Grupo 1: Caderno & Estudo */}
       <ListGroup title="Caderno & Estudo">
         <ListRow
           icon={<Sliders size={18} />}
-          title="Semestre, meta, paleta e Uni"
-          subtitle={`${settings.semesterName} · ${fmtMinutes(settings.dailyStudyMinutes)}/dia · ${activePaletteName}`}
+          title="Semestre, meta e Uni"
+          subtitle={`${settings.semesterName} · ${fmtMinutes(settings.dailyStudyMinutes)}/dia`}
           onClick={() => navigate('/definicoes/estudo')}
         />
         <ListRow

@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, DragEvent } from 'react';
-import { Badge, Button, Input, Modal, Select, cx } from '../ui';
+import { Badge, Button, Input, Modal, Select, cx, showToast } from '../ui';
 import { formatBytes, saveFile } from '../../lib/fileStorage';
 import { newId, useStore } from '../../store/useStore';
 import type { Material, MaterialCategory } from '../../types';
@@ -99,12 +99,40 @@ async function collectDroppedFilesWithPaths(dataTransfer: DataTransfer): Promise
   }));
 }
 
+interface DirHandleLike {
+  kind: 'directory' | 'file';
+  name: string;
+  entries?: () => AsyncIterable<[string, DirHandleLike]>;
+  getFile?: () => Promise<File>;
+}
+
+async function readDirectoryHandleRecursive(
+  handle: DirHandleLike,
+  prefix = '',
+): Promise<DroppedFileWithRel[]> {
+  if (handle.kind === 'file' && handle.getFile) {
+    const file = await handle.getFile();
+    return [{ file, relPath: prefix ? `${prefix}/${file.name}` : file.name }];
+  }
+  if (handle.kind === 'directory' && handle.entries) {
+    const nextPrefix = prefix ? `${prefix}/${handle.name}` : handle.name;
+    const out: DroppedFileWithRel[] = [];
+    for await (const [, child] of handle.entries()) {
+      const sub = await readDirectoryHandleRecursive(child, nextPrefix);
+      out.push(...sub);
+    }
+    return out;
+  }
+  return [];
+}
+
 export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
   const courses = useStore((s) => s.courses);
   const existingMaterials = useStore((s) => s.materials);
   const upsertMany = useStore((s) => s.upsertMany);
 
   const [items, setItems] = useState<LocalCandidate[]>([]);
+  const [targetCourseId, setTargetCourseId] = useState(initialCourseId ?? '');
   const [filterQuery, setFilterQuery] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveProgress, setSaveProgress] = useState(0);
@@ -112,6 +140,14 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
+
+  const isMobileBrowser =
+    typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const hasShowDirPicker =
+    typeof window !== 'undefined' &&
+    typeof (window as unknown as { showDirectoryPicker?: () => Promise<DirHandleLike> })
+      .showDirectoryPicker === 'function';
+  const supportsFolderScan = !isMobileBrowser || hasShowDirPicker;
 
   const existingLocalSigs = useMemo(
     () =>
@@ -134,10 +170,11 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
 
     const parsed: LocalCandidate[] = valid.map(({ file, relPath }) => {
       const pathForScan = relPath || file.name;
+      const fallbackCourse = targetCourseId || initialCourseId || undefined;
       const item = parseFilenameToParsedItem(
         pathForScan,
         courses,
-        initialCourseId,
+        fallbackCourse,
         'upload',
         undefined,
         undefined,
@@ -160,6 +197,40 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
       const fresh = parsed.filter((p) => !seen.has(`${p.relPath}|${p.fileSize ?? 0}`));
       return [...prev, ...fresh];
     });
+  };
+
+  const handleFolderScanClick = async () => {
+    const picker = (window as unknown as { showDirectoryPicker?: () => Promise<DirHandleLike> })
+      .showDirectoryPicker;
+    if (picker) {
+      try {
+        const dirHandle = await picker();
+        const collected = await readDirectoryHandleRecursive(dirHandle, '');
+        if (collected.length > 0) {
+          processFileEntries(collected);
+        } else {
+          showToast('A pasta escolhida está vazia.', 'neutral');
+        }
+        return;
+      } catch (err) {
+        const name = typeof err === 'object' && err && 'name' in err ? String((err as { name: unknown }).name) : '';
+        if (name === 'AbortError') return;
+        // Fallback para webkitdirectory se o browser bloquear showDirectoryPicker
+      }
+    }
+    folderInputRef.current?.click();
+  };
+
+  const applyTargetCourseToAll = (courseId: string) => {
+    setTargetCourseId(courseId);
+    if (!courseId) return;
+    setItems((prev) =>
+      prev.map((it) => ({
+        ...it,
+        courseId: it.courseId || courseId,
+        selected: !it.alreadyImported,
+      })),
+    );
   };
 
   const handleFilesChosen = (e: ChangeEvent<HTMLInputElement>) => {
@@ -260,7 +331,7 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
       onClose();
     } catch (err) {
       console.error('Erro ao guardar ficheiros no disco:', err);
-      alert('Ocorreu um erro ao guardar os ficheiros no armazenamento local.');
+      showToast('Ocorreu um erro ao guardar os ficheiros no armazenamento local.', 'danger');
     } finally {
       setSaving(false);
     }
@@ -318,33 +389,59 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
           </div>
 
           <h4 className="text-sm font-semibold text-fg">
-            Varre uma pasta do teu computador (ou arrasta para aqui)
+            {supportsFolderScan
+              ? 'Varre uma pasta do teu computador (ou arrasta para aqui)'
+              : 'Seleciona vários PDFs, fotos ou slides do telemóvel'}
           </h4>
           <p className="mt-1 text-xs text-muted max-w-sm">
-            PDFs, slides, fotografias de exames ou a pasta inteira do semestre (os ficheiros ficam guardados offline neste dispositivo).
+            {supportsFolderScan
+              ? 'PDFs, slides, fotografias de exames ou a pasta inteira do semestre (os ficheiros ficam guardados offline neste dispositivo).'
+              : 'No Android/iOS o navegador não expõe o caminho das pastas — escolhe a cadeira abaixo e seleciona os vários ficheiros de uma só vez.'}
           </p>
 
+          {courses.length > 0 && (
+            <div className="mt-3 w-full max-w-xs text-left">
+              <label className="mb-1 block text-xs font-medium text-muted">
+                Cadeira por omissão (para ficheiros soltos)
+              </label>
+              <Select
+                value={targetCourseId}
+                onChange={(e) => applyTargetCourseToAll(e.target.value)}
+                className="text-xs"
+              >
+                <option value="">Detetar automaticamente</option>
+                {courses.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.shortName ? `${c.shortName} · ${c.name}` : c.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
+
           <div className="mt-4 flex flex-wrap gap-2 justify-center">
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              onClick={() => folderInputRef.current?.click()}
-              disabled={saving}
-            >
-              <FolderOpen size={14} />
-              Varrer Pasta Inteira (HD)
-            </Button>
+            {supportsFolderScan && (
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={() => void handleFolderScanClick()}
+                disabled={saving}
+              >
+                <FolderOpen size={14} />
+                Varrer Pasta Inteira (HD)
+              </Button>
+            )}
 
             <Button
               type="button"
-              variant="secondary"
+              variant={supportsFolderScan ? 'secondary' : 'primary'}
               size="sm"
               onClick={() => fileInputRef.current?.click()}
               disabled={saving}
             >
               <Upload size={14} />
-              Selecionar Ficheiros Soltos
+              {supportsFolderScan ? 'Selecionar Ficheiros Soltos' : 'Selecionar Vários Ficheiros'}
             </Button>
           </div>
 
@@ -415,14 +512,14 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
               {visibleItems.map((it) => (
                 <div
                   key={it.id}
-                  className="flex items-center justify-between gap-3 p-2.5 hover:bg-surface-2/40"
+                  className="flex flex-col gap-2 p-2.5 hover:bg-surface-2/40 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
                 >
                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
                     <input
                       type="checkbox"
                       checked={it.selected}
                       onChange={() => toggleItem(it.id)}
-                      className="size-4 rounded border-line text-accent focus:ring-accent"
+                      className="size-4 shrink-0 rounded border-line text-accent focus:ring-accent"
                     />
 
                     <FileText size={16} className="shrink-0 text-muted" />
@@ -449,12 +546,12 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex flex-wrap items-center gap-2 pl-6 sm:shrink-0 sm:pl-0">
                     <Select
                       aria-label="Cadeira associada"
                       value={it.courseId ?? ''}
                       onChange={(e) => updateItemCourse(it.id, e.target.value)}
-                      className="text-xs h-7 w-36"
+                      className="h-8 min-w-[120px] flex-1 text-xs sm:w-36 sm:flex-none"
                     >
                       <option value="">Sem cadeira</option>
                       {courses.map((c) => (
@@ -470,7 +567,7 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
                       onChange={(e) =>
                         updateItemCategory(it.id, e.target.value as MaterialCategory)
                       }
-                      className="text-xs h-7 w-32"
+                      className="h-8 min-w-[110px] flex-1 text-xs sm:w-32 sm:flex-none"
                     >
                       {categoryOptions.map((opt) => (
                         <option key={opt.value} value={opt.value}>
@@ -482,7 +579,7 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
                     <button
                       type="button"
                       onClick={() => removeItem(it.id)}
-                      className="text-muted hover:text-danger p-1"
+                      className="grid size-8 shrink-0 place-items-center rounded-lg text-muted hover:text-danger"
                       title="Remover da lista"
                     >
                       <X size={14} />
@@ -514,7 +611,7 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
         )}
 
         {/* Rodapé com Ações */}
-        <div className="flex items-center justify-between pt-2 border-t border-line">
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-line">
           <Button type="button" variant="ghost" onClick={onClose} disabled={saving}>
             Cancelar
           </Button>
@@ -524,6 +621,7 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
             variant="primary"
             onClick={handleSaveAll}
             disabled={saving || selectedCount === 0}
+            className="shrink-0"
           >
             {saving ? (
               <>
@@ -533,7 +631,10 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
             ) : (
               <>
                 <HardDrive size={14} />
-                Guardar {selectedCount} {selectedCount === 1 ? 'ficheiro' : 'ficheiros'} no Sistema
+                <span>
+                  Guardar {selectedCount} {selectedCount === 1 ? 'ficheiro' : 'ficheiros'}
+                  <span className="hidden sm:inline"> na biblioteca</span>
+                </span>
               </>
             )}
           </Button>

@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { FileUp, FolderOpen, HardDrive, Link2, Loader2, Pin, Plus, Search, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileUp, FolderOpen, HardDrive, Link2, Loader2, Pin, Plus, Search, Sparkles, X } from 'lucide-react';
 import { AnimatedPage } from '../components/motion/Primitives';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import { ActionSheet, Button, CourseChip, EmptyState, Input, PageHeader, Select, cx } from '../components/ui';
@@ -37,12 +37,16 @@ export default function Materials() {
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [picker, setPicker] = useState<CloudSource | null>(null);
   const [viewingMaterial, setViewingMaterial] = useState<Material | null>(null);
+  const [groupOpenOverrides, setGroupOpenOverrides] = useState<Record<string, boolean>>({});
+  const [expandedAllRows, setExpandedAllRows] = useState<Record<string, boolean>>({});
 
   const {
     scanning: scanningDrive,
+    progress: scanProgress,
     feedback: scanFeedback,
     isDriveConnected: isGoogleConnected,
     runScan: handleAutoScanDrive,
+    cancelScan,
     clearFeedback,
   } = useDriveAutoScan();
 
@@ -177,10 +181,28 @@ export default function Materials() {
                 </Button>
                 <Button variant="primary" size="sm" onClick={handleAutoScanDrive} disabled={scanningDrive}>
                   {scanningDrive ? <Loader2 size={14} className="animate-spin" /> : <FolderOpen size={14} />}
-                  {isGoogleConnected ? 'Revarrer Google Drive' : 'Ligar e varrer Drive'}
+                  {scanningDrive
+                    ? 'A varrer…'
+                    : isGoogleConnected
+                      ? 'Revarrer Google Drive'
+                      : 'Ligar e varrer Drive'}
                 </Button>
+                {scanningDrive && (
+                  <Button variant="ghost" size="sm" onClick={cancelScan}>
+                    <X size={14} /> Cancelar
+                  </Button>
+                )}
               </div>
             </div>
+
+            {scanningDrive && scanProgress && (
+              <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/75 px-3.5 py-2.5 text-xs text-[#141312] dark:bg-black/25 dark:text-[#FAF6EC]">
+                <span className="min-w-0 truncate font-medium">
+                  {scanProgress.stage ? `${scanProgress.stage} · ` : ''}
+                  {scanProgress.foldersScanned} pasta(s) · {scanProgress.filesFound} ficheiro(s) analisado(s)
+                </span>
+              </div>
+            )}
 
             {scanFeedback && (
               <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/75 px-3.5 py-2.5 text-xs text-[#141312] dark:bg-black/25 dark:text-[#FAF6EC]">
@@ -266,7 +288,40 @@ export default function Materials() {
               action={filtersActive ? <Button onClick={resetFilters}>Limpar filtros</Button> : undefined}
             />
           ) : (
-            <div className="space-y-5">
+            <div className="space-y-4">
+              {groups.length > 1 && (
+                <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-muted">
+                  <span>
+                    {groups.length} pastas · {visible.length}{' '}
+                    {visible.length === 1 ? 'material visível' : 'materiais visíveis'}
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const allExpanded = groups.every((g, idx) =>
+                          g.key in groupOpenOverrides
+                            ? groupOpenOverrides[g.key]
+                            : idx === 0 && g.items.length <= 20,
+                        );
+                        const next: Record<string, boolean> = {};
+                        for (const g of groups) next[g.key] = !allExpanded;
+                        setGroupOpenOverrides(next);
+                      }}
+                      className="min-h-[36px] font-semibold text-accent-ink hover:underline dark:text-accent"
+                    >
+                      {groups.every((g, idx) =>
+                        g.key in groupOpenOverrides
+                          ? groupOpenOverrides[g.key]
+                          : idx === 0 && g.items.length <= 20,
+                      )
+                        ? 'Recolher tudo'
+                        : 'Expandir tudo'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {pinned.length > 0 && (
                 <section
                   className={cx(
@@ -288,31 +343,85 @@ export default function Materials() {
                 </section>
               )}
 
-              {groups.map((g) => (
-                <section
-                  key={g.key}
-                  className={cx(
-                    'overflow-hidden shadow-card',
-                    isMinimal
-                      ? 'rounded-[22px] border border-line bg-surface'
-                      : 'rounded-[24px] border border-line/70 bg-surface',
-                  )}
-                >
-                  <header className="flex items-center justify-between gap-3 border-b border-line/70 bg-surface-2/60 px-4 py-2.5">
-                    {g.course ? (
-                      <CourseChip course={g.course} />
-                    ) : (
-                      <span className="rounded-full bg-surface px-2.5 py-0.5 text-xs font-semibold text-muted">
-                        Sem cadeira
-                      </span>
+              {groups.map((g, index) => {
+                const defaultOpen = filtersActive || groups.length === 1 || (index === 0 && g.items.length <= 20);
+                const isGroupOpen =
+                  filtersActive ||
+                  (g.key in groupOpenOverrides ? groupOpenOverrides[g.key] : defaultOpen);
+                const showAllRows = filtersActive || Boolean(expandedAllRows[g.key]);
+                const PREVIEW_LIMIT = 6;
+                const slicedItems = showAllRows ? g.items : g.items.slice(0, PREVIEW_LIMIT);
+                const hiddenCount = g.items.length - slicedItems.length;
+
+                return (
+                  <section
+                    key={g.key}
+                    className={cx(
+                      'overflow-hidden shadow-card',
+                      isMinimal
+                        ? 'rounded-[22px] border border-line bg-surface'
+                        : 'rounded-[24px] border border-line/70 bg-surface',
                     )}
-                    <span className="font-mono text-xs tabular text-muted">
-                      {g.items.length} {g.items.length === 1 ? 'material' : 'materiais'}
-                    </span>
-                  </header>
-                  {renderRows(g.items)}
-                </section>
-              ))}
+                  >
+                    <button
+                      type="button"
+                      aria-expanded={isGroupOpen}
+                      onClick={() =>
+                        setGroupOpenOverrides((prev) => ({
+                          ...prev,
+                          [g.key]: !isGroupOpen,
+                        }))
+                      }
+                      className={cx(
+                        'flex min-h-[48px] w-full items-center justify-between gap-3 bg-surface-2/60 px-4 py-2.5 text-left transition hover:bg-surface-2',
+                        isGroupOpen && 'border-b border-line/70',
+                      )}
+                    >
+                      <div className="flex min-w-0 items-center gap-2">
+                        {isGroupOpen ? (
+                          <ChevronDown size={16} className="shrink-0 text-muted" />
+                        ) : (
+                          <ChevronRight size={16} className="shrink-0 text-muted" />
+                        )}
+                        {g.course ? (
+                          <CourseChip course={g.course} />
+                        ) : (
+                          <span className="rounded-full bg-surface px-2.5 py-0.5 text-xs font-semibold text-muted">
+                            Sem cadeira
+                          </span>
+                        )}
+                      </div>
+                      <span className="shrink-0 font-mono text-xs tabular text-muted">
+                        {g.items.length} {g.items.length === 1 ? 'material' : 'materiais'}
+                      </span>
+                    </button>
+
+                    {isGroupOpen && (
+                      <>
+                        {renderRows(slicedItems)}
+                        {(hiddenCount > 0 || (showAllRows && !filtersActive && g.items.length > PREVIEW_LIMIT)) && (
+                          <div className="flex items-center justify-center border-t border-line/70 bg-surface-2/35 px-4 py-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setExpandedAllRows((prev) => ({
+                                  ...prev,
+                                  [g.key]: !showAllRows,
+                                }))
+                              }
+                              className="min-h-[40px] rounded-full px-4 text-xs font-semibold text-accent-ink transition hover:bg-accent-soft/50 dark:text-accent"
+                            >
+                              {hiddenCount > 0
+                                ? `Mostrar mais ${hiddenCount} (${g.items.length} no total)`
+                                : 'Mostrar apenas os primeiros 6'}
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </section>
+                );
+              })}
             </div>
           )}
         </div>

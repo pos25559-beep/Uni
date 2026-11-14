@@ -1,5 +1,6 @@
 // Google Drive (API v3) — só leitura. Usa o token partilhado de googleAuth.ts.
 import { googleFetch } from './googleAuth';
+import { getAcademicGoogleAccessToken } from '../lib/firebase';
 import type { Course, Material } from '../types';
 import { matchCourseByText, normalizeAliasText, parseFilenameToParsedItem, isNonAcademicDocument } from '../lib/courseAliases';
 import { useStore } from '../store/useStore';
@@ -75,11 +76,41 @@ function toCloudFile(f: DriveFile): CloudFile {
   };
 }
 
-async function listFiles(params: Record<string, string>, maxPages = 6): Promise<CloudFile[]> {
+interface DriveRequestOpts {
+  tokenOverride?: string;
+  signal?: AbortSignal;
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  worker: (item: T) => Promise<R>,
+): Promise<R[]> {
+  if (items.length === 0) return [];
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+  const count = Math.min(limit, items.length);
+  await Promise.all(
+    Array.from({ length: count }, async () => {
+      while (nextIndex < items.length) {
+        const idx = nextIndex++;
+        results[idx] = await worker(items[idx]);
+      }
+    }),
+  );
+  return results;
+}
+
+async function listFiles(
+  params: Record<string, string>,
+  maxPages = 6,
+  opts?: DriveRequestOpts,
+): Promise<CloudFile[]> {
   const collected: CloudFile[] = [];
   let pageToken: string | undefined;
 
   for (let page = 0; page < maxPages; page++) {
+    if (opts?.signal?.aborted) break;
     const search = new URLSearchParams({
       fields: FIELDS,
       pageSize: '100',
@@ -92,7 +123,10 @@ async function listFiles(params: Record<string, string>, maxPages = 6): Promise<
       search.set('pageToken', pageToken);
     }
 
-    const data = await googleFetch<DriveList>(`${FILES_URL}?${search.toString()}`);
+    const data = await googleFetch<DriveList>(`${FILES_URL}?${search.toString()}`, {
+      tokenOverride: opts?.tokenOverride,
+      signal: opts?.signal,
+    });
     if (data.files?.length) {
       collected.push(...data.files.map(toCloudFile));
     }
@@ -107,36 +141,52 @@ async function listFiles(params: Record<string, string>, maxPages = 6): Promise<
 }
 
 /** Conteúdo de uma pasta (por omissão, a raiz do Drive). */
-export function listDriveFolder(folderId = 'root'): Promise<CloudFile[]> {
-  return listFiles({
-    q: `'${escapeQ(folderId)}' in parents and trashed = false`,
-    orderBy: 'folder,name',
-  });
+export function listDriveFolder(folderId = 'root', opts?: DriveRequestOpts): Promise<CloudFile[]> {
+  return listFiles(
+    {
+      q: `'${escapeQ(folderId)}' in parents and trashed = false`,
+      orderBy: 'folder,name',
+    },
+    6,
+    opts,
+  );
 }
 
 /** Procura ficheiros pelo nome. */
-export function searchDriveFiles(text: string): Promise<CloudFile[]> {
-  return listFiles({
-    q: `name contains '${escapeQ(text.trim())}' and trashed = false`,
-    orderBy: 'modifiedTime desc',
-  });
+export function searchDriveFiles(text: string, opts?: DriveRequestOpts): Promise<CloudFile[]> {
+  return listFiles(
+    {
+      q: `name contains '${escapeQ(text.trim())}' and trashed = false`,
+      orderBy: 'modifiedTime desc',
+    },
+    3,
+    opts,
+  );
 }
 
 /** Ficheiros e pastas partilhados com o utilizador ("Partilhados comigo"). */
-export function listSharedWithMe(): Promise<CloudFile[]> {
-  return listFiles({
-    q: `sharedWithMe = true and trashed = false`,
-    orderBy: 'folder,modifiedTime desc',
-  });
+export function listSharedWithMe(opts?: DriveRequestOpts): Promise<CloudFile[]> {
+  return listFiles(
+    {
+      q: `sharedWithMe = true and trashed = false`,
+      orderBy: 'folder,modifiedTime desc',
+    },
+    6,
+    opts,
+  );
 }
 
 /** Ficheiros abertos recentemente pelo utilizador (sem pastas). */
-export function listRecentDriveFiles(): Promise<CloudFile[]> {
-  return listFiles({
-    q: `trashed = false and mimeType != '${DRIVE_FOLDER_MIME}'`,
-    orderBy: 'viewedByMeTime desc',
-    pageSize: '30',
-  });
+export function listRecentDriveFiles(opts?: DriveRequestOpts): Promise<CloudFile[]> {
+  return listFiles(
+    {
+      q: `trashed = false and mimeType != '${DRIVE_FOLDER_MIME}'`,
+      orderBy: 'viewedByMeTime desc',
+      pageSize: '40',
+    },
+    1,
+    opts,
+  );
 }
 
 /** Extrai o id de uma pasta de um URL do Google Drive ou devolve o próprio id se for uma string alfanumérica. */
@@ -193,7 +243,14 @@ export function isLikelyAcademicDriveFolderName(folderName: string, courses: Cou
  */
 export async function scanDriveFolderRecursively(
   folderIdOrUrl: string,
-  options?: { maxDepth?: number; maxFolders?: number; initialPrefix?: string },
+  options?: {
+    maxDepth?: number;
+    maxFolders?: number;
+    initialPrefix?: string;
+    tokenOverride?: string;
+    signal?: AbortSignal;
+    onFolderVisited?: (folderName: string) => void;
+  },
 ): Promise<CloudFile[]> {
   const rootFolderId = driveFolderIdFromUrl(folderIdOrUrl);
   if (!rootFolderId) {
@@ -204,42 +261,70 @@ export async function scanDriveFolderRecursively(
   const maxFolders = options?.maxFolders ?? 140;
   const visitedFolders = new Set<string>();
   const files: CloudFile[] = [];
-  const queue: Array<{ id: string; prefix: string; depth: number }> = [
+  let frontier: Array<{ id: string; prefix: string; depth: number }> = [
     { id: rootFolderId, prefix: options?.initialPrefix?.trim() ?? '', depth: 0 },
   ];
 
-  while (queue.length > 0 && visitedFolders.size < maxFolders) {
-    const current = queue.shift()!;
-    if (visitedFolders.has(current.id)) continue;
-    visitedFolders.add(current.id);
-
-    let items: CloudFile[];
-    try {
-      items = await listDriveFolder(current.id);
-    } catch (err) {
-      if (isAuthError(err) || current.depth === 0) {
-        throw err;
-      }
-      // Continua se uma subpasta individual estiver sem permissão
-      continue;
+  while (frontier.length > 0 && visitedFolders.size < maxFolders && !options?.signal?.aborted) {
+    const batch = [];
+    while (frontier.length > 0 && visitedFolders.size < maxFolders && batch.length < 4) {
+      const next = frontier.shift()!;
+      if (visitedFolders.has(next.id)) continue;
+      visitedFolders.add(next.id);
+      batch.push(next);
     }
+    if (batch.length === 0) break;
 
-    for (const item of items) {
-      const fullPath = current.prefix ? `${current.prefix} / ${item.name}` : item.name;
-      if (item.isFolder) {
-        if (current.depth < maxDepth && !visitedFolders.has(item.id)) {
-          queue.push({ id: item.id, prefix: fullPath, depth: current.depth + 1 });
-        }
-      } else {
-        files.push({
-          ...item,
-          name: fullPath,
+    const nextFrontier: Array<{ id: string; prefix: string; depth: number }> = [];
+    await mapWithConcurrency(batch, 4, async (current) => {
+      if (options?.signal?.aborted) return;
+      options?.onFolderVisited?.(current.prefix || 'Pasta');
+      let items: CloudFile[];
+      try {
+        items = await listDriveFolder(current.id, {
+          tokenOverride: options?.tokenOverride,
+          signal: options?.signal,
         });
+      } catch (err) {
+        if (options?.signal?.aborted) return;
+        if (isAuthError(err) || current.depth === 0) {
+          throw err;
+        }
+        return;
       }
-    }
+
+      for (const item of items) {
+        const fullPath = current.prefix ? `${current.prefix} / ${item.name}` : item.name;
+        if (item.isFolder) {
+          if (current.depth < maxDepth && !visitedFolders.has(item.id)) {
+            nextFrontier.push({ id: item.id, prefix: fullPath, depth: current.depth + 1 });
+          }
+        } else {
+          files.push({
+            ...item,
+            name: fullPath,
+          });
+        }
+      }
+    });
+
+    frontier = [...nextFrontier, ...frontier];
   }
 
   return files;
+}
+
+export interface AutoScanProgress {
+  foldersScanned: number;
+  filesFound: number;
+  stage?: string;
+}
+
+export interface AutoScanOptions {
+  extraFolderUrls?: string[];
+  signal?: AbortSignal;
+  timeoutMs?: number;
+  onProgress?: (progress: AutoScanProgress) => void;
 }
 
 export interface AutoScanResult {
@@ -247,6 +332,8 @@ export interface AutoScanResult {
   totalFound: number;
   foldersScanned: number;
   coursesFound: string[];
+  timedOut?: boolean;
+  cancelled?: boolean;
 }
 
 interface DiscoveredDriveEntry {
@@ -256,18 +343,47 @@ interface DiscoveredDriveEntry {
 }
 
 /**
- * Varredura autónoma do Google Drive:
- * 1. Pastas pré-configuradas das cadeiras, pasta raiz LEMc e pastas extra do utilizador (BFS até 4 níveis).
- * 2. Pastas e ficheiros "Partilhados comigo" (recursivo, preservando nome da pasta partilhada no caminho).
- * 3. Pastas académicas no "Meu Drive" raiz e ficheiros recentes do utilizador (filtrando imagens pessoais).
- * 4. Categoriza cada ficheiro autonomamente (cadeira, teste, exame, ano, resolução) e adiciona ao repositório.
+ * Varredura autónoma do Google Drive (conta pessoal e académica quando ligadas):
+ * 1. Pastas pré-configuradas das cadeiras e pastas extra do utilizador.
+ * 2. Pastas e ficheiros "Partilhados comigo" em paralelo controlado.
+ * 3. Pastas académicas no "Meu Drive" (até 2 níveis abaixo da raiz) + pesquisa por sigla de cadeira.
+ * 4. Guardião de timeout (45s) e suporte a cancelamento para nunca prender no telemóvel.
  */
 export async function scanAndAutoLinkGoogleDrive(
   courses: Course[],
-  extraFolderUrls: string[] = [],
+  extraUrlsOrOpts: string[] | AutoScanOptions = [],
 ): Promise<AutoScanResult> {
+  const opts: AutoScanOptions = Array.isArray(extraUrlsOrOpts)
+    ? { extraFolderUrls: extraUrlsOrOpts }
+    : extraUrlsOrOpts;
+
+  const extraFolderUrls = opts.extraFolderUrls ?? [];
+  const timeoutMs = opts.timeoutMs ?? 45_000;
+  const controller = new AbortController();
+  let scanTimedOut = false;
+
+  const onExternalAbort = () => controller.abort(opts.signal?.reason);
+  if (opts.signal) {
+    if (opts.signal.aborted) {
+      return { added: 0, totalFound: 0, foldersScanned: 0, coursesFound: [], cancelled: true };
+    }
+    opts.signal.addEventListener('abort', onExternalAbort, { once: true });
+  }
+  const timer = setTimeout(() => {
+    scanTimedOut = true;
+    controller.abort(new Error('scan-timeout'));
+  }, timeoutMs);
+
   const discoveredById = new Map<string, DiscoveredDriveEntry>();
   let foldersScanned = 0;
+
+  const emitProgress = (stage?: string) => {
+    opts.onProgress?.({
+      foldersScanned,
+      filesFound: discoveredById.size,
+      stage,
+    });
+  };
 
   const registerFile = (
     file: CloudFile,
@@ -279,7 +395,6 @@ export async function scanAndAutoLinkGoogleDrive(
       discoveredById.set(file.id, { file, fallbackCourseId, allowImages });
       return;
     }
-    // Prefere entradas com contexto explícito de cadeira / imagem permitida
     if (!existing.fallbackCourseId && fallbackCourseId) {
       existing.fallbackCourseId = fallbackCourseId;
     }
@@ -291,133 +406,211 @@ export async function scanAndAutoLinkGoogleDrive(
     }
   };
 
-  // 1. Mapa de pastas alvo com eventual fallbackCourseId (apenas para pastas dedicadas de 1 cadeira)
-  const folderTargets = new Map<string, { fallbackCourseId?: string; initialPrefix?: string }>();
-  for (const c of courses) {
-    if (c.driveFolderId) {
-      folderTargets.set(c.driveFolderId, { fallbackCourseId: c.id, initialPrefix: c.shortName });
-    }
-    if (c.sharedDriveUrl) {
-      const fid = driveFolderIdFromUrl(c.sharedDriveUrl);
-      if (fid && !MULTI_COURSE_ROOT_IDS.has(fid)) {
-        folderTargets.set(fid, { fallbackCourseId: c.id, initialPrefix: c.shortName });
-      }
-    }
-  }
-
-  for (const rawUrl of extraFolderUrls) {
-    const fid = driveFolderIdFromUrl(rawUrl);
-    if (fid && !folderTargets.has(fid)) {
-      folderTargets.set(fid, {});
-    }
-  }
-
-  for (const [folderId, meta] of folderTargets.entries()) {
-    try {
-      foldersScanned++;
-      const scanned = await scanDriveFolderRecursively(folderId, {
-        maxDepth: 5,
-        maxFolders: 120,
-        initialPrefix: meta.initialPrefix,
-      });
-      for (const f of scanned) {
-        registerFile(f, meta.fallbackCourseId, true);
-      }
-    } catch (err) {
-      if (isAuthError(err)) throw err;
-      // Ignora pasta inacessível (404 / sem permissão) e continua com as outras
-    }
-  }
-
-  // 2. Pastas e ficheiros "Partilhados comigo" (recursivo para captar pastas de cadeiras partilhadas por colegas)
   try {
-    foldersScanned++;
-    const sharedItems = await listSharedWithMe();
-    for (const item of sharedItems) {
-      if (item.isFolder) {
+    // 1. Pastas explícitas de cadeiras e links extra
+    const folderTargets = new Map<string, { fallbackCourseId?: string; initialPrefix?: string }>();
+    for (const c of courses) {
+      if (c.driveFolderId) {
+        folderTargets.set(c.driveFolderId, { fallbackCourseId: c.id, initialPrefix: c.shortName });
+      }
+      if (c.sharedDriveUrl) {
+        const fid = driveFolderIdFromUrl(c.sharedDriveUrl);
+        if (fid && !MULTI_COURSE_ROOT_IDS.has(fid)) {
+          folderTargets.set(fid, { fallbackCourseId: c.id, initialPrefix: c.shortName });
+        }
+      }
+    }
+
+    for (const rawUrl of extraFolderUrls) {
+      const fid = driveFolderIdFromUrl(rawUrl);
+      if (fid && !folderTargets.has(fid)) {
+        folderTargets.set(fid, {});
+      }
+    }
+
+    const runAccountPass = async (tokenOverride?: string, isPrimary = true) => {
+      if (controller.signal.aborted) return;
+
+      // 1a. Pastas associadas diretamente (apenas na passagem principal para não repetir)
+      if (isPrimary && folderTargets.size > 0) {
+        await mapWithConcurrency(Array.from(folderTargets.entries()), 3, async ([folderId, meta]) => {
+          if (controller.signal.aborted) return;
+          try {
+            foldersScanned++;
+            emitProgress(meta.initialPrefix);
+            const scanned = await scanDriveFolderRecursively(folderId, {
+              maxDepth: 5,
+              maxFolders: 100,
+              initialPrefix: meta.initialPrefix,
+              signal: controller.signal,
+            });
+            for (const f of scanned) registerFile(f, meta.fallbackCourseId, true);
+            emitProgress();
+          } catch (err) {
+            if (controller.signal.aborted) return;
+            if (isAuthError(err)) throw err;
+          }
+        });
+      }
+
+      // 2. "Partilhados comigo" (concorrência limitada para não bloquear no mobile)
+      if (!controller.signal.aborted) {
         try {
           foldersScanned++;
-          const scanned = await scanDriveFolderRecursively(item.id, {
-            maxDepth: 5,
-            maxFolders: 100,
-            initialPrefix: item.name,
+          emitProgress('Partilhados comigo');
+          const sharedItems = await listSharedWithMe({ tokenOverride, signal: controller.signal });
+          const sharedFolders = sharedItems.filter((it) => it.isFolder).slice(0, 28);
+          for (const item of sharedItems) {
+            if (!item.isFolder) registerFile(item, undefined, true);
+          }
+          await mapWithConcurrency(sharedFolders, 4, async (item) => {
+            if (controller.signal.aborted) return;
+            try {
+              foldersScanned++;
+              emitProgress(item.name);
+              const scanned = await scanDriveFolderRecursively(item.id, {
+                maxDepth: 4,
+                maxFolders: 60,
+                initialPrefix: item.name,
+                tokenOverride,
+                signal: controller.signal,
+              });
+              for (const sub of scanned) registerFile(sub, undefined, true);
+              emitProgress();
+            } catch (err) {
+              if (controller.signal.aborted) return;
+              if (isAuthError(err)) throw err;
+            }
           });
-          for (const sub of scanned) {
-            registerFile(sub, undefined, true);
+        } catch (err) {
+          if (!controller.signal.aborted && isAuthError(err) && isPrimary) throw err;
+        }
+      }
+
+      // 3. Pastas académicas no "Meu Drive" raiz (espreita até 2 subníveis: ex. Escola > Semestre > Cadeira)
+      if (!controller.signal.aborted) {
+        try {
+          emitProgress('Meu Drive');
+          const rootItems = await listDriveFolder('root', { tokenOverride, signal: controller.signal });
+          const academicRoots: CloudFile[] = [];
+
+          await mapWithConcurrency(rootItems.filter((it) => it.isFolder), 4, async (item) => {
+            if (controller.signal.aborted) return;
+            if (isLikelyAcademicDriveFolderName(item.name, courses)) {
+              academicRoots.push(item);
+              return;
+            }
+            try {
+              const level1 = await listFiles(
+                {
+                  q: `'${escapeQ(item.id)}' in parents and mimeType = '${DRIVE_FOLDER_MIME}' and trashed = false`,
+                  orderBy: 'name',
+                },
+                1,
+                { tokenOverride, signal: controller.signal },
+              );
+              if (level1.some((sub) => isLikelyAcademicDriveFolderName(sub.name, courses))) {
+                academicRoots.push(item);
+                return;
+              }
+              // Espreita 2º nível dentro das primeiras subpastas organizadoras (ex.: Ano > Semestre > Cadeira)
+              for (const sub of level1.slice(0, 8)) {
+                if (controller.signal.aborted) break;
+                const level2 = await listFiles(
+                  {
+                    q: `'${escapeQ(sub.id)}' in parents and mimeType = '${DRIVE_FOLDER_MIME}' and trashed = false`,
+                    orderBy: 'name',
+                  },
+                  1,
+                  { tokenOverride, signal: controller.signal },
+                );
+                if (level2.some((deep) => isLikelyAcademicDriveFolderName(deep.name, courses))) {
+                  academicRoots.push(sub);
+                }
+              }
+            } catch (err) {
+              if (!controller.signal.aborted && isAuthError(err) && isPrimary) throw err;
+            }
+          });
+
+          await mapWithConcurrency(academicRoots, 3, async (item) => {
+            if (controller.signal.aborted) return;
+            try {
+              foldersScanned++;
+              emitProgress(item.name);
+              const scanned = await scanDriveFolderRecursively(item.id, {
+                maxDepth: 5,
+                maxFolders: 90,
+                initialPrefix: item.name,
+                tokenOverride,
+                signal: controller.signal,
+              });
+              for (const sub of scanned) registerFile(sub, undefined, true);
+              emitProgress();
+            } catch (err) {
+              if (!controller.signal.aborted && isAuthError(err) && isPrimary) throw err;
+            }
+          });
+        } catch (err) {
+          if (!controller.signal.aborted && isAuthError(err) && isPrimary) throw err;
+        }
+      }
+
+      // 4. Pesquisa direta pelas siglas das cadeiras (apanha PDFs soltos em qualquer pasta profunda)
+      if (!controller.signal.aborted && courses.length > 0) {
+        const terms = Array.from(
+          new Set(
+            courses
+              .map((c) => (c.shortName || '').trim())
+              .filter((s) => s.length >= 2 && s.length <= 14),
+          ),
+        ).slice(0, 10);
+
+        await mapWithConcurrency(terms, 3, async (term) => {
+          if (controller.signal.aborted) return;
+          try {
+            const matched = await searchDriveFiles(term, { tokenOverride, signal: controller.signal });
+            for (const f of matched) {
+              if (!f.isFolder && !isNonAcademicDocument(f.name, { allowImages: false })) {
+                registerFile(f, undefined, false);
+              }
+            }
+          } catch {
+            // pesquisa auxiliar é best-effort
+          }
+        });
+      }
+
+      // 5. Ficheiros recentes do utilizador (só documentos, rejeita imagens soltas)
+      if (!controller.signal.aborted && isPrimary) {
+        try {
+          const recent = await listRecentDriveFiles({ tokenOverride, signal: controller.signal });
+          for (const r of recent) {
+            if (!isNonAcademicDocument(r.name, { allowImages: false })) {
+              registerFile(r, undefined, false);
+            }
           }
         } catch (err) {
-          if (isAuthError(err)) throw err;
-        }
-      } else {
-        registerFile(item, undefined, true);
-      }
-    }
-  } catch (err) {
-    if (isAuthError(err)) throw err;
-  }
-
-  // 3. Pastas académicas no "Meu Drive" raiz e atalhos salvos lá
-  // Também espreita 1 nível dentro de outras pastas raiz para encontrar subpastas com nomes de cadeiras (ex.: Pasta / C3D)
-  try {
-    const rootItems = await listDriveFolder('root');
-    for (const item of rootItems) {
-      if (!item.isFolder) continue;
-      let shouldScan = isLikelyAcademicDriveFolderName(item.name, courses);
-
-      if (!shouldScan) {
-        try {
-          const childFolders = await listFiles(
-            {
-              q: `'${escapeQ(item.id)}' in parents and mimeType = '${DRIVE_FOLDER_MIME}' and trashed = false`,
-              orderBy: 'name',
-            },
-            1,
-          );
-          shouldScan = childFolders.some(
-            (sub) => isLikelyAcademicDriveFolderName(sub.name, courses),
-          );
-        } catch (err) {
-          if (isAuthError(err)) throw err;
+          if (!controller.signal.aborted && isAuthError(err)) throw err;
         }
       }
+    };
 
-      if (!shouldScan) continue;
+    await runAccountPass(undefined, true);
 
-      try {
-        foldersScanned++;
-        const scanned = await scanDriveFolderRecursively(item.id, {
-          maxDepth: 5,
-          maxFolders: 120,
-          initialPrefix: item.name,
-        });
-        for (const sub of scanned) {
-          registerFile(sub, undefined, true);
-        }
-      } catch (err) {
-        if (isAuthError(err)) throw err;
-      }
+    const academicToken = getAcademicGoogleAccessToken();
+    if (academicToken && !controller.signal.aborted) {
+      await runAccountPass(academicToken, false);
     }
-  } catch (err) {
-    if (isAuthError(err)) throw err;
+  } finally {
+    clearTimeout(timer);
+    opts.signal?.removeEventListener('abort', onExternalAbort);
   }
 
-  // 4. Ficheiros recentes do utilizador (estrategicamente mais restritivo: rejeita imagens soltas)
-  try {
-    const recent = await listRecentDriveFiles();
-    for (const r of recent) {
-      if (!isNonAcademicDocument(r.name, { allowImages: false })) {
-        registerFile(r, undefined, false);
-      }
-    }
-  } catch (err) {
-    if (isAuthError(err)) throw err;
-  }
-
-  // 5. Converte e categoriza os ficheiros descobertos
+  // Converte e categoriza os ficheiros descobertos (salva mesmo se atingiu timeout parcial)
   const currentMaterials = useStore.getState().materials;
   const currentMaterialIds = new Set(currentMaterials.map((m) => m.id));
   const coursesWithMatches = new Set<string>();
-
   const newMaterials: Material[] = [];
 
   for (const entry of discoveredById.values()) {
@@ -435,14 +628,11 @@ export async function scanAndAutoLinkGoogleDrive(
       { allowImages },
     );
 
-    // CRÍTICO: Só adiciona ao repositório se tiver uma cadeira válida correspondente!
-    // Ficheiros sem cadeira reconhecida NÃO poluem o repositório nem caem em Cálculo 3D.
     if (!parsed.courseId) continue;
     const validCourse = courses.some((c) => c.id === parsed.courseId);
     if (!validCourse) continue;
 
     coursesWithMatches.add(parsed.courseId);
-
     newMaterials.push({
       id: materialId,
       courseId: parsed.courseId,
@@ -467,6 +657,8 @@ export async function scanAndAutoLinkGoogleDrive(
     totalFound: discoveredById.size,
     foldersScanned,
     coursesFound: Array.from(coursesWithMatches),
+    timedOut: scanTimedOut,
+    cancelled: Boolean(opts.signal?.aborted && !scanTimedOut),
   };
 }
 

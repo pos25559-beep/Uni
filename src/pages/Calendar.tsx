@@ -3,7 +3,7 @@ import {
   addDays, addMonths, addWeeks, format, startOfDay, startOfMonth, startOfWeek,
 } from 'date-fns';
 import { pt } from 'date-fns/locale';
-import { CalendarPlus, ChevronLeft, ChevronRight, Download, Share2, Upload, X } from 'lucide-react';
+import { CalendarPlus, ChevronLeft, ChevronRight, Download, MoreHorizontal, Share2, Upload, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import AgendaView from '../components/calendar/AgendaView';
@@ -19,7 +19,7 @@ import { KIND_META, KIND_ORDER } from '../components/calendar/shared';
 import { AnimatedPage } from '../components/motion/Primitives';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import WeekView from '../components/calendar/WeekView';
-import { Button, Modal, PageHeader, SegmentedControl, cx, showToast } from '../components/ui';
+import { ActionSheet, Button, Modal, PageHeader, SegmentedControl, cx, showToast } from '../components/ui';
 import { buildIcsCalendar, downloadIcsCalendar } from '../integrations/ics';
 import { capitalizeFirst, toDateStr } from '../lib/selectors';
 import {
@@ -60,6 +60,7 @@ export default function Calendar() {
   const [kinds, setKinds] = useState<Record<CalKind, boolean>>(ALL_ON);
   const [newOpen, setNewOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [calMenuOpen, setCalMenuOpen] = useState(false);
   const [shareModalUrl, setShareModalUrl] = useState<string | null>(null);
   const [sharedDismissedToken, setSharedDismissedToken] = useState<string | null>(null);
   const [satNoticeDismissed, setSatNoticeDismissed] = useState(false);
@@ -222,7 +223,7 @@ export default function Calendar() {
   };
 
   return (
-    <AnimatedPage className="space-y-4">
+    <AnimatedPage className="min-w-0 space-y-4 overflow-x-hidden">
       <PageHeader
         eyebrow="Horário"
         title="O teu"
@@ -231,17 +232,32 @@ export default function Calendar() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <TabGuideHelpButton tabKey="calendario" />
-            <Button variant="secondary" size="sm" onClick={handleExportIcs}>
+            <Button variant="secondary" size="sm" onClick={handleExportIcs} className="hidden sm:inline-flex">
               <Download size={15} /> Exportar .ics
             </Button>
-            <Button variant="secondary" size="sm" onClick={() => void handleShareTurma()}>
+            <Button variant="secondary" size="sm" onClick={() => void handleShareTurma()} className="hidden sm:inline-flex">
               <Share2 size={15} /> Partilhar turma
             </Button>
-            <Button variant="secondary" onClick={() => setImportOpen(true)}>
+            <Button variant="secondary" size="sm" onClick={() => setImportOpen(true)} className="sm:hidden">
+              <Upload size={15} /> Importar
+            </Button>
+            <Button variant="secondary" onClick={() => setImportOpen(true)} className="hidden sm:inline-flex">
               <Upload size={16} /> Importar horário
             </Button>
-            <Button variant="primary" onClick={() => setNewOpen(true)}>
+            <Button variant="primary" size="sm" onClick={() => setNewOpen(true)} className="sm:hidden">
+              <CalendarPlus size={15} /> Evento
+            </Button>
+            <Button variant="primary" onClick={() => setNewOpen(true)} className="hidden sm:inline-flex">
               <CalendarPlus size={16} /> Novo evento
+            </Button>
+            <Button
+              variant="secondary"
+              iconOnly
+              onClick={() => setCalMenuOpen(true)}
+              aria-label="Mais ações do calendário"
+              className="sm:hidden"
+            >
+              <MoreHorizontal size={17} />
             </Button>
           </div>
         }
@@ -301,7 +317,7 @@ export default function Calendar() {
       </div>
 
       {/* Filtros */}
-      <div className="mb-5 flex flex-wrap items-center gap-2">
+      <div className="mb-3 flex items-center gap-2 overflow-x-auto pb-1 sm:mb-5 sm:flex-wrap sm:overflow-visible sm:pb-0">
         {KIND_ORDER.map((k) => {
           const on = kinds[k];
           return (
@@ -311,7 +327,7 @@ export default function Calendar() {
               aria-pressed={on}
               onClick={() => toggleKind(k)}
               className={cx(
-                'inline-flex h-8 items-center gap-2 rounded-full border px-3 text-xs font-medium transition',
+                'inline-flex min-h-[38px] shrink-0 items-center gap-2 rounded-full border px-3 text-xs font-medium transition sm:h-8 sm:min-h-0',
                 on ? 'border-line bg-surface text-fg' : 'border-transparent bg-surface-2 text-muted',
               )}
             >
@@ -399,6 +415,28 @@ export default function Calendar() {
       )}
 
       {importOpen && <SmartScheduleImportModal onClose={() => setImportOpen(false)} />}
+
+      <ActionSheet
+        open={calMenuOpen}
+        onClose={() => setCalMenuOpen(false)}
+        title="Ações do calendário"
+        actions={[
+          {
+            id: 'export-ics',
+            label: 'Exportar .ics',
+            hint: 'Compatível com Google, Apple e Outlook',
+            icon: <Download size={16} />,
+            onSelect: handleExportIcs,
+          },
+          {
+            id: 'share-turma',
+            label: 'Partilhar horário da turma',
+            hint: 'Envia cadeiras, aulas e avaliações aos colegas',
+            icon: <Share2 size={16} />,
+            onSelect: () => void handleShareTurma(),
+          },
+        ]}
+      />
 
       <Modal
         open={Boolean(shareModalUrl)}

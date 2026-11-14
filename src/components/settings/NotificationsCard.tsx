@@ -17,7 +17,7 @@ import type { NotificationPreferences } from '../../types';
 
 const HOURS = [9, 12, 16, 18, 19, 20, 21];
 
-export default function NotificationsCard() {
+export default function NotificationsCard({ hideHeader = false }: { hideHeader?: boolean } = {}) {
   const settings = useStore((s) => s.settings);
   const courses = useStore((s) => s.courses);
   const assessments = useStore((s) => s.assessments);
@@ -105,7 +105,7 @@ export default function NotificationsCard() {
 
   return (
     <Card
-      title="Lembretes inteligentes do Uni"
+      title={hideHeader ? undefined : 'Lembretes inteligentes do Uni'}
       className={isMinimal ? undefined : 'rounded-[26px] border-line/70'}
     >
       <div className="space-y-4">

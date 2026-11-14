@@ -21,13 +21,13 @@ interface Props {
 
 export default function MonthView({ days, anchor, byDay, courseById, selected, today, onSelect }: Props) {
   return (
-    <div>
-      <div className="mb-1.5 grid grid-cols-7 text-center text-[11px] font-medium uppercase tracking-wide text-muted">
+    <div className="w-full min-w-0 overflow-hidden">
+      <div className="mb-1.5 grid grid-cols-7 text-center text-xs font-medium uppercase tracking-wide text-muted">
         {WEEK_ORDER.map((i) => (
-          <div key={i} className="py-1.5">{weekdayShort[i]}</div>
+          <div key={i} className="truncate py-1.5">{weekdayShort[i].slice(0, 3)}</div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-px overflow-hidden rounded-2xl border border-line bg-line">
+      <div className="grid w-full grid-cols-7 gap-px overflow-hidden rounded-2xl border border-line bg-line">
         {days.map((day) => {
           const ds = format(day, 'yyyy-MM-dd');
           const list = byDay.get(ds) ?? [];
@@ -45,7 +45,7 @@ export default function MonthView({ days, anchor, byDay, courseById, selected, t
               aria-label={`${format(day, 'd MMMM', { locale: pt })}, ${list.length} itens`}
               className={cx(
                 'flex min-h-14 min-w-0 flex-col gap-1 p-1 text-left transition hover:bg-surface-2 sm:min-h-28 sm:p-1.5',
-                isSel ? 'bg-accent-soft' : 'bg-surface',
+                isSel ? 'bg-accent-soft ring-2 ring-inset ring-accent/70' : 'bg-surface',
                 !inMonth && 'opacity-40',
               )}
             >

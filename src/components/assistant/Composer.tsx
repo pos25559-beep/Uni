@@ -1,6 +1,6 @@
 import { FileText, Image as ImageIcon, Paperclip, Send, Square, X } from 'lucide-react';
 import { useLayoutEffect, useRef, useState } from 'react';
-import type { ChangeEvent, KeyboardEvent } from 'react';
+import type { ChangeEvent, KeyboardEvent, ReactNode } from 'react';
 import { fileToChatAttachment, type ChatAttachment } from '../../integrations/gemini';
 import { showToast } from '../ui';
 
@@ -9,12 +9,14 @@ interface Props {
   loading: boolean;
   onSend: (text: string, attachments?: ChatAttachment[]) => void;
   onStop: () => void;
+  leadingSlot?: ReactNode;
+  topSlot?: ReactNode;
 }
 
 const MAX_HEIGHT = 160;
 const MAX_ATTACHMENTS = 3;
 
-export function Composer({ disabled, loading, onSend, onStop }: Props) {
+export function Composer({ disabled, loading, onSend, onStop, leadingSlot, topSlot }: Props) {
   const [text, setText] = useState('');
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -78,7 +80,8 @@ export function Composer({ disabled, loading, onSend, onStop }: Props) {
   };
 
   return (
-    <div className="space-y-2 rounded-[24px] border border-line/80 bg-surface p-2 shadow-card focus-within:border-accent">
+    <div className="space-y-2 rounded-[26px] border border-line/80 bg-surface p-2 shadow-card focus-within:border-accent">
+      {topSlot}
       {attachments.length > 0 && (
         <div className="flex flex-wrap gap-1.5 px-1 pt-0.5">
           {attachments.map((att) => (
@@ -105,7 +108,8 @@ export function Composer({ disabled, loading, onSend, onStop }: Props) {
         </div>
       )}
 
-      <div className="flex items-end gap-1.5">
+      <div className="flex items-end gap-1">
+        {leadingSlot}
         <input
           ref={fileRef}
           type="file"
@@ -120,7 +124,7 @@ export function Composer({ disabled, loading, onSend, onStop }: Props) {
           onClick={() => fileRef.current?.click()}
           aria-label="Anexar foto ou PDF de apontamentos"
           title="Anexar foto ou PDF"
-          className="grid size-11 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-surface-2 hover:text-fg disabled:cursor-not-allowed disabled:opacity-40"
+          className="grid size-10 shrink-0 place-items-center rounded-full text-muted transition hover:bg-surface-2 hover:text-fg disabled:cursor-not-allowed disabled:opacity-40 sm:size-11"
         >
           <Paperclip size={18} />
         </button>

@@ -98,6 +98,7 @@ export default function Assistant() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [mobileComposerToolsOpen, setMobileComposerToolsOpen] = useState(false);
   const courses = useStore((s) => s.courses);
   const materials = useStore((s) => s.materials);
   const academicProfile = useStore((s) => s.academicProfile);
@@ -537,15 +538,127 @@ export default function Assistant() {
   );
 
   return (
-    <div className="flex h-[calc(100dvh-8.25rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)-var(--keyboard-height,0px))] min-h-0 flex-col md:h-[calc(100dvh-4rem)]">
-      {/* Cabeçalho unificado */}
-      <div className="shrink-0 space-y-2 md:space-y-2.5">
+    <div className="flex h-[calc(100dvh-5.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)-var(--keyboard-height,0px))] min-h-0 flex-col md:h-[calc(100dvh-3.5rem)]">
+      {/* Cabeçalho compacto estilo Gemini App no telemóvel (< md) */}
+      <div className="shrink-0 space-y-2 border-b border-line/70 pb-2 md:hidden">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setConvsModalMode('list')}
+              aria-label={`Conversas (${conversations.length})`}
+              className="min-h-[42px] px-2.5 font-mono text-xs tabular-nums"
+            >
+              <FolderOpen size={15} />
+              <span>{conversations.length}</span>
+            </Button>
+
+            <button
+              type="button"
+              onClick={() => setMobileFiltersOpen((v) => !v)}
+              aria-expanded={mobileFiltersOpen}
+              aria-label="Mudar estilo e ver estado do Uni"
+              className="flex min-h-[42px] min-w-0 items-center gap-1.5 rounded-full px-2 text-left transition hover:bg-surface-2"
+            >
+              <span className="truncate font-display text-base font-bold text-fg">
+                {currentConv && messages.length > 0 ? currentConv.title : (
+                  <>
+                    Conversa <span className="font-serif font-medium italic text-accent-ink">Uni</span>
+                  </>
+                )}
+              </span>
+              <span
+                className={cx(
+                  'shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold',
+                  isMinimal
+                    ? 'border border-line bg-surface-2 text-fg'
+                    : 'bg-pastel-butter/85 text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]',
+                )}
+              >
+                {UNI_PERSONAS.find((p) => p.id === uniPersona)?.label ?? 'Amigo'}
+              </span>
+            </button>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1">
+            <Button
+              size="sm"
+              variant="primary"
+              iconOnly
+              onClick={() => setConvsModalMode('new')}
+              aria-label="Nova conversa"
+              title="Nova conversa"
+            >
+              <Plus size={16} />
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              iconOnly
+              onClick={() => setMenuOpen(true)}
+              aria-label="Mais opções do Tutor"
+              title="Opções"
+            >
+              <MoreHorizontal size={17} />
+            </Button>
+          </div>
+        </div>
+
+        {mobileFiltersOpen && (
+          <div className="space-y-2 rounded-2xl border border-line bg-surface p-2.5 shadow-card">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <SegmentedControl
+                layoutId="tutor-persona-pill-mobile"
+                value={uniPersona}
+                onChange={(v) => updateSettings({ uniPersona: v as typeof uniPersona })}
+                items={UNI_PERSONAS.map((p) => ({ id: p.id, label: p.label }))}
+              />
+              <button
+                type="button"
+                onClick={() => setKeyGuideOpen(true)}
+                className="min-h-[38px] rounded-full border border-line bg-surface-2 px-3 text-xs font-medium tabular text-muted"
+              >
+                {quota.bypassed ? 'Ilimitado' : `${quota.chatRemaining}/${quota.chatLimit} msgs`}
+              </button>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileFiltersOpen(false);
+                  setNotebookOpen(true);
+                }}
+                className="flex min-h-[38px] items-center gap-1.5 rounded-full bg-pastel-butter/80 px-3 text-xs font-semibold text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]"
+              >
+                <Sparkles size={13} /> Caderno do Uni
+              </button>
+              {!isMinimal && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileFiltersOpen(false);
+                    setCollectiblesOpen(true);
+                  }}
+                  className="flex min-h-[38px] items-center gap-1.5 rounded-full bg-pastel-sage/65 px-3 text-xs font-semibold text-[#141312] dark:bg-[#23311B] dark:text-[#FAF6EC]"
+                >
+                  <Award size={13} /> Coleção
+                </button>
+              )}
+              <TabGuideHelpButton tabKey="assistente" />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Cabeçalho completo (Desktop md+) */}
+      <div className="hidden shrink-0 space-y-2.5 md:block">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="min-w-0">
-            <p className="hidden text-xs font-medium tracking-wide text-muted md:block">
+            <p className="text-xs font-medium tracking-wide text-muted">
               O teu companheiro de estudo
             </p>
-            <h1 className="truncate font-display text-[19px] font-bold leading-tight tracking-tight text-fg sm:text-xl md:text-2xl">
+            <h1 className="truncate font-display text-2xl font-bold leading-tight tracking-tight text-fg">
               Conversa com o{' '}
               <span className="font-serif font-medium italic text-accent-ink">Uni</span>
             </h1>
@@ -556,7 +669,7 @@ export default function Assistant() {
                 : `${quota.chatRemaining}/${quota.chatLimit} msgs`}
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-1.5 md:gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <TabGuideHelpButton tabKey="assistente" />
             <Button
               size="sm"
@@ -564,21 +677,20 @@ export default function Assistant() {
               onClick={() => setConvsModalMode('new')}
               aria-label="Nova conversa"
               title="Nova conversa"
-              className="min-h-[44px] px-2.5 md:px-3.5"
+              className="min-h-[44px] px-3.5"
             >
               <Plus size={16} />
-              <span className="hidden sm:inline">Nova conversa</span>
+              <span>Nova conversa</span>
             </Button>
             <Button
               size="sm"
               variant="secondary"
               onClick={() => setConvsModalMode('list')}
               aria-label={`Conversas (${conversations.length})`}
-              className="min-h-[44px] px-2.5 font-mono text-xs tabular-nums md:px-3.5 md:font-sans"
+              className="min-h-[44px] px-3.5 text-xs"
             >
               <FolderOpen size={15} />
-              <span className="md:hidden">{conversations.length}</span>
-              <span className="hidden md:inline">Conversas ({conversations.length})</span>
+              <span>Conversas ({conversations.length})</span>
             </Button>
             <Button
               variant="secondary"
@@ -614,7 +726,7 @@ export default function Assistant() {
                 <button
                   type="button"
                   onClick={() => setCollectiblesOpen(true)}
-                  className="hidden min-h-[44px] shrink-0 items-center gap-1.5 rounded-full bg-pastel-sage/65 px-3.5 py-1.5 text-xs font-semibold text-[#141312] transition hover:brightness-95 dark:bg-[#23311B] dark:text-[#FAF6EC] md:flex"
+                  className="flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full bg-pastel-sage/65 px-3.5 py-1.5 text-xs font-semibold text-[#141312] transition hover:brightness-95 dark:bg-[#23311B] dark:text-[#FAF6EC]"
                 >
                   <Award size={13} className="text-accent-ink dark:text-accent" />
                   <span>Coleção Uni</span>
@@ -622,7 +734,7 @@ export default function Assistant() {
               )}
             </div>
 
-            <div className="hidden items-center gap-2 md:flex">
+            <div className="flex items-center gap-2">
               <SegmentedControl
                 layoutId="tutor-persona-pill"
                 value={uniPersona}
@@ -640,61 +752,10 @@ export default function Assistant() {
                   : `${quota.chatRemaining}/${quota.chatLimit} msgs · Desbloquear`}
               </button>
             </div>
-
-            <button
-              type="button"
-              onClick={() => setMobileFiltersOpen((v) => !v)}
-              aria-expanded={mobileFiltersOpen}
-              aria-label="Personalidade, coleção e mensagens do Uni"
-              className={cx(
-                'flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition md:hidden',
-                mobileFiltersOpen
-                  ? 'border-accent bg-accent-soft text-accent-ink'
-                  : 'border-line bg-surface text-muted hover:text-fg',
-              )}
-            >
-              <SlidersHorizontal size={14} />
-              <span>Tom</span>
-            </button>
           </div>
 
-          {mobileFiltersOpen && (
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 md:hidden">
-              <SegmentedControl
-                layoutId="tutor-persona-pill-mobile"
-                value={uniPersona}
-                onChange={(v) => updateSettings({ uniPersona: v as typeof uniPersona })}
-                items={UNI_PERSONAS.map((p) => ({ id: p.id, label: p.label }))}
-              />
-
-              <div className="flex flex-wrap items-center gap-1.5">
-                {!isMinimal && (
-                  <button
-                    type="button"
-                    onClick={() => setCollectiblesOpen(true)}
-                    className="flex min-h-[40px] items-center gap-1 rounded-full bg-pastel-sage/65 px-3 text-xs font-semibold text-[#141312] dark:bg-[#23311B] dark:text-[#FAF6EC]"
-                  >
-                    <Award size={13} className="text-accent-ink dark:text-accent" />
-                    <span>Coleção</span>
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setKeyGuideOpen(true)}
-                  title="Ver como passar das 15 mensagens diárias com chave gratuita"
-                  className="min-h-[40px] rounded-full border border-line bg-surface px-3 py-1 text-xs font-medium tabular text-muted transition hover:border-accent hover:text-fg"
-                >
-                  {quota.bypassed
-                    ? 'Chave própria · Ilimitado'
-                    : `${quota.chatRemaining}/${quota.chatLimit} msgs`}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Filtro por assunto só antes de iniciar a conversa */}
           {messages.length === 0 && (
-            <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto pb-0.5 md:flex-wrap md:overflow-visible">
+            <div className="flex flex-wrap items-center gap-1.5 pb-0.5">
               {[{ id: 'all', label: 'Todos assuntos' }, ...TUTOR_SUBJECTS].map((subj) => {
                 const active = activeSubject === subj.id;
                 return (
@@ -703,7 +764,7 @@ export default function Assistant() {
                     type="button"
                     onClick={() => setActiveSubject(subj.id)}
                     className={cx(
-                      'min-h-[40px] shrink-0 rounded-full border px-3.5 text-xs font-medium transition',
+                      'min-h-[38px] shrink-0 rounded-full border px-3.5 text-xs font-medium transition',
                       active
                         ? 'border-accent bg-accent-soft font-semibold text-accent-ink'
                         : 'border-line bg-surface text-muted hover:text-fg',
@@ -717,12 +778,7 @@ export default function Assistant() {
           )}
 
           {filteredConversations.length > 0 && (
-            <div
-              className={cx(
-                'items-center gap-1.5 overflow-x-auto pb-0.5',
-                filteredConversations.length > 1 ? 'flex' : 'hidden md:flex',
-              )}
-            >
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
               {filteredConversations.slice(0, 6).map((c) => {
                 const isActive = c.id === activeConvId;
                 return (
@@ -803,39 +859,62 @@ export default function Assistant() {
 
             <div
               className={cx(
-                'flex flex-col items-center px-5 py-6 text-center sm:px-7 sm:py-7',
+                'flex flex-col items-center px-4 py-4 text-center sm:px-7 sm:py-7',
                 !isMinimal &&
                   'bg-[repeating-linear-gradient(to_bottom,transparent_0,transparent_31px,rgba(20,19,18,0.045)_31px,rgba(20,19,18,0.045)_32px)] dark:bg-none',
               )}
             >
               {!isMinimal && (
-                <div className="flex size-20 shrink-0 items-center justify-center rounded-full bg-pastel-butter/70 shadow-card dark:bg-surface-2">
+                <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-pastel-butter/70 shadow-card dark:bg-surface-2 sm:size-20">
                   <UniBuddy
                     mood={uniWelcomeMood}
                     accessory={uniAccessory}
-                    size={54}
+                    size={46}
                     onClick={() => setCollectiblesOpen(true)}
                     ariaLabel="Uni — tocar para abrir a coleção de estilos"
                   />
                 </div>
               )}
-              <h2 className={cx('font-display text-lg font-bold sm:text-xl', !isMinimal && 'mt-3.5')}>
+              <h2 className={cx('font-display text-base font-bold sm:text-xl', !isMinimal && 'mt-3 sm:mt-3.5')}>
                 Olá{userName ? `, ${userName}` : ''}! O que vamos{' '}
                 <span className={cx(!isMinimal && 'font-serif font-medium italic text-accent-ink dark:text-accent')}>
                   rever
                 </span>
                 ?
               </h2>
-              <p className="mt-1.5 max-w-sm text-sm text-muted">
+              <p className="mt-1 max-w-sm text-xs text-muted sm:mt-1.5 sm:text-sm">
                 Posso explicar conceitos difíceis, criar perguntas de exame ou rever os teus apontamentos e horários.
               </p>
+
+              {/* Seletor rápido de assunto inline no mobile sem roubar barra fixa */}
+              <div className="mt-3 flex w-full items-center gap-1.5 overflow-x-auto pb-0.5 md:hidden">
+                {[{ id: 'all', label: 'Todos' }, ...TUTOR_SUBJECTS].map((subj) => {
+                  const active = activeSubject === subj.id;
+                  return (
+                    <button
+                      key={subj.id}
+                      type="button"
+                      onClick={() => setActiveSubject(subj.id)}
+                      className={cx(
+                        'min-h-[34px] shrink-0 rounded-full border px-3 text-xs font-medium transition',
+                        active
+                          ? 'border-accent bg-accent-soft font-semibold text-accent-ink'
+                          : 'border-line bg-bg text-muted',
+                      )}
+                    >
+                      {subj.label}
+                    </button>
+                  );
+                })}
+              </div>
+
               {attachedMaterials.length > 0 && (
                 <p className="mt-2 rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent-ink">
                   {attachedMaterials.length} documento(s) ativo(s) neste chat
                 </p>
               )}
 
-              <div className="mt-4 flex flex-wrap justify-center gap-2">
+              <div className="mt-3 flex flex-wrap justify-center gap-1.5 sm:mt-4 sm:gap-2">
                 {[
                   'O que devo estudar hoje?',
                   'Cria um plano até ao próximo teste',
@@ -846,7 +925,7 @@ export default function Assistant() {
                     type="button"
                     disabled={loading}
                     onClick={() => void send(starter)}
-                    className="min-h-10 rounded-full border border-line bg-bg/85 px-3.5 py-1.5 text-xs font-semibold text-fg transition hover:border-accent hover:bg-accent-soft/45 disabled:opacity-50"
+                    className="min-h-9 rounded-full border border-line bg-bg/85 px-3 py-1 text-xs font-semibold text-fg transition hover:border-accent hover:bg-accent-soft/45 disabled:opacity-50 sm:min-h-10 sm:px-3.5 sm:py-1.5"
                   >
                     {starter}
                   </button>
@@ -1030,16 +1109,17 @@ export default function Assistant() {
         </div>
       )}
 
-      {/* Contexto do compositor + sugestões + entrada de mensagem */}
-      <div className="shrink-0 space-y-2 pt-2 md:space-y-2.5 md:pt-3">
-        <div className="flex items-center justify-between gap-1.5 sm:gap-2">
+      {/* Contexto do compositor + sugestões + entrada de mensagem (compacto estilo Gemini no mobile) */}
+      <div className="shrink-0 space-y-2 pt-1.5 md:space-y-2.5 md:pt-3">
+        {/* Desktop (md+): faixa fixa de cadeira / anexos / sugestões */}
+        <div className="hidden items-center justify-between gap-2 md:flex">
           <div className="flex min-w-0 items-center gap-1.5">
             <PillSelect
               value={activeCourseId}
               onChange={setActiveCourseId}
               icon={<BookOpen size={14} />}
               ariaLabel="Contexto da cadeira"
-              className="min-w-0 [&>button]:max-w-[140px] [&>button]:px-2.5 sm:[&>button]:max-w-[210px] sm:[&>button]:px-3"
+              className="min-w-0 [&>button]:max-w-[210px] [&>button]:px-3"
               options={[
                 { value: 'all', label: 'Todas as cadeiras', shortLabel: 'Todas', hint: 'Vista geral do semestre' },
                 ...courses.map((c) => ({
@@ -1055,17 +1135,14 @@ export default function Assistant() {
               onClick={() => setShowDocPicker(true)}
               aria-label="Anexar apontamentos"
               className={cx(
-                'flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-semibold transition sm:px-3',
+                'flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition',
                 attachedMaterials.length > 0
                   ? 'border-accent bg-accent-soft text-accent-ink'
                   : 'border-line bg-surface text-muted hover:text-fg',
               )}
             >
               <FileText size={14} />
-              <span className="sm:hidden">
-                {attachedMaterials.length === 0 ? 'Anexar' : `${attachedMaterials.length} anex.`}
-              </span>
-              <span className="hidden sm:inline">
+              <span>
                 {attachedMaterials.length === 0
                   ? 'Anexar apontamentos'
                   : `${attachedMaterials.length} anexado(s)`}
@@ -1078,13 +1155,25 @@ export default function Assistant() {
             aria-expanded={showActions}
             className="min-h-[44px] shrink-0 whitespace-nowrap px-2 text-xs font-medium text-muted hover:text-fg"
           >
-            <span className="sm:hidden">{showActions ? 'Ocultar' : 'Sugestões'}</span>
-            <span className="hidden sm:inline">{showActions ? 'Ocultar sugestões' : 'Mostrar sugestões'}</span>
+            {showActions ? 'Ocultar sugestões' : 'Mostrar sugestões'}
           </button>
         </div>
 
-        {attachedMaterials.length > 0 && (
+        {(activeCourse || attachedMaterials.length > 0) && (
           <div className="flex flex-wrap gap-1.5">
+            {activeCourse && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent-ink md:hidden">
+                <span className="max-w-[140px] truncate">{activeCourse.shortName || activeCourse.name}</span>
+                <button
+                  type="button"
+                  onClick={() => setActiveCourseId('all')}
+                  aria-label="Limpar filtro de cadeira"
+                  className="hover:text-danger"
+                >
+                  <X size={12} />
+                </button>
+              </span>
+            )}
             {attachedMaterials.map((m) => (
               <span
                 key={m.id}
@@ -1105,7 +1194,81 @@ export default function Assistant() {
         )}
 
         {showActions && <QuickActions disabled={loading} onSend={send} />}
-        <Composer loading={loading} onSend={send} onStop={stop} />
+        <Composer
+          loading={loading}
+          onSend={send}
+          onStop={stop}
+          leadingSlot={
+            <button
+              type="button"
+              onClick={() => setMobileComposerToolsOpen((v) => !v)}
+              aria-expanded={mobileComposerToolsOpen}
+              aria-label="Mais ferramentas de contexto (cadeira, apontamentos, sugestões)"
+              className={cx(
+                'grid size-10 shrink-0 place-items-center rounded-full transition md:hidden',
+                mobileComposerToolsOpen
+                  ? 'bg-accent-soft text-accent-ink'
+                  : 'text-muted hover:bg-surface-2 hover:text-fg',
+              )}
+            >
+              <SlidersHorizontal size={17} />
+            </button>
+          }
+          topSlot={
+            mobileComposerToolsOpen ? (
+              <div className="flex flex-wrap items-center gap-1.5 border-b border-line/70 px-1 pb-2 md:hidden">
+                <PillSelect
+                  value={activeCourseId}
+                  onChange={setActiveCourseId}
+                  icon={<BookOpen size={13} />}
+                  ariaLabel="Contexto da cadeira"
+                  className="min-w-0 [&>button]:min-h-[36px] [&>button]:max-w-[145px] [&>button]:px-2.5"
+                  options={[
+                    { value: 'all', label: 'Todas as cadeiras', shortLabel: 'Todas', hint: 'Vista geral do semestre' },
+                    ...courses.map((c) => ({
+                      value: c.id,
+                      label: c.shortName || c.name,
+                      hint: c.name !== c.shortName ? c.name : undefined,
+                      dotClass: courseColors[c.color]?.dot,
+                    })),
+                  ]}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileComposerToolsOpen(false);
+                    setShowDocPicker(true);
+                  }}
+                  className="flex min-h-[36px] items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg"
+                >
+                  <FileText size={13} />
+                  <span>Apontamentos</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileComposerToolsOpen(false);
+                    setShowActions((v) => !v);
+                  }}
+                  className="flex min-h-[36px] items-center gap-1 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg"
+                >
+                  <Sparkles size={13} />
+                  <span>{showActions ? 'Ocultar' : 'Sugestões'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileComposerToolsOpen(false);
+                    setNotebookOpen(true);
+                  }}
+                  className="flex min-h-[36px] items-center gap-1 rounded-full bg-pastel-butter/80 px-3 text-xs font-semibold text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]"
+                >
+                  <span>Caderno</span>
+                </button>
+              </div>
+            ) : undefined
+          }
+        />
       </div>
 
       <ActionSheet

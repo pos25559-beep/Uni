@@ -6,11 +6,9 @@ import {
   FolderOpen,
   LayoutDashboard,
   MoreHorizontal,
-  Moon,
   Settings,
   ShieldCheck,
   Sparkles,
-  Sun,
   Target,
   X,
 } from 'lucide-react';
@@ -18,7 +16,7 @@ import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { useEffect, useMemo, useState } from 'react';
 import { NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { auth, onAuthStateChanged, type User } from '../lib/firebase';
-import { hapticTap, resolveIsDark, syncNativeTheme } from '../lib/nativeBridge';
+import { hapticTap, syncNativeTheme } from '../lib/nativeBridge';
 import { initNotificationListeners, syncScheduledUniNotifications } from '../lib/notificationBridge';
 import { getUniCollectibleStates, readCollectibleTelemetry } from '../lib/uniCollectibles';
 import { googleService } from '../services/googleService';
@@ -73,7 +71,6 @@ export default function AppShell() {
   const semesterName = useStore((s) => s.settings.semesterName);
   const guestMode = Boolean(useStore((s) => s.settings.guestMode));
   const hasSeenWelcome = Boolean(useStore((s) => s.settings.hasSeenWelcome));
-  const updateSettings = useStore((s) => s.updateSettings);
   const academicProfile = useStore((s) => s.academicProfile);
   const assessments = useStore((s) => s.assessments);
   const classes = useStore((s) => s.classes);
@@ -108,7 +105,6 @@ export default function AppShell() {
     !isBypassRoute && !needsLoginGate && !academicProfile?.onboardingCompleted;
 
   const isMoreRouteActive = mobileMoreRoutes.some((r) => location.pathname.startsWith(r.to));
-  const isDarkNow = resolveIsDark(theme);
 
   const collectibleCounts = useMemo(() => {
     const items = getUniCollectibleStates(
@@ -208,11 +204,6 @@ export default function AppShell() {
     return <Navigate to="/configurar" replace />;
   }
 
-  const toggleTheme = () => {
-    void hapticTap();
-    updateSettings({ theme: isDarkNow ? 'light' : 'dark' });
-  };
-
   return (
     <MotionConfig reducedMotion={isMinimalTone ? 'always' : 'user'}>
     <div className="flex min-h-dvh h-dvh bg-bg text-fg">
@@ -274,15 +265,6 @@ export default function AppShell() {
 
         <AuthStatus />
 
-        <button
-          type="button"
-          onClick={toggleTheme}
-          className="flex min-h-[44px] items-center gap-3 rounded-full px-3.5 py-2 text-sm font-semibold text-muted transition hover:bg-surface-2 hover:text-fg"
-        >
-          {isDarkNow ? <Sun size={18} /> : <Moon size={18} />}
-          {isDarkNow ? 'Tema claro' : 'Tema escuro'}
-        </button>
-
         <div className="mt-3 flex items-center justify-between border-t border-line/70 px-3 pt-3 text-xs text-muted">
           <NavLink to="/privacidade" className="hover:text-fg hover:underline">
             Privacidade
@@ -310,7 +292,7 @@ export default function AppShell() {
               : isBypassRoute
                 ? 'pt-[env(safe-area-inset-top)] pb-[calc(1rem+env(safe-area-inset-bottom)+var(--keyboard-height,0px))] md:pb-6'
                 : isTutorRoute
-                  ? 'pt-[env(safe-area-inset-top)] pb-[calc(5.25rem+env(safe-area-inset-bottom)+var(--keyboard-height,0px))] md:pb-6'
+                  ? 'pt-[env(safe-area-inset-top)] pb-[calc(4.75rem+env(safe-area-inset-bottom)+var(--keyboard-height,0px))] md:pb-6'
                   : 'pt-[env(safe-area-inset-top)] pb-[calc(6.25rem+env(safe-area-inset-bottom)+var(--keyboard-height,0px))] md:pb-6',
         )}
       >
@@ -484,14 +466,12 @@ export default function AppShell() {
                 <AuthStatus />
 
                 <div className="flex items-center justify-between rounded-[18px] border border-line bg-bg px-3.5 py-2">
-                  <button
-                    type="button"
-                    onClick={toggleTheme}
-                    className="flex min-h-[44px] items-center gap-2 text-xs font-semibold text-fg"
+                  <NavLink
+                    to="/definicoes"
+                    className="inline-flex min-h-[44px] items-center gap-2 text-xs font-semibold text-fg"
                   >
-                    {isDarkNow ? <Sun size={16} /> : <Moon size={16} />}
-                    {isDarkNow ? 'Mudar para Claro' : 'Mudar para Escuro'}
-                  </button>
+                    <Settings size={15} /> Tema &amp; Aparência
+                  </NavLink>
                   <NavLink
                     to="/privacidade"
                     className="inline-flex min-h-[44px] items-center gap-1 text-xs font-semibold text-accent underline"

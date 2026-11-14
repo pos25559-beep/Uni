@@ -82,12 +82,68 @@ export async function getGoogleToken(): Promise<string> {
   });
 }
 
-/** fetch autenticado para as APIs Google; lança Error com a mensagem da API em caso de falha. */
-export async function googleFetch<T>(url: string, tokenOverride?: string): Promise<T> {
-  const token = tokenOverride || (await getGoogleToken());
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+export interface GoogleFetchOptions {
+  tokenOverride?: string;
+  timeoutMs?: number;
+  signal?: AbortSignal;
+}
+
+function buildTimedSignal(externalSignal?: AbortSignal, timeoutMs = 15_000): {
+  signal: AbortSignal;
+  cleanup: () => void;
+  didTimeout: () => boolean;
+} {
+  const controller = new AbortController();
+  let timedOut = false;
+  const onExternalAbort = () => controller.abort(externalSignal?.reason);
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      controller.abort(externalSignal.reason);
+    } else {
+      externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+    }
+  }
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort(new Error('Tempo limite excedido ao comunicar com a Google.'));
+  }, timeoutMs);
+  return {
+    signal: controller.signal,
+    didTimeout: () => timedOut,
+    cleanup: () => {
+      clearTimeout(timer);
+      externalSignal?.removeEventListener('abort', onExternalAbort);
+    },
+  };
+}
+
+/** fetch autenticado para as APIs Google; lança Error com a mensagem da API ou timeout. */
+export async function googleFetch<T>(
+  url: string,
+  tokenOrOpts?: string | GoogleFetchOptions,
+): Promise<T> {
+  const opts: GoogleFetchOptions =
+    typeof tokenOrOpts === 'string' ? { tokenOverride: tokenOrOpts } : (tokenOrOpts ?? {});
+  const token = opts.tokenOverride || (await getGoogleToken());
+  const { signal, cleanup, didTimeout } = buildTimedSignal(opts.signal, opts.timeoutMs ?? 15_000);
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal,
+    });
+  } catch (err) {
+    cleanup();
+    if (didTimeout()) {
+      throw new Error('A ligação ao Google Drive demorou demasiado no telemóvel. Tenta novamente.');
+    }
+    throw err;
+  }
+  cleanup();
+
   if (res.status === 401) {
-    if (!tokenOverride) {
+    if (!opts.tokenOverride) {
       cached = null;
       clearGoogleAccessToken();
     }

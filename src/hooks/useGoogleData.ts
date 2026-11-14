@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { googleService, type AcademicEmail } from '../services/googleService';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { googleService, type AcademicEmail, type AutoScanProgress } from '../services/googleService';
 import { useStore } from '../store/useStore';
 
 /**
@@ -121,26 +121,59 @@ export function useDriveAutoScan() {
   const sharedHubDriveUrls = useStore((s) => s.settings.sharedHubDriveUrls);
   const [scanning, setScanning] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [progress, setProgress] = useState<AutoScanProgress | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const cancelScan = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
 
   const runScan = useCallback(async () => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setScanning(true);
     setFeedback(null);
+    setProgress({ foldersScanned: 0, filesFound: 0, stage: 'A ligar ao Drive…' });
     try {
-      const res = await googleService.scanDriveForCourses(courses, true, sharedHubDriveUrls ?? []);
-      if (res.added > 0) {
+      const res = await googleService.scanDriveForCourses(courses, true, {
+        extraFolderUrls: sharedHubDriveUrls ?? [],
+        signal: controller.signal,
+        timeoutMs: 45_000,
+        onProgress: (p) => setProgress(p),
+      });
+      if (res.cancelled) {
+        setFeedback(
+          res.added > 0
+            ? `Varredura interrompida: ${res.added} materiais já encontrados foram guardados.`
+            : 'Varredura cancelada.',
+        );
+      } else if (res.timedOut) {
+        setFeedback(
+          res.added > 0
+            ? `Varredura parcial (tempo limite no telemóvel): ${res.added} materiais adicionados (${res.foldersScanned} pastas). Toca novamente para continuar.`
+            : `Tempo limite atingido ao varrer (${res.foldersScanned} pastas analisadas). Associa o link da pasta da cadeira para ir direto.`,
+        );
+      } else if (res.added > 0) {
         setFeedback(`Varredura concluída: ${res.added} novos materiais adicionados (${res.foldersScanned} pastas analisadas)!`);
       } else {
         setFeedback(`Varredura concluída (${res.foldersScanned} pastas, ${res.totalFound} ficheiros analisados): as pastas do Drive já estavam sincronizadas.`);
       }
-      setTimeout(() => setFeedback(null), 6000);
+      setTimeout(() => setFeedback(null), 7000);
     } catch (err: unknown) {
       const code = typeof err === 'object' && err && 'code' in err ? String((err as { code: unknown }).code) : '';
-      if (code !== 'auth/popup-closed-by-user') {
+      if (code === 'auth/popup-blocked') {
+        setFeedback('O navegador bloqueou a janela da Google. Permite pop-ups ou inicia sessão Google em Definições.');
+      } else if (code !== 'auth/popup-closed-by-user') {
         const msg = err instanceof Error ? err.message : 'Erro ao aceder ao Google Drive.';
         setFeedback(msg);
       }
     } finally {
+      if (abortRef.current === controller) {
+        abortRef.current = null;
+      }
       setScanning(false);
+      setProgress(null);
     }
   }, [courses, sharedHubDriveUrls]);
 
@@ -148,9 +181,11 @@ export function useDriveAutoScan() {
 
   return {
     scanning,
+    progress,
     feedback,
     isDriveConnected: googleService.isDriveConnected(),
     runScan,
+    cancelScan,
     clearFeedback,
   };
 }
