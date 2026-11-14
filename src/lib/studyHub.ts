@@ -176,7 +176,7 @@ export function getHubProgress(
       title: 'Horários & Aulas',
       hint: scheduleReady
         ? `${input.classes.length} bloco(s) de aula sincronizado(s)`
-        : 'Importa por foto do horário, Google Agenda ou texto do CLIP.',
+        : 'Importa por foto do horário, Google Agenda ou ficheiro do portal.',
       ready: scheduleReady,
       countLabel: scheduleReady ? `${input.classes.length} aulas` : undefined,
     },
@@ -186,8 +186,8 @@ export function getHubProgress(
       hint: assessmentsReady
         ? `${input.assessments.filter((a) => a.grade === undefined).length} avaliação(ões) agendada(s)`
         : flow.id.endsWith('_inicio')
-          ? 'Quando saírem as datas, adiciona aqui para ajustar o plano.'
-          : 'Adiciona os próximos testes/exames ou importa do CLIP / Google Agenda.',
+          ? 'Quando saírem as datas, adiciona aqui ou envia um print ao Uni.'
+          : 'Envia um print dos testes ao Uni, adiciona à mão ou liga à Google Agenda.',
       ready: assessmentsReady,
       countLabel: assessmentsReady
         ? `${input.assessments.filter((a) => a.grade === undefined).length} datas`
@@ -204,7 +204,7 @@ export function getHubProgress(
     },
     notebook: {
       key: 'notebook',
-      title: 'Gemini Notebook & Portais (CLIP/Moodle)',
+      title: 'Gemini Notebook & Portais Académicos',
       hint: notebookReady
         ? `${notebookCount} caderno(s) ou portal ligado(s)`
         : 'Guarda o link do teu Gemini Notebook ou portal da cadeira para abrir com 1 clique.',

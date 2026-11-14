@@ -1343,7 +1343,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                   <Input
                     value={userName}
                     onChange={(e) => setUserName(e.target.value)}
-                    placeholder="Ex: Pedro Silva"
+                    placeholder="Ex: Ana Martins"
                   />
                 </Field>
               </div>
@@ -2930,7 +2930,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                       type="email"
                       value={academicHint}
                       onChange={(e) => setAcademicHint(e.target.value)}
-                      placeholder="Ex: p.silva@campus.fct.unl.pt"
+                      placeholder="ex: nome@universidade.pt"
                       className="flex-1"
                     />
                     <Button

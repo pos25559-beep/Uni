@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   BookMarked,
   CalendarClock,
+  CalendarDays,
   Camera,
+  Check,
   CheckCircle2,
   ClipboardList,
-  Compass,
   ExternalLink,
   FolderGit2,
   FolderPlus,
@@ -39,7 +40,7 @@ import SmartScheduleImportModal from '../courses/SmartScheduleImportModal';
 import CloudPicker, { DRIVE_SOURCE } from '../materials/CloudPicker';
 import DeviceImportModal from '../materials/DeviceImportModal';
 import ClipImportModal from '../settings/ClipImportModal';
-import { Badge, Button, Field, Input, Modal, Select, cx, showToast } from '../ui';
+import { Button, Field, Input, Modal, Select, cx, showToast } from '../ui';
 
 interface Props {
   open: boolean;
@@ -48,7 +49,7 @@ interface Props {
   onPlanGenerated?: (sessionsCount: number, starterOnly: boolean) => void;
 }
 
-type ActiveSubModal = 'smart_photo' | 'clip' | 'gdrive' | 'device' | null;
+type ActiveSubModal = 'smart_photo' | 'test_photo' | 'test_gcal' | 'clip' | 'gdrive' | 'device' | null;
 
 const ASSESSMENT_KINDS: AssessmentKind[] = ['teste', 'exame', 'trabalho', 'projeto', 'quiz'];
 
@@ -89,17 +90,17 @@ export default function PostOnboardingHubModal({
   const [expandedStep, setExpandedStep] = useState<HubStepKey | null>(initialFocusStep);
   const [subModal, setSubModal] = useState<ActiveSubModal>(null);
 
-  // Quick Assessment inline state
+  // Avaliação rápida inline
   const [examCourseId, setExamCourseId] = useState(courses[0]?.id ?? '');
   const [examTitle, setExamTitle] = useState('1.º Teste');
   const [examKind, setExamKind] = useState<AssessmentKind>('teste');
   const [examDate, setExamDate] = useState(() => `${todayStr()}T10:00`);
   const [examWeight, setExamWeight] = useState(30);
 
-  // Shared Drive URL inline state
+  // Drives partilhados inline
   const [sharedDriveInput, setSharedDriveInput] = useState('');
 
-  // Gemini Notebook & Course Portal inline state
+  // Gemini Notebook & Portal inline
   const [personalNotebookInput, setPersonalNotebookInput] = useState(
     settings.personalNotebookUrl ?? '',
   );
@@ -299,53 +300,55 @@ export default function PostOnboardingHubModal({
     return <BookMarked size={16} />;
   };
 
-  const renderStepCard = (step: HubStepStatus, orderIdx: number) => {
+  const renderStepRow = (step: HubStepStatus, orderIdx: number) => {
     const isExpanded = expandedStep === step.key;
-    const isPriority = (step.requiredForFlow || orderIdx === 0) && !step.ready;
+    const statusText = step.ready
+      ? step.countLabel ?? 'Ligado'
+      : step.requiredForFlow
+        ? 'Recomendado'
+        : 'Por ligar';
 
     return (
       <div
         key={step.key}
         className={cx(
-          'rounded-2xl border transition',
-          step.ready
-            ? 'border-ok/35 bg-ok/5'
-            : isPriority
-              ? 'border-accent/45 bg-pastel-butter/35 dark:bg-surface-2'
-              : 'border-line bg-surface',
+          'transition-colors',
+          isExpanded && 'bg-surface/65 dark:bg-surface/55',
         )}
       >
         <button
           type="button"
           onClick={() => setExpandedStep(isExpanded ? null : step.key)}
-          className="flex min-h-[52px] w-full items-center justify-between gap-3 px-4 py-3 text-left"
+          className="flex min-h-[56px] w-full items-center justify-between gap-3 px-4 py-3 text-left"
         >
           <div className="flex min-w-0 items-center gap-3">
             <span
               className={cx(
-                'grid size-9 shrink-0 place-items-center rounded-xl',
-                step.ready ? 'bg-ok/15 text-ok' : 'bg-surface-2 text-accent',
+                'grid size-9 shrink-0 place-items-center rounded-xl transition-colors',
+                step.ready ? 'bg-ok/15 text-ok' : 'bg-surface text-accent shadow-xs',
               )}
             >
               {step.ready ? <CheckCircle2 size={17} /> : stepIcon(step.key)}
             </span>
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-xs font-bold text-fg">
-                  {orderIdx + 1}. {step.title}
-                </span>
-                {isPriority && <Badge tone="warn">Prioritário</Badge>}
-              </div>
+              <p className="text-sm font-semibold text-fg">
+                {orderIdx + 1}. {step.title}
+              </p>
               <p className="mt-0.5 text-xs text-muted">{step.hint}</p>
             </div>
           </div>
-          <Badge tone={step.ready ? 'ok' : 'neutral'}>
-            {step.countLabel ?? (step.requiredForFlow ? 'Por ligar' : 'Opcional')}
-          </Badge>
+          <span
+            className={cx(
+              'shrink-0 text-xs font-semibold tabular-nums',
+              step.ready ? 'text-ok' : 'text-muted',
+            )}
+          >
+            {statusText}
+          </span>
         </button>
 
         {isExpanded && (
-          <div className="space-y-3 border-t border-line/70 px-4 py-3.5">
+          <div className="space-y-3.5 px-4 pt-1 pb-4">
             {step.key === 'schedule' && (
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -360,13 +363,30 @@ export default function PostOnboardingHubModal({
                   variant="secondary"
                   onClick={() => setSubModal('clip')}
                 >
-                  <Link2 size={14} /> Colar CLIP / Ficheiro ICS
+                  <Link2 size={14} /> Colar texto / Ficheiro .ics
                 </Button>
               </div>
             )}
 
             {step.key === 'assessments' && (
-              <div className="space-y-3">
+              <div className="space-y-3.5">
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={() => setSubModal('test_photo')}
+                  >
+                    <Camera size={14} /> Ler print dos testes com o Uni
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setSubModal('test_gcal')}
+                  >
+                    <CalendarDays size={14} /> Extrair da Google Agenda
+                  </Button>
+                </div>
+
                 <div className="grid gap-2.5 sm:grid-cols-2">
                   <Field label="Cadeira">
                     <Select
@@ -423,8 +443,8 @@ export default function PostOnboardingHubModal({
                       />
                     </Field>
                   </div>
-                  <Button size="sm" variant="primary" onClick={handleAddQuickAssessment}>
-                    <Plus size={14} /> Adicionar avaliação
+                  <Button size="sm" variant="secondary" onClick={handleAddQuickAssessment}>
+                    <Plus size={14} /> Guardar avaliação manual
                   </Button>
                 </div>
               </div>
@@ -462,13 +482,10 @@ export default function PostOnboardingHubModal({
                   </Button>
                 </div>
 
-                <div className="space-y-2 rounded-xl bg-surface-2/80 p-3">
-                  <p className="text-xs font-semibold text-fg">
-                    Drives partilhados da turma / núcleo
-                  </p>
+                <div className="space-y-2 pt-1">
                   <div className="flex flex-wrap items-end gap-2">
                     <div className="min-w-0 flex-1">
-                      <Field label="Link da pasta no Google Drive">
+                      <Field label="Link de pasta partilhada (Google Drive)">
                         <Input
                           value={sharedDriveInput}
                           onChange={(e) => setSharedDriveInput(e.target.value)}
@@ -485,7 +502,7 @@ export default function PostOnboardingHubModal({
                       {sharedUrls.map((url) => (
                         <li
                           key={url}
-                          className="flex items-center justify-between gap-2 rounded-xl border border-line bg-surface px-3 py-1.5 text-xs"
+                          className="flex items-center justify-between gap-2 rounded-xl bg-surface-2 px-3 py-1.5 text-xs"
                         >
                           <span className="truncate text-muted">{url}</span>
                           <button
@@ -506,15 +523,15 @@ export default function PostOnboardingHubModal({
 
             {step.key === 'notebook' && (
               <div className="space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-pastel-lavender/45 px-3 py-2 text-xs dark:bg-surface-2">
-                  <span className="font-medium text-fg">
-                    Centraliza os teus cadernos no <strong>Gemini Notebook</strong> e links dos professores.
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
+                  <span>
+                    Centraliza os teus cadernos no <strong className="text-fg">Gemini Notebook</strong> e links da faculdade.
                   </span>
                   <a
                     href="https://notebooklm.google.com/"
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex min-h-[36px] items-center gap-1 rounded-full bg-surface px-2.5 py-1 font-semibold text-accent hover:underline"
+                    className="inline-flex min-h-[36px] items-center gap-1 rounded-full bg-surface-2 px-3 py-1 font-semibold text-accent hover:underline"
                   >
                     Abrir Gemini Notebook <ExternalLink size={12} />
                   </a>
@@ -550,11 +567,11 @@ export default function PostOnboardingHubModal({
                       />
                     </Field>
                     <div className="sm:col-span-2">
-                      <Field label="Portal / Página oficial da cadeira (CLIP/Moodle, opcional)">
+                      <Field label="Portal / Página oficial da cadeira (Moodle ou faculdade, opcional)">
                         <Input
                           value={coursePortalInput}
                           onChange={(e) => setCoursePortalInput(e.target.value)}
-                          placeholder="https://moodle... ou página da UC"
+                          placeholder="https://moodle... ou página oficial da cadeira"
                         />
                       </Field>
                     </div>
@@ -584,7 +601,7 @@ export default function PostOnboardingHubModal({
         footer={
           <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
             <Button variant="ghost" onClick={handleContinueLater}>
-              Continuar depois no Hoje
+              Continuar depois
             </Button>
             <Button variant="primary" onClick={handleGeneratePlanNow}>
               <Sparkles size={15} />
@@ -593,40 +610,32 @@ export default function PostOnboardingHubModal({
           </div>
         }
       >
-        <div className="space-y-4">
-          {/* Uni conversa inicial */}
-          <div className="flex items-start gap-3.5 rounded-[22px] bg-pastel-sage/65 p-4 text-[#141312] dark:bg-surface-2 dark:text-fg">
+        <div className="space-y-5">
+          {/* Uni conversa inicial sem caixas encadeadas */}
+          <div className="flex items-start gap-3.5 rounded-[22px] bg-pastel-sage/60 p-4 text-[#141312] dark:bg-surface-2 dark:text-fg">
             <div className="shrink-0">
-              <UniBuddy mood="happy" accessory={uniAccessory} size={54} interactive={false} />
+              <UniBuddy mood="happy" accessory={uniAccessory} size={52} interactive={false} />
             </div>
             <div className="min-w-0 space-y-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-accent">
-                  Hub Unipedia · {progress.readyCount}/{progress.totalCount} fontes ligadas
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <p className="font-display text-base font-bold leading-snug">
+                  {flowMeta.title}
+                </p>
+                <span className="text-xs font-semibold tabular-nums text-accent">
+                  {progress.readyCount}/{progress.totalCount} ligadas
                 </span>
-                <Badge tone="accent">
-                  <Compass size={11} /> {flowMeta.badge}
-                </Badge>
               </div>
-              <p className="font-display text-base font-bold leading-snug">
-                {flowMeta.title}
-              </p>
               <p className="text-xs leading-relaxed opacity-85">
                 {flowMeta.uniMessage}
               </p>
             </div>
           </div>
 
-          {/* Seleção dos 4 fluxos */}
+          {/* Seleção limpa dos 4 momentos */}
           <div className="space-y-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs font-bold uppercase tracking-wider text-muted">
-                Em que momento estás agora?
-              </p>
-              <span className="text-xs text-muted">
-                {inference.isFreshman ? 'Perfil 1.º ano detetado' : 'Perfil veterano detetado'}
-              </span>
-            </div>
+            <p className="text-sm font-semibold text-fg">
+              Em que momento do semestre estás?
+            </p>
             <div className="grid gap-2 sm:grid-cols-2">
               {Object.values(HUB_FLOWS).map((flow) => {
                 const active = selectedFlow === flow.id;
@@ -639,17 +648,16 @@ export default function PostOnboardingHubModal({
                     className={cx(
                       'flex min-h-[56px] flex-col items-start justify-between rounded-2xl border p-3 text-left transition',
                       active
-                        ? 'border-accent bg-pastel-butter/75 text-[#141312] shadow-sm dark:bg-accent/15 dark:text-fg'
-                        : 'border-line bg-surface hover:border-accent/50',
+                        ? 'border-accent bg-pastel-butter/70 text-[#141312] dark:bg-accent/15 dark:text-fg'
+                        : 'border-line bg-surface hover:border-accent/45',
                     )}
                   >
                     <div className="flex w-full items-center justify-between gap-2">
                       <span className="text-xs font-bold">{flow.shortLabel}</span>
-                      {suggested && (
-                        <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-semibold text-accent">
-                          Sugerido para ti
-                        </span>
-                      )}
+                      <span className="flex items-center gap-1 text-xs font-semibold text-accent">
+                        {suggested && <span>Sugerido</span>}
+                        {active && <Check size={14} />}
+                      </span>
                     </div>
                     <span className="mt-1 text-xs text-muted">{flow.description}</span>
                   </button>
@@ -658,22 +666,20 @@ export default function PostOnboardingHubModal({
             </div>
           </div>
 
-          {/* Checklist dinâmica priorizada pelo fluxo */}
+          {/* Lista unificada de fontes (estilo papelaria sem caixas aninhadas) */}
           <div className="space-y-2">
-            <p className="text-xs font-bold uppercase tracking-wider text-muted">
-              Fontes do teu Hub (podes ligar já ou mais tarde)
+            <p className="text-sm font-semibold text-fg">
+              Liga apenas o que já tiveres à mão
             </p>
-            <div className="space-y-2">
-              {progress.steps.map((step, idx) => renderStepCard(step, idx))}
+            <div className="divide-y divide-line overflow-hidden rounded-[22px] bg-surface-2/40 dark:bg-surface-2/35">
+              {progress.steps.map((step, idx) => renderStepRow(step, idx))}
             </div>
           </div>
 
-          {/* Nota de arranque quando não há provas */}
           {!assessmentsReady && (
-            <div className="rounded-2xl border border-accent/25 bg-pastel-sky/45 px-4 py-3 text-xs text-[#141312] dark:bg-surface-2 dark:text-fg">
-              <strong>Sem testes marcados ainda?</strong> Sem problema: ao clicar em{' '}
-              <em>Arrancar Plano de Semestre</em>, o Uni cria blocos ligeiros de consolidação pelas tuas cadeiras ativas e atualiza-os assim que tiveres datas.
-            </div>
+            <p className="rounded-2xl bg-pastel-sky/40 px-4 py-3 text-xs leading-relaxed text-[#141312] dark:bg-surface-2 dark:text-fg">
+              Sem testes marcados ainda? Ao arrancar o plano agora, o Uni distribui blocos ligeiros pelas tuas cadeiras ativas e recalcula tudo mal enviares um print ou data de teste.
+            </p>
           )}
         </div>
       </Modal>
@@ -681,8 +687,24 @@ export default function PostOnboardingHubModal({
       {subModal === 'smart_photo' && (
         <SmartScheduleImportModal
           initialMode="photo"
+          focus="schedule"
           onClose={() => setSubModal(null)}
           onOpenClipModal={() => setSubModal('clip')}
+        />
+      )}
+      {subModal === 'test_photo' && (
+        <SmartScheduleImportModal
+          initialMode="photo"
+          focus="assessments"
+          onClose={() => setSubModal(null)}
+          onOpenClipModal={() => setSubModal('clip')}
+        />
+      )}
+      {subModal === 'test_gcal' && (
+        <SmartScheduleImportModal
+          initialMode="gcal"
+          focus="assessments"
+          onClose={() => setSubModal(null)}
         />
       )}
       {subModal === 'clip' && (

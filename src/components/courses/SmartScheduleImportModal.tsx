@@ -85,12 +85,14 @@ export interface SmartScheduleImportSummary {
 
 export default function SmartScheduleImportModal({
   initialMode = 'photo',
+  focus = 'schedule',
   currentSemester,
   onClose,
   onOpenClipModal,
   onImported,
 }: {
   initialMode?: SmartImportInitialMode;
+  focus?: 'schedule' | 'assessments';
   currentSemester?: 1 | 2;
   onClose: () => void;
   onOpenClipModal?: () => void;
@@ -254,7 +256,7 @@ export default function SmartScheduleImportModal({
         const { base64, mimeType } = await readImageBase64(file);
 
         try {
-          const scheduleRes = await parseTimetableFromScreenshot(base64, mimeType);
+          const scheduleRes = await parseTimetableFromScreenshot(base64, mimeType, focus);
           anySucceeded = true;
           combinedSlots.push(...scheduleRes.slots);
           combinedAssessments.push(...scheduleRes.assessments);
@@ -264,15 +266,17 @@ export default function SmartScheduleImportModal({
           }
         }
 
-        try {
-          const historyRes = await parseAcademicHistoryFromScreenshot(base64, mimeType, {
-            currentSemester: activeSemester,
-          });
-          anySucceeded = true;
-          combinedCourses.push(...historyRes);
-        } catch (err) {
-          if (!firstError) {
-            firstError = err instanceof Error ? err : new Error(String(err));
+        if (focus === 'schedule') {
+          try {
+            const historyRes = await parseAcademicHistoryFromScreenshot(base64, mimeType, {
+              currentSemester: activeSemester,
+            });
+            anySucceeded = true;
+            combinedCourses.push(...historyRes);
+          } catch (err) {
+            if (!firstError) {
+              firstError = err instanceof Error ? err : new Error(String(err));
+            }
           }
         }
       }
@@ -433,7 +437,7 @@ export default function SmartScheduleImportModal({
     <Modal
       open
       onClose={onClose}
-      title="Importar horário ou agenda"
+      title={focus === 'assessments' ? 'Ler datas dos testes por print' : 'Importar horário ou agenda'}
       maxWidthClass="sm:max-w-xl"
       footer={
         <div className="flex w-full flex-wrap items-center justify-between gap-2">
@@ -521,15 +525,19 @@ export default function SmartScheduleImportModal({
             <div className="flex flex-wrap items-center justify-between gap-2">
               {isExpressive ? (
                 <StickerBadge tone="mint" tilt={-1.5}>
-                  <Camera size={11} /> Leitura rápida do horário
+                  <Camera size={11} /> {focus === 'assessments' ? 'Leitura de testes e provas' : 'Leitura rápida do horário'}
                 </StickerBadge>
               ) : (
-                <span className="font-semibold text-fg">Leitura de foto / print</span>
+                <span className="font-semibold text-fg">
+                  {focus === 'assessments' ? 'Print de testes e avaliações' : 'Leitura de foto / print'}
+                </span>
               )}
               <span className="text-[11px] opacity-75">PNG, JPG ou print</span>
             </div>
             <p className="leading-relaxed opacity-90">
-              Envia 1 ou mais fotos ou prints (ou arrasta para aqui). O Uni lê as cadeiras, horas, dias e salas por ti.
+              {focus === 'assessments'
+                ? 'Envia 1 ou mais prints da pauta de exames, calendário de testes ou datas da cadeira. O Uni lê as disciplinas, datas e horas por ti.'
+                : 'Envia 1 ou mais fotos ou prints (ou arrasta para aqui). O Uni lê as cadeiras, horas, dias e salas por ti.'}
             </p>
             <label className="inline-flex min-h-[42px] cursor-pointer items-center gap-2 rounded-full bg-ink-cta px-4 py-2 text-xs font-semibold text-ink-cta-fg shadow-card transition hover:opacity-90">
               {busy ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}

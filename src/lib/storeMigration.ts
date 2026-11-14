@@ -64,12 +64,6 @@ export function sanitizeMaterials(
   return { clean, removedCount };
 }
 
-const LEGACY_NAME_RE = /^\s*pedro(\s+de)?(\s+oliveira)?(\s+silva)?\s*$/i;
-
-function isLegacyAuthorName(name?: string): boolean {
-  return Boolean(name && LEGACY_NAME_RE.test(name));
-}
-
 function emptyAcademicProfile(): AcademicProfile {
   return {
     onboardingCompleted: false,
@@ -107,9 +101,6 @@ export function rehydrateStoreState(
 
   const courses = Array.isArray(state.courses) ? state.courses : [];
   state.settings = { ...defaultSettings, ...(state.settings ?? {}) };
-  if (isLegacyAuthorName(state.settings.userName)) {
-    state.settings.userName = '';
-  }
   if (
     courses.length === 0 &&
     state.settings.semesterName?.includes('(LEMc)')
@@ -157,9 +148,6 @@ export function migrateStoreState(persistedState: unknown, version: number) {
 
   const nextSettings = base.settings ? { ...base.settings } : undefined;
   if (nextSettings) {
-    if (isLegacyAuthorName(nextSettings.userName)) {
-      nextSettings.userName = '';
-    }
     if (cleanedCourses.length === 0 && nextSettings.semesterName?.includes('(LEMc)')) {
       nextSettings.semesterName = 'Semestre atual';
     }

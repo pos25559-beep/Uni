@@ -156,7 +156,7 @@ export default function AcademicGmailWidget() {
                   type="email"
                   value={emailInput}
                   onChange={(e) => setEmailInput(e.target.value)}
-                  placeholder="ex: nome@campus.fct.unl.pt"
+                  placeholder="ex: nome@universidade.pt"
                   aria-label="Email institucional"
                   className="min-h-[38px] flex-1 min-w-[190px] rounded-xl border border-black/15 bg-white/85 px-3 py-1.5 text-xs text-[#141312] placeholder:text-black/45 focus:border-[#157F58] focus:outline-none dark:border-white/15 dark:bg-black/30 dark:text-[#FAF6EC] dark:placeholder:text-white/40"
                 />

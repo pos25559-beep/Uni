@@ -806,14 +806,31 @@ Devolve APENAS JSON válido no formato: {"question": "pergunta objetiva em 1-2 f
   };
 }
 
-/** Extrai disciplinas, aulas semanais e datas de avaliação a partir de uma foto do horário/agenda. */
+/** Extrai disciplinas, aulas semanais e datas de avaliação a partir de uma foto do horário, testes ou agenda. */
 export async function parseTimetableFromScreenshot(
   base64Data: string,
   mimeType: string,
+  focus: 'schedule' | 'assessments' = 'schedule',
 ): Promise<ExtractedSchedulePayload> {
   const { customKey, model } = resolveGeminiConfig();
   const cleanBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
-  const prompt = `Analisa esta foto ou print de um horário escolar/universitário ou agenda académica portuguesa.
+  const prompt =
+    focus === 'assessments'
+      ? `Analisa esta foto ou print de um calendário de testes, pauta de exames, datas de avaliações ou entregas académicas em português.
+Devolve APENAS JSON válido no formato exato:
+{
+  "slots": [],
+  "assessments": [
+    {"courseName": "Nome ou sigla da cadeira", "title": "1.º Teste", "date": "2026-11-25T14:00:00", "kind": "teste|exame|trabalho|projeto|quiz"}
+  ]
+}
+Regras importantes para leitura de provas e testes:
+- Extrai TODAS as datas de testes, frequências, exames (normal/recurso), minitestes, quizzes, apresentações e entregas de projetos visíveis na imagem.
+- Formata date em ISO local "YYYY-MM-DDTHH:mm:00" (se não houver hora visível, usa "09:00:00"; se não houver ano visível, infere o ano letivo atual 2026/2027 com meses Set–Dez em 2026 e Jan–Jul em 2027).
+- kind deve ser exatamente um de: "teste", "exame", "trabalho", "projeto", "quiz".
+- Usa o nome ou sigla exata da cadeira visível (ex.: "Cálculo III D", "FabAd", "MdF", "SNTI").
+- Só devolvas "slots" se a imagem também contiver claramente uma grelha semanal de aulas. Caso contrário devolve "slots": [].`
+      : `Analisa esta foto ou print de um horário escolar/universitário ou agenda académica portuguesa.
 Devolve APENAS JSON válido no formato exato:
 {
   "slots": [

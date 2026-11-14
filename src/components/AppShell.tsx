@@ -21,12 +21,15 @@ import { auth, onAuthStateChanged, type User } from '../lib/firebase';
 import { hapticTap, resolveIsDark, syncNativeTheme } from '../lib/nativeBridge';
 import { getUniCollectibleStates, readCollectibleTelemetry } from '../lib/uniCollectibles';
 import { googleService } from '../services/googleService';
+import { useHubUiStore } from '../store/useHubUiStore';
 import { useStore } from '../store/useStore';
 import AuthStatus from './auth/AuthStatus';
 import UniCollectiblesModal from './brand/UniCollectiblesModal';
 import UniLivingOverlay from './brand/UniLivingOverlay';
 import { UnipediaLogoMark } from './brand/UnipediaMarks';
 import { UNIPEDIA_BOUNCE_SPRING, UNIPEDIA_SPRING } from './motion/Primitives';
+import PostOnboardingHubModal from './onboarding/PostOnboardingHubModal';
+import UniHubInviteOverlay from './onboarding/UniHubInviteOverlay';
 import { ToastViewport, cx } from './ui';
 
 const desktopNav = [
@@ -80,6 +83,9 @@ export default function AppShell() {
   const [authReady, setAuthReady] = useState<boolean>(() => Boolean(auth.currentUser));
   const [moreOpen, setMoreOpen] = useState(false);
   const [collectiblesOpen, setCollectiblesOpen] = useState(false);
+  const hubModalOpen = useHubUiStore((s) => s.modalOpen);
+  const hubModalStep = useHubUiStore((s) => s.focusStep);
+  const closeHubModal = useHubUiStore((s) => s.closeModal);
 
   const isBypassRoute = BYPASS_ONBOARDING_PATHS.some((p) => location.pathname.startsWith(p));
   const isFullBleedRoute =
@@ -480,6 +486,18 @@ export default function AppShell() {
 
       {/* Companheiros discretos apenas nas abas principais */}
       {!isBypassRoute && <UniLivingOverlay />}
+
+      {/* Convite flutuante do Uni após explorar + Hub global acessível em qualquer ecrã */}
+      {!isBypassRoute && (
+        <>
+          <UniHubInviteOverlay />
+          <PostOnboardingHubModal
+            open={hubModalOpen}
+            initialFocusStep={hubModalStep}
+            onClose={closeHubModal}
+          />
+        </>
+      )}
     </div>
   );
 }

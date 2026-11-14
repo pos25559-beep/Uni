@@ -229,7 +229,6 @@ export function isNonAcademicDocument(
     'apolice',
     'curriculo',
     'curriculum',
-    'cv pedro',
     'salario',
     'vencimento',
     'ordenado',

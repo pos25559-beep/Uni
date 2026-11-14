@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
@@ -12,7 +12,6 @@ import {
   CalendarDays,
   Check,
   Clock,
-  Compass,
   GraduationCap,
   HardDrive,
   MessageSquare,
@@ -23,7 +22,6 @@ import {
 import WeeklyTutorModal from '../components/assistant/WeeklyTutorModal';
 import UniCollectiblesModal from '../components/brand/UniCollectiblesModal';
 import { UniBuddy } from '../components/brand/UnipediaMarks';
-import PostOnboardingHubModal from '../components/onboarding/PostOnboardingHubModal';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import AcademicGmailWidget from '../components/home/AcademicGmailWidget';
 import { getUniCollectibleStates, readCollectibleTelemetry } from '../lib/uniCollectibles';
@@ -57,10 +55,7 @@ import {
 import { courseColors, kindLabel } from '../lib/colors';
 import { hapticSuccess, hapticTap } from '../lib/nativeBridge';
 import { analyzeTestMode } from '../lib/planner';
-import {
-  getHubProgress,
-  type HubStepKey,
-} from '../lib/studyHub';
+import { getHubProgress } from '../lib/studyHub';
 import { resolveUniAccessory } from '../lib/uniAccessories';
 import {
   daysUntil,
@@ -77,6 +72,7 @@ import {
   upcomingAssessments,
   urgency,
 } from '../lib/selectors';
+import { useHubUiStore } from '../store/useHubUiStore';
 import { newId, useStore } from '../store/useStore';
 import type { Assessment, Course, StudySession, Task } from '../types';
 
@@ -161,8 +157,7 @@ export default function Dashboard() {
   const [tutorOpen, setTutorOpen] = useState(false);
   const [uniBubbleOpen, setUniBubbleOpen] = useState(false);
   const [collectiblesOpen, setCollectiblesOpen] = useState(false);
-  const [hubModalOpen, setHubModalOpen] = useState(false);
-  const [hubModalStep, setHubModalStep] = useState<HubStepKey | null>(null);
+  const openHubModal = useHubUiStore((s) => s.openModal);
 
   const hubProgress = useMemo(
     () =>
@@ -177,29 +172,6 @@ export default function Dashboard() {
       }),
     [academicProfile, courses, classes, assessments, materials, sessions, settings],
   );
-
-  useEffect(() => {
-    if (
-      academicProfile?.onboardingCompleted &&
-      settings.tourCompleted &&
-      !settings.hubSetupCompleted &&
-      !settings.hubSetupDismissed
-    ) {
-      try {
-        if (sessionStorage.getItem('unipedia.hubAutoShown') === '1') return;
-        sessionStorage.setItem('unipedia.hubAutoShown', '1');
-      } catch {
-        // ignore storage error
-      }
-      setHubModalStep(null);
-      setHubModalOpen(true);
-    }
-  }, [
-    academicProfile?.onboardingCompleted,
-    settings.tourCompleted,
-    settings.hubSetupCompleted,
-    settings.hubSetupDismissed,
-  ]);
 
   const now = new Date();
   const today = todayStr();
@@ -400,30 +372,27 @@ export default function Dashboard() {
       {!settings.hubSetupDismissed && !hubProgress.allReady && (
         <section
           aria-label="Progresso do Hub de Estudo"
-          className="rounded-[24px] border border-[#141312]/10 bg-pastel-sage/55 p-4 text-[#141312] shadow-card dark:border-white/10 dark:bg-surface dark:text-fg"
+          className="rounded-[24px] bg-pastel-sage/55 p-4 text-[#141312] shadow-card dark:bg-surface dark:text-fg dark:ring-1 dark:ring-white/10"
         >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 flex-1 space-y-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1 rounded-full bg-surface/85 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-accent dark:bg-surface-2">
-                  <Compass size={11} /> Hub de Estudo · {hubProgress.flow.shortLabel}
-                </span>
-                <span className="text-xs font-semibold tabular opacity-80">
-                  {hubProgress.readyCount}/{hubProgress.totalCount} fontes ligadas
+              <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+                <h2 className="font-display text-base font-bold">
+                  Hub de Estudo · {hubProgress.flow.shortLabel}
+                </h2>
+                <span className="text-xs font-semibold tabular-nums text-accent">
+                  {hubProgress.readyCount}/{hubProgress.totalCount} ligadas
                 </span>
               </div>
               <p className="text-xs leading-relaxed opacity-85">
-                Liga o teu horário, datas de provas, Drives/PC e Gemini Notebook para um plano sempre afinado.
+                Liga horários, prints de testes, Drives/PC e Gemini Notebook para um plano sempre afinado.
               </p>
             </div>
             <div className="flex shrink-0 items-center justify-between gap-2 sm:justify-end">
               <Button
                 size="sm"
                 variant="primary"
-                onClick={() => {
-                  setHubModalStep(null);
-                  setHubModalOpen(true);
-                }}
+                onClick={() => openHubModal(null)}
               >
                 <Sparkles size={13} /> Completar Hub
               </Button>
@@ -463,10 +432,7 @@ export default function Dashboard() {
                 <button
                   key={step.key}
                   type="button"
-                  onClick={() => {
-                    setHubModalStep(step.key);
-                    setHubModalOpen(true);
-                  }}
+                  onClick={() => openHubModal(step.key)}
                   className={cx(
                     'inline-flex min-h-[44px] items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition',
                     step.ready
@@ -831,11 +797,6 @@ export default function Dashboard() {
 
       <WeeklyTutorModal open={tutorOpen} onClose={() => setTutorOpen(false)} />
       <UniCollectiblesModal open={collectiblesOpen} onClose={() => setCollectiblesOpen(false)} />
-      <PostOnboardingHubModal
-        open={hubModalOpen}
-        initialFocusStep={hubModalStep}
-        onClose={() => setHubModalOpen(false)}
-      />
     </AnimatedPage>
   );
 }
