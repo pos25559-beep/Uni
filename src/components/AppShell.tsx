@@ -120,7 +120,20 @@ export default function AppShell() {
     let active = true;
     const fallbackTimer = window.setTimeout(() => {
       if (active) setAuthReady(true);
-    }, 350);
+    }, 3500);
+
+    // Espera determinística pela hidratação da sessão IndexedDB antes de aplicar o gate de login.
+    if (typeof auth.authStateReady === 'function') {
+      void auth
+        .authStateReady()
+        .then(() => {
+          if (!active) return;
+          window.clearTimeout(fallbackTimer);
+          setFirebaseUser(auth.currentUser);
+          setAuthReady(true);
+        })
+        .catch(() => {});
+    }
 
     const unsub = onAuthStateChanged(auth, (u) => {
       if (!active) return;
@@ -197,7 +210,15 @@ export default function AppShell() {
   }
 
   if (needsLoginGate && authReady) {
-    return <Navigate to={hasSeenWelcome ? '/entrar' : '/bem-vindo'} replace />;
+    if (!hasSeenWelcome) {
+      return <Navigate to="/bem-vindo" replace />;
+    }
+    const returnTarget = `${location.pathname}${location.search}`;
+    const loginUrl =
+      returnTarget && returnTarget !== '/'
+        ? `/entrar?next=${encodeURIComponent(returnTarget)}`
+        : '/entrar';
+    return <Navigate to={loginUrl} replace />;
   }
 
   if (needsOnboardingSetup && authReady) {

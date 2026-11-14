@@ -3,15 +3,18 @@ import {
   BookOpen,
   CalendarDays,
   Check,
+  ChevronDown,
   FileText,
   FolderOpen,
+  Menu,
   MessageSquare,
   MoreHorizontal,
+  Paperclip,
   Plus,
   RotateCcw,
   Shield,
-  SlidersHorizontal,
   Sparkles,
+  SquarePen,
   Trash2,
   X,
 } from 'lucide-react';
@@ -26,7 +29,6 @@ import WeeklyTutorModal from '../components/assistant/WeeklyTutorModal';
 import UniCollectiblesModal from '../components/brand/UniCollectiblesModal';
 import { UniBuddy } from '../components/brand/UnipediaMarks';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
-import { StickerBadge } from '../components/motion/Primitives';
 import GeminiKeyGuideModal from '../components/settings/GeminiKeyGuideModal';
 import { useNavigate } from 'react-router-dom';
 import { ActionSheet, Badge, Button, Modal, PillSelect, SegmentedControl, cx, showToast } from '../components/ui';
@@ -537,71 +539,74 @@ export default function Assistant() {
     [syncingMsgId, updatePendingSyncForMsg],
   );
 
+  const firstName = userName?.trim().split(/\s+/)[0] || '';
+
   return (
-    <div className="flex h-[calc(100dvh-5.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)-var(--keyboard-height,0px))] min-h-0 flex-col md:h-[calc(100dvh-3.5rem)]">
-      {/* Cabeçalho compacto estilo Gemini App no telemóvel (< md) */}
-      <div className="shrink-0 space-y-2 border-b border-line/70 pb-2 md:hidden">
+    <div className="flex h-[calc(100dvh-5.25rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)-var(--keyboard-height,0px))] min-h-0 flex-col md:h-[calc(100dvh-3.5rem)]">
+      {/* Cabeçalho minimalista estilo app Gemini no telemóvel (< md) */}
+      <div className="shrink-0 space-y-2 pb-1 md:hidden">
         <div className="flex items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <Button
-              size="sm"
-              variant="secondary"
+          <div className="flex min-w-0 items-center gap-1">
+            <button
+              type="button"
               onClick={() => setConvsModalMode('list')}
               aria-label={`Conversas (${conversations.length})`}
-              className="min-h-[42px] px-2.5 font-mono text-xs tabular-nums"
+              className="relative grid size-10 shrink-0 place-items-center rounded-full text-fg transition hover:bg-surface-2"
             >
-              <FolderOpen size={15} />
-              <span>{conversations.length}</span>
-            </Button>
+              <Menu size={20} />
+              {conversations.length > 0 && (
+                <span
+                  aria-hidden="true"
+                  className="absolute right-1.5 top-1.5 size-2 rounded-full bg-accent"
+                />
+              )}
+            </button>
 
             <button
               type="button"
               onClick={() => setMobileFiltersOpen((v) => !v)}
               aria-expanded={mobileFiltersOpen}
               aria-label="Mudar estilo e ver estado do Uni"
-              className="flex min-h-[42px] min-w-0 items-center gap-1.5 rounded-full px-2 text-left transition hover:bg-surface-2"
+              className="flex min-h-[40px] min-w-0 items-center gap-1.5 rounded-full px-2 text-left transition hover:bg-surface-2"
             >
-              <span className="truncate font-display text-base font-bold text-fg">
-                {currentConv && messages.length > 0 ? currentConv.title : (
+              <span className="truncate font-display text-lg font-bold tracking-tight text-fg">
+                {currentConv && messages.length > 0 ? (
+                  currentConv.title
+                ) : (
                   <>
-                    Conversa <span className="font-serif font-medium italic text-accent-ink">Uni</span>
+                    Uni{' '}
+                    <span className="font-normal text-muted">
+                      {UNI_PERSONAS.find((p) => p.id === uniPersona)?.label ?? 'Amigo'}
+                    </span>
                   </>
                 )}
               </span>
-              <span
-                className={cx(
-                  'shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold',
-                  isMinimal
-                    ? 'border border-line bg-surface-2 text-fg'
-                    : 'bg-pastel-butter/85 text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]',
-                )}
-              >
-                {UNI_PERSONAS.find((p) => p.id === uniPersona)?.label ?? 'Amigo'}
-              </span>
+              <ChevronDown
+                size={15}
+                className={cx('shrink-0 text-muted transition-transform', mobileFiltersOpen && 'rotate-180')}
+              />
             </button>
           </div>
 
-          <div className="flex shrink-0 items-center gap-1">
-            <Button
-              size="sm"
-              variant="primary"
-              iconOnly
+          <div className="flex shrink-0 items-center gap-0.5">
+            <button
+              type="button"
               onClick={() => setConvsModalMode('new')}
               aria-label="Nova conversa"
               title="Nova conversa"
+              className="grid size-10 place-items-center rounded-full text-fg transition hover:bg-surface-2"
             >
-              <Plus size={16} />
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              iconOnly
+              <SquarePen size={18} />
+            </button>
+            <button
+              type="button"
               onClick={() => setMenuOpen(true)}
               aria-label="Mais opções do Tutor"
               title="Opções"
+              className="grid size-10 place-items-center rounded-full text-muted transition hover:bg-surface-2 hover:text-fg"
             >
-              <MoreHorizontal size={17} />
-            </Button>
+              <MoreHorizontal size={19} />
+            </button>
           </div>
         </div>
 
@@ -840,97 +845,85 @@ export default function Assistant() {
         {messages.length === 0 && (
           <section
             className={cx(
-              'mx-auto my-2 max-w-xl overflow-hidden shadow-card',
-              isMinimal
-                ? 'rounded-2xl border border-line bg-surface'
-                : 'rounded-[26px] border border-line/70 bg-surface',
+              'mx-auto flex min-h-full w-full max-w-xl flex-col items-center justify-center px-2 py-4 text-center sm:px-6 sm:py-8',
+              !isMinimal &&
+                'bg-[radial-gradient(ellipse_at_50%_42%,rgba(201,220,159,0.22),transparent_68%)] dark:bg-[radial-gradient(ellipse_at_50%_42%,rgba(21,127,88,0.16),transparent_65%)]',
             )}
           >
-            {!isMinimal && (
-              <div className="flex items-center justify-between gap-2 bg-pastel-sage/70 px-5 py-3 text-[#141312] dark:bg-[#23311B] dark:text-[#FAF6EC]">
-                <span className="flex items-center gap-1.5 font-display text-xs font-bold uppercase tracking-wider opacity-85">
-                  <Sparkles size={13} /> Caderno do Tutor
-                </span>
-                <StickerBadge tone="butter" tilt={-2}>
-                  {UNI_PERSONAS.find((p) => p.id === uniPersona)?.label ?? 'Amigo'}
-                </StickerBadge>
+            {!isMinimal ? (
+              <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-pastel-butter/75 shadow-card dark:bg-surface-2 sm:size-20">
+                <UniBuddy
+                  mood={uniWelcomeMood}
+                  accessory={uniAccessory}
+                  size={44}
+                  onClick={() => setCollectiblesOpen(true)}
+                  ariaLabel="Uni — tocar para abrir a coleção de estilos"
+                />
+              </div>
+            ) : (
+              <div className="grid size-12 shrink-0 place-items-center rounded-full border border-line bg-surface text-accent">
+                <Sparkles size={20} />
               </div>
             )}
 
-            <div
-              className={cx(
-                'flex flex-col items-center px-4 py-4 text-center sm:px-7 sm:py-7',
-                !isMinimal &&
-                  'bg-[repeating-linear-gradient(to_bottom,transparent_0,transparent_31px,rgba(20,19,18,0.045)_31px,rgba(20,19,18,0.045)_32px)] dark:bg-none',
-              )}
-            >
-              {!isMinimal && (
-                <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-pastel-butter/70 shadow-card dark:bg-surface-2 sm:size-20">
-                  <UniBuddy
-                    mood={uniWelcomeMood}
-                    accessory={uniAccessory}
-                    size={46}
-                    onClick={() => setCollectiblesOpen(true)}
-                    ariaLabel="Uni — tocar para abrir a coleção de estilos"
-                  />
-                </div>
-              )}
-              <h2 className={cx('font-display text-base font-bold sm:text-xl', !isMinimal && 'mt-3 sm:mt-3.5')}>
-                Olá{userName ? `, ${userName}` : ''}! O que vamos{' '}
+            <h2 className="mt-4 font-display text-2xl font-bold leading-tight tracking-tight text-fg sm:mt-5 sm:text-3xl">
+              Olá{firstName ? `, ${firstName}` : ''}!{' '}
+              <span className="block sm:inline">
+                No que estás{' '}
                 <span className={cx(!isMinimal && 'font-serif font-medium italic text-accent-ink dark:text-accent')}>
-                  rever
+                  a pensar
                 </span>
                 ?
-              </h2>
-              <p className="mt-1 max-w-sm text-xs text-muted sm:mt-1.5 sm:text-sm">
-                Posso explicar conceitos difíceis, criar perguntas de exame ou rever os teus apontamentos e horários.
-              </p>
+              </span>
+            </h2>
+            <p className="mt-2 max-w-sm text-xs leading-relaxed text-muted sm:text-sm">
+              Explica matéria, gera planos até ao próximo teste ou revê os teus apontamentos.
+            </p>
 
-              {/* Seletor rápido de assunto inline no mobile sem roubar barra fixa */}
-              <div className="mt-3 flex w-full items-center gap-1.5 overflow-x-auto pb-0.5 md:hidden">
-                {[{ id: 'all', label: 'Todos' }, ...TUTOR_SUBJECTS].map((subj) => {
-                  const active = activeSubject === subj.id;
-                  return (
-                    <button
-                      key={subj.id}
-                      type="button"
-                      onClick={() => setActiveSubject(subj.id)}
-                      className={cx(
-                        'min-h-[34px] shrink-0 rounded-full border px-3 text-xs font-medium transition',
-                        active
-                          ? 'border-accent bg-accent-soft font-semibold text-accent-ink'
-                          : 'border-line bg-bg text-muted',
-                      )}
-                    >
-                      {subj.label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {attachedMaterials.length > 0 && (
-                <p className="mt-2 rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent-ink">
-                  {attachedMaterials.length} documento(s) ativo(s) neste chat
-                </p>
-              )}
-
-              <div className="mt-3 flex flex-wrap justify-center gap-1.5 sm:mt-4 sm:gap-2">
-                {[
-                  'O que devo estudar hoje?',
-                  'Cria um plano até ao próximo teste',
-                  'Faz-me um quiz rápido',
-                ].map((starter) => (
+            {/* Seletor discreto de assunto inline no mobile sem roubar espaço ao chat */}
+            <div className="mt-4 flex max-w-full items-center gap-1.5 overflow-x-auto pb-0.5 md:hidden">
+              {[{ id: 'all', label: 'Todos' }, ...TUTOR_SUBJECTS].map((subj) => {
+                const active = activeSubject === subj.id;
+                return (
                   <button
-                    key={starter}
+                    key={subj.id}
                     type="button"
-                    disabled={loading}
-                    onClick={() => void send(starter)}
-                    className="min-h-9 rounded-full border border-line bg-bg/85 px-3 py-1 text-xs font-semibold text-fg transition hover:border-accent hover:bg-accent-soft/45 disabled:opacity-50 sm:min-h-10 sm:px-3.5 sm:py-1.5"
+                    onClick={() => setActiveSubject(subj.id)}
+                    className={cx(
+                      'min-h-[34px] shrink-0 rounded-full px-3 text-xs font-medium transition',
+                      active
+                        ? 'bg-accent-soft font-semibold text-accent-ink'
+                        : 'bg-surface/80 text-muted hover:text-fg',
+                    )}
                   >
-                    {starter}
+                    {subj.label}
                   </button>
-                ))}
-              </div>
+                );
+              })}
+            </div>
+
+            {attachedMaterials.length > 0 && (
+              <p className="mt-2.5 rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent-ink">
+                {attachedMaterials.length} documento(s) ativo(s) neste chat
+              </p>
+            )}
+
+            <div className="mt-4 flex flex-wrap justify-center gap-2 sm:mt-5">
+              {[
+                'O que devo estudar hoje?',
+                'Cria um plano até ao próximo teste',
+                'Faz-me um quiz rápido',
+              ].map((starter) => (
+                <button
+                  key={starter}
+                  type="button"
+                  disabled={loading}
+                  onClick={() => void send(starter)}
+                  className="min-h-10 rounded-full border border-line/80 bg-surface/90 px-3.5 py-1.5 text-xs font-medium text-fg shadow-sm transition hover:border-accent hover:bg-accent-soft/45 disabled:opacity-50"
+                >
+                  {starter}
+                </button>
+              ))}
             </div>
           </section>
         )}
@@ -1198,31 +1191,48 @@ export default function Assistant() {
           loading={loading}
           onSend={send}
           onStop={stop}
+          hidePaperclipOnMobile
+          placeholder="Pergunta ao Uni…"
           leadingSlot={
             <button
               type="button"
               onClick={() => setMobileComposerToolsOpen((v) => !v)}
               aria-expanded={mobileComposerToolsOpen}
-              aria-label="Mais ferramentas de contexto (cadeira, apontamentos, sugestões)"
+              aria-label="Anexar e ferramentas do Tutor"
               className={cx(
                 'grid size-10 shrink-0 place-items-center rounded-full transition md:hidden',
                 mobileComposerToolsOpen
                   ? 'bg-accent-soft text-accent-ink'
-                  : 'text-muted hover:bg-surface-2 hover:text-fg',
+                  : 'text-fg/80 hover:bg-surface-2 hover:text-fg',
               )}
             >
-              <SlidersHorizontal size={17} />
+              <Plus
+                size={20}
+                className={cx('transition-transform duration-150', mobileComposerToolsOpen && 'rotate-45')}
+              />
             </button>
           }
-          topSlot={
+          topSlot={({ openFilePicker }) =>
             mobileComposerToolsOpen ? (
               <div className="flex flex-wrap items-center gap-1.5 border-b border-line/70 px-1 pb-2 md:hidden">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileComposerToolsOpen(false);
+                    openFilePicker();
+                  }}
+                  aria-label="Anexar foto ou PDF de apontamentos"
+                  className="flex min-h-[36px] items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg"
+                >
+                  <Paperclip size={13} />
+                  <span>Foto / PDF</span>
+                </button>
                 <PillSelect
                   value={activeCourseId}
                   onChange={setActiveCourseId}
                   icon={<BookOpen size={13} />}
                   ariaLabel="Contexto da cadeira"
-                  className="min-w-0 [&>button]:min-h-[36px] [&>button]:max-w-[145px] [&>button]:px-2.5"
+                  className="min-w-0 [&>button]:min-h-[36px] [&>button]:max-w-[140px] [&>button]:px-2.5"
                   options={[
                     { value: 'all', label: 'Todas as cadeiras', shortLabel: 'Todas', hint: 'Vista geral do semestre' },
                     ...courses.map((c) => ({
@@ -1266,7 +1276,7 @@ export default function Assistant() {
                   <span>Caderno</span>
                 </button>
               </div>
-            ) : undefined
+            ) : null
           }
         />
       </div>

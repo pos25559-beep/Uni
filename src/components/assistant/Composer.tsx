@@ -1,26 +1,48 @@
-import { FileText, Image as ImageIcon, Paperclip, Send, Square, X } from 'lucide-react';
+import { FileText, Image as ImageIcon, Paperclip, ArrowUp, Square, X } from 'lucide-react';
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { ChangeEvent, KeyboardEvent, ReactNode } from 'react';
 import { fileToChatAttachment, type ChatAttachment } from '../../integrations/gemini';
-import { showToast } from '../ui';
+import { cx, showToast } from '../ui';
+
+export interface ComposerSlotHelpers {
+  openFilePicker: () => void;
+}
 
 interface Props {
   disabled?: boolean;
   loading: boolean;
   onSend: (text: string, attachments?: ChatAttachment[]) => void;
   onStop: () => void;
-  leadingSlot?: ReactNode;
-  topSlot?: ReactNode;
+  leadingSlot?: ReactNode | ((helpers: ComposerSlotHelpers) => ReactNode);
+  topSlot?: ReactNode | ((helpers: ComposerSlotHelpers) => ReactNode);
+  hidePaperclipOnMobile?: boolean;
+  placeholder?: string;
 }
 
 const MAX_HEIGHT = 160;
 const MAX_ATTACHMENTS = 3;
 
-export function Composer({ disabled, loading, onSend, onStop, leadingSlot, topSlot }: Props) {
+export function Composer({
+  disabled,
+  loading,
+  onSend,
+  onStop,
+  leadingSlot,
+  topSlot,
+  hidePaperclipOnMobile = false,
+  placeholder = 'Pergunta ao Uni…',
+}: Props) {
   const [text, setText] = useState('');
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const ref = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const slotHelpers: ComposerSlotHelpers = {
+    openFilePicker: () => fileRef.current?.click(),
+  };
+  const resolvedTopSlot = typeof topSlot === 'function' ? topSlot(slotHelpers) : topSlot;
+  const resolvedLeadingSlot =
+    typeof leadingSlot === 'function' ? leadingSlot(slotHelpers) : leadingSlot;
 
   // Cresce com o conteúdo até um limite; depois passa a fazer scroll.
   useLayoutEffect(() => {
@@ -80,8 +102,8 @@ export function Composer({ disabled, loading, onSend, onStop, leadingSlot, topSl
   };
 
   return (
-    <div className="space-y-2 rounded-[26px] border border-line/80 bg-surface p-2 shadow-card focus-within:border-accent">
-      {topSlot}
+    <div className="space-y-2 rounded-[28px] border border-line/75 bg-surface px-2.5 py-2 shadow-card transition focus-within:border-accent">
+      {resolvedTopSlot}
       {attachments.length > 0 && (
         <div className="flex flex-wrap gap-1.5 px-1 pt-0.5">
           {attachments.map((att) => (
@@ -108,8 +130,8 @@ export function Composer({ disabled, loading, onSend, onStop, leadingSlot, topSl
         </div>
       )}
 
-      <div className="flex items-end gap-1">
-        {leadingSlot}
+      <div className="flex items-end gap-1.5">
+        {resolvedLeadingSlot}
         <input
           ref={fileRef}
           type="file"
@@ -124,7 +146,10 @@ export function Composer({ disabled, loading, onSend, onStop, leadingSlot, topSl
           onClick={() => fileRef.current?.click()}
           aria-label="Anexar foto ou PDF de apontamentos"
           title="Anexar foto ou PDF"
-          className="grid size-10 shrink-0 place-items-center rounded-full text-muted transition hover:bg-surface-2 hover:text-fg disabled:cursor-not-allowed disabled:opacity-40 sm:size-11"
+          className={cx(
+            'place-items-center rounded-full text-muted transition hover:bg-surface-2 hover:text-fg disabled:cursor-not-allowed disabled:opacity-40 size-10 shrink-0 sm:size-11',
+            hidePaperclipOnMobile ? 'hidden md:grid' : 'grid',
+          )}
         >
           <Paperclip size={18} />
         </button>
@@ -136,10 +161,10 @@ export function Composer({ disabled, loading, onSend, onStop, leadingSlot, topSl
           disabled={disabled}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKeyDown}
-          placeholder="Pergunta algo ou envia fotos/PDFs da sebenta…"
+          placeholder={placeholder}
           aria-label="Mensagem para o assistente"
           style={{ minHeight: 40 }}
-          className="max-h-40 min-w-0 flex-1 resize-none bg-transparent px-1.5 py-2 text-sm text-fg placeholder:text-muted/70 focus:outline-none disabled:cursor-not-allowed"
+          className="max-h-40 min-w-0 flex-1 resize-none bg-transparent px-1.5 py-2 text-sm text-fg placeholder:text-muted/75 focus:outline-none disabled:cursor-not-allowed"
         />
 
         {loading ? (
@@ -147,9 +172,9 @@ export function Composer({ disabled, loading, onSend, onStop, leadingSlot, topSl
             type="button"
             onClick={onStop}
             aria-label="Parar"
-            className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl border border-line bg-surface-2 px-3 text-sm font-medium text-fg hover:border-muted/50"
+            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-line bg-surface-2 px-3.5 text-sm font-medium text-fg hover:border-muted/50"
           >
-            <Square size={14} className="fill-current" />
+            <Square size={13} className="fill-current" />
             Parar
           </button>
         ) : (
@@ -158,9 +183,9 @@ export function Composer({ disabled, loading, onSend, onStop, leadingSlot, topSl
             onClick={submit}
             disabled={!canSend}
             aria-label="Enviar mensagem"
-            className="grid size-11 shrink-0 place-items-center rounded-2xl bg-ink-cta text-ink-cta-fg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+            className="grid size-10 shrink-0 place-items-center rounded-full bg-ink-cta text-ink-cta-fg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-35"
           >
-            <Send size={17} />
+            <ArrowUp size={18} strokeWidth={2.2} />
           </button>
         )}
       </div>

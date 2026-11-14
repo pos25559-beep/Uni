@@ -60,7 +60,7 @@ export default function AuthStatus() {
   return (
     <div className="mb-3 rounded-[18px] border border-line bg-bg p-3">
       <div className="flex items-center justify-between gap-2">
-        <Link to="/entrar" className="flex min-w-0 flex-1 items-center gap-2.5">
+        <Link to="/entrar?manage=1" className="flex min-w-0 flex-1 items-center gap-2.5">
           {user.photoURL ? (
             <img src={user.photoURL} alt="" className="size-8 shrink-0 rounded-full object-cover" />
           ) : (

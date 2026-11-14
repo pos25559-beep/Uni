@@ -115,15 +115,29 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
+  const rawNext = searchParams.get('next');
+  const safeNext =
+    rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : null;
+  const isManageMode = searchParams.get('manage') === '1';
+  const postLoginTarget = (done: boolean) => (done ? (safeNext ?? '/') : '/configurar');
+
   const isNative = Capacitor.isNativePlatform();
   const showBack = Boolean(user || guestMode);
 
   useEffect(() => {
+    const incomingLink = isIncomingEmailSignInLink();
+    const resolveTarget = (done: boolean) => (done ? (safeNext ?? '/') : '/configurar');
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setError(null);
+      if (u && !incomingLink && !isManageMode) {
+        const done = Boolean(useStore.getState().academicProfile?.onboardingCompleted);
+        if (safeNext || done) {
+          navigate(resolveTarget(done), { replace: true });
+        }
+      }
     });
-    if (isIncomingEmailSignInLink()) {
+    if (incomingLink) {
       const pendingEmail = getPendingMagicLinkEmail();
       if (pendingEmail) {
         void completeMagicEmailLinkSignIn(pendingEmail)
@@ -142,7 +156,7 @@ export default function LoginPage() {
             const done = Boolean(useStore.getState().academicProfile?.onboardingCompleted);
             void hapticSuccess();
             showToast('Sessão iniciada por link no email!');
-            navigate(done ? '/' : '/configurar');
+            navigate(resolveTarget(done));
           })
           .catch((err: unknown) => {
             const eObj = err as { code?: string; message?: string };
@@ -152,7 +166,7 @@ export default function LoginPage() {
       }
     }
     return unsub;
-  }, [navigate, updateSettings]);
+  }, [isManageMode, navigate, safeNext, updateSettings]);
 
   const uniMood = user
     ? 'celebrate'
@@ -206,7 +220,7 @@ export default function LoginPage() {
             const done = Boolean(useStore.getState().academicProfile?.onboardingCompleted);
             void hapticSuccess();
             showToast('Sessão iniciada!');
-            navigate(done ? '/' : '/configurar');
+            navigate(postLoginTarget(done));
             return;
           }
         }
@@ -257,7 +271,7 @@ export default function LoginPage() {
       const done = Boolean(useStore.getState().academicProfile?.onboardingCompleted);
       void hapticSuccess();
       showToast(mode === 'signup' ? 'Conta criada! Vamos configurar o teu curso.' : 'Sessão iniciada!');
-      navigate(done ? '/' : '/configurar');
+      navigate(postLoginTarget(done));
     } catch (err: unknown) {
       const eObj = err as { code?: string; message?: string };
       setError(friendlyAuthError(eObj?.code, eObj?.message));
@@ -311,7 +325,7 @@ export default function LoginPage() {
         .catch(() => {});
       void hapticSuccess();
       showToast('Bem-vindo! Conta Google e serviços associados.');
-      navigate(st.academicProfile?.onboardingCompleted ? '/' : '/configurar');
+      navigate(postLoginTarget(Boolean(st.academicProfile?.onboardingCompleted)));
     } catch (err: unknown) {
       const eObj = err as { code?: string; message?: string };
       if (eObj?.code !== 'auth/popup-closed-by-user') {
