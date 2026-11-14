@@ -1,10 +1,12 @@
 import { CheckCircle2, ExternalLink, Eye, EyeOff, KeyRound, ShieldCheck, Sparkles } from 'lucide-react';
 import { useState } from 'react';
+import { friendlyCustomKeyError } from '../../integrations/gemini';
 import { DAILY_CHAT_LIMIT, DAILY_NOTEBOOK_LIMIT } from '../../lib/aiQuota';
 import { useStore } from '../../store/useStore';
 import { Badge, Button, Field, Input, Modal } from '../ui';
 
 const MODELS_URL = 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=50';
+const MODEL_GEN_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 export interface GeminiKeyTestResult {
   available: boolean;
@@ -12,7 +14,7 @@ export interface GeminiKeyTestResult {
   total: number;
 }
 
-/** Valida uma chave pessoal Gemini diretamente contra a Google Generative Language API. */
+/** Valida uma chave pessoal Gemini diretamente contra a Google Generative Language API (lista + teste real de geração). */
 export async function verifyGeminiApiKey(
   rawKey: string,
   wantedModel = 'gemini-3.8-flash',
@@ -25,12 +27,38 @@ export async function verifyGeminiApiKey(
   const res = await fetch(MODELS_URL, { headers: { 'x-goog-api-key': key } });
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
-    throw new Error(body?.error?.message ?? `Erro ${res.status} ao contactar a API Gemini.`);
+    throw friendlyCustomKeyError(
+      new Error(body?.error?.message ?? `Erro ${res.status} ao contactar a API Gemini.`),
+    );
   }
   const data = (await res.json()) as { models?: { name?: string }[] };
   const names = (data.models ?? [])
     .map((m) => (m.name ?? '').replace(/^models\//, ''))
     .filter(Boolean);
+
+  // Testa também uma chamada mínima real para detetar créditos pré-pagos esgotados (402) ou quota a zero.
+  const probeModel = names.includes(wantedModel)
+    ? wantedModel
+    : names.find((n) => n.includes('flash') && !n.includes('image') && !n.includes('tts')) ||
+      wantedModel;
+  const probeRes = await fetch(
+    `${MODEL_GEN_BASE}/${encodeURIComponent(probeModel)}:generateContent`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: 'OK' }] }],
+        generationConfig: { maxOutputTokens: 2 },
+      }),
+    },
+  );
+  if (!probeRes.ok) {
+    const probeBody = (await probeRes.json().catch(() => null)) as { error?: { message?: string } } | null;
+    throw friendlyCustomKeyError(
+      new Error(probeBody?.error?.message ?? `Erro ${probeRes.status} ao validar envio na API Gemini.`),
+    );
+  }
+
   return {
     available: names.includes(wantedModel),
     suggestions: names.filter((n) => n.includes('gemini')).slice(0, 8),
@@ -130,8 +158,10 @@ export default function GeminiKeyGuideModal({
               2
             </span>
             <div className="min-w-0 flex-1 space-y-1">
-              <p className="font-semibold text-fg">Clica em «Create API key» e copia o código</p>
-              <p className="text-muted">Começa por <code className="rounded bg-surface-2 px-1 py-0.5 font-mono text-[11px]">AIza...</code>. Podes apagar ou rodar a chave a qualquer altura no AI Studio.</p>
+              <p className="font-semibold text-fg">Clica em «Create API key» num projeto gratuito e copia</p>
+              <p className="text-muted">
+                Começa por <code className="rounded bg-surface-2 px-1 py-0.5 font-mono text-[11px]">AIza...</code>. Se já tiveste créditos pagos/pré-pagos que acabaram, cria um <strong className="text-fg">projeto novo no nível gratuito (Free tier)</strong> para não levar erro de saldo esgotado.
+              </p>
             </div>
           </li>
 
@@ -184,7 +214,21 @@ export default function GeminiKeyGuideModal({
                   </Button>
                 )}
               </div>
-              {error && <p className="break-words text-[11px] text-danger">{error}</p>}
+              {error && (
+                <div className="space-y-1.5 rounded-xl border border-danger/25 bg-danger/10 p-2.5 text-[11px] text-danger">
+                  <p className="break-words">{error}</p>
+                  {error.toLowerCase().includes('créditos pré-pagos') && (
+                    <a
+                      href="https://ai.studio/projects"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 font-semibold underline underline-offset-2"
+                    >
+                      Gerir projetos e faturação no AI Studio <ExternalLink size={11} />
+                    </a>
+                  )}
+                </div>
+              )}
               {result && (
                 <p className="flex items-center gap-1.5 rounded-xl bg-ok/10 px-2.5 py-2 text-[11px] font-medium text-ok">
                   <CheckCircle2 size={14} />

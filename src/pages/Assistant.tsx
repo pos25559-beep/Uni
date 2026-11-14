@@ -938,11 +938,30 @@ export default function Assistant() {
             className="rise flex max-w-[95%] flex-col items-start gap-3 rounded-2xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger"
           >
             <span className="break-words">{error}</span>
-            <div className="flex shrink-0 items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               {error.includes('limite diário') && (
                 <Button size="sm" variant="primary" onClick={() => setKeyGuideOpen(true)}>
                   Usar chave grátis
                 </Button>
+              )}
+              {hasCustomKey && (
+                <>
+                  <Button size="sm" variant="primary" onClick={() => setKeyGuideOpen(true)}>
+                    Gerir chave
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      updateSettings({ geminiApiKey: '' });
+                      setError(null);
+                      retry();
+                    }}
+                    disabled={loading}
+                  >
+                    Voltar ao Uni Nativo (grátis)
+                  </Button>
+                </>
               )}
               <Button size="sm" variant="secondary" onClick={retry} disabled={loading}>
                 <RotateCcw size={14} />

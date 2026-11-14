@@ -5,7 +5,15 @@ import { pt } from 'date-fns/locale';
 import { getGenerativeModel, type Content, type GenerationConfig, type Part } from 'firebase/ai';
 import { statusLabel } from '../lib/colors';
 import { consumeDailyQuota, refundDailyQuota, type QuotaKind } from '../lib/aiQuota';
+import {
+  CustomKeyError,
+  HttpStatusError,
+  ModelTimeoutError,
+  friendlyCustomKeyError,
+} from '../lib/geminiErrors';
 import { getNativeAI } from '../lib/firebase';
+
+export { CustomKeyError, friendlyCustomKeyError };
 import { readNormalizedScreenshot } from '../lib/imageUpload';
 import {
   collectKnownCourseCandidates,
@@ -75,21 +83,6 @@ const MODEL_COOLDOWN_MS = 120_000;
 
 /** Guarda modelos temporariamente congestionados/sem resposta para evitar esperas repetidas na sessão. */
 const modelCooldownUntil = new Map<string, number>();
-
-class ModelTimeoutError extends Error {
-  constructor(model: string, timeoutMs: number) {
-    super(`Timeout após ${Math.round(timeoutMs / 1000)}s ao aguardar ${model}.`);
-    this.name = 'ModelTimeoutError';
-  }
-}
-
-class HttpStatusError extends Error {
-  statusCode: number;
-  constructor(statusCode: number, message: string) {
-    super(message);
-    this.statusCode = statusCode;
-  }
-}
 
 export class AiConsentRequiredError extends Error {
   constructor() {
@@ -379,41 +372,46 @@ async function callDirectRest(args: {
   signal?: AbortSignal;
   primaryTimeoutMs?: number;
 }): Promise<string> {
-  return runModelChain({
-    primaryModel: args.model,
-    primaryTimeoutMs: args.primaryTimeoutMs,
-    outerSignal: args.signal,
-    attempt: async (targetModel, ctx) => {
-      const res = await fetch(`${API_BASE}/${encodeURIComponent(targetModel)}:generateContent`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': args.key },
-        body: JSON.stringify({
-          ...(args.system ? { systemInstruction: { parts: [{ text: args.system }] } } : {}),
-          contents: toRestContents(args.contents),
-          generationConfig: args.generationConfig,
-        }),
-        signal: ctx.signal,
-      });
-      const data = (await res.json().catch(() => null)) as GenerateResponse | null;
-      if (!res.ok) {
-        throw new HttpStatusError(
-          res.status,
-          data?.error?.message ?? `Erro ${res.status} ao contactar o Uni.`,
-        );
-      }
+  try {
+    return await runModelChain({
+      primaryModel: args.model,
+      primaryTimeoutMs: args.primaryTimeoutMs,
+      outerSignal: args.signal,
+      attempt: async (targetModel, ctx) => {
+        const res = await fetch(`${API_BASE}/${encodeURIComponent(targetModel)}:generateContent`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': args.key },
+          body: JSON.stringify({
+            ...(args.system ? { systemInstruction: { parts: [{ text: args.system }] } } : {}),
+            contents: toRestContents(args.contents),
+            generationConfig: args.generationConfig,
+          }),
+          signal: ctx.signal,
+        });
+        const data = (await res.json().catch(() => null)) as GenerateResponse | null;
+        if (!res.ok) {
+          throw new HttpStatusError(
+            res.status,
+            data?.error?.message ?? `Erro ${res.status} ao contactar o Uni.`,
+          );
+        }
 
-      const candidate = data?.candidates?.[0];
-      if (!candidate) {
-        const reason = data?.promptFeedback?.blockReason;
-        throw new Error(
-          reason
-            ? `O Uni pediu para reformulares a pergunta (${reason}).`
-            : 'O Uni não devolveu resposta agora. Tenta de novo.',
-        );
-      }
-      return (candidate.content?.parts ?? []).map((p) => p.text ?? '').join('').trim();
-    },
-  });
+        const candidate = data?.candidates?.[0];
+        if (!candidate) {
+          const reason = data?.promptFeedback?.blockReason;
+          throw new Error(
+            reason
+              ? `O Uni pediu para reformulares a pergunta (${reason}).`
+              : 'O Uni não devolveu resposta agora. Tenta de novo.',
+          );
+        }
+        return (candidate.content?.parts ?? []).map((p) => p.text ?? '').join('').trim();
+      },
+    });
+  } catch (err) {
+    if (args.signal?.aborted) throw err;
+    throw friendlyCustomKeyError(err);
+  }
 }
 
 async function callDirectRestStream(args: {
@@ -426,64 +424,69 @@ async function callDirectRestStream(args: {
   primaryTimeoutMs?: number;
   onToken: (accumulatedText: string) => void;
 }): Promise<string> {
-  return runModelChain({
-    primaryModel: args.model,
-    primaryTimeoutMs: args.primaryTimeoutMs,
-    outerSignal: args.signal,
-    attempt: async (targetModel, ctx) => {
-      const res = await fetch(
-        `${API_BASE}/${encodeURIComponent(targetModel)}:streamGenerateContent?alt=sse`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': args.key },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: args.system }] },
-            contents: toRestContents(args.contents),
-            generationConfig: args.generationConfig,
-          }),
-          signal: ctx.signal,
-        },
-      );
-      if (!res.ok || !res.body) {
-        const errBody = (await res.json().catch(() => null)) as GenerateResponse | null;
-        throw new HttpStatusError(
-          res.status,
-          errBody?.error?.message ?? `Erro ${res.status} ao contactar o Uni.`,
+  try {
+    return await runModelChain({
+      primaryModel: args.model,
+      primaryTimeoutMs: args.primaryTimeoutMs,
+      outerSignal: args.signal,
+      attempt: async (targetModel, ctx) => {
+        const res = await fetch(
+          `${API_BASE}/${encodeURIComponent(targetModel)}:streamGenerateContent?alt=sse`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': args.key },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: args.system }] },
+              contents: toRestContents(args.contents),
+              generationConfig: args.generationConfig,
+            }),
+            signal: ctx.signal,
+          },
         );
-      }
+        if (!res.ok || !res.body) {
+          const errBody = (await res.json().catch(() => null)) as GenerateResponse | null;
+          throw new HttpStatusError(
+            res.status,
+            errBody?.error?.message ?? `Erro ${res.status} ao contactar o Uni.`,
+          );
+        }
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let accumulated = '';
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let accumulated = '';
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        ctx.bumpIdle();
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
-        for (const line of lines) {
-          if (!line.startsWith('data:')) continue;
-          const jsonStr = line.slice(5).trim();
-          if (!jsonStr || jsonStr === '[DONE]') continue;
-          try {
-            const chunk = JSON.parse(jsonStr) as GenerateResponse;
-            const delta = (chunk.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? '').join('');
-            if (delta) {
-              accumulated += delta;
-              args.onToken(accumulated);
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          ctx.bumpIdle();
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() ?? '';
+          for (const line of lines) {
+            if (!line.startsWith('data:')) continue;
+            const jsonStr = line.slice(5).trim();
+            if (!jsonStr || jsonStr === '[DONE]') continue;
+            try {
+              const chunk = JSON.parse(jsonStr) as GenerateResponse;
+              const delta = (chunk.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? '').join('');
+              if (delta) {
+                accumulated += delta;
+                args.onToken(accumulated);
+              }
+            } catch {
+              // Ignora blocos parciais malformados até próximo evento
             }
-          } catch {
-            // Ignora blocos parciais malformados até próximo evento
           }
         }
-      }
 
-      return accumulated.trim();
-    },
-  });
+        return accumulated.trim();
+      },
+    });
+  } catch (err) {
+    if (args.signal?.aborted) throw err;
+    throw friendlyCustomKeyError(err);
+  }
 }
 
 async function runNativeGenerate(args: {

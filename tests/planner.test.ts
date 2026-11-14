@@ -8,6 +8,7 @@ import { parseCurriculumFromText } from '../src/lib/curriculumParser';
 import { matchCourse } from '../src/integrations/clip';
 import { extractAcademicsFromGoogleCalendar } from '../src/integrations/gcal';
 import { groupConversations, subjectLabel } from '../src/lib/geminiConversations';
+import { CustomKeyError, HttpStatusError, friendlyCustomKeyError } from '../src/lib/geminiErrors';
 import { generatePlan, analyzeTestMode } from '../src/lib/planner';
 import { capitalizeFirst, parsePtGrade, sessionMinutes } from '../src/lib/selectors';
 import {
@@ -1248,4 +1249,25 @@ test('normalizeAssessmentIsoDate e looksSyncableReply suportam datas PT e respos
     looksSyncableReply('O princípio da conservação da energia diz que a energia total permanece constante.'),
     false,
   );
+});
+
+test('friendlyCustomKeyError traduz créditos pré-pagos esgotados (402), chave inválida e quota pessoal', () => {
+  const prepayErr = friendlyCustomKeyError(
+    new HttpStatusError(
+      402,
+      'Your prepayment credits are depleted. Please go to AI Studio at https://ai.studio/projects to manage your project and billing.',
+    ),
+  );
+  assert.ok(prepayErr instanceof CustomKeyError);
+  assert.equal(prepayErr.kind, 'billing');
+  assert.match(prepayErr.message, /créditos pré-pagos esgotados/i);
+  assert.match(prepayErr.message, /ai\.studio\/projects/i);
+
+  const invalidErr = friendlyCustomKeyError(new Error('API key not valid. Please pass a valid API key.'));
+  assert.ok(invalidErr instanceof CustomKeyError);
+  assert.equal(invalidErr.kind, 'invalid');
+
+  const quotaErr = friendlyCustomKeyError(new HttpStatusError(429, 'RESOURCE_EXHAUSTED: Quota exceeded'));
+  assert.ok(quotaErr instanceof CustomKeyError);
+  assert.equal(quotaErr.kind, 'quota');
 });
