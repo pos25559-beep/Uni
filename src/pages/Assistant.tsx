@@ -1,4 +1,5 @@
 import {
+  Award,
   BookOpen,
   FileText,
   FolderOpen,
@@ -7,6 +8,7 @@ import {
   Plus,
   RotateCcw,
   Shield,
+  SlidersHorizontal,
   Sparkles,
   Trash2,
   X,
@@ -55,6 +57,7 @@ const MAX_SENT = 20;
 export default function Assistant() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const courses = useStore((s) => s.courses);
   const materials = useStore((s) => s.materials);
   const academicProfile = useStore((s) => s.academicProfile);
@@ -346,58 +349,108 @@ export default function Assistant() {
   };
 
   return (
-    <div className="flex h-[calc(100dvh-10rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] flex-col md:h-[calc(100dvh-4rem)]">
+    <div className="flex h-[calc(100dvh-6.25rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)-var(--keyboard-height,0px))] min-h-[26rem] flex-col md:h-[calc(100dvh-4rem)] md:min-h-0">
       {/* Cabeçalho */}
-      <div className="shrink-0 space-y-3">
-        <PageHeader
-          eyebrow="O teu companheiro de estudo"
-          title="Conversa com o"
-          accentTitle="Uni"
-          subtitle={user ? 'Sincronizado na tua conta' : 'Neste dispositivo'}
-          actions={
-            <div className="flex flex-wrap items-center gap-2">
-              <TabGuideHelpButton tabKey="assistente" />
-              <Button
-                size="sm"
-                variant="primary"
-                onClick={() => setConvsModalMode('new')}
-                className="min-h-[44px] px-3.5"
-              >
-                <Plus size={16} />
-                Nova conversa
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => setConvsModalMode('list')}
-                className="min-h-[44px] px-3.5"
-              >
-                <FolderOpen size={15} />
-                Conversas ({conversations.length})
-              </Button>
-              <Button
-                variant="secondary"
-                iconOnly
-                onClick={() => setMenuOpen(true)}
-                aria-label="Mais opções do Tutor"
-                title="Opções"
-              >
-                <MoreHorizontal size={18} />
-              </Button>
-            </div>
-          }
-        />
+      <div className="shrink-0 space-y-2 md:space-y-3">
+        <div className="flex items-center justify-between gap-2 md:hidden">
+          <div className="min-w-0">
+            <h1 className="truncate font-display text-[19px] font-bold leading-tight tracking-tight text-fg sm:text-xl">
+              Conversa com o{' '}
+              <span className="font-serif font-medium italic text-accent">Uni</span>
+            </h1>
+            <p className="truncate text-xs font-medium text-muted">
+              {user ? 'Sincronizado' : 'Neste dispositivo'} ·{' '}
+              {quota.bypassed
+                ? 'Ilimitado'
+                : `${quota.chatRemaining}/${quota.chatLimit} msgs`}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <TabGuideHelpButton tabKey="assistente" />
+            <Button
+              size="sm"
+              variant="primary"
+              iconOnly
+              onClick={() => setConvsModalMode('new')}
+              aria-label="Nova conversa"
+              title="Nova conversa"
+            >
+              <Plus size={17} />
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setConvsModalMode('list')}
+              aria-label={`Conversas (${conversations.length})`}
+              className="min-h-[44px] px-2.5 font-mono text-xs tabular-nums"
+            >
+              <FolderOpen size={15} />
+              <span>{conversations.length}</span>
+            </Button>
+            <Button
+              variant="secondary"
+              iconOnly
+              onClick={() => setMenuOpen(true)}
+              aria-label="Mais opções do Tutor"
+              title="Opções"
+            >
+              <MoreHorizontal size={18} />
+            </Button>
+          </div>
+        </div>
+
+        <div className="hidden md:block">
+          <PageHeader
+            eyebrow="O teu companheiro de estudo"
+            title="Conversa com o"
+            accentTitle="Uni"
+            subtitle={user ? 'Sincronizado na tua conta' : 'Neste dispositivo'}
+            actions={
+              <div className="flex flex-wrap items-center gap-2">
+                <TabGuideHelpButton tabKey="assistente" />
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={() => setConvsModalMode('new')}
+                  className="min-h-[44px] px-3.5"
+                >
+                  <Plus size={16} />
+                  Nova conversa
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setConvsModalMode('list')}
+                  className="min-h-[44px] px-3.5"
+                >
+                  <FolderOpen size={15} />
+                  Conversas ({conversations.length})
+                </Button>
+                <Button
+                  variant="secondary"
+                  iconOnly
+                  onClick={() => setMenuOpen(true)}
+                  aria-label="Mais opções do Tutor"
+                  title="Opções"
+                >
+                  <MoreHorizontal size={18} />
+                </Button>
+              </div>
+            }
+          />
+        </div>
 
         {/* Barra de Filtro Tátil, Caderno do Uni e Personalidade */}
-        <div className="space-y-2 border-b border-line pb-3 text-xs">
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="space-y-1.5 border-b border-line pb-2 text-xs md:space-y-2 md:pb-3">
+          <div className="flex items-center gap-1.5 md:flex-wrap md:gap-2">
             <PillSelect
               value={activeCourseId}
               onChange={setActiveCourseId}
               icon={<BookOpen size={14} />}
               ariaLabel="Filtrar por cadeira"
+              className="min-w-0 flex-1 [&>button]:w-full [&>button]:max-w-full [&>button]:justify-between [&>button]:px-2.5 md:flex-none md:[&>button]:w-auto md:[&>button]:max-w-[210px] md:[&>button]:px-3.5"
               options={[
-                { value: 'all', label: 'Todas as cadeiras', hint: 'Vista geral do semestre' },
+                { value: 'all', label: 'Todas as cadeiras', shortLabel: 'Todas', hint: 'Vista geral do semestre' },
                 ...courses.map((c) => ({
                   value: c.id,
                   label: c.shortName || c.name,
@@ -411,7 +464,7 @@ export default function Assistant() {
               type="button"
               onClick={() => setShowDocPicker(true)}
               className={cx(
-                'flex min-h-[42px] items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition',
+                'flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition md:min-h-[42px] md:px-3.5',
                 attachedMaterials.length > 0
                   ? 'border-accent bg-accent-soft text-accent'
                   : 'border-line bg-surface text-muted hover:text-fg',
@@ -428,7 +481,7 @@ export default function Assistant() {
             <button
               type="button"
               onClick={() => setNotebookOpen(true)}
-              className="flex min-h-[42px] items-center gap-1.5 rounded-full border border-[#141312]/10 bg-[#FCE99F]/85 px-3.5 py-1.5 text-xs font-semibold text-[#141312] transition hover:brightness-95 dark:border-white/10 dark:bg-surface-2 dark:text-[#FAF6EC]"
+              className="flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border border-[#141312]/10 bg-[#FCE99F]/85 px-3 py-1.5 text-xs font-semibold text-[#141312] transition hover:brightness-95 dark:border-white/10 dark:bg-surface-2 dark:text-[#FAF6EC] md:min-h-[42px] md:px-3.5"
             >
               <Sparkles size={13} className="text-accent" />
               <span>Caderno</span>
@@ -437,14 +490,35 @@ export default function Assistant() {
             <button
               type="button"
               onClick={() => setCollectiblesOpen(true)}
-              className="flex min-h-[42px] items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 py-1.5 text-xs font-semibold text-fg transition hover:border-accent"
+              className="hidden min-h-[42px] shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 py-1.5 text-xs font-semibold text-fg transition hover:border-accent md:flex"
             >
               <span>Coleção Uni</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMobileFiltersOpen((v) => !v)}
+              aria-expanded={mobileFiltersOpen}
+              aria-label="Personalidade, coleção e mensagens do Uni"
+              className={cx(
+                'flex min-h-[44px] shrink-0 items-center gap-1 rounded-full border px-2.5 text-xs font-semibold transition md:hidden',
+                mobileFiltersOpen
+                  ? 'border-accent bg-accent-soft text-accent'
+                  : 'border-line bg-surface text-muted hover:text-fg',
+              )}
+            >
+              <SlidersHorizontal size={14} />
+              <span className="sr-only">Tom e opções</span>
             </button>
           </div>
 
           {/* Seletor rápido de tom/personalidade do Uni */}
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          <div
+            className={cx(
+              'flex-wrap items-center justify-between gap-2',
+              mobileFiltersOpen ? 'flex pt-1' : 'hidden md:flex',
+            )}
+          >
             <div className="inline-flex items-center gap-1 rounded-full bg-surface-2/85 p-1">
               {UNI_PERSONAS.map((p) => {
                 const active = uniPersona === p.id;
@@ -455,7 +529,7 @@ export default function Assistant() {
                     onClick={() => updateSettings({ uniPersona: p.id })}
                     title={p.hint}
                     className={cx(
-                      'min-h-[30px] rounded-full px-2.5 text-[11px] font-semibold transition',
+                      'min-h-[34px] rounded-full px-2.5 text-xs font-semibold transition md:min-h-[30px] md:text-[11px]',
                       active ? 'bg-ink-cta text-ink-cta-fg' : 'text-muted hover:text-fg',
                     )}
                   >
@@ -465,16 +539,27 @@ export default function Assistant() {
               })}
             </div>
 
-            <button
-              type="button"
-              onClick={() => setKeyGuideOpen(true)}
-              title="Ver como passar das 15 mensagens diárias com chave gratuita"
-              className="rounded-full border border-line bg-surface-2/90 px-2.5 py-1 text-[11px] font-medium tabular text-muted transition hover:border-accent hover:text-fg"
-            >
-              {quota.bypassed
-                ? 'Chave própria · Ilimitado'
-                : `${quota.chatRemaining}/${quota.chatLimit} msgs · Desbloquear`}
-            </button>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setCollectiblesOpen(true)}
+                className="flex min-h-[34px] items-center gap-1 rounded-full border border-line bg-surface px-2.5 text-xs font-semibold text-fg transition hover:border-accent md:hidden"
+              >
+                <Award size={13} className="text-accent" />
+                <span>Coleção</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setKeyGuideOpen(true)}
+                title="Ver como passar das 15 mensagens diárias com chave gratuita"
+                className="min-h-[34px] rounded-full border border-line bg-surface-2/90 px-2.5 py-1 text-xs font-medium tabular text-muted transition hover:border-accent hover:text-fg md:min-h-0 md:text-[11px]"
+              >
+                {quota.bypassed
+                  ? 'Chave própria · Ilimitado'
+                  : `${quota.chatRemaining}/${quota.chatLimit} msgs · Desbloquear`}
+              </button>
+            </div>
 
             {attachedMaterials.map((m) => (
               <span
@@ -495,7 +580,7 @@ export default function Assistant() {
           </div>
 
           {/* Filtro por assunto + conversas da cadeira/assunto com eliminação rápida */}
-          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+          <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto pb-0.5 md:flex-wrap md:overflow-visible">
             {[{ id: 'all', label: 'Todos assuntos' }, ...TUTOR_SUBJECTS].map((subj) => {
               const active = activeSubject === subj.id;
               return (
@@ -504,7 +589,7 @@ export default function Assistant() {
                   type="button"
                   onClick={() => setActiveSubject(subj.id)}
                   className={cx(
-                    'min-h-[34px] rounded-full border px-3 text-xs font-medium transition',
+                    'min-h-[34px] shrink-0 rounded-full border px-3 text-xs font-medium transition',
                     active
                       ? 'border-accent bg-accent-soft text-accent font-semibold'
                       : 'border-line bg-surface text-muted hover:text-fg',
@@ -517,7 +602,12 @@ export default function Assistant() {
           </div>
 
           {filteredConversations.length > 0 && (
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+            <div
+              className={cx(
+                'items-center gap-1.5 overflow-x-auto pb-0.5',
+                filteredConversations.length > 1 ? 'flex' : 'hidden md:flex',
+              )}
+            >
               {filteredConversations.slice(0, 6).map((c) => {
                 const isActive = c.id === activeConvId;
                 return (
@@ -565,7 +655,7 @@ export default function Assistant() {
       </div>
 
       {/* Área de Mensagens */}
-      <div className="mt-3 min-h-0 flex-1 space-y-4 overflow-y-auto px-1 py-2">
+      <div className="mt-2 min-h-[12rem] flex-1 space-y-3 overflow-y-auto px-0.5 py-1.5 md:mt-3 md:min-h-0 md:space-y-4 md:px-1 md:py-2">
         <TabGuideBanner
           tabKey="assistente"
           actions={
@@ -578,17 +668,17 @@ export default function Assistant() {
         />
         <ContextPanel />
         {messages.length === 0 && (
-          <div className="flex flex-col items-center px-4 py-4 text-center sm:py-6">
-            <div className="flex size-22 shrink-0 items-center justify-center rounded-full bg-pastel-sage/85 shadow-card dark:bg-surface-2">
+          <div className="flex flex-col items-center px-3 py-2 text-center sm:px-4 sm:py-6">
+            <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-pastel-sage/85 shadow-card dark:bg-surface-2 sm:size-22">
               <UniBuddy
                 mood={uniWelcomeMood}
                 accessory={uniAccessory}
-                size={62}
+                size={52}
                 onClick={() => setCollectiblesOpen(true)}
                 ariaLabel="Uni — tocar para abrir a coleção de estilos"
               />
             </div>
-            <h2 className="mt-4 font-display text-xl font-bold">
+            <h2 className="mt-3 font-display text-lg font-bold sm:mt-4 sm:text-xl">
               Olá{userName ? `, ${userName}` : ''}! O que vamos rever?
             </h2>
             <p className="mt-1.5 max-w-sm text-sm text-muted">
@@ -704,10 +794,7 @@ export default function Assistant() {
       )}
 
       {/* Compositor com espaço para teclado nativo */}
-      <div
-        className="shrink-0 space-y-3 pt-3"
-        style={{ paddingBottom: 'var(--keyboard-height, 0px)' }}
-      >
+      <div className="shrink-0 space-y-1.5 pt-2 md:space-y-3 md:pt-3">
         <div className="flex items-center justify-between">
           <button
             type="button"
@@ -740,6 +827,13 @@ export default function Assistant() {
             hint: 'Seleciona PDFs ou links como contexto',
             icon: <FileText size={16} />,
             onSelect: () => setShowDocPicker(true),
+          },
+          {
+            id: 'collectibles',
+            label: 'Coleção do Uni',
+            hint: 'Estilos e acessórios desbloqueados',
+            icon: <Award size={16} />,
+            onSelect: () => setCollectiblesOpen(true),
           },
           {
             id: 'privacy',

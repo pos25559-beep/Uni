@@ -86,6 +86,7 @@ export default function AppShell() {
     location.pathname.startsWith('/bem-vindo') ||
     location.pathname.startsWith('/configurar') ||
     location.pathname.startsWith('/onboarding');
+  const isTutorRoute = location.pathname.startsWith('/assistente');
   const needsLoginGate = !isBypassRoute && !guestMode && !firebaseUser;
   const needsOnboardingSetup =
     !isBypassRoute && !needsLoginGate && !academicProfile?.onboardingCompleted;
@@ -275,7 +276,9 @@ export default function AppShell() {
               ? 'pt-[max(0.75rem,env(safe-area-inset-top))] pb-[calc(0.75rem+env(safe-area-inset-bottom)+var(--keyboard-height,0px))] md:pb-6'
               : isBypassRoute
                 ? 'pt-[env(safe-area-inset-top)] pb-[calc(1rem+env(safe-area-inset-bottom)+var(--keyboard-height,0px))] md:pb-6'
-                : 'pt-[env(safe-area-inset-top)] pb-[calc(6.25rem+env(safe-area-inset-bottom)+var(--keyboard-height,0px))] md:pb-6',
+                : isTutorRoute
+                  ? 'pt-[env(safe-area-inset-top)] pb-[calc(5.25rem+env(safe-area-inset-bottom)+var(--keyboard-height,0px))] md:pb-6'
+                  : 'pt-[env(safe-area-inset-top)] pb-[calc(6.25rem+env(safe-area-inset-bottom)+var(--keyboard-height,0px))] md:pb-6',
         )}
       >
         <div
@@ -284,7 +287,9 @@ export default function AppShell() {
               ? 'w-full'
               : location.pathname.startsWith('/entrar')
                 ? 'mx-auto w-full max-w-5xl px-3.5 py-2 md:px-8 md:py-6'
-                : 'mx-auto w-full max-w-5xl px-4 py-4 md:px-8 md:py-8',
+                : isTutorRoute
+                  ? 'mx-auto w-full max-w-5xl px-3.5 py-2 md:px-8 md:py-6'
+                  : 'mx-auto w-full max-w-5xl px-4 py-4 md:px-8 md:py-8',
           )}
         >
           <Outlet />

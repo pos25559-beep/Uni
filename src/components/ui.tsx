@@ -855,6 +855,7 @@ export function Select({
 export interface PillSelectOption {
   value: string;
   label: string;
+  shortLabel?: string;
   hint?: string;
   dotClass?: string;
 }
@@ -921,7 +922,14 @@ export function PillSelect({
       >
         {icon && <span className="shrink-0 text-muted">{icon}</span>}
         {selected?.dotClass && <span className={cx('size-2 shrink-0 rounded-full', selected.dotClass)} />}
-        <span className="truncate">{selected?.label ?? ''}</span>
+        {selected?.shortLabel ? (
+          <>
+            <span className="truncate sm:hidden">{selected.shortLabel}</span>
+            <span className="hidden truncate sm:inline">{selected.label}</span>
+          </>
+        ) : (
+          <span className="truncate">{selected?.label ?? ''}</span>
+        )}
         <ChevronDown
           size={14}
           className={cx('shrink-0 text-muted transition-transform', open && 'rotate-180 text-accent')}
