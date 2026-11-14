@@ -113,7 +113,7 @@ export const statusLabel: Record<TopicStatus, string> = {
 };
 
 export const providerLabel: Record<MaterialProvider, string> = {
-  gdrive: 'Google Drive', onedrive: 'OneDrive', notebooklm: 'NotebookLM', clip: 'Portal', link: 'Link', upload: 'Ficheiro',
+  gdrive: 'Google Drive', onedrive: 'OneDrive', notebooklm: 'Gemini Notebook', clip: 'Portal', link: 'Link', upload: 'Ficheiro',
 };
 
 export const weekdayShort = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];

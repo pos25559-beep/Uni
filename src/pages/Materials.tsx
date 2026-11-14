@@ -288,7 +288,7 @@ export default function Materials() {
           {
             id: 'link',
             label: 'Guardar link web / vídeo',
-            hint: 'NotebookLM, YouTube, apontamentos online…',
+            hint: 'Gemini Notebook, YouTube, apontamentos online…',
             icon: <Link2 size={16} />,
             onSelect: () => setAddOpen(true),
           },

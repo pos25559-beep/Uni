@@ -132,7 +132,9 @@ export default function AppShell() {
               ...(u.displayName && !st.settings.userName ? { userName: u.displayName } : {}),
               ...(u.email ? { personalEmail: u.email } : {}),
             });
-            void googleService.syncGoogleEcosystemAfterLogin(st.courses).catch(() => {});
+            void googleService
+              .syncGoogleEcosystemAfterLogin(st.courses, st.settings.sharedHubDriveUrls ?? [])
+              .catch(() => {});
           }
         } catch {
           // ignore storage failure

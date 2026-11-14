@@ -304,7 +304,9 @@ export default function LoginPage() {
         lastSync: new Date().toISOString(),
         error: undefined,
       });
-      void googleService.syncGoogleEcosystemAfterLogin(st.courses).catch(() => {});
+      void googleService
+        .syncGoogleEcosystemAfterLogin(st.courses, st.settings.sharedHubDriveUrls ?? [])
+        .catch(() => {});
       void hapticSuccess();
       showToast('Bem-vindo! Conta Google e serviços associados.');
       navigate(st.academicProfile?.onboardingCompleted ? '/' : '/configurar');

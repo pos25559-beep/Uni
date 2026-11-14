@@ -185,6 +185,8 @@ export function generatePlan(input: PlanInput): StudySession[] {
   }
 
   const lastScheduled = new Map<ID, string>(); // revisões espaçadas já marcadas neste plano
+  const starterMinutesByCourse = new Map<ID, number>();
+  const starterTopicPicks = new Map<ID, number>();
   const result: StudySession[] = [];
 
   for (let i = 0; i < days; i++) {
@@ -352,6 +354,52 @@ export function generatePlan(input: PlanInput): StudySession[] {
             : {}),
       });
       effort.set(best.topic.id, Math.max(0, eff - minutes));
+    }
+
+    if (active.length === 0 && courses.length > 0 && canTake()) {
+      // Modo Arranque de Semestre: distribui preparação contínua equilibrada quando ainda não existem provas marcadas.
+      while (canTake()) {
+        let picked: { course: Course; topic?: Topic; score: number } | null = null;
+        for (const c of courses) {
+          if (!courseOk(c.id)) continue;
+          const candidateTopics = c.topics.filter(
+            (t) => !(t.status === 'done' && t.confidence >= 4),
+          );
+          const pool = candidateTopics.length > 0 ? candidateTopics : c.topics;
+          const sortedTopics = [...pool].sort((a, b) => {
+            const pickDiff = (starterTopicPicks.get(a.id) ?? 0) - (starterTopicPicks.get(b.id) ?? 0);
+            if (pickDiff !== 0) return pickDiff;
+            return a.confidence - b.confidence;
+          });
+          const topic = sortedTopics[0];
+          const difficultyBoost =
+            difficultSet.has(c.id) || difficultCheckInCourseSet.has(c.id) ? 1.4 : 1.0;
+          const loadPenalty = 1 + (starterMinutesByCourse.get(c.id) ?? 0) / 60;
+          const topicBonus = topic ? 1.2 - topic.confidence * 0.1 : 1.0;
+          const score = (difficultyBoost * topicBonus) / loadPenalty;
+          if (!picked || score > picked.score) {
+            picked = { course: c, topic, score };
+          }
+        }
+        if (!picked) break;
+        const lowConf = picked.topic ? picked.topic.confidence <= 2 : false;
+        const targetMinutes = lowConf ? ADAPTIVE_LOW_CONFIDENCE_BLOCK : BLOCK;
+        const minutes = Math.min(targetMinutes, remaining);
+        if (minutes < MIN_BLOCK) break;
+        add({
+          courseId: picked.course.id,
+          ...(picked.topic ? { topicId: picked.topic.id } : {}),
+          minutes,
+          notes: 'Arranque contínuo · consolidação',
+        });
+        starterMinutesByCourse.set(
+          picked.course.id,
+          (starterMinutesByCourse.get(picked.course.id) ?? 0) + minutes,
+        );
+        if (picked.topic) {
+          starterTopicPicks.set(picked.topic.id, (starterTopicPicks.get(picked.topic.id) ?? 0) + 1);
+        }
+      }
     }
 
     // Horas de início sequenciais, com intervalo entre blocos.

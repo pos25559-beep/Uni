@@ -29,20 +29,20 @@ export default function NotebookLMCard() {
   }, [materials, courses]);
 
   return (
-    <Card title={<span className="flex items-center gap-2"><BookOpen size={16} className="text-accent" /> NotebookLM</span>}>
+    <Card title={<span className="flex items-center gap-2"><BookOpen size={16} className="text-accent" /> Gemini Notebook</span>}>
       <div className="space-y-4 text-sm">
         <div className="flex gap-2 rounded-xl bg-surface-2 p-3 text-xs leading-relaxed text-muted">
           <Info size={14} className="mt-0.5 shrink-0" />
           <p>
-            O NotebookLM não tem API pública, por isso os cadernos são guardados como links.
-            Cola o URL do caderno em «Adicionar link» ou no formulário da cadeira.
+            Os cadernos do Gemini Notebook / NotebookLM são guardados como ligações diretas.
+            Cola o URL em «Adicionar link», no Hub inicial ou no formulário da cadeira.
           </p>
         </div>
 
         {links.length === 0 ? (
           <EmptyState
             title="Ainda sem cadernos"
-            hint="Guarda o URL de um caderno do NotebookLM para o abrir daqui com um clique."
+            hint="Guarda o URL de um Gemini Notebook para o abrir daqui com um clique."
           />
         ) : (
           <ul className="space-y-2">

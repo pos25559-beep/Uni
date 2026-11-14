@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
@@ -7,11 +7,14 @@ import { pt } from 'date-fns/locale';
 import {
   AlertTriangle,
   ArrowRight,
+  BookMarked,
   CalendarClock,
   CalendarDays,
   Check,
   Clock,
+  Compass,
   GraduationCap,
+  HardDrive,
   MessageSquare,
   Settings as SettingsIcon,
   Sparkles,
@@ -20,6 +23,7 @@ import {
 import WeeklyTutorModal from '../components/assistant/WeeklyTutorModal';
 import UniCollectiblesModal from '../components/brand/UniCollectiblesModal';
 import { UniBuddy } from '../components/brand/UnipediaMarks';
+import PostOnboardingHubModal from '../components/onboarding/PostOnboardingHubModal';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import AcademicGmailWidget from '../components/home/AcademicGmailWidget';
 import { getUniCollectibleStates, readCollectibleTelemetry } from '../lib/uniCollectibles';
@@ -53,6 +57,10 @@ import {
 import { courseColors, kindLabel } from '../lib/colors';
 import { hapticSuccess, hapticTap } from '../lib/nativeBridge';
 import { analyzeTestMode } from '../lib/planner';
+import {
+  getHubProgress,
+  type HubStepKey,
+} from '../lib/studyHub';
 import { resolveUniAccessory } from '../lib/uniAccessories';
 import {
   daysUntil,
@@ -130,11 +138,13 @@ export default function Dashboard() {
   const sessions = useStore((s) => s.sessions);
   const tasks = useStore((s) => s.tasks);
   const events = useStore((s) => s.events);
+  const materials = useStore((s) => s.materials);
   const settings = useStore((s) => s.settings);
   const academicProfile = useStore((s) => s.academicProfile);
   const weeklyCheckIns = useStore((s) => s.weeklyCheckIns);
   const patch = useStore((s) => s.patch);
   const upsert = useStore((s) => s.upsert);
+  const updateSettings = useStore((s) => s.updateSettings);
 
   const uniAccessory = useMemo(
     () => resolveUniAccessory(settings.uniAccessory, academicProfile?.degreeName, courses[0]?.name),
@@ -151,6 +161,45 @@ export default function Dashboard() {
   const [tutorOpen, setTutorOpen] = useState(false);
   const [uniBubbleOpen, setUniBubbleOpen] = useState(false);
   const [collectiblesOpen, setCollectiblesOpen] = useState(false);
+  const [hubModalOpen, setHubModalOpen] = useState(false);
+  const [hubModalStep, setHubModalStep] = useState<HubStepKey | null>(null);
+
+  const hubProgress = useMemo(
+    () =>
+      getHubProgress({
+        academicProfile,
+        courses,
+        classes,
+        assessments,
+        materials,
+        sessions,
+        settings,
+      }),
+    [academicProfile, courses, classes, assessments, materials, sessions, settings],
+  );
+
+  useEffect(() => {
+    if (
+      academicProfile?.onboardingCompleted &&
+      settings.tourCompleted &&
+      !settings.hubSetupCompleted &&
+      !settings.hubSetupDismissed
+    ) {
+      try {
+        if (sessionStorage.getItem('unipedia.hubAutoShown') === '1') return;
+        sessionStorage.setItem('unipedia.hubAutoShown', '1');
+      } catch {
+        // ignore storage error
+      }
+      setHubModalStep(null);
+      setHubModalOpen(true);
+    }
+  }, [
+    academicProfile?.onboardingCompleted,
+    settings.tourCompleted,
+    settings.hubSetupCompleted,
+    settings.hubSetupDismissed,
+  ]);
 
   const now = new Date();
   const today = todayStr();
@@ -346,6 +395,93 @@ export default function Dashboard() {
       </header>
 
       <TabGuideBanner tabKey="dashboard" />
+
+      {/* Cartão compacto de progresso do Hub de Estudo */}
+      {!settings.hubSetupDismissed && !hubProgress.allReady && (
+        <section
+          aria-label="Progresso do Hub de Estudo"
+          className="rounded-[24px] border border-[#141312]/10 bg-pastel-sage/55 p-4 text-[#141312] shadow-card dark:border-white/10 dark:bg-surface dark:text-fg"
+        >
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1 rounded-full bg-surface/85 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-accent dark:bg-surface-2">
+                  <Compass size={11} /> Hub de Estudo · {hubProgress.flow.shortLabel}
+                </span>
+                <span className="text-xs font-semibold tabular opacity-80">
+                  {hubProgress.readyCount}/{hubProgress.totalCount} fontes ligadas
+                </span>
+              </div>
+              <p className="text-xs leading-relaxed opacity-85">
+                Liga o teu horário, datas de provas, Drives/PC e Gemini Notebook para um plano sempre afinado.
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center justify-between gap-2 sm:justify-end">
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() => {
+                  setHubModalStep(null);
+                  setHubModalOpen(true);
+                }}
+              >
+                <Sparkles size={13} /> Completar Hub
+              </Button>
+              <button
+                type="button"
+                onClick={() => updateSettings({ hubSetupDismissed: true })}
+                aria-label="Dispensar lembrete do Hub"
+                title="Dispensar"
+                className="grid size-11 place-items-center rounded-full text-muted transition hover:bg-surface/70 hover:text-fg"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            {hubProgress.steps.map((step) => {
+              const icon =
+                step.key === 'schedule' ? (
+                  <CalendarClock size={13} />
+                ) : step.key === 'assessments' ? (
+                  <CalendarDays size={13} />
+                ) : step.key === 'drive_hd' ? (
+                  <HardDrive size={13} />
+                ) : (
+                  <BookMarked size={13} />
+                );
+              const chipLabel =
+                step.key === 'schedule'
+                  ? 'Horário'
+                  : step.key === 'assessments'
+                    ? 'Provas'
+                    : step.key === 'drive_hd'
+                      ? 'Drive / PC'
+                      : 'Gemini Notebook';
+              return (
+                <button
+                  key={step.key}
+                  type="button"
+                  onClick={() => {
+                    setHubModalStep(step.key);
+                    setHubModalOpen(true);
+                  }}
+                  className={cx(
+                    'inline-flex min-h-[44px] items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition',
+                    step.ready
+                      ? 'border-ok/35 bg-ok/10 text-ok'
+                      : 'border-line bg-surface/90 text-fg hover:border-accent dark:bg-surface-2',
+                  )}
+                >
+                  {step.ready ? <Check size={13} /> : icon}
+                  <span>{chipLabel}</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Balão interativo do Uni ("Clippy" da Unipedia) */}
       <AnimatePresence>
@@ -695,6 +831,11 @@ export default function Dashboard() {
 
       <WeeklyTutorModal open={tutorOpen} onClose={() => setTutorOpen(false)} />
       <UniCollectiblesModal open={collectiblesOpen} onClose={() => setCollectiblesOpen(false)} />
+      <PostOnboardingHubModal
+        open={hubModalOpen}
+        initialFocusStep={hubModalStep}
+        onClose={() => setHubModalOpen(false)}
+      />
     </AnimatedPage>
   );
 }

@@ -187,6 +187,7 @@ export interface IntegrationStatus {
 export type ThemePalette = 'caderno' | 'botanico' | 'ardosia' | 'terracota' | 'oceano';
 export type AppTone = 'vibrante' | 'serio';
 export type UniLiveCompanionsMode = 'all' | 'solo' | 'off';
+export type HubFlowId = 'caloiro_inicio' | 'caloiro_meio' | 'veterano_inicio' | 'veterano_meio';
 
 export interface ExtraActivity {
   id: ID;
@@ -247,6 +248,14 @@ export interface Settings {
   uniPersona?: 'amigo' | 'exigente' | 'calmo';
   /** Indica se o tour guiado pós-onboarding já foi concluído. */
   tourCompleted?: boolean;
+  /** Perfil pós-onboarding escolhido pelo aluno no Hub do Uni. */
+  hubSetupFlow?: HubFlowId;
+  /** Indica se o estudante concluiu (ou guardou) o assistente pós-guia do Hub. */
+  hubSetupCompleted?: boolean;
+  /** Indica se o estudante dispensou o lembrete de Hub pendente no Hoje. */
+  hubSetupDismissed?: boolean;
+  /** URLs de pastas partilhadas do Google Drive associadas ao Hub (ex.: Drive do curso/núcleo). */
+  sharedHubDriveUrls?: string[];
   /** Lista de rotas/abas onde o cartão-guia do Uni de 1.ª visita já foi visto. */
   seenTabGuides?: string[];
 }

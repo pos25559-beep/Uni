@@ -3,7 +3,14 @@ import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 
+let activeTourInstance: ReturnType<typeof driver> | null = null;
+
 export function startUnipediaGuidedTour(onComplete?: () => void): void {
+  if (activeTourInstance) {
+    activeTourInstance.destroy();
+    activeTourInstance = null;
+  }
+
   const steps: DriveStep[] = [
     {
       popover: {
@@ -72,10 +79,13 @@ export function startUnipediaGuidedTour(onComplete?: () => void): void {
     progressText: '{{current}} / {{total}}',
     steps: availableSteps,
     onDestroyed: () => {
+      activeTourInstance = null;
+      useStore.getState().updateSettings({ tourCompleted: true });
       onComplete?.();
     },
   });
 
+  activeTourInstance = instance;
   instance.drive();
 }
 

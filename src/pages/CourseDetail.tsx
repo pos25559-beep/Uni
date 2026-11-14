@@ -105,7 +105,7 @@ export default function CourseDetail() {
   const links = [
     { label: 'Portal da cadeira', url: course.clipUrl, icon: GraduationCap },
     { label: 'Pasta de materiais', url: course.sharedDriveUrl || course.driveFolderUrl, icon: HardDrive },
-    { label: 'NotebookLM', url: course.notebookUrl, icon: BookOpen },
+    { label: 'Gemini Notebook', url: course.notebookUrl, icon: BookOpen },
   ].filter((l): l is { label: string; url: string; icon: typeof HardDrive } => Boolean(l.url));
 
   const meta = [course.code, `${course.ects} ECTS`, course.teacher].filter(Boolean).join(' · ');

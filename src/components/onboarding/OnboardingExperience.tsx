@@ -96,7 +96,6 @@ import {
 } from '../motion/Primitives';
 import GeminiKeyGuideModal from '../settings/GeminiKeyGuideModal';
 import { Badge, Button, Field, Input, Select, Textarea, cx } from '../ui';
-import { startUnipediaGuidedTour } from './TourManager';
 
 type OnboardingStepId = 'boas-vindas' | 'estilo-uni' | 'avaliacao' | 'cadeiras' | 'ritmo';
 type AcademicCycleMode = 'licenciatura' | 'mestrado' | 'misto';
@@ -1093,15 +1092,9 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
       setFinishingWipe(true);
       window.setTimeout(() => {
         onClose();
-        if (launchTour) {
-          window.setTimeout(() => startUnipediaGuidedTour(), 260);
-        }
       }, 360);
     } else {
       onClose();
-      if (launchTour) {
-        window.setTimeout(() => startUnipediaGuidedTour(), 260);
-      }
     }
   };
 

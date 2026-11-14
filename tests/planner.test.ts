@@ -18,10 +18,24 @@ import {
 } from '../src/lib/portugalCurriculum';
 import { defaultSettings } from '../src/lib/seed';
 import { computeNextSrsState, isTopicReviewDue } from '../src/lib/spacedRepetition';
+import {
+  getHubProgress,
+  inferHubProfile,
+  normalizeSafeHubUrl,
+  normalizeSharedDriveUrl,
+} from '../src/lib/studyHub';
 import { getUniCollectibleStates } from '../src/lib/uniCollectibles';
 import { pickNextShyBehavior, resolveVisibleUniPeers } from '../src/lib/uniPetEngine';
 import { parseHistoryJsonText, parseScheduleJsonText } from '../src/lib/visionParsers';
-import type { CalendarEvent, Course, Topic } from '../src/types';
+import type {
+  AcademicProfile,
+  Assessment,
+  CalendarEvent,
+  ClassSlot,
+  Course,
+  Material,
+  Topic,
+} from '../src/types';
 
 test('computeNextSrsState avanca 1 -> 3 -> 7 -> 21 quando recall=3 e confianca >= 4', () => {
   const base: Topic = { id: 't1', title: 'Derivadas', status: 'learning', confidence: 4 };
@@ -655,4 +669,186 @@ test('applyImportedScheduleRecords separa 2.º Semestre do 1.º Semestre, dedup 
   const fabMaster2 = alignedMaster2.find((r) => r.code === 'FABAD');
   assert.equal(fabMaster2?.status, 'a_fazer');
   assert.equal(fabMaster2?.year, 5);
+});
+
+test('inferHubProfile, getHubProgress e normalizacao de links cobrem os 4 fluxos pos-onboarding', () => {
+  const baseCourse: Course = {
+    id: 'c1',
+    code: 'AM1',
+    name: 'Análise Matemática I',
+    shortName: 'AM1',
+    ects: 6,
+    color: 'emerald',
+    targetGrade: 14,
+    topics: [{ id: 't1', title: 'Limites', status: 'todo', confidence: 2 }],
+  };
+  const baseSettings = defaultSettings;
+  const freshmanProfile: AcademicProfile = {
+    universityId: 'nova-fct',
+    degreeId: 'lemc',
+    degreeName: 'LEMc',
+    currentAcademicYear: 1,
+    currentSemester: 1,
+    completedCourses: [],
+    difficultCourseIds: [],
+    onboardingCompleted: true,
+    completedEcts: 0,
+    activeYears: [1],
+  };
+  const veteranProfile: AcademicProfile = {
+    ...freshmanProfile,
+    currentAcademicYear: 3,
+    completedEcts: 120,
+    activeYears: [3],
+  };
+
+  // 1) Caloiro início de semestre: sem horário, sem provas, sem docs/drives
+  const f1 = inferHubProfile({
+    academicProfile: freshmanProfile,
+    courses: [baseCourse],
+    classes: [],
+    assessments: [],
+    materials: [],
+    sessions: [],
+    settings: baseSettings,
+  });
+  assert.equal(f1.recommendedFlow, 'caloiro_inicio');
+
+  // 2) Caloiro a meio do semestre: já tem horário ou provas, ainda sem materiais
+  const sampleClass: ClassSlot = {
+    id: 'cl1',
+    courseId: 'c1',
+    type: 'T',
+    weekday: 1,
+    start: '09:00',
+    end: '10:30',
+  };
+  const f2 = inferHubProfile({
+    academicProfile: freshmanProfile,
+    courses: [baseCourse],
+    classes: [sampleClass],
+    assessments: [],
+    materials: [],
+    sessions: [],
+    settings: baseSettings,
+  });
+  assert.equal(f2.recommendedFlow, 'caloiro_meio');
+
+  // 3) Veterano início de semestre: tem Drive/HD/Gemini Notebook, ainda sem horário nem provas
+  const sampleMat: Material = {
+    id: 'm1',
+    courseId: 'c1',
+    title: 'Sebenta Drive',
+    kind: 'pdf',
+    category: 'sebenta',
+    provider: 'gdrive',
+    url: 'https://drive.google.com/file/d/abc/view',
+    addedAt: '2026-09-10T10:00:00Z',
+  };
+  const f3 = inferHubProfile({
+    academicProfile: veteranProfile,
+    courses: [baseCourse],
+    classes: [],
+    assessments: [],
+    materials: [sampleMat],
+    sessions: [],
+    settings: { ...baseSettings, personalNotebookUrl: 'https://notebooklm.google.com/notebook/123' },
+  });
+  assert.equal(f3.recommendedFlow, 'veterano_inicio');
+
+  // 4) Veterano a meio do semestre: tem cronograma + materiais
+  const sampleExam: Assessment = {
+    id: 'a1',
+    courseId: 'c1',
+    kind: 'teste',
+    title: '1.º Teste',
+    date: '2026-12-01T10:00:00',
+    weight: 40,
+    topicIds: [],
+    source: 'local',
+  };
+  const f4 = inferHubProfile({
+    academicProfile: veteranProfile,
+    courses: [baseCourse],
+    classes: [sampleClass],
+    assessments: [sampleExam],
+    materials: [sampleMat],
+    sessions: [],
+    settings: { ...baseSettings, personalNotebookUrl: 'https://notebooklm.google.com/notebook/123' },
+  });
+  assert.equal(f4.recommendedFlow, 'veterano_meio');
+
+  const progress = getHubProgress({
+    academicProfile: veteranProfile,
+    courses: [baseCourse],
+    classes: [sampleClass],
+    assessments: [sampleExam],
+    materials: [sampleMat],
+    sessions: [],
+    settings: { ...baseSettings, personalNotebookUrl: 'https://notebooklm.google.com/notebook/123' },
+  });
+  assert.equal(progress.readyCount, 4);
+  assert.equal(progress.allReady, true);
+  assert.equal(progress.steps.find((s) => s.key === 'schedule')?.ready, true);
+  assert.equal(progress.steps.find((s) => s.key === 'assessments')?.ready, true);
+  assert.equal(progress.steps.find((s) => s.key === 'drive_hd')?.ready, true);
+  assert.equal(progress.steps.find((s) => s.key === 'notebook')?.ready, true);
+
+  // Normalização de URLs seguras
+  assert.equal(
+    normalizeSharedDriveUrl('drive.google.com/drive/folders/1abcXYZ?usp=sharing'),
+    'https://drive.google.com/drive/folders/1abcXYZ?usp=sharing',
+  );
+  assert.equal(normalizeSharedDriveUrl('https://evil.example.com/folder'), null);
+  assert.equal(normalizeSafeHubUrl('javascript:alert(1)'), null);
+  assert.equal(
+    normalizeSafeHubUrl('notebooklm.google.com/notebook/xyz'),
+    'https://notebooklm.google.com/notebook/xyz',
+  );
+});
+
+test('generatePlan entra em Modo Arranque de Semestre quando ha cadeiras sem avaliacoes pendentes', () => {
+  const courses: Course[] = [
+    {
+      id: 'c1',
+      code: 'MDF',
+      name: 'Mecânica dos Fluidos',
+      shortName: 'MDF',
+      ects: 6,
+      color: 'sky',
+      targetGrade: 14,
+      topics: [
+        { id: 't1', title: 'Estática dos Fluidos', status: 'todo', confidence: 2 },
+        { id: 't2', title: 'Equação de Bernoulli', status: 'todo', confidence: 2 },
+      ],
+    },
+    {
+      id: 'c2',
+      code: 'C3D',
+      name: 'Cálculo III D',
+      shortName: 'C3D',
+      ects: 6,
+      color: 'emerald',
+      targetGrade: 15,
+      topics: [{ id: 't3', title: 'Equações Diferenciais', status: 'todo', confidence: 2 }],
+    },
+  ];
+
+  const sessions = generatePlan({
+    courses,
+    assessments: [],
+    classes: [],
+    events: [],
+    settings: defaultSettings,
+    from: '2026-11-14',
+    days: 14,
+    existing: [],
+    difficultCourseIds: ['c1'],
+  });
+
+  assert.ok(sessions.length >= 6, `Esperava varias sessoes no Modo Arranque, obteve ${sessions.length}`);
+  assert.ok(sessions.some((s) => s.courseId === 'c1'));
+  assert.ok(sessions.some((s) => s.courseId === 'c2'));
+  assert.ok(sessions.every((s) => s.minutes >= 30 && s.minutes <= 60));
+  assert.ok(sessions.every((s) => s.notes?.includes('Arranque contínuo')));
 });

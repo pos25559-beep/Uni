@@ -170,7 +170,10 @@ export const googleService = {
    * Associação automática pós-login Google: sincroniza Agenda, Drive e Email
    * com os tokens já autorizados no login, sem pedir novos popups ao utilizador.
    */
-  async syncGoogleEcosystemAfterLogin(courses: Course[]): Promise<{
+  async syncGoogleEcosystemAfterLogin(
+    courses: Course[],
+    extraFolderUrls: string[] = [],
+  ): Promise<{
     calendarCount: number;
     driveAdded: number;
     emailsCount: number;
@@ -180,7 +183,9 @@ export const googleService = {
     }
     const [calRes, driveRes, mailRes] = await Promise.allSettled([
       this.syncCalendar(),
-      courses.length > 0 ? this.scanDriveForCourses(courses, false) : Promise.resolve({ added: 0 }),
+      courses.length > 0
+        ? this.scanDriveForCourses(courses, false, extraFolderUrls)
+        : Promise.resolve({ added: 0 }),
       this.fetchAcademicEmails(courses, false),
     ]);
     return {

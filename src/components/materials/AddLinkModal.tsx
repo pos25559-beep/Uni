@@ -53,7 +53,7 @@ export default function AddLinkModal({ onClose }: { onClose: () => void }) {
       )}
     >
       <form id="add-link-form" onSubmit={save} className="space-y-4">
-        <Field label="URL" hint={urlError ? <span className="text-danger">{urlError}</span> : 'Cola o link do ficheiro, pasta, caderno do NotebookLM ou portal da tua escola/faculdade.'}>
+        <Field label="URL" hint={urlError ? <span className="text-danger">{urlError}</span> : 'Cola o link do ficheiro, pasta, Gemini Notebook ou portal da tua escola/faculdade.'}>
           <div className="flex items-center gap-2">
             <Input
               type="url"

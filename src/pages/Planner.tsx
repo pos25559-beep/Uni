@@ -149,7 +149,8 @@ export default function Planner() {
     [sessions, today],
   );
 
-  const noPlanInputs = courses.length === 0 || !assessments.some((a) => a.grade === undefined);
+  const noPlanInputs = courses.length === 0;
+  const starterOnlyMode = courses.length > 0 && !assessments.some((a) => a.grade === undefined);
   const focusSession = focusId ? sessions.find((s) => s.id === focusId) : undefined;
 
   const generate = () => {
@@ -269,14 +270,25 @@ export default function Planner() {
         </div>
       )}
 
+      {starterOnlyMode && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[22px] bg-pastel-sage/75 px-4 py-3 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]">
+          <div className="min-w-0 flex-1 text-xs leading-relaxed">
+            <span className="font-bold">Modo Arranque de Semestre:</span> ainda sem datas de provas marcadas — o plano distribui estudo contínuo equilibrado pelas tuas cadeiras ativas e recalcula mal inserires avaliações.
+          </div>
+          <Button size="sm" variant="secondary" onClick={() => navigate('/cadeiras')}>
+            Adicionar provas
+          </Button>
+        </div>
+      )}
+
       {sessions.length === 0 ? (
         <EmptyState
           icon={<CalendarDays size={28} />}
-          title={noPlanInputs ? 'Ainda não há avaliações para planear' : 'Ainda não há plano de estudo'}
+          title={noPlanInputs ? 'Ainda não tens cadeiras ativas' : 'Ainda não há plano de estudo'}
           hint={
             noPlanInputs
-              ? 'Adiciona as cadeiras e as datas dos testes e exames para distribuir o estudo.'
-              : 'Gera um plano automático ou cria sessões manuais para cada dia.'
+              ? 'Adiciona as tuas cadeiras (mesmo sem datas de provas ainda) para gerar o plano inicial.'
+              : 'Gera já um plano automático para os próximos 14 dias ou cria sessões manuais.'
           }
           action={
             noPlanInputs ? (

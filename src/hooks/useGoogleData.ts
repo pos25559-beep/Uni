@@ -118,6 +118,7 @@ export function useAcademicEmails(triggerKey?: string) {
  */
 export function useDriveAutoScan() {
   const courses = useStore((s) => s.courses);
+  const sharedHubDriveUrls = useStore((s) => s.settings.sharedHubDriveUrls);
   const [scanning, setScanning] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
 
@@ -125,7 +126,7 @@ export function useDriveAutoScan() {
     setScanning(true);
     setFeedback(null);
     try {
-      const res = await googleService.scanDriveForCourses(courses, true);
+      const res = await googleService.scanDriveForCourses(courses, true, sharedHubDriveUrls ?? []);
       if (res.added > 0) {
         setFeedback(`Varredura concluída: ${res.added} novos materiais adicionados (${res.foldersScanned} pastas analisadas)!`);
       } else {
@@ -141,7 +142,7 @@ export function useDriveAutoScan() {
     } finally {
       setScanning(false);
     }
-  }, [courses]);
+  }, [courses, sharedHubDriveUrls]);
 
   const clearFeedback = useCallback(() => setFeedback(null), []);
 
@@ -239,7 +240,8 @@ export function useGoogleAccounts() {
     setScanningDrive(true);
     setMessage(null);
     try {
-      const res = await googleService.scanDriveForCourses(courses, false);
+      const extraUrls = useStore.getState().settings.sharedHubDriveUrls ?? [];
+      const res = await googleService.scanDriveForCourses(courses, false, extraUrls);
       if (res.added > 0) {
         setMessage(`Varredura concluída: ${res.added} novos materiais académicos adicionados às tuas cadeiras!`);
       } else {
