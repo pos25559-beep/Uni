@@ -19,6 +19,7 @@ const classTypeLabel: Record<ClassType, string> = {
 
 export default function ClassFormModal({ course, initialSlot, onClose }: Props) {
   const upsert = useStore((s) => s.upsert);
+  const remove = useStore((s) => s.remove);
   const [type, setType] = useState<ClassType>(initialSlot?.type ?? 'T');
   const [weekday, setWeekday] = useState(initialSlot?.weekday ?? 1);
   const [start, setStart] = useState(initialSlot?.start ?? '09:00');
@@ -52,6 +53,18 @@ export default function ClassFormModal({ course, initialSlot, onClose }: Props) 
       title={initialSlot ? 'Editar aula' : 'Nova aula'}
       footer={
         <>
+          {initialSlot && (
+            <Button
+              variant="danger"
+              className="mr-auto"
+              onClick={() => {
+                remove('classes', initialSlot.id);
+                onClose();
+              }}
+            >
+              Apagar
+            </Button>
+          )}
           <Button onClick={onClose}>Cancelar</Button>
           <Button variant="primary" type="submit" form="class-form">Guardar</Button>
         </>

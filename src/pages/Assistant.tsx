@@ -32,6 +32,7 @@ import { ActionSheet, Badge, Button, Modal, PillSelect, cx, showToast } from '..
 import {
   buildDocumentContext,
   buildStudyContext,
+  extractScheduleFromText,
   hasCustomGeminiKey,
   parseTimetableFromScreenshot,
   streamGeminiChat,
@@ -41,12 +42,13 @@ import {
 } from '../integrations/gemini';
 import { getDailyQuotaSnapshot } from '../lib/aiQuota';
 import { courseColors, kindLabel, weekdayLong } from '../lib/colors';
+import { collectKnownCourseCandidates, getDegreeCurriculum } from '../lib/portugalCurriculum';
 import {
   commitScheduleSyncToStore,
   resolveExtractedScheduleBundle,
   type ResolvedScheduleSyncBundle,
 } from '../lib/scheduleSync';
-import { extractUniSyncBlock } from '../lib/visionParsers';
+import { extractUniSyncBlock, looksSyncableReply } from '../lib/visionParsers';
 import {
   TUTOR_SUBJECTS,
   appendMessage,
@@ -62,6 +64,34 @@ import { resolveUniAccessory, UNI_PERSONAS } from '../lib/uniAccessories';
 import { newId, useStore } from '../store/useStore';
 
 const MAX_SENT = 20;
+const PENDING_SYNC_STORAGE_KEY = 'unipedia-pending-sync-v1';
+
+function readStoredPendingSync(): Record<string, ResolvedScheduleSyncBundle> {
+  try {
+    const raw = localStorage.getItem(PENDING_SYNC_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    return parsed && typeof parsed === 'object'
+      ? (parsed as Record<string, ResolvedScheduleSyncBundle>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function getKnownCourseHintsFromStore() {
+  const state = useStore.getState();
+  const profile = state.academicProfile;
+  const degreeTemplates =
+    profile?.universityId && profile?.degreeId
+      ? (getDegreeCurriculum(profile.universityId, profile.degreeId)?.courses ?? [])
+      : [];
+  return collectKnownCourseCandidates({
+    courses: state.courses,
+    completedCourses: profile?.completedCourses ?? [],
+    degreeTemplates,
+  });
+}
 
 export default function Assistant() {
   const navigate = useNavigate();
@@ -105,7 +135,8 @@ export default function Assistant() {
   const [contextModalOpen, setContextModalOpen] = useState(false);
   const [pendingSyncByMsgId, setPendingSyncByMsgId] = useState<
     Record<string, ResolvedScheduleSyncBundle>
-  >({});
+  >(readStoredPendingSync);
+  const [syncingMsgId, setSyncingMsgId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const lastAttachmentsRef = useRef<{
     convId: string;
@@ -293,24 +324,39 @@ export default function Assistant() {
         const lastUserText =
           [...list].reverse().find((m) => m.role === 'user')?.text ?? '';
         const imageAtt = attachments?.find((a) => a.mimeType.startsWith('image/'));
-        if (
+        const displayText =
+          extractedFromReply.displayText ||
+          'Não consegui gerar texto desta vez. Podes tentar novamente?';
+
+        const shouldAutoExtract =
           !syncPayload &&
-          imageAtt &&
-          /(hor[aá]ri|test|exame|avalia[cç]|calend[aá]ri|atualiz|pauta|entrega|prazo|guarda|import|reconhec|site|app|resto)/i.test(
-            lastUserText,
-          )
-        ) {
+          (Boolean(imageAtt) ||
+            looksSyncableReply(displayText) ||
+            /(atualiz|calend[aá]ri|agenda|plano|guarda|sincroniz|adiciona.*(teste|exame|aula)|p[õo]e.*(teste|exame|hor[aá]rio))/i.test(
+              lastUserText,
+            ));
+
+        if (shouldAutoExtract) {
+          const knownCourses = getKnownCourseHintsFromStore();
           try {
-            const parsed = await parseTimetableFromScreenshot(
-              imageAtt.dataBase64,
-              imageAtt.mimeType,
-              { focus: 'assessments' },
-            );
-            if (parsed.slots.length > 0 || parsed.assessments.length > 0) {
-              syncPayload = parsed;
+            if (looksSyncableReply(displayText)) {
+              const fromText = await extractScheduleFromText(displayText, knownCourses);
+              if (fromText.slots.length > 0 || fromText.assessments.length > 0) {
+                syncPayload = fromText;
+              }
+            }
+            if (!syncPayload && imageAtt) {
+              const parsed = await parseTimetableFromScreenshot(
+                imageAtt.dataBase64,
+                imageAtt.mimeType,
+                { focus: 'assessments', knownCourses },
+              );
+              if (parsed.slots.length > 0 || parsed.assessments.length > 0) {
+                syncPayload = parsed;
+              }
             }
           } catch {
-            // Não bloqueia a resposta do chat se a extração secundária falhar
+            // Não bloqueia a resposta do chat se a extração secundária falhar; o botão manual mantém-se disponível
           }
         }
 
@@ -318,9 +364,7 @@ export default function Assistant() {
         const modelMsg: ChatMessage = {
           id: msgId,
           role: 'model',
-          text:
-            extractedFromReply.displayText ||
-            'Não consegui gerar texto desta vez. Podes tentar novamente?',
+          text: displayText,
           at: now,
           sourceDocTitles: [
             ...attachedMaterials.map((m) => m.title),
@@ -331,7 +375,19 @@ export default function Assistant() {
         if (syncPayload && (syncPayload.slots.length > 0 || syncPayload.assessments.length > 0)) {
           const resolved = resolveExtractedScheduleBundle(syncPayload);
           if (resolved.slots.length > 0 || resolved.assessments.length > 0) {
-            setPendingSyncByMsgId((prev) => ({ ...prev, [msgId]: resolved }));
+            setPendingSyncByMsgId((prev) => {
+              const next = { ...prev, [msgId]: resolved };
+              try {
+                const entries = Object.entries(next).slice(-25);
+                localStorage.setItem(
+                  PENDING_SYNC_STORAGE_KEY,
+                  JSON.stringify(Object.fromEntries(entries)),
+                );
+              } catch {
+                // ignore storage quota errors
+              }
+              return next;
+            });
           }
         }
 
@@ -428,6 +484,54 @@ export default function Assistant() {
       void run(messages, activeConvId, retryAttachments);
     }
   };
+
+  const updatePendingSyncForMsg = useCallback(
+    (msgId: string, nextBundle: ResolvedScheduleSyncBundle) => {
+      setPendingSyncByMsgId((prev) => {
+        const next = { ...prev, [msgId]: nextBundle };
+        try {
+          const entries = Object.entries(next).slice(-25);
+          localStorage.setItem(
+            PENDING_SYNC_STORAGE_KEY,
+            JSON.stringify(Object.fromEntries(entries)),
+          );
+        } catch {
+          // ignore
+        }
+        return next;
+      });
+    },
+    [],
+  );
+
+  const extractSyncFromExistingMessage = useCallback(
+    async (msg: ChatMessage) => {
+      if (syncingMsgId) return;
+      setSyncingMsgId(msg.id);
+      try {
+        const inline = extractUniSyncBlock(msg.text).payload;
+        const knownCourses = getKnownCourseHintsFromStore();
+        const parsed =
+          inline ?? (await extractScheduleFromText(msg.text, knownCourses));
+        const resolved = resolveExtractedScheduleBundle(parsed);
+        if (resolved.slots.length === 0 && resolved.assessments.length === 0) {
+          showToast('Não encontrei datas exatas de provas ou aulas nesta resposta.', 'neutral');
+          return;
+        }
+        updatePendingSyncForMsg(msg.id, resolved);
+      } catch (err) {
+        showToast(
+          err instanceof Error
+            ? err.message
+            : 'Não foi possível preparar a sincronização agora.',
+          'danger',
+        );
+      } finally {
+        setSyncingMsgId(null);
+      }
+    },
+    [syncingMsgId, updatePendingSyncForMsg],
+  );
 
   return (
     <div className="flex h-[calc(100dvh-8.25rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)-var(--keyboard-height,0px))] min-h-0 flex-col md:h-[calc(100dvh-4rem)]">
@@ -741,12 +845,10 @@ export default function Assistant() {
               className="rise max-w-[95%] rounded-[22px] rounded-bl-md bg-surface px-4 py-3.5 shadow-card"
             >
               <Markdown text={m.text} />
-              {pendingSyncByMsgId[m.id] && (
+              {pendingSyncByMsgId[m.id] ? (
                 <UniSyncCard
                   bundle={pendingSyncByMsgId[m.id]}
-                  onChange={(next) =>
-                    setPendingSyncByMsgId((prev) => ({ ...prev, [m.id]: next }))
-                  }
+                  onChange={(next) => updatePendingSyncForMsg(m.id, next)}
                   onApply={() => {
                     const current = pendingSyncByMsgId[m.id];
                     if (!current) return;
@@ -765,14 +867,37 @@ export default function Assistant() {
                       parts.length > 0
                         ? `Atualizado: ${parts.join(', ')} no Calendário e Plano.`
                         : 'Nada novo para adicionar — tudo já existia na app.';
-                    setPendingSyncByMsgId((prev) => ({
-                      ...prev,
-                      [m.id]: { ...current, applied: true, appliedSummary: summary },
-                    }));
+                    updatePendingSyncForMsg(m.id, {
+                      ...current,
+                      applied: true,
+                      appliedSummary: summary,
+                    });
                     showToast(summary);
                   }}
                   onOpenCalendar={() => navigate('/calendario')}
                 />
+              ) : (
+                looksSyncableReply(m.text) && (
+                  <div
+                    data-testid="uni-sync-trigger"
+                    className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-accent/25 bg-surface-2/75 px-3.5 py-2.5"
+                  >
+                    <span className="inline-flex items-center gap-2 text-xs text-fg">
+                      <CalendarDays size={14} className="text-accent" />
+                      Queres guardar estas datas no Calendário e Plano?
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      loading={syncingMsgId === m.id}
+                      onClick={() => void extractSyncFromExistingMessage(m)}
+                      className="gap-1.5"
+                    >
+                      <CalendarDays size={13} />
+                      Sincronizar com a app
+                    </Button>
+                  </div>
+                )
               )}
               <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-line/70 pt-2 text-xs text-muted">
                 <span>Sugestão do Uni · Valida sempre com a sebenta</span>

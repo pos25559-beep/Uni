@@ -134,6 +134,91 @@ function parseSemesterTag(raw: unknown): 1 | 2 | undefined {
   return undefined;
 }
 
+const PT_MONTHS: Record<string, number> = {
+  jan: 1,
+  janeiro: 1,
+  fev: 2,
+  fevereiro: 2,
+  mar: 3,
+  marco: 3,
+  abr: 4,
+  abril: 4,
+  mai: 5,
+  maio: 5,
+  jun: 6,
+  junho: 6,
+  jul: 7,
+  julho: 7,
+  ago: 8,
+  agosto: 8,
+  set: 9,
+  setembro: 9,
+  out: 10,
+  outubro: 10,
+  nov: 11,
+  novembro: 11,
+  dez: 12,
+  dezembro: 12,
+};
+
+function inferAcademicYearForMonth(month: number): number {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth() + 1;
+  // Se estamos no 1.º semestre (Set–Dez) e o mês extraído for Jan–Jul, aponta para o ano civil seguinte.
+  if (m >= 9 && month <= 7) return y + 1;
+  if (m <= 7 && month >= 9) return y - 1;
+  return y;
+}
+
+/** Normaliza datas PT/ISO de avaliações para `YYYY-MM-DDTHH:mm:00` válido para `parseISO`. */
+export function normalizeAssessmentIsoDate(rawDate: unknown, rawTime?: unknown): string | null {
+  const raw = String(rawDate ?? '').trim();
+  if (!raw) return null;
+
+  const explicitTime = normalizeTimeHHMM(rawTime) ?? normalizeTimeHHMM(raw.match(/(\d{1,2}[:h]\d{2})/)?.[1]);
+  const hhmm = explicitTime ?? '09:00';
+
+  const isoPrefix = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(raw);
+  if (isoPrefix) {
+    const [, y, m, d] = isoPrefix;
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}T${hhmm}:00`;
+  }
+
+  const dmyFull = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})/.exec(raw);
+  if (dmyFull) {
+    const [, d, m, yrRaw] = dmyFull;
+    const yr = yrRaw.length === 2 ? `20${yrRaw}` : yrRaw;
+    return `${yr}-${m.padStart(2, '0')}-${d.padStart(2, '0')}T${hhmm}:00`;
+  }
+
+  const dmyShort = /^(\d{1,2})[/.-](\d{1,2})(?:\b|$)/.exec(raw);
+  if (dmyShort) {
+    const [, d, m] = dmyShort;
+    const monthNum = Number(m);
+    if (monthNum >= 1 && monthNum <= 12) {
+      const yr = inferAcademicYearForMonth(monthNum);
+      return `${yr}-${m.padStart(2, '0')}-${d.padStart(2, '0')}T${hhmm}:00`;
+    }
+  }
+
+  const normText = raw
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  const ptNamed = /(\d{1,2})\s+(?:de\s+)?([a-z]{3,10})(?:\s+(?:de\s+)?(\d{4}))?/.exec(normText);
+  if (ptNamed) {
+    const [, d, mWord, yrExplicit] = ptNamed;
+    const monthNum = PT_MONTHS[mWord] ?? PT_MONTHS[mWord.slice(0, 3)];
+    if (monthNum) {
+      const yr = yrExplicit ? Number(yrExplicit) : inferAcademicYearForMonth(monthNum);
+      return `${yr}-${String(monthNum).padStart(2, '0')}-${d.padStart(2, '0')}T${hhmm}:00`;
+    }
+  }
+
+  return null;
+}
+
 export function parseHistoryJsonText(rawText: string): ExtractedHistoryItem[] {
   const parsed = parseJsonFlexible(rawText || '[]');
   const rawList: unknown[] = Array.isArray(parsed)
@@ -274,8 +359,17 @@ export function parseScheduleJsonText(rawText: string): ExtractedSchedulePayload
   const assessments: ExtractedScheduleAssessment[] = rawAssessments
     .filter((a): a is Record<string, unknown> => Boolean(a && typeof a === 'object'))
     .map((a): ExtractedScheduleAssessment | null => {
-      const courseName = String(a.courseName ?? a.name ?? a.disciplina ?? '').trim();
-      const date = String(a.date ?? a.data ?? '').trim();
+      const courseName = String(
+        a.courseName ??
+          a.name ??
+          a.disciplina ??
+          a.subject ??
+          a.courseCode ??
+          a.code ??
+          a.sigla ??
+          '',
+      ).trim();
+      const date = normalizeAssessmentIsoDate(a.date ?? a.data ?? a.dia, a.time ?? a.hora);
       if (!courseName || !date) return null;
       const kind = a.kind ?? a.tipo;
       const rawCode = a.courseCode ?? a.code ?? a.sigla;
@@ -306,9 +400,9 @@ export function extractUniSyncBlock(rawText: string): {
   displayText: string;
   payload: ExtractedSchedulePayload | null;
 } {
-  const closedMatch = /<uni-sync>([\s\S]*?)<\/uni-sync>/i.exec(rawText);
+  const closedMatch = /<uni[-_]sync>([\s\S]*?)<\/uni[-_]sync>/i.exec(rawText);
   if (closedMatch) {
-    const displayText = rawText.replace(/<uni-sync>[\s\S]*?<\/uni-sync>/gi, '').trim();
+    const displayText = rawText.replace(/<uni[-_]sync>[\s\S]*?<\/uni[-_]sync>/gi, '').trim();
     try {
       const parsed = parseScheduleJsonText(closedMatch[1] ?? '');
       const hasItems = parsed.slots.length > 0 || parsed.assessments.length > 0;
@@ -319,10 +413,25 @@ export function extractUniSyncBlock(rawText: string): {
   }
 
   // Enquanto o stream ainda está a escrever `<uni-sync...`, oculta o JSON bruto no chat
-  const openIdx = rawText.toLowerCase().indexOf('<uni-sync');
-  if (openIdx >= 0) {
-    return { displayText: rawText.slice(0, openIdx).trim(), payload: null };
+  const openMatch = /<uni[-_]sync/i.exec(rawText);
+  if (openMatch) {
+    return { displayText: rawText.slice(0, openMatch.index).trim(), payload: null };
   }
 
   return { displayText: rawText, payload: null };
+}
+
+/** Deteta se um texto do Tutor lista datas de testes, exames, entregas ou horários sincronizáveis. */
+export function looksSyncableReply(text: string): boolean {
+  const clean = text.trim();
+  if (clean.length < 18) return false;
+  const hasAcademicKind =
+    /(teste|exame|frequ[eê]ncia|avalia[cç]|trabalho|projeto|entrega|hor[aá]rio|aula|calend[aá]rio)/i.test(
+      clean,
+    );
+  const hasDateOrSlotMarker =
+    /(\b\d{1,2}[/.-]\d{1,2}\b|\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}\s+de\s+(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)|\b\d{1,2}[:h]\d{2}\b|\b[2-6][ªa]\b|\b(?:segunda|ter[cç]a|quarta|quinta|sexta)(?:-feira)?\b)/i.test(
+      clean,
+    );
+  return hasAcademicKind && hasDateOrSlotMarker;
 }

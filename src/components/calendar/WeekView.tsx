@@ -52,9 +52,10 @@ interface Props {
   today: string;
   selected: string;
   onSelect: (date: string) => void;
+  onEditClass?: (item: CalItem) => void;
 }
 
-export default function WeekView({ days, byDay, courseById, today, selected, onSelect }: Props) {
+export default function WeekView({ days, byDay, courseById, today, selected, onSelect, onEditClass }: Props) {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60_000);
@@ -148,20 +149,45 @@ export default function WeekView({ days, byDay, courseById, today, selected, onS
                 {placed.map(({ item, top, height, lane }) => {
                   const course = item.courseId ? courseById.get(item.courseId) : undefined;
                   const width = 100 / lanes;
-                  return (
-                    <div
-                      key={item.id}
-                      title={`${timeLabel(item)} · ${item.title}`}
-                      className={cx(
-                        'absolute overflow-hidden rounded-lg px-1.5 py-1 text-[11px] leading-tight',
-                        itemTone(item, course),
-                        item.done && 'opacity-50',
-                      )}
-                      style={{ top, height, left: `calc(${lane * width}% + 2px)`, width: `calc(${width}% - 4px)` }}
-                    >
+                  const isEditableClass = item.kind === 'aula' && Boolean(onEditClass);
+                  const cls = cx(
+                    'absolute overflow-hidden rounded-lg px-1.5 py-1 text-left text-[11px] leading-tight transition',
+                    itemTone(item, course),
+                    item.done && 'opacity-50',
+                    isEditableClass && 'cursor-pointer hover:ring-2 hover:ring-accent/60',
+                  );
+                  const style = {
+                    top,
+                    height,
+                    left: `calc(${lane * width}% + 2px)`,
+                    width: `calc(${width}% - 4px)`,
+                  };
+                  const inner = (
+                    <>
                       <div className="truncate font-medium tabular">{item.start}{item.end ? `–${item.end}` : ''}</div>
                       <div className="truncate">{item.title}</div>
                       {item.location && height > 48 && <div className="truncate text-[11px] opacity-75">{item.location}</div>}
+                    </>
+                  );
+                  return isEditableClass ? (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => onEditClass?.(item)}
+                      title={`${timeLabel(item)} · ${item.title} (Clica para alterar dia/hora)`}
+                      className={cls}
+                      style={style}
+                    >
+                      {inner}
+                    </button>
+                  ) : (
+                    <div
+                      key={item.id}
+                      title={`${timeLabel(item)} · ${item.title}`}
+                      className={cls}
+                      style={style}
+                    >
+                      {inner}
                     </div>
                   );
                 })}

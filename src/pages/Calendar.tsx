@@ -3,12 +3,14 @@ import {
   addDays, addMonths, addWeeks, format, startOfDay, startOfMonth, startOfWeek,
 } from 'date-fns';
 import { pt } from 'date-fns/locale';
-import { CalendarPlus, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
+import { CalendarPlus, ChevronLeft, ChevronRight, Upload, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import AgendaView from '../components/calendar/AgendaView';
 import DayPanel from '../components/calendar/DayPanel';
 import MonthView from '../components/calendar/MonthView';
 import NewEventModal from '../components/calendar/NewEventModal';
+import ClassFormModal from '../components/courses/ClassFormModal';
+import { ConfirmModal } from '../components/courses/ConfirmModal';
 import SmartScheduleImportModal from '../components/courses/SmartScheduleImportModal';
 import { buildCalendarItems } from '../components/calendar/items';
 import type { CalItem, CalKind, CalState } from '../components/calendar/items';
@@ -16,10 +18,10 @@ import { KIND_META, KIND_ORDER } from '../components/calendar/shared';
 import { AnimatedPage } from '../components/motion/Primitives';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import WeekView from '../components/calendar/WeekView';
-import { Button, PageHeader, SegmentedControl, cx } from '../components/ui';
+import { Button, PageHeader, SegmentedControl, cx, showToast } from '../components/ui';
 import { capitalizeFirst, toDateStr } from '../lib/selectors';
 import { useStore } from '../store/useStore';
-import type { Course } from '../types';
+import type { ClassSlot, Course } from '../types';
 
 type View = 'mes' | 'semana' | 'agenda';
 
@@ -39,6 +41,8 @@ export default function Calendar() {
   const events = useStore((s) => s.events);
   const tasks = useStore((s) => s.tasks);
   const settings = useStore((s) => s.settings);
+  const upsertMany = useStore((s) => s.upsertMany);
+  const remove = useStore((s) => s.remove);
 
   const [view, setView] = useState<View>('mes');
   const [cursor, setCursor] = useState(() => startOfDay(new Date()));
@@ -46,6 +50,9 @@ export default function Calendar() {
   const [kinds, setKinds] = useState<Record<CalKind, boolean>>(ALL_ON);
   const [newOpen, setNewOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [satNoticeDismissed, setSatNoticeDismissed] = useState(false);
+  const [editingClass, setEditingClass] = useState<{ slot: ClassSlot; course: Course } | null>(null);
+  const [deletingClass, setDeletingClass] = useState<{ id: string; title: string } | null>(null);
 
   const today = toDateStr(new Date());
 
@@ -87,6 +94,34 @@ export default function Calendar() {
     () => new Map<string, Course>(courses.map((c) => [c.id, c])),
     [courses],
   );
+  const classById = useMemo(
+    () => new Map<string, ClassSlot>(classes.map((cl) => [cl.id, cl])),
+    [classes],
+  );
+  const saturdayClasses = useMemo(
+    () => classes.filter((cl) => cl.weekday === 6),
+    [classes],
+  );
+
+  const openEditClassItem = (item: CalItem) => {
+    if (item.kind !== 'aula') return;
+    const slot = classById.get(item.refId);
+    const course = item.courseId ? courseById.get(item.courseId) : undefined;
+    if (slot && course) setEditingClass({ slot, course });
+  };
+
+  const moveSaturdayToFriday = () => {
+    if (saturdayClasses.length === 0) return;
+    upsertMany(
+      'classes',
+      saturdayClasses.map((cl) => ({ ...cl, weekday: 5 })),
+    );
+    showToast(
+      saturdayClasses.length === 1
+        ? '1 aula movida de Sábado para Sexta-feira (6ª).'
+        : `${saturdayClasses.length} aulas movidas de Sábado para Sexta-feira (6ª).`,
+    );
+  };
 
   const label = (() => {
     if (view === 'mes') return format(cursor, 'MMMM yyyy', { locale: pt });
@@ -128,6 +163,36 @@ export default function Calendar() {
       />
 
       <TabGuideBanner tabKey="calendario" />
+
+      {saturdayClasses.length > 0 && !satNoticeDismissed && (
+        <div
+          data-testid="saturday-classes-banner"
+          className="flex flex-wrap items-center justify-between gap-2.5 rounded-2xl border border-warn/35 bg-warn/10 px-4 py-3 text-xs text-fg"
+        >
+          <span>
+            Encontrámos{' '}
+            <strong>
+              {saturdayClasses.length}{' '}
+              {saturdayClasses.length === 1 ? 'aula marcada ao Sábado' : 'aulas marcadas ao Sábado'}
+            </strong>{' '}
+            (frequentemente vinda(s) da coluna «6ª» / Sexta-feira).
+          </span>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="primary" onClick={moveSaturdayToFriday}>
+              Mover para Sexta (6ª)
+            </Button>
+            <button
+              type="button"
+              onClick={() => setSatNoticeDismissed(true)}
+              aria-label="Manter aulas ao Sábado"
+              title="Fechar aviso"
+              className="grid size-7 place-items-center rounded-lg text-muted transition hover:bg-surface-2 hover:text-fg"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Navegação e vista */}
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -208,18 +273,43 @@ export default function Calendar() {
             today={today}
             selected={selected}
             onSelect={setSelected}
+            onEditClass={openEditClassItem}
           />
         </div>
       )}
 
       {view === 'agenda' && (
-        <AgendaView items={visible} courseById={courseById} today={today} />
+        <AgendaView
+          items={visible}
+          courseById={courseById}
+          today={today}
+          onEditClass={openEditClassItem}
+          onDeleteClass={(it) => setDeletingClass({ id: it.refId, title: it.title })}
+        />
       )}
 
       {newOpen && (
         <NewEventModal
           defaultDate={selected}
           onClose={() => setNewOpen(false)}
+        />
+      )}
+
+      {editingClass && (
+        <ClassFormModal
+          course={editingClass.course}
+          initialSlot={editingClass.slot}
+          onClose={() => setEditingClass(null)}
+        />
+      )}
+
+      {deletingClass && (
+        <ConfirmModal
+          title="Apagar aula"
+          message={`Apagar "${deletingClass.title}"? Esta ação não se pode desfazer.`}
+          confirmLabel="Apagar"
+          onConfirm={() => remove('classes', deletingClass.id)}
+          onClose={() => setDeletingClass(null)}
         />
       )}
 

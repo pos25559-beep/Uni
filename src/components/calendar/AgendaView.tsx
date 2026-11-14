@@ -1,7 +1,7 @@
 // Agenda: lista dos próximos 30 dias agrupada por dia (dias vazios são omitidos).
 import { format, parseISO } from 'date-fns';
 import { pt } from 'date-fns/locale';
-import { MapPin } from 'lucide-react';
+import { MapPin, Pencil, Trash2 } from 'lucide-react';
 import { useMemo } from 'react';
 import type { Course } from '../../types';
 import { Badge, CourseChip, EmptyState, cx } from '../ui';
@@ -13,9 +13,11 @@ interface Props {
   items: CalItem[];
   courseById: Map<string, Course>;
   today: string;
+  onEditClass?: (item: CalItem) => void;
+  onDeleteClass?: (item: CalItem) => void;
 }
 
-export default function AgendaView({ items, courseById, today }: Props) {
+export default function AgendaView({ items, courseById, today, onEditClass, onDeleteClass }: Props) {
   const groups = useMemo(() => {
     const out: { date: string; list: CalItem[] }[] = [];
     for (const it of items) {
@@ -68,6 +70,32 @@ export default function AgendaView({ items, courseById, today }: Props) {
                       {isImported(it) && it.source && <Badge tone="accent">{SOURCE_LABEL[it.source]}</Badge>}
                     </div>
                   </div>
+                  {it.kind === 'aula' && (onEditClass || onDeleteClass) && (
+                    <div className="flex shrink-0 items-center gap-1 self-center">
+                      {onEditClass && (
+                        <button
+                          type="button"
+                          onClick={() => onEditClass(it)}
+                          aria-label={`Editar aula ${it.title}`}
+                          title="Alterar dia ou hora da aula"
+                          className="grid size-8 place-items-center rounded-lg text-muted transition hover:bg-surface-2 hover:text-fg"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                      )}
+                      {onDeleteClass && (
+                        <button
+                          type="button"
+                          onClick={() => onDeleteClass(it)}
+                          aria-label={`Apagar aula ${it.title}`}
+                          title="Apagar aula"
+                          className="grid size-8 place-items-center rounded-lg text-muted transition hover:bg-danger/12 hover:text-danger"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </li>
               );
             })}

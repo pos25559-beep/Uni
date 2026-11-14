@@ -31,6 +31,8 @@ import { getUniCollectibleStates } from '../src/lib/uniCollectibles';
 import { pickNextShyBehavior, resolveVisibleUniPeers } from '../src/lib/uniPetEngine';
 import {
   extractUniSyncBlock,
+  looksSyncableReply,
+  normalizeAssessmentIsoDate,
   parseHistoryJsonText,
   parseScheduleJsonText,
 } from '../src/lib/visionParsers';
@@ -1221,6 +1223,29 @@ test('extractUniSyncBlock oculta bloco durante streaming e extrai avaliações +
   assert.equal(fullRes.displayText, 'Atualizei as datas dos testes de TEP!');
   assert.equal(fullRes.payload?.assessments.length, 1);
   assert.equal(fullRes.payload?.assessments[0]?.courseCode, 'TEP');
-  assert.equal(fullRes.payload?.assessments[0]?.date, '2026-11-20 14:30');
+  assert.equal(fullRes.payload?.assessments[0]?.date, '2026-11-20T14:30:00');
   assert.equal(fullRes.payload?.assessments[0]?.location, 'Ed 8 · 3.09');
+});
+
+test('normalizeAssessmentIsoDate e looksSyncableReply suportam datas PT e respostas do Tutor sem tag <uni-sync>', () => {
+  assert.equal(normalizeAssessmentIsoDate('20/11/2026', '14:30'), '2026-11-20T14:30:00');
+  assert.equal(normalizeAssessmentIsoDate('20 de novembro', '10h00'), '2026-11-20T10:00:00');
+
+  const sigOnly = parseScheduleJsonText(
+    JSON.stringify({
+      assessments: [{ courseCode: 'TEP', title: '2º Teste', date: '20/11', hora: '14:30' }],
+    }),
+  );
+  assert.equal(sigOnly.assessments.length, 1);
+  assert.equal(sigOnly.assessments[0]?.courseName, 'TEP');
+  assert.equal(sigOnly.assessments[0]?.date, '2026-11-20T14:30:00');
+
+  assert.equal(
+    looksSyncableReply('Aqui estão as datas que encontrei:\n- 2.º Teste de TEP a 20/11 às 14:30.'),
+    true,
+  );
+  assert.equal(
+    looksSyncableReply('O princípio da conservação da energia diz que a energia total permanece constante.'),
+    false,
+  );
 });

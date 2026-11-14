@@ -1165,3 +1165,48 @@ Regras muito importantes para grelhas visuais de horários:
 
   return parseScheduleJsonText(rawText);
 }
+
+/** Converte rapidamente uma resposta em texto (ex.: do Tutor Uni) em aulas/avaliações estruturadas para sincronizar com a app. */
+export async function extractScheduleFromText(
+  sourceText: string,
+  knownCourses?: KnownCourseHint[],
+): Promise<ExtractedSchedulePayload> {
+  const clean = sourceText.trim();
+  if (!clean) return { slots: [], assessments: [] };
+
+  const { customKey, model } = resolveGeminiConfig();
+  const knownSection = buildKnownCoursesPromptSection(knownCourses);
+  const prompt = `Extrai TODAS as datas de testes, frequências, exames, entregas de projetos/trabalhos e aulas semanais mencionadas no texto abaixo.
+Devolve APENAS JSON válido no formato exato:
+{
+  "hasSaturdayColumn": false,
+  "slots": [
+    {"courseName": "Nome real da cadeira", "courseCode": "SIGLA opcional", "dayHeader": "2ª|3ª|4ª|5ª|6ª|Sáb", "type": "T|TP|P|OT", "weekday": 1, "start": "09:00", "end": "11:00", "room": "Sala opcional"}
+  ],
+  "assessments": [
+    {"courseName": "Nome real da cadeira", "courseCode": "SIGLA opcional", "title": "1.º Teste", "date": "2026-11-20T14:30:00", "kind": "teste|exame|trabalho|projeto|quiz", "location": "Sala opcional"}
+  ]
+}
+Regras:
+- Regra Portugal para aulas: "2ª"=1, "3ª"=2, "4ª"=3, "5ª"=4, "6ª"=5 (6ª é Sexta-feira, NUNCA 6).
+- Para avaliações sem ano explícito: Set–Dez = 2026, Jan–Jul = 2027. Se não houver hora, usa "09:00:00".
+- Liga sempre à cadeira real da lista abaixo se corresponder à sigla/nome.${knownSection}
+
+Texto a extrair:
+"""
+${clean.slice(0, 6000)}
+"""`;
+
+  const contents: Content[] = [{ role: 'user', parts: [{ type: 'text', text: prompt }] }];
+  const generationConfig: GenerationConfig = {
+    temperature: 0.1,
+    maxOutputTokens: 2048,
+    responseMimeType: 'application/json',
+  };
+
+  const rawJson = customKey
+    ? await callDirectRest({ key: customKey, model, contents, generationConfig })
+    : await runNativeGenerate({ model, contents, generationConfig });
+
+  return parseScheduleJsonText(rawJson);
+}
