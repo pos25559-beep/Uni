@@ -282,6 +282,11 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
   const [ocrFeedback, setOcrFeedback] = useState<string | null>(null);
   const [ocrError, setOcrError] = useState<string | null>(null);
   const [scheduleImportMode, setScheduleImportMode] = useState<SmartImportInitialMode | null>(null);
+  const [scheduleImportBaseline, setScheduleImportBaseline] = useState<{
+    courses: number;
+    classes: number;
+    assessments: number;
+  } | null>(null);
   const [showPastePlan, setShowPastePlan] = useState(false);
   const [pastedPlanText, setPastedPlanText] = useState('');
 
@@ -615,8 +620,29 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     void hapticSuccess();
   };
 
-  const handleScreenshotUpload = async (files: FileList | null) => {
-    if (!files || files.length === 0) return;
+  const inferScreenshotMime = (file: File) => {
+    if (file.type) return file.type;
+    const lower = file.name.toLowerCase();
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.gif')) return 'image/gif';
+    if (lower.endsWith('.heic')) return 'image/heic';
+    if (lower.endsWith('.heif')) return 'image/heif';
+    return 'image/jpeg';
+  };
+
+  const handleScreenshotUpload = async (files: File[] | FileList | null) => {
+    const pickedFiles = files ? Array.from(files) : [];
+    if (pickedFiles.length === 0) return;
+    const imageFiles = pickedFiles.filter((f) => {
+      if (f.type.startsWith('image/')) return true;
+      return /\.(png|jpe?g|webp|gif|heic|heif|bmp)$/i.test(f.name);
+    });
+    if (imageFiles.length === 0) {
+      setOcrError('Seleciona uma imagem válida (PNG, JPG, WebP ou print do horário).');
+      return;
+    }
+
     if (!aiConsent) {
       setAiConsent(true);
     }
@@ -626,21 +652,20 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     setOcrFeedback(null);
 
     try {
-      const fileList = Array.from(files);
       const historyItems: ExtractedHistoryItem[] = [];
       const scheduleSlots: ExtractedScheduleSlot[] = [];
       const scheduleAssessments: ExtractedScheduleAssessment[] = [];
       let firstError: Error | null = null;
       let anySucceeded = false;
 
-      for (const file of fileList) {
+      for (const file of imageFiles) {
         const base64 = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => resolve(String(reader.result ?? ''));
           reader.onerror = () => reject(new Error(`Não foi possível ler "${file.name}".`));
           reader.readAsDataURL(file);
         });
-        const mimeType = file.type || 'image/png';
+        const mimeType = inferScreenshotMime(file);
 
         const [historyRes, scheduleRes] = await Promise.allSettled([
           parseAcademicHistoryFromScreenshot(base64, mimeType),
@@ -1276,54 +1301,79 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
               >
                 {isExpressive && (
                   <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-                    <div className="absolute -top-8 -right-8 size-28 rounded-full bg-[#FCE99F]/60 dark:bg-[#FCE99F]/10" />
-                  </div>
-                )}
-                <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center">
-                  <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-white/65 shadow-sm dark:bg-black/25">
-                    <UniBuddy
-                      mood="curious"
-                      accessory={uniAccessory === 'auto' ? 'math' : uniAccessory}
-                      size={64}
-                      interactive={false}
+                    <motion.div
+                      className="absolute -top-8 -right-8 size-28 rounded-full bg-[#FCE99F]/60 dark:bg-[#FCE99F]/10"
+                      animate={{ y: [0, 8, 0], x: [0, -5, 0] }}
+                      transition={{ repeat: Infinity, duration: 6, ease: 'easeInOut' }}
+                    />
+                    <motion.div
+                      className="absolute -bottom-6 left-8 size-16 rotate-12 rounded-2xl bg-[#C4E0FD]/55 dark:bg-[#C4E0FD]/10"
+                      animate={{ y: [0, -6, 0], rotate: [12, 20, 12] }}
+                      transition={{ repeat: Infinity, duration: 5.5, ease: 'easeInOut' }}
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <StickerBadge tone="butter" tilt={-1.5}>
-                      <Palette size={11} /> O teu companheiro de estudo
-                    </StickerBadge>
-                    <h2 className="font-display text-xl font-extrabold tracking-tight sm:text-2xl">
-                      Escolhe a cara e o{' '}
-                      <span className="font-serif font-normal italic">tom do teu caderno</span>
-                    </h2>
-                    <p className="text-xs leading-relaxed opacity-85 sm:text-sm">
-                      Os Unis são pequenas mascotes colecionáveis que te acompanham e podem espreitar discretamente nos cantos do ecrã — ou ficar completamente silenciosos se preferires um estilo mais sério.
-                    </p>
+                )}
+                <div className="relative z-10 space-y-2.5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 space-y-2">
+                      <StickerBadge tone="butter" tilt={-1.5}>
+                        <Palette size={11} /> O teu companheiro de estudo
+                      </StickerBadge>
+                      <h2 className="font-display text-xl font-extrabold leading-tight tracking-tight sm:text-2xl">
+                        Escolhe a cara e o{' '}
+                        <span className="font-serif font-normal italic">tom do teu caderno</span>
+                      </h2>
+                    </div>
+                    <div className="flex h-18 w-18 shrink-0 items-center justify-center rounded-3xl bg-white/65 p-1.5 shadow-sm backdrop-blur-sm dark:bg-black/25">
+                      <UniBuddy
+                        mood="curious"
+                        accessory={uniAccessory === 'auto' ? 'math' : uniAccessory}
+                        size={58}
+                        interactive={false}
+                      />
+                    </div>
                   </div>
+                  <p className="text-xs leading-relaxed opacity-85 sm:text-sm">
+                    Os Unis são pequenas mascotes colecionáveis que te acompanham e podem espreitar discretamente nos cantos do ecrã — ou ficar completamente silenciosos se preferires um estilo mais sério.
+                  </p>
                 </div>
               </div>
 
               {/* Tom da aplicação: Expressivo vs Sério */}
-              <div className="space-y-3 rounded-3xl border border-line bg-surface p-4 shadow-sm sm:p-5">
-                <div>
-                  <h3 className="font-display text-sm font-bold text-fg">
-                    Qual o estilo de experiência que preferes?
-                  </h3>
-                  <p className="text-xs text-muted">
-                    Podes mudar quando quiseres nas Definições.
-                  </p>
+              <div
+                className={cx(
+                  'space-y-3 rounded-[26px] p-4 shadow-card sm:p-5',
+                  isExpressive
+                    ? 'bg-[#FCE99F]/75 text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]'
+                    : 'border border-line bg-surface text-fg',
+                )}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h3 className="font-display text-sm font-bold">
+                      Qual o estilo de experiência que preferes?
+                    </h3>
+                    <p className="text-xs opacity-75">
+                      Podes mudar quando quiseres nas Definições.
+                    </p>
+                  </div>
+                  {isExpressive && (
+                    <StickerBadge tone="sage" tilt={1}>
+                      O teu estilo
+                    </StickerBadge>
+                  )}
                 </div>
                 <div className="grid gap-2.5 sm:grid-cols-2">
                   {[
                     {
                       id: 'vibrante' as const,
                       title: 'Expressivo & Vivo',
-                      desc: 'Caderno com ilustrações suaves, feedback caloroso e os Unis tímidos a espreitar nos cantos.',
+                      desc: 'Caderno com ilustrações suaves, blocos pastel e os Unis discretos nos cantos.',
                     },
                     {
                       id: 'serio' as const,
                       title: 'Sério & Minimalista',
-                      desc: 'Visual sóbrio, movimento reduzido, tutor direto ao assunto e ecrã 100% livre de mascotes nos cantos.',
+                      desc: 'Visual sóbrio, movimento reduzido, tutor direto ao assunto e ecrã livre de mascotes nos cantos.',
                     },
                   ].map((option) => {
                     const active = appTone === option.id;
@@ -1345,15 +1395,19 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                         className={cx(
                           'flex flex-col items-start gap-1 rounded-2xl border p-3.5 text-left transition',
                           active
-                            ? 'border-accent bg-accent-soft/50 shadow-sm'
-                            : 'border-line bg-bg hover:bg-surface-2',
+                            ? isExpressive
+                              ? 'border-[#141312] bg-white text-[#141312] shadow-sm dark:border-[#FAF6EC] dark:bg-[#1E1B14] dark:text-[#FAF6EC]'
+                              : 'border-accent bg-accent-soft/50 text-fg shadow-sm'
+                            : isExpressive
+                              ? 'border-[#141312]/10 bg-white/65 text-[#141312] hover:bg-white/90 dark:border-white/10 dark:bg-black/25 dark:text-[#FAF6EC] dark:hover:bg-black/35'
+                              : 'border-line bg-bg text-fg hover:bg-surface-2',
                         )}
                       >
-                        <span className="flex items-center gap-1.5 text-xs font-bold text-fg">
+                        <span className="flex items-center gap-1.5 text-xs font-bold">
                           {active && <CheckCircle2 size={14} className="text-accent" />}
                           {option.title}
                         </span>
-                        <span className="text-[11px] leading-relaxed text-muted">{option.desc}</span>
+                        <span className="text-[11px] leading-relaxed opacity-75">{option.desc}</span>
                       </button>
                     );
                   })}
@@ -1361,9 +1415,14 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
               </div>
 
               {/* Paleta de cores + Tema Claro/Escuro */}
-              <div className="space-y-4 rounded-3xl border border-line bg-surface p-4 shadow-sm sm:p-5">
+              <div className="space-y-4 rounded-[26px] border border-line bg-surface p-4 shadow-card sm:p-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
+                  <div className="space-y-1">
+                    {isExpressive && (
+                      <StickerBadge tone="sky" tilt={-1}>
+                        Cores &amp; Papel
+                      </StickerBadge>
+                    )}
                     <h3 className="font-display text-sm font-bold text-fg">Paleta de cores ao vivo</h3>
                     <p className="text-xs text-muted">
                       Toca para pré-visualizar imediatamente nesta janela.
@@ -1437,13 +1496,25 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
               </div>
 
               {/* Adereço do Uni, Personalidade do Tutor e Companheiros Discretos */}
-              <div className="space-y-4 rounded-3xl border border-line bg-surface p-4 shadow-sm sm:p-5">
+              <div
+                className={cx(
+                  'space-y-4 rounded-[26px] p-4 shadow-card sm:p-5',
+                  isExpressive
+                    ? 'bg-[#C4E0FD]/75 text-[#141312] dark:bg-[#192838] dark:text-[#FAF6EC]'
+                    : 'border border-line bg-surface text-fg',
+                )}
+              >
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <h3 className="font-display text-sm font-bold text-fg">
+                  <div className="space-y-1">
+                    {isExpressive && (
+                      <StickerBadge tone="peach" tilt={-1}>
+                        O teu Uni
+                      </StickerBadge>
+                    )}
+                    <h3 className="font-display text-sm font-bold">
                       Adereço &amp; comportamento do Uni
                     </h3>
-                    <p className="text-xs text-muted">
+                    <p className="text-xs opacity-75">
                       Pode adaptar-se automaticamente a cada cadeira ou manter o teu estilo fixo.
                     </p>
                   </div>
@@ -1456,8 +1527,10 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                     className={cx(
                       'min-h-[34px] rounded-full border px-3 text-xs font-semibold transition',
                       uniAccessory === 'auto'
-                        ? 'border-accent bg-accent-soft text-accent'
-                        : 'border-line bg-surface-2 text-muted hover:text-fg',
+                        ? 'border-transparent bg-ink-cta text-ink-cta-fg shadow-sm'
+                        : isExpressive
+                          ? 'border-[#141312]/15 bg-white/70 text-[#141312] hover:bg-white dark:border-white/15 dark:bg-black/25 dark:text-[#FAF6EC]'
+                          : 'border-line bg-surface-2 text-muted hover:text-fg',
                     )}
                   >
                     Automático por cadeira
@@ -1478,8 +1551,10 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                         className={cx(
                           'flex min-h-[42px] items-center gap-1.5 rounded-2xl border px-2.5 py-1.5 text-xs font-medium transition',
                           active
-                            ? 'border-accent bg-accent-soft text-accent'
-                            : 'border-line bg-bg text-fg hover:bg-surface-2',
+                            ? 'border-transparent bg-ink-cta text-ink-cta-fg shadow-sm'
+                            : isExpressive
+                              ? 'border-[#141312]/10 bg-white/75 text-[#141312] hover:bg-white dark:border-white/10 dark:bg-black/25 dark:text-[#FAF6EC]'
+                              : 'border-line bg-bg text-fg hover:bg-surface-2',
                         )}
                       >
                         <UniBuddy mood="happy" accessory={acc.id} size={26} interactive={false} />
@@ -1489,9 +1564,14 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                   })}
                 </div>
 
-                <div className="grid gap-3 border-t border-line pt-3 sm:grid-cols-2">
+                <div
+                  className={cx(
+                    'grid gap-3 border-t pt-3 sm:grid-cols-2',
+                    isExpressive ? 'border-[#141312]/10 dark:border-white/10' : 'border-line',
+                  )}
+                >
                   <div className="space-y-1.5">
-                    <span className="block text-xs font-medium text-muted">
+                    <span className="block text-xs font-medium opacity-75">
                       Personalidade do Tutor Uni
                     </span>
                     <div className="flex flex-wrap gap-1.5">
@@ -1506,8 +1586,10 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                           className={cx(
                             'min-h-[36px] rounded-full border px-3 text-xs font-semibold transition',
                             uniPersona === p.id
-                              ? 'border-accent bg-accent text-accent-fg'
-                              : 'border-line bg-bg text-muted hover:text-fg',
+                              ? 'border-transparent bg-ink-cta text-ink-cta-fg shadow-sm'
+                              : isExpressive
+                                ? 'border-[#141312]/10 bg-white/75 text-[#141312] hover:bg-white dark:border-white/10 dark:bg-black/25 dark:text-[#FAF6EC]'
+                                : 'border-line bg-bg text-muted hover:text-fg',
                           )}
                         >
                           {p.label}
@@ -1517,7 +1599,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                   </div>
 
                   <div className="space-y-1.5">
-                    <span className="block text-xs font-medium text-muted">
+                    <span className="block text-xs font-medium opacity-75">
                       Unis discretos nos cantos
                     </span>
                     <div className="flex flex-wrap gap-1.5">
@@ -1538,8 +1620,10 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                           className={cx(
                             'min-h-[36px] rounded-full border px-3 text-xs font-semibold transition',
                             uniLiveCompanions === modeId
-                              ? 'border-accent bg-ink-cta text-ink-cta-fg'
-                              : 'border-line bg-bg text-muted hover:text-fg',
+                              ? 'border-transparent bg-ink-cta text-ink-cta-fg shadow-sm'
+                              : isExpressive
+                                ? 'border-[#141312]/10 bg-white/75 text-[#141312] hover:bg-white dark:border-white/10 dark:bg-black/25 dark:text-[#FAF6EC]'
+                                : 'border-line bg-bg text-muted hover:text-fg',
                           )}
                         >
                           {label}
@@ -1565,35 +1649,60 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
               >
                 {isExpressive && (
                   <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-                    <div className="absolute -bottom-6 -right-6 size-24 rounded-full bg-[#FCE99F]/60 dark:bg-[#FCE99F]/10" />
+                    <motion.div
+                      className="absolute -bottom-6 -right-6 size-24 rounded-full bg-[#FCE99F]/60 dark:bg-[#FCE99F]/10"
+                      animate={{ y: [0, -7, 0], scale: [1, 1.05, 1] }}
+                      transition={{ repeat: Infinity, duration: 6, ease: 'easeInOut' }}
+                    />
+                    <motion.div
+                      className="absolute -top-6 left-12 size-16 rotate-12 rounded-2xl bg-[#C9DC9F]/55 dark:bg-[#C9DC9F]/10"
+                      animate={{ rotate: [12, 20, 12] }}
+                      transition={{ repeat: Infinity, duration: 5.5, ease: 'easeInOut' }}
+                    />
                   </div>
                 )}
-                <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center">
-                  <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-white/65 shadow-sm dark:bg-black/25">
-                    <UniBuddy mood="thinking" size={58} interactive={false} />
+                <div className="relative z-10 space-y-2.5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 space-y-2">
+                      <StickerBadge tone="sage" tilt={-1.5}>
+                        <BookOpen size={11} /> Avaliação pessoal
+                      </StickerBadge>
+                      <h2 className="font-display text-xl font-extrabold leading-tight tracking-tight sm:text-2xl">
+                        Onde estás nos{' '}
+                        <span className="font-serif font-normal italic">ECTS</span> e na tua semana?
+                      </h2>
+                    </div>
+                    <div className="flex h-18 w-18 shrink-0 items-center justify-center rounded-3xl bg-white/65 p-1.5 shadow-sm backdrop-blur-sm dark:bg-black/25">
+                      <UniBuddy mood="thinking" size={56} interactive={false} />
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <StickerBadge tone="sage" tilt={-1.5}>
-                      <BookOpen size={11} /> Avaliação pessoal
-                    </StickerBadge>
-                    <h2 className="font-display text-xl font-extrabold tracking-tight sm:text-2xl">
-                      Onde estás nos{' '}
-                      <span className="font-serif font-normal italic">ECTS</span> e na tua semana?
-                    </h2>
-                    <p className="text-xs leading-relaxed opacity-85 sm:text-sm">
-                      Com os teus créditos concluídos e compromissos fora das aulas, o Uni estima o teu ano letivo e evita planos irrealistas.
-                    </p>
-                  </div>
+                  <p className="text-xs leading-relaxed opacity-85 sm:text-sm">
+                    Com os teus créditos concluídos e compromissos fora das aulas, o Uni estima o teu ano letivo e evita planos irrealistas.
+                  </p>
                 </div>
               </div>
 
               {/* Meta ECTS + ECTS Concluídos */}
               {!isSecondarySchool && (
-                <div className="space-y-4 rounded-3xl border border-line bg-surface p-4 shadow-sm sm:p-5">
+                <div
+                  className={cx(
+                    'space-y-4 rounded-[26px] p-4 shadow-card sm:p-5',
+                    isExpressive
+                      ? 'bg-[#FCE99F]/75 text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]'
+                      : 'border border-line bg-surface text-fg',
+                  )}
+                >
                   <div className="space-y-2">
-                    <span className="block text-xs font-semibold text-fg">
-                      Qual é a meta total do teu percurso (ECTS)?
-                    </span>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="block text-xs font-bold">
+                        Qual é a meta total do teu percurso (ECTS)?
+                      </span>
+                      {isExpressive && (
+                        <StickerBadge tone="mint" tilt={1}>
+                          Créditos &amp; Nível
+                        </StickerBadge>
+                      )}
+                    </div>
                     <div className="grid gap-2 sm:grid-cols-3">
                       {ECTS_TARGETS.map((opt) => {
                         const active = targetTotalEcts === opt.total;
@@ -1606,21 +1715,30 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                             className={cx(
                               'flex min-h-[52px] flex-col items-start justify-center rounded-2xl border px-3.5 py-2 text-left transition',
                               active
-                                ? 'border-accent bg-accent-soft text-accent shadow-sm'
-                                : 'border-line bg-bg text-fg hover:bg-surface-2',
+                                ? isExpressive
+                                  ? 'border-[#141312] bg-white text-[#141312] shadow-sm dark:border-[#FAF6EC] dark:bg-[#1E1B14] dark:text-[#FAF6EC]'
+                                  : 'border-accent bg-accent-soft text-accent shadow-sm'
+                                : isExpressive
+                                  ? 'border-[#141312]/10 bg-white/65 text-[#141312] hover:bg-white/90 dark:border-white/10 dark:bg-black/25 dark:text-[#FAF6EC]'
+                                  : 'border-line bg-bg text-fg hover:bg-surface-2',
                             )}
                           >
                             <span className="font-mono text-sm font-extrabold">{opt.shortLabel}</span>
-                            <span className="text-[11px] text-muted">{opt.label.split('·')[1]?.trim()}</span>
+                            <span className="text-[11px] opacity-75">{opt.label.split('·')[1]?.trim()}</span>
                           </button>
                         );
                       })}
                     </div>
                   </div>
 
-                  <div className="space-y-2 border-t border-line pt-3">
+                  <div
+                    className={cx(
+                      'space-y-2 border-t pt-3',
+                      isExpressive ? 'border-[#141312]/10 dark:border-white/10' : 'border-line',
+                    )}
+                  >
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <label htmlFor="onboarding-ects-slider" className="text-xs font-semibold text-fg">
+                      <label htmlFor="onboarding-ects-slider" className="text-xs font-bold">
                         Quantos ECTS já concluíste até agora?
                       </label>
                       <div className="flex items-center gap-2">
@@ -1637,7 +1755,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                           }
                           className="w-20 text-center font-mono font-bold tabular"
                         />
-                        <span className="font-mono text-xs text-muted">/ {targetTotalEcts} ECTS</span>
+                        <span className="whitespace-nowrap font-mono text-xs opacity-75">/ {targetTotalEcts} ECTS</span>
                       </div>
                     </div>
 
@@ -1652,12 +1770,19 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                       className="w-full accent-[var(--accent)]"
                     />
 
-                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-accent/25 bg-accent-soft/45 px-3.5 py-2.5 text-xs">
+                    <div
+                      className={cx(
+                        'flex flex-wrap items-center justify-between gap-2 rounded-2xl border px-3.5 py-2.5 text-xs',
+                        isExpressive
+                          ? 'border-[#141312]/10 bg-[#C9DC9F]/85 text-[#141312] dark:border-white/10 dark:bg-[#192D21] dark:text-[#FAF6EC]'
+                          : 'border-accent/25 bg-accent-soft/45 text-fg',
+                      )}
+                    >
                       <div>
-                        <p className="font-bold text-fg">
+                        <p className="font-bold">
                           Leitura do Uni: {ectsStage.stageSummary}
                         </p>
-                        <p className="text-[11px] text-muted">
+                        <p className="text-[11px] opacity-80">
                           {ectsStage.progressPct}% concluído · faltam {ectsStage.remainingEcts} ECTS para fechar a meta.
                         </p>
                       </div>
@@ -1670,91 +1795,112 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
               )}
 
               {/* Faculdade, Curso, Ano de entrada, Ciclo & Anos simultâneos */}
-              <div className="grid gap-3 rounded-3xl border border-line bg-surface p-4 shadow-sm sm:grid-cols-2 sm:p-5">
-                <Field label="Instituição / Ensino">
-                  <Select
-                    value={universityId}
-                    onChange={(e) => handleUniversityChange(e.target.value)}
-                  >
-                    {catalog.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.name} ({u.shortName})
-                      </option>
-                    ))}
-                    <option value="outra">Outra Escola / Universidade</option>
-                  </Select>
-                </Field>
-
-                <Field label={isSecondarySchool ? 'Área / Curso' : 'Curso / Plano Curricular'}>
-                  {universityId === 'outra' ? (
-                    <Input
-                      value={customDegree}
-                      onChange={(e) => setCustomDegree(e.target.value)}
-                      placeholder="Ex: Engenharia Mecânica"
-                    />
-                  ) : (
+              <div className="space-y-3 rounded-[26px] border border-line bg-surface p-4 shadow-card sm:p-5">
+                {isExpressive && (
+                  <StickerBadge tone="butter" tilt={-1}>
+                    Faculdade &amp; Curso
+                  </StickerBadge>
+                )}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="Instituição / Ensino">
                     <Select
-                      value={degreeId}
-                      onChange={(e) => handleDegreeChange(e.target.value)}
+                      value={universityId}
+                      onChange={(e) => handleUniversityChange(e.target.value)}
                     >
-                      {availableDegrees.map((d) => (
-                        <option key={d.id} value={d.id}>
-                          {d.name}
+                      {catalog.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.name} ({u.shortName})
                         </option>
                       ))}
-                      <option value="outro">Outro curso / plano próprio</option>
+                      <option value="outra">Outra Escola / Universidade</option>
                     </Select>
-                  )}
-                </Field>
+                  </Field>
 
-                <Field label={isSecondarySchool ? 'Ano de matrícula' : 'Ano de entrada'}>
-                  <Select
-                    value={String(entryYear)}
-                    onChange={(e) => setEntryYear(Number(e.target.value))}
-                  >
-                    {[2026, 2025, 2024, 2023, 2022, 2021, 2020].map((y) => (
-                      <option key={y} value={y}>{y}</option>
-                    ))}
-                  </Select>
-                </Field>
-
-                <div className="flex items-end">
-                  <p className="text-xs text-muted">
-                    Estudante: <strong className="text-fg">{userName.trim() || 'Por definir'}</strong> · podes voltar ao passo 1 ou ajustar depois.
-                  </p>
-                </div>
-
-                {(universityId === 'outra' || degreeId === 'outro') && (
-                  <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
-                    {universityId === 'outra' && (
-                      <Field label="Nome da Escola ou Universidade">
-                        <Input
-                          value={customUniversity}
-                          onChange={(e) => setCustomUniversity(e.target.value)}
-                          placeholder="Ex: Instituto Politécnico / Secundária"
-                        />
-                      </Field>
+                  <Field label={isSecondarySchool ? 'Área / Curso' : 'Curso / Plano Curricular'}>
+                    {universityId === 'outra' ? (
+                      <Input
+                        value={customDegree}
+                        onChange={(e) => setCustomDegree(e.target.value)}
+                        placeholder="Ex: Engenharia Mecânica"
+                      />
+                    ) : (
+                      <Select
+                        value={degreeId}
+                        onChange={(e) => handleDegreeChange(e.target.value)}
+                      >
+                        {availableDegrees.map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.name}
+                          </option>
+                        ))}
+                        <option value="outro">Outro curso / plano próprio</option>
+                      </Select>
                     )}
-                    {degreeId === 'outro' && universityId !== 'outra' && (
-                      <Field label="Nome do curso ou mestrado">
-                        <Input
-                          value={customDegree}
-                          onChange={(e) => setCustomDegree(e.target.value)}
-                          placeholder="Ex: Mestrado em Energia"
-                        />
-                      </Field>
-                    )}
+                  </Field>
+
+                  <Field label={isSecondarySchool ? 'Ano de matrícula' : 'Ano de entrada'}>
+                    <Select
+                      value={String(entryYear)}
+                      onChange={(e) => setEntryYear(Number(e.target.value))}
+                    >
+                      {[2026, 2025, 2024, 2023, 2022, 2021, 2020].map((y) => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
+                    </Select>
+                  </Field>
+
+                  <div className="flex items-end">
+                    <p className="text-xs text-muted">
+                      Estudante: <strong className="text-fg">{userName.trim() || 'Por definir'}</strong> · podes voltar ao passo 1 ou ajustar depois.
+                    </p>
                   </div>
-                )}
+
+                  {(universityId === 'outra' || degreeId === 'outro') && (
+                    <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
+                      {universityId === 'outra' && (
+                        <Field label="Nome da Escola ou Universidade">
+                          <Input
+                            value={customUniversity}
+                            onChange={(e) => setCustomUniversity(e.target.value)}
+                            placeholder="Ex: Instituto Politécnico / Secundária"
+                          />
+                        </Field>
+                      )}
+                      {degreeId === 'outro' && universityId !== 'outra' && (
+                        <Field label="Nome do curso ou mestrado">
+                          <Input
+                            value={customDegree}
+                            onChange={(e) => setCustomDegree(e.target.value)}
+                            placeholder="Ex: Mestrado em Energia"
+                          />
+                        </Field>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Regime / Ciclos + Anos simultâneos */}
-              <div className="space-y-4 rounded-3xl border border-line bg-surface p-4 shadow-sm sm:p-5">
+              <div
+                className={cx(
+                  'space-y-4 rounded-[26px] p-4 shadow-card sm:p-5',
+                  isExpressive
+                    ? 'bg-[#C9DC9F]/70 text-[#141312] dark:bg-[#192D21] dark:text-[#FAF6EC]'
+                    : 'border border-line bg-surface text-fg',
+                )}
+              >
                 {!isSecondarySchool && (
-                  <div role="group" aria-label="Tipo de percurso neste momento" className="space-y-1.5">
-                    <span className="block text-xs font-medium text-muted">
-                      Tipo de percurso neste momento
-                    </span>
+                  <div role="group" aria-label="Tipo de percurso neste momento" className="space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="block text-xs font-bold">
+                        Tipo de percurso neste momento
+                      </span>
+                      {isExpressive && (
+                        <StickerBadge tone="sky" tilt={1}>
+                          Ano &amp; Semestre
+                        </StickerBadge>
+                      )}
+                    </div>
                     <div className="grid gap-2 sm:grid-cols-3">
                       {[
                         { id: 'licenciatura' as const, title: 'Licenciatura', hint: '1.º ao 3.º ano' },
@@ -1771,12 +1917,16 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                             className={cx(
                               'flex min-h-[52px] flex-col items-start justify-center rounded-2xl border px-3.5 py-2.5 text-left transition',
                               active
-                                ? 'border-accent bg-accent-soft text-accent shadow-sm'
-                                : 'border-line bg-bg text-fg hover:bg-surface-2',
+                                ? isExpressive
+                                  ? 'border-[#141312] bg-white text-[#141312] shadow-sm dark:border-[#FAF6EC] dark:bg-[#1E1B14] dark:text-[#FAF6EC]'
+                                  : 'border-accent bg-accent-soft text-accent shadow-sm'
+                                : isExpressive
+                                  ? 'border-[#141312]/10 bg-white/70 text-[#141312] hover:bg-white/95 dark:border-white/10 dark:bg-black/25 dark:text-[#FAF6EC]'
+                                  : 'border-line bg-bg text-fg hover:bg-surface-2',
                             )}
                           >
                             <span className="text-xs font-bold">{item.title}</span>
-                            <span className="text-[11px] text-muted">{item.hint}</span>
+                            <span className="text-[11px] opacity-75">{item.hint}</span>
                           </button>
                         );
                       })}
@@ -1796,7 +1946,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                     }
                     className="space-y-1.5"
                   >
-                    <span className="block text-xs font-medium text-muted">
+                    <span className="block text-xs font-bold">
                       {isSecondarySchool
                         ? 'Ano escolar'
                         : academicCycle === 'misto'
@@ -1815,8 +1965,10 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                             className={cx(
                               'inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border px-3.5 text-xs font-semibold transition',
                               active
-                                ? 'border-accent bg-accent text-accent-fg shadow-sm'
-                                : 'border-line bg-bg text-muted hover:text-fg',
+                                ? 'border-transparent bg-ink-cta text-ink-cta-fg shadow-sm'
+                                : isExpressive
+                                  ? 'border-[#141312]/10 bg-white/75 text-[#141312] hover:bg-white dark:border-white/10 dark:bg-black/25 dark:text-[#FAF6EC]'
+                                  : 'border-line bg-bg text-muted hover:text-fg',
                             )}
                           >
                             {active && <Check size={13} />}
@@ -1832,7 +1984,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                     aria-label={isSecondarySchool ? 'Período' : 'Semestre atual'}
                     className="space-y-1.5"
                   >
-                    <span className="block text-xs font-medium text-muted">
+                    <span className="block text-xs font-bold">
                       {isSecondarySchool ? 'Período' : 'Semestre atual'}
                     </span>
                     <div className="grid grid-cols-2 gap-2">
@@ -1845,8 +1997,10 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                           className={cx(
                             'min-h-[44px] rounded-xl border text-xs font-semibold transition',
                             currentSemester === s
-                              ? 'border-accent bg-accent text-accent-fg shadow-sm'
-                              : 'border-line bg-bg text-muted hover:text-fg',
+                              ? 'border-transparent bg-ink-cta text-ink-cta-fg shadow-sm'
+                              : isExpressive
+                                ? 'border-[#141312]/10 bg-white/75 text-[#141312] hover:bg-white dark:border-white/10 dark:bg-black/25 dark:text-[#FAF6EC]'
+                                : 'border-line bg-bg text-muted hover:text-fg',
                           )}
                         >
                           {s}.º Semestre
@@ -1858,11 +2012,25 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
               </div>
 
               {/* Dificuldades pessoais + Atividades extracurriculares */}
-              <div className="space-y-4 rounded-3xl border border-line bg-surface p-4 shadow-sm sm:p-5">
+              <div
+                className={cx(
+                  'space-y-4 rounded-[26px] p-4 shadow-card sm:p-5',
+                  isExpressive
+                    ? 'bg-[#FAD6BA]/75 text-[#141312] dark:bg-[#332218] dark:text-[#FAF6EC]'
+                    : 'border border-line bg-surface text-fg',
+                )}
+              >
                 <div className="space-y-2">
-                  <span className="block text-xs font-semibold text-fg">
-                    Quais são os teus maiores desafios este semestre?
-                  </span>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="block text-xs font-bold">
+                      Quais são os teus maiores desafios este semestre?
+                    </span>
+                    {isExpressive && (
+                      <StickerBadge tone="butter" tilt={-1}>
+                        Semana real
+                      </StickerBadge>
+                    )}
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {CHALLENGE_OPTIONS.map((ch) => {
                       const active = learningChallenges.includes(ch.id);
@@ -1874,8 +2042,10 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                           className={cx(
                             'inline-flex min-h-[38px] items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition',
                             active
-                              ? 'border-accent bg-accent-soft text-accent'
-                              : 'border-line bg-bg text-muted hover:text-fg',
+                              ? 'border-transparent bg-ink-cta text-ink-cta-fg shadow-sm'
+                              : isExpressive
+                                ? 'border-[#141312]/10 bg-white/75 text-[#141312] hover:bg-white dark:border-white/10 dark:bg-black/25 dark:text-[#FAF6EC]'
+                                : 'border-line bg-bg text-muted hover:text-fg',
                           )}
                         >
                           {active && <Check size={12} />}
@@ -1886,12 +2056,17 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                   </div>
                 </div>
 
-                <div className="space-y-2.5 border-t border-line pt-3">
+                <div
+                  className={cx(
+                    'space-y-2.5 border-t pt-3',
+                    isExpressive ? 'border-[#141312]/10 dark:border-white/10' : 'border-line',
+                  )}
+                >
                   <div>
-                    <span className="block text-xs font-semibold text-fg">
+                    <span className="block text-xs font-bold">
                       Tens trabalho, desporto, associação ou outras atividades extra?
                     </span>
-                    <p className="text-[11px] text-muted">
+                    <p className="text-[11px] opacity-80">
                       O criador do plano semanal reduz automaticamente a carga nos dias em que estás ocupado.
                     </p>
                   </div>
@@ -1907,8 +2082,10 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                           className={cx(
                             'inline-flex min-h-[38px] items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition',
                             active
-                              ? 'border-accent bg-accent text-accent-fg'
-                              : 'border-line bg-bg text-fg hover:bg-surface-2',
+                              ? 'border-transparent bg-ink-cta text-ink-cta-fg shadow-sm'
+                              : isExpressive
+                                ? 'border-[#141312]/10 bg-white/75 text-[#141312] hover:bg-white dark:border-white/10 dark:bg-black/25 dark:text-[#FAF6EC]'
+                                : 'border-line bg-bg text-fg hover:bg-surface-2',
                           )}
                         >
                           {active ? <Check size={12} /> : <Plus size={12} />}
@@ -1939,7 +2116,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                     </Button>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted">
+                  <div className="flex flex-wrap items-center gap-1.5 text-[11px] opacity-85">
                     <span>Dias da atividade personalizada:</span>
                     {DAY_LABELS.map((d) => {
                       const on = customExtraDays.includes(d.day);
@@ -1958,7 +2135,9 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                             'min-h-[28px] rounded-lg px-2 font-semibold transition',
                             on
                               ? 'bg-ink-cta text-ink-cta-fg'
-                              : 'border border-line bg-bg text-muted hover:text-fg',
+                              : isExpressive
+                                ? 'border border-[#141312]/15 bg-white/70 text-[#141312] dark:border-white/15 dark:bg-black/25 dark:text-[#FAF6EC]'
+                                : 'border border-line bg-bg text-muted hover:text-fg',
                           )}
                         >
                           {d.label}
@@ -1972,9 +2151,14 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                       {extraActivities.map((act) => (
                         <div
                           key={act.id}
-                          className="flex items-center justify-between gap-2 rounded-xl border border-line bg-bg px-3 py-2 text-xs"
+                          className={cx(
+                            'flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-xs',
+                            isExpressive
+                              ? 'border-[#141312]/10 bg-white/75 text-[#141312] dark:border-white/10 dark:bg-black/25 dark:text-[#FAF6EC]'
+                              : 'border-line bg-bg text-fg',
+                          )}
                         >
-                          <span className="truncate font-medium text-fg">
+                          <span className="truncate font-medium">
                             {act.label} · {act.hoursPerWeek}h/sem (
                             {act.weekdays
                               .map((w) => DAY_LABELS.find((d) => d.day === w)?.label ?? '')
@@ -1988,7 +2172,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                             onClick={() =>
                               setExtraActivities((prev) => prev.filter((a) => a.id !== act.id))
                             }
-                            className="inline-flex size-7 items-center justify-center rounded-lg text-muted hover:bg-surface-2 hover:text-coral"
+                            className="inline-flex size-7 items-center justify-center rounded-lg opacity-75 hover:bg-black/10 hover:text-danger dark:hover:bg-white/10"
                           >
                             <Trash2 size={13} />
                           </button>
@@ -2012,22 +2196,37 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                     : 'border border-line bg-surface text-fg',
                 )}
               >
-                <div className="relative z-10 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-                  <div className="flex items-center gap-3.5">
-                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white/65 shadow-sm dark:bg-black/25">
-                      <UniBuddy mood="curious" size={48} interactive={false} />
-                    </div>
-                    <div>
+                {isExpressive && (
+                  <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+                    <motion.div
+                      className="absolute -top-8 -right-8 size-28 rounded-full bg-[#FCE99F]/60 dark:bg-[#FCE99F]/10"
+                      animate={{ y: [0, 8, 0], x: [0, -5, 0] }}
+                      transition={{ repeat: Infinity, duration: 6.2, ease: 'easeInOut' }}
+                    />
+                    <motion.div
+                      className="absolute -bottom-6 left-10 size-16 rotate-12 rounded-2xl bg-[#C9DC9F]/55 dark:bg-[#C9DC9F]/10"
+                      animate={{ rotate: [12, 22, 12] }}
+                      transition={{ repeat: Infinity, duration: 5.4, ease: 'easeInOut' }}
+                    />
+                  </div>
+                )}
+
+                <div className="relative z-10 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 space-y-1.5">
                       <StickerBadge tone="butter" tilt={-1.5}>
                         {currentSemester}.º Semestre · Anos selecionados
                       </StickerBadge>
-                      <h2 className="mt-1 font-display text-lg font-extrabold sm:text-xl">
+                      <h2 className="font-display text-xl font-extrabold leading-tight sm:text-2xl">
                         As tuas cadeiras{' '}
                         <span className="font-serif font-normal italic">deste semestre</span>
                       </h2>
                       <p className="text-xs opacity-85">
                         A mostrar apenas os anos escolhidos no passo anterior e o {currentSemester}.º semestre atual.
                       </p>
+                    </div>
+                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-3xl bg-white/65 p-1.5 shadow-sm backdrop-blur-sm dark:bg-black/25">
+                      <UniBuddy mood="curious" size={50} interactive={false} />
                     </div>
                   </div>
 
@@ -2042,11 +2241,11 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                     >
                       {doingCount} ativas
                     </span>
-                    <span className="rounded-full bg-white/65 px-3 py-1 font-medium text-[#141312] tabular dark:bg-black/25 dark:text-[#FAF6EC]">
+                    <span className="rounded-full bg-white/70 px-3 py-1 font-medium text-[#141312] tabular dark:bg-black/25 dark:text-[#FAF6EC]">
                       {approvedCount} aprovadas
                     </span>
                     {!isSecondarySchool && (
-                      <span className="rounded-full bg-white/65 px-3 py-1 font-mono font-semibold text-[#141312] tabular dark:bg-black/25 dark:text-[#FAF6EC]">
+                      <span className="rounded-full bg-white/70 px-3 py-1 font-mono font-semibold text-[#141312] tabular dark:bg-black/25 dark:text-[#FAF6EC]">
                         {approvedEctsFromList + activeEctsFromList}/{targetTotalEcts} ECTS
                       </span>
                     )}
@@ -2060,20 +2259,52 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
               </div>
 
               {/* Atalhos rápidos de importação */}
-              <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line bg-surface px-4 py-3">
-                <span className="text-xs font-semibold text-muted">Importar em segundos:</span>
+              <div
+                className={cx(
+                  'flex flex-col gap-2.5 rounded-[24px] px-4 py-3.5 shadow-card sm:flex-row sm:items-center sm:justify-between',
+                  isExpressive
+                    ? 'bg-[#FCE99F]/75 text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]'
+                    : 'border border-line bg-surface text-fg',
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  {isExpressive ? (
+                    <StickerBadge tone="mint" tilt={-1}>
+                      Atalho rápido
+                    </StickerBadge>
+                  ) : (
+                    <span className="text-xs font-semibold text-muted">Importar em segundos:</span>
+                  )}
+                  <span className="text-xs font-semibold opacity-80">Preencher por foto ou agenda</span>
+                </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Button
                     size="sm"
                     variant="secondary"
-                    onClick={() => setScheduleImportMode('photo')}
+                    onClick={() => {
+                      const s = useStore.getState();
+                      setScheduleImportBaseline({
+                        courses: s.courses.length,
+                        classes: s.classes.length,
+                        assessments: s.assessments.length,
+                      });
+                      setScheduleImportMode('photo');
+                    }}
                   >
                     <Camera size={14} /> Foto do horário
                   </Button>
                   <Button
                     size="sm"
                     variant="secondary"
-                    onClick={() => setScheduleImportMode('gcal')}
+                    onClick={() => {
+                      const s = useStore.getState();
+                      setScheduleImportBaseline({
+                        courses: s.courses.length,
+                        classes: s.classes.length,
+                        assessments: s.assessments.length,
+                      });
+                      setScheduleImportMode('gcal');
+                    }}
                   >
                     <CalendarDays size={14} /> Google Agenda
                   </Button>
@@ -2087,7 +2318,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                   >
                     <ClipboardPaste size={14} /> Colar Plano / Guia
                   </Button>
-                  <label className="inline-flex min-h-[36px] cursor-pointer items-center gap-1.5 rounded-xl bg-accent px-3 py-1.5 text-xs font-semibold text-accent-fg shadow-sm transition hover:opacity-90">
+                  <label className="inline-flex min-h-[38px] cursor-pointer items-center gap-1.5 rounded-full bg-ink-cta px-3.5 py-1.5 text-xs font-semibold text-ink-cta-fg shadow-card transition hover:opacity-90">
                     {ocrBusy ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
                     {ocrBusy ? 'A ler prints…' : 'Print Horário / Pauta'}
                     <input
@@ -2097,7 +2328,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                       className="hidden"
                       disabled={ocrBusy}
                       onChange={(e) => {
-                        const files = e.target.files;
+                        const files = Array.from(e.target.files ?? []);
                         e.target.value = '';
                         void handleScreenshotUpload(files);
                       }}
@@ -2105,6 +2336,13 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                   </label>
                 </div>
               </div>
+
+              {ocrBusy && (
+                <p className="flex items-center gap-2 rounded-2xl border border-line bg-surface px-4 py-3 text-xs font-semibold text-fg shadow-card">
+                  <Loader2 size={15} className="shrink-0 animate-spin text-accent" />
+                  A ler imagem do horário/pauta com o Uni… aguarda uns segundos.
+                </p>
+              )}
 
               {showPastePlan && (
                 <div className="space-y-3 rounded-2xl border border-accent/35 bg-surface p-4 shadow-sm">
@@ -2163,8 +2401,15 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
               )}
 
               {/* Adicionar cadeira manualmente (qualquer ano / mestrado) */}
-              <div className="rounded-2xl border border-dashed border-accent/40 bg-surface p-3.5">
-                <p className="mb-2 text-xs font-semibold text-fg">
+              <div
+                className={cx(
+                  'rounded-[24px] border-2 border-dashed p-4 shadow-sm',
+                  isExpressive
+                    ? 'border-[#141312]/15 bg-[#C4E0FD]/55 text-[#141312] dark:border-white/15 dark:bg-[#192838]/75 dark:text-[#FAF6EC]'
+                    : 'border-accent/40 bg-surface text-fg',
+                )}
+              >
+                <p className="mb-2 text-xs font-bold">
                   + Adicionar outra cadeira (ex: cadeira em atraso ou de Mestrado)
                 </p>
                 <div className="grid gap-2 sm:grid-cols-[110px_1fr_132px_72px_auto]">
@@ -2246,7 +2491,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
               )}
 
               {/* Lista editorial de cadeiras obrigatórias / escolhidas (sem poluir com opcionais soltas) */}
-              <div className="max-h-72 space-y-2 overflow-y-auto rounded-3xl border border-line bg-surface p-3">
+              <div className="max-h-72 space-y-2 overflow-y-auto rounded-[26px] border border-line bg-surface p-3 shadow-card">
                 {mainFilteredRecords.length === 0 ? (
                   <p className="p-6 text-center text-xs text-muted">
                     Ainda sem cadeiras obrigatórias neste filtro. Podes escolher opcionais abaixo ou usar «+ Adicionar» / «Print Horário / Pauta».
@@ -2258,7 +2503,9 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                       className={cx(
                         'flex flex-col gap-2.5 rounded-2xl border px-3.5 py-2.5 text-xs transition sm:flex-row sm:items-center sm:justify-between',
                         r.status === 'a_fazer'
-                          ? 'border-accent/45 bg-accent-soft/35'
+                          ? isExpressive
+                            ? 'border-[#157F58]/35 bg-[#C9DC9F]/30 dark:border-accent/40 dark:bg-[#192D21]/65'
+                            : 'border-accent/45 bg-accent-soft/35'
                           : r.status === 'aprovada'
                             ? 'border-ok/30 bg-bg'
                             : 'border-line/70 bg-bg/70 opacity-75',
@@ -2266,7 +2513,14 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                     >
                       <div className="min-w-0 w-full sm:flex-1">
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="shrink-0 rounded-md bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] font-bold text-accent">
+                          <span
+                            className={cx(
+                              'shrink-0 rounded-md px-1.5 py-0.5 font-mono text-[10px] font-bold',
+                              isExpressive
+                                ? 'bg-[#FCE99F] text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]'
+                                : 'bg-surface-2 text-accent',
+                            )}
+                          >
                             {r.code}
                           </span>
                           <span className="break-words font-semibold text-fg">{r.name}</span>
@@ -2339,22 +2593,36 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
 
               {/* Gaveta colapsável para escolher cadeiras opcionais de Mestrado/Licenciatura */}
               {filteredRecords.some((r) => r.isOptional && r.status === 'por_fazer') && (
-                <div className="rounded-3xl border border-dashed border-line bg-surface/70 p-3.5">
+                <div
+                  className={cx(
+                    'rounded-[24px] border-2 border-dashed p-3.5 shadow-sm',
+                    isExpressive
+                      ? 'border-[#141312]/15 bg-[#C9DC9F]/50 text-[#141312] dark:border-white/15 dark:bg-[#192D21]/70 dark:text-[#FAF6EC]'
+                      : 'border-line bg-surface/70 text-fg',
+                  )}
+                >
                   <button
                     type="button"
                     onClick={() => {
                       void hapticTap();
                       setShowOptionalCourses((v) => !v);
                     }}
-                    className="flex min-h-[40px] w-full items-center justify-between gap-2 text-left text-xs font-semibold text-fg"
+                    className="flex min-h-[40px] w-full items-center justify-between gap-2 text-left text-xs font-bold"
                   >
                     <span>
                       {showOptionalCourses ? '− Esconder cadeiras opcionais disponíveis' : '+ Ver / escolher cadeiras opcionais disponíveis'}{' '}
-                      <span className="font-mono text-muted">
+                      <span className="font-mono opacity-75">
                         ({filteredRecords.filter((r) => r.isOptional && r.status === 'por_fazer').length})
                       </span>
                     </span>
-                    <span className="shrink-0 whitespace-nowrap rounded-full bg-surface-2 px-2.5 py-0.5 text-[11px] text-muted">
+                    <span
+                      className={cx(
+                        'shrink-0 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px]',
+                        isExpressive
+                          ? 'bg-white/75 text-[#141312] dark:bg-black/30 dark:text-[#FAF6EC]'
+                          : 'bg-surface-2 text-muted',
+                      )}
+                    >
                       {showOptionalCourses ? 'Fechar' : 'Abrir'}
                     </span>
                   </button>
@@ -2451,52 +2719,80 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                     : 'border border-line bg-surface text-fg',
                 )}
               >
-                <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center">
-                  <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-white/65 shadow-sm dark:bg-black/25">
-                    <UniBuddy mood="celebrate" size={58} interactive={false} />
+                {isExpressive && (
+                  <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+                    <motion.div
+                      className="absolute -top-8 -right-8 size-28 rounded-full bg-[#C9DC9F]/55 dark:bg-[#157F58]/25"
+                      animate={{ y: [0, 8, 0], x: [0, -5, 0] }}
+                      transition={{ repeat: Infinity, duration: 6, ease: 'easeInOut' }}
+                    />
+                    <motion.div
+                      className="absolute -bottom-6 left-10 size-18 rotate-12 rounded-2xl bg-[#FAD6BA]/60 dark:bg-[#E04F33]/20"
+                      animate={{ rotate: [12, 20, 12] }}
+                      transition={{ repeat: Infinity, duration: 5.5, ease: 'easeInOut' }}
+                    />
                   </div>
-                  <div className="space-y-1">
-                    <StickerBadge tone="mint" tilt={-1.5}>
-                      Último passo
-                    </StickerBadge>
-                    <h2 className="font-display text-xl font-extrabold sm:text-2xl">
-                      Contas separadas,{' '}
-                      <span className="font-serif font-normal italic">Uni e ritmo</span>
-                    </h2>
-                    <p className="text-xs opacity-85 sm:text-sm">
-                      Liga opcionalmente o teu email institucional da faculdade, configura a chave Gemini se quiseres mensagens ilimitadas e define o teu ritmo semanal.
+                )}
+                <div className="relative z-10 space-y-2.5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 space-y-2">
+                      <StickerBadge tone="mint" tilt={-1.5}>
+                        Último passo
+                      </StickerBadge>
+                      <h2 className="font-display text-xl font-extrabold leading-tight sm:text-2xl">
+                        Contas separadas,{' '}
+                        <span className="font-serif font-normal italic">Uni e ritmo</span>
+                      </h2>
+                    </div>
+                    <div className="flex h-18 w-18 shrink-0 items-center justify-center rounded-3xl bg-white/65 p-1.5 shadow-sm backdrop-blur-sm dark:bg-black/25">
+                      <UniBuddy mood="celebrate" size={56} interactive={false} />
+                    </div>
+                  </div>
+                  <p className="text-xs opacity-85 sm:text-sm">
+                    Liga opcionalmente o teu email institucional da faculdade, configura a chave Gemini se quiseres mensagens ilimitadas e define o teu ritmo semanal.
+                  </p>
+                  {extraActivities.length > 0 && (
+                    <p className="text-[11px] font-bold">
+                      ✓ Atividades extra consideradas ({extraActivities.reduce((s, a) => s + a.hoursPerWeek, 0)}h/semana ajustadas no plano).
                     </p>
-                    {extraActivities.length > 0 && (
-                      <p className="text-[11px] font-bold">
-                        ✓ Atividades extra consideradas ({extraActivities.reduce((s, a) => s + a.hoursPerWeek, 0)}h/semana ajustadas no plano).
-                      </p>
-                    )}
-                  </div>
+                  )}
                 </div>
               </div>
 
               {/* Ligação estrita de Email Institucional vs Pessoal */}
-              <div className="space-y-3 rounded-3xl border border-line bg-surface p-4 shadow-sm sm:p-5">
+              <div
+                className={cx(
+                  'space-y-3 rounded-[26px] p-4 shadow-card sm:p-5',
+                  isExpressive
+                    ? 'bg-[#C4E0FD]/75 text-[#141312] dark:bg-[#192838] dark:text-[#FAF6EC]'
+                    : 'border border-line bg-surface text-fg',
+                )}
+              >
                 <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <div className="flex items-center gap-2">
+                  <div className="space-y-1">
+                    {isExpressive && (
+                      <StickerBadge tone="butter" tilt={-1}>
+                        Correio separado
+                      </StickerBadge>
+                    )}
+                    <div className="flex flex-wrap items-center gap-2">
                       <Mail size={16} className="text-accent" />
-                      <h3 className="font-display text-sm font-bold text-fg">
+                      <h3 className="font-display text-sm font-bold">
                         Email Institucional da Faculdade (Correio Académico)
                       </h3>
                       <Badge tone={academicMailConnected ? 'ok' : 'neutral'}>
                         {academicMailConnected ? 'Ligado' : 'Opcional'}
                       </Badge>
                     </div>
-                    <p className="mt-1 text-xs text-muted">
+                    <p className="mt-1 text-xs opacity-80">
                       Totalmente separado da tua conta pessoal{activePersonalEmail ? ` (${activePersonalEmail})` : ''}. Nunca lemos emails pessoais.
                     </p>
                   </div>
                 </div>
 
                 {academicMailConnected ? (
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-ok/30 bg-ok/10 px-3.5 py-2.5 text-xs">
-                    <span className="font-medium text-fg">
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-ok/30 bg-white/75 px-3.5 py-2.5 text-xs text-[#141312] dark:bg-black/30 dark:text-[#FAF6EC]">
+                    <span className="font-medium">
                       Conta institucional ativa:{' '}
                       <strong className="font-mono text-ok">
                         {academicEmail || academicHint || 'Conta Google Académica'}
@@ -2533,8 +2829,20 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
 
               {/* Uni + Chave Gemini & Armazenamento */}
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="flex flex-col justify-between gap-3 rounded-3xl border border-line bg-surface p-4">
+                <div
+                  className={cx(
+                    'flex flex-col justify-between gap-3 rounded-[24px] p-4 shadow-card',
+                    isExpressive
+                      ? 'bg-[#C9DC9F]/80 text-[#141312] dark:bg-[#192D21] dark:text-[#FAF6EC]'
+                      : 'border border-line bg-surface text-fg',
+                  )}
+                >
                   <div className="space-y-2">
+                    {isExpressive && (
+                      <StickerBadge tone="butter" tilt={-1}>
+                        Tutor &amp; OCR
+                      </StickerBadge>
+                    )}
                     <label className="flex cursor-pointer items-start gap-2.5">
                       <input
                         type="checkbox"
@@ -2546,8 +2854,8 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                         className="mt-1 h-4 w-4 rounded border-line text-accent focus:ring-accent"
                       />
                       <div>
-                        <p className="text-xs font-bold text-fg">Ativar Uni (Tutor & OCR)</p>
-                        <p className="text-[11px] text-muted">
+                        <p className="text-xs font-bold">Ativar Uni (Tutor & OCR)</p>
+                        <p className="text-[11px] opacity-80">
                           Tens cota diária gratuita ou podes pôr a tua chave gratuita Gemini (sem limite de 15 msgs).
                         </p>
                       </div>
@@ -2563,8 +2871,15 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                   </Button>
                 </div>
 
-                <div className="space-y-2 rounded-3xl border border-line bg-surface p-4">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-fg">
+                <div
+                  className={cx(
+                    'space-y-2.5 rounded-[24px] p-4 shadow-card',
+                    isExpressive
+                      ? 'bg-[#FAD6BA]/80 text-[#141312] dark:bg-[#332218] dark:text-[#FAF6EC]'
+                      : 'border border-line bg-surface text-fg',
+                  )}
+                >
+                  <div className="flex items-center gap-1.5 text-xs font-bold">
                     <ShieldCheck size={15} className="text-accent" /> Onde guardar o caderno?
                   </div>
                   <div className="grid grid-cols-2 gap-2">
@@ -2578,14 +2893,16 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                       className={cx(
                         'flex min-h-[54px] flex-col items-start justify-center rounded-2xl border px-3 py-2 text-left text-[11px] transition',
                         !cloudSyncConsent
-                          ? 'border-accent bg-accent-soft text-accent'
-                          : 'border-line bg-bg text-muted',
+                          ? 'border-transparent bg-ink-cta text-ink-cta-fg shadow-sm'
+                          : isExpressive
+                            ? 'border-[#141312]/10 bg-white/70 text-[#141312] hover:bg-white dark:border-white/10 dark:bg-black/25 dark:text-[#FAF6EC]'
+                            : 'border-line bg-bg text-muted',
                       )}
                     >
                       <span className="flex items-center gap-1 font-bold">
                         <HardDrive size={12} /> Local
                       </span>
-                      <span>Só neste dispositivo</span>
+                      <span className="opacity-80">Só neste dispositivo</span>
                     </button>
                     <button
                       type="button"
@@ -2597,21 +2914,28 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                       className={cx(
                         'flex min-h-[54px] flex-col items-start justify-center rounded-2xl border px-3 py-2 text-left text-[11px] transition',
                         cloudSyncConsent
-                          ? 'border-accent bg-accent-soft text-accent'
-                          : 'border-line bg-bg text-muted',
+                          ? 'border-transparent bg-ink-cta text-ink-cta-fg shadow-sm'
+                          : isExpressive
+                            ? 'border-[#141312]/10 bg-white/70 text-[#141312] hover:bg-white dark:border-white/10 dark:bg-black/25 dark:text-[#FAF6EC]'
+                            : 'border-line bg-bg text-muted',
                       )}
                     >
                       <span className="flex items-center gap-1 font-bold">
                         <Cloud size={12} /> Cloud
                       </span>
-                      <span>Sincronizado</span>
+                      <span className="opacity-80">Sincronizado</span>
                     </button>
                   </div>
                 </div>
               </div>
 
               {/* Ritmo semanal */}
-              <div className="space-y-4 rounded-3xl border border-line bg-surface p-4 shadow-sm sm:p-5">
+              <div className="space-y-4 rounded-[26px] border border-line bg-surface p-4 shadow-card sm:p-5">
+                {isExpressive && (
+                  <StickerBadge tone="mint" tilt={-1}>
+                    Plano &amp; Foco
+                  </StickerBadge>
+                )}
                 <div role="group" aria-label="Dias disponíveis para estudar" className="space-y-1.5">
                   <span className="block text-xs font-medium text-muted">
                     Dias disponíveis para estudar
@@ -2628,7 +2952,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                           className={cx(
                             'flex min-h-[44px] items-center justify-center rounded-xl border text-xs font-semibold transition',
                             active
-                              ? 'border-accent bg-accent text-accent-fg shadow-sm'
+                              ? 'border-transparent bg-ink-cta text-ink-cta-fg shadow-sm'
                               : 'border-line bg-bg text-muted hover:text-fg',
                           )}
                         >
@@ -2656,7 +2980,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                           className={cx(
                             'min-h-[54px] rounded-2xl border p-2.5 text-left transition',
                             selected
-                              ? 'border-accent bg-accent-soft text-accent'
+                              ? 'border-accent bg-accent-soft text-accent shadow-sm'
                               : 'border-line bg-bg hover:bg-surface-2',
                           )}
                         >
@@ -2874,7 +3198,22 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
           initialMode={scheduleImportMode}
           onClose={() => {
             setScheduleImportMode(null);
-            const storeCourses = useStore.getState().courses;
+            const state = useStore.getState();
+            const storeCourses = state.courses;
+            const addedClasses = Math.max(
+              0,
+              state.classes.length - (scheduleImportBaseline?.classes ?? 0),
+            );
+            const addedAssessments = Math.max(
+              0,
+              state.assessments.length - (scheduleImportBaseline?.assessments ?? 0),
+            );
+            const addedCourses = Math.max(
+              0,
+              storeCourses.length - (scheduleImportBaseline?.courses ?? 0),
+            );
+            setScheduleImportBaseline(null);
+
             if (storeCourses.length > 0) {
               setRecords((prev) => {
                 const next = [...prev];
@@ -2902,6 +3241,15 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                 }
                 return next;
               });
+            }
+
+            if (addedClasses > 0 || addedAssessments > 0 || addedCourses > 0) {
+              const parts: string[] = [];
+              if (addedCourses > 0) parts.push(`${addedCourses} cadeira(s)`);
+              if (addedClasses > 0) parts.push(`${addedClasses} aula(s) no horário`);
+              if (addedAssessments > 0) parts.push(`${addedAssessments} avaliação(ões)`);
+              setOcrError(null);
+              setOcrFeedback(`Importado do horário: ${parts.join(', ')}.`);
             }
           }}
         />

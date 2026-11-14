@@ -1,4 +1,4 @@
-import { CalendarDays, Camera, Check, CheckCircle2, FileText, Loader2, Sparkles } from 'lucide-react';
+import { CalendarDays, Camera, Check, CheckCircle2, FileText, Loader2, Sparkles, Upload } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { matchCourse } from '../../integrations/clip';
 import {
@@ -11,6 +11,7 @@ import { extractAcademicsFromGoogleCalendar, syncGoogleCalendar } from '../../in
 import { colorNames, kindLabel, weekdayLong } from '../../lib/colors';
 import { newId, useStore } from '../../store/useStore';
 import type { Assessment, ClassSlot, Course, CourseColor } from '../../types';
+import { StickerBadge } from '../motion/Primitives';
 import { Badge, Button, Modal, cx } from '../ui';
 
 export type SmartImportInitialMode = 'photo' | 'gcal';
@@ -45,13 +46,24 @@ interface PreviewCourse {
   selected: boolean;
 }
 
+function inferImageMimeType(file: File): string {
+  if (file.type) return file.type;
+  const lower = file.name.toLowerCase();
+  if (lower.endsWith('.png')) return 'image/png';
+  if (lower.endsWith('.webp')) return 'image/webp';
+  if (lower.endsWith('.gif')) return 'image/gif';
+  if (lower.endsWith('.heic')) return 'image/heic';
+  if (lower.endsWith('.heif')) return 'image/heif';
+  return 'image/jpeg';
+}
+
 function readImageBase64(file: File): Promise<{ base64: string; mimeType: string }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () =>
       resolve({
         base64: String(reader.result ?? ''),
-        mimeType: file.type || 'image/jpeg',
+        mimeType: inferImageMimeType(file),
       });
     reader.onerror = () => reject(new Error(`Não foi possível ler "${file.name}".`));
     reader.readAsDataURL(file);
@@ -82,12 +94,16 @@ export default function SmartScheduleImportModal({
   const courses = useStore((s) => s.courses);
   const events = useStore((s) => s.events);
   const googleConnected = useStore((s) => s.integrations.google.connected);
+  const appTone = useStore((s) => s.settings.appTone);
+  const isExpressive = appTone !== 'serio';
   const aiConsent = Boolean(useStore((s) => s.settings.aiConsent));
   const updateSettings = useStore((s) => s.updateSettings);
   const upsertMany = useStore((s) => s.upsertMany);
 
   const [mode, setMode] = useState<SmartImportInitialMode>(initialMode);
   const [busy, setBusy] = useState(false);
+  const [pickedNames, setPickedNames] = useState<string[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [slots, setSlots] = useState<PreviewSlot[]>([]);
   const [assessments, setAssessments] = useState<PreviewAssessment[]>([]);
@@ -141,11 +157,23 @@ export default function SmartScheduleImportModal({
     }
   };
 
-  const handlePhotoPick = async (files?: FileList | null) => {
-    if (!files || files.length === 0) return;
+  const handlePhotoPick = async (files?: File[] | FileList | null) => {
+    const fileList = files ? Array.from(files) : [];
+    if (fileList.length === 0) return;
+
+    const imageFiles = fileList.filter((f) => {
+      if (f.type.startsWith('image/')) return true;
+      return /\.(png|jpe?g|webp|gif|heic|heif|bmp)$/i.test(f.name);
+    });
+    if (imageFiles.length === 0) {
+      setError('Seleciona uma imagem (PNG, JPG, WebP ou print do horário).');
+      return;
+    }
+
     if (!aiConsent) {
       updateSettings({ aiConsent: true });
     }
+    setPickedNames(imageFiles.map((f) => f.name));
     setBusy(true);
     setError(null);
     setImportedSummary(null);
@@ -156,7 +184,7 @@ export default function SmartScheduleImportModal({
       let firstError: Error | null = null;
       let anySucceeded = false;
 
-      for (const file of Array.from(files)) {
+      for (const file of imageFiles) {
         const { base64, mimeType } = await readImageBase64(file);
         const [scheduleRes, historyRes] = await Promise.allSettled([
           parseTimetableFromScreenshot(base64, mimeType),
@@ -381,12 +409,42 @@ export default function SmartScheduleImportModal({
         </div>
 
         {mode === 'photo' ? (
-          <div className="space-y-3 rounded-2xl border border-line bg-surface-2/70 p-4 text-xs">
-            <p className="leading-relaxed text-fg">
-              Envia 1 ou mais fotos ou prints (ex.: horário semanal + lista de cadeiras). O Uni lê as cadeiras, horas, dias e salas por ti.
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragging(true);
+            }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setIsDragging(false);
+              if (busy) return;
+              void handlePhotoPick(e.dataTransfer?.files);
+            }}
+            className={cx(
+              'space-y-3 rounded-2xl border-2 border-dashed p-4 text-xs transition',
+              isDragging
+                ? 'border-accent bg-accent-soft/60'
+                : isExpressive
+                  ? 'border-[#141312]/15 bg-[#FCE99F]/70 text-[#141312] dark:border-white/15 dark:bg-[#352D14] dark:text-[#FAF6EC]'
+                  : 'border-line bg-surface-2/70 text-fg',
+            )}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              {isExpressive ? (
+                <StickerBadge tone="mint" tilt={-1.5}>
+                  <Camera size={11} /> Leitura rápida do horário
+                </StickerBadge>
+              ) : (
+                <span className="font-semibold text-fg">Leitura de foto / print</span>
+              )}
+              <span className="text-[11px] opacity-75">PNG, JPG ou print</span>
+            </div>
+            <p className="leading-relaxed opacity-90">
+              Envia 1 ou mais fotos ou prints (ou arrasta para aqui). O Uni lê as cadeiras, horas, dias e salas por ti.
             </p>
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-ink-cta px-4 py-2 text-xs font-semibold text-ink-cta-fg transition hover:opacity-90">
-              {busy ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
+            <label className="inline-flex min-h-[42px] cursor-pointer items-center gap-2 rounded-full bg-ink-cta px-4 py-2 text-xs font-semibold text-ink-cta-fg shadow-card transition hover:opacity-90">
+              {busy ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
               {busy ? 'A ler prints com o Uni…' : 'Escolher fotos ou prints'}
               <input
                 type="file"
@@ -395,12 +453,20 @@ export default function SmartScheduleImportModal({
                 className="hidden"
                 disabled={busy}
                 onChange={(e) => {
-                  const files = e.target.files;
+                  const files = Array.from(e.target.files ?? []);
                   e.target.value = '';
                   void handlePhotoPick(files);
                 }}
               />
             </label>
+            {busy && pickedNames.length > 0 && (
+              <p className="flex items-center gap-2 rounded-xl bg-white/75 px-3 py-2 text-[11px] font-medium text-[#141312] dark:bg-black/30 dark:text-[#FAF6EC]">
+                <Loader2 size={13} className="shrink-0 animate-spin text-accent" />
+                <span className="truncate">
+                  A analisar {pickedNames.join(', ')}…
+                </span>
+              </p>
+            )}
           </div>
         ) : (
           <div className="space-y-3 rounded-2xl border border-line bg-surface-2/70 p-4 text-xs">

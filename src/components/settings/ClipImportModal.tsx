@@ -435,7 +435,11 @@ export default function ClipImportModal({ onClose }: { onClose: () => void }) {
                     accept=".html,.htm,text/html"
                     className="sr-only"
                     disabled={reading}
-                    onChange={(e) => { void onHtmlFile(e.target.files?.[0]); e.target.value = ''; }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      e.target.value = '';
+                      void onHtmlFile(file);
+                    }}
                   />
                 </label>
               </div>
@@ -458,7 +462,11 @@ export default function ClipImportModal({ onClose }: { onClose: () => void }) {
                   accept=".ics,text/calendar"
                   className="sr-only"
                   disabled={reading}
-                  onChange={(e) => { void onIcsFile(e.target.files?.[0]); e.target.value = ''; }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = '';
+                    void onIcsFile(file);
+                  }}
                 />
               </label>
             </div>
