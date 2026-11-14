@@ -19,9 +19,11 @@ export interface ExtractedScheduleSlot {
 
 export interface ExtractedScheduleAssessment {
   courseName: string;
+  courseCode?: string;
   title: string;
   date: string;
   kind: 'exame' | 'teste' | 'trabalho' | 'projeto' | 'quiz';
+  location?: string;
 }
 
 export interface ExtractedSchedulePayload {
@@ -214,6 +216,9 @@ export function parseScheduleJsonText(rawText: string): ExtractedSchedulePayload
         .find((v): v is unknown[] => Array.isArray(v)) ?? [])
     : [];
 
+  const hasSaturdayColumn =
+    obj && typeof obj.hasSaturdayColumn === 'boolean' ? obj.hasSaturdayColumn : undefined;
+
   const slots: ExtractedScheduleSlot[] = rawSlots
     .filter((s): s is Record<string, unknown> => Boolean(s && typeof s === 'object'))
     .map((s): ExtractedScheduleSlot | null => {
@@ -235,11 +240,30 @@ export function parseScheduleJsonText(rawText: string): ExtractedSchedulePayload
       const parsedEnd = normalizeTimeHHMM(s.end ?? s.fim ?? s.endTime);
       const rawRoom = s.room ?? s.sala ?? s.location;
       if (!courseName || !start) return null;
+
+      const explicitDaySource = s.dayHeader ?? s.dayLabel ?? s.day ?? s.dia;
+      let weekday =
+        explicitDaySource !== undefined && explicitDaySource !== null && String(explicitDaySource).trim() !== ''
+          ? normalizeWeekday(explicitDaySource)
+          : normalizeWeekday(s.weekday);
+
+      if (weekday === 6) {
+        const dayText = String(explicitDaySource ?? '')
+          .trim()
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '');
+        const explicitSat = dayText.includes('sab') || dayText.includes('sat');
+        if (!explicitSat && hasSaturdayColumn === false) {
+          weekday = 5;
+        }
+      }
+
       return {
         courseName,
         courseCode,
         type: normalizeClassType(s.type ?? s.tipo),
-        weekday: normalizeWeekday(s.weekday ?? s.day ?? s.dia),
+        weekday,
         start,
         end: parsedEnd ?? addMinutesToHHMM(start, 90),
         room: typeof rawRoom === 'string' && rawRoom.trim() ? rawRoom.trim() : undefined,
@@ -254,8 +278,11 @@ export function parseScheduleJsonText(rawText: string): ExtractedSchedulePayload
       const date = String(a.date ?? a.data ?? '').trim();
       if (!courseName || !date) return null;
       const kind = a.kind ?? a.tipo;
+      const rawCode = a.courseCode ?? a.code ?? a.sigla;
+      const rawLoc = a.location ?? a.sala ?? a.room;
       return {
         courseName,
+        ...(typeof rawCode === 'string' && rawCode.trim() ? { courseCode: rawCode.trim() } : {}),
         title: typeof a.title === 'string' && a.title.trim() ? a.title.trim() : 'Avaliação',
         date,
         kind:
@@ -266,9 +293,36 @@ export function parseScheduleJsonText(rawText: string): ExtractedSchedulePayload
           kind === 'quiz'
             ? kind
             : 'teste',
+        ...(typeof rawLoc === 'string' && rawLoc.trim() ? { location: rawLoc.trim() } : {}),
       };
     })
     .filter((a): a is ExtractedScheduleAssessment => a !== null);
 
   return { slots, assessments };
+}
+
+/** Separa o texto visível ao aluno de qualquer bloco estruturado `<uni-sync>...</uni-sync>` emitido pelo Tutor. */
+export function extractUniSyncBlock(rawText: string): {
+  displayText: string;
+  payload: ExtractedSchedulePayload | null;
+} {
+  const closedMatch = /<uni-sync>([\s\S]*?)<\/uni-sync>/i.exec(rawText);
+  if (closedMatch) {
+    const displayText = rawText.replace(/<uni-sync>[\s\S]*?<\/uni-sync>/gi, '').trim();
+    try {
+      const parsed = parseScheduleJsonText(closedMatch[1] ?? '');
+      const hasItems = parsed.slots.length > 0 || parsed.assessments.length > 0;
+      return { displayText, payload: hasItems ? parsed : null };
+    } catch {
+      return { displayText, payload: null };
+    }
+  }
+
+  // Enquanto o stream ainda está a escrever `<uni-sync...`, oculta o JSON bruto no chat
+  const openIdx = rawText.toLowerCase().indexOf('<uni-sync');
+  if (openIdx >= 0) {
+    return { displayText: rawText.slice(0, openIdx).trim(), payload: null };
+  }
+
+  return { displayText: rawText, payload: null };
 }

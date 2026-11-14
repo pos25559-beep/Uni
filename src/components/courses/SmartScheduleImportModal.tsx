@@ -667,10 +667,30 @@ export default function SmartScheduleImportModal({
                           <p className="font-semibold text-fg">
                             {displayName} · {s.type}
                           </p>
-                          <p className="text-[11px] text-muted">
-                            {weekdayLong[s.weekday]} {s.start}–{s.end}
-                            {s.room ? ` · Sala ${s.room}` : ''}
-                          </p>
+                          <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted">
+                            <select
+                              value={s.weekday}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => {
+                                const nextDay = Number(e.target.value);
+                                setSlots((prev) =>
+                                  prev.map((x) => (x.id === s.id ? { ...x, weekday: nextDay } : x)),
+                                );
+                              }}
+                              aria-label={`Dia da semana para ${displayName}`}
+                              className="rounded-md border border-line bg-surface-2 px-1.5 py-0.5 text-[11px] font-medium text-fg focus:border-accent focus:outline-none"
+                            >
+                              {weekdayLong.map((dayName, idx) => (
+                                <option key={idx} value={idx}>
+                                  {dayName}
+                                </option>
+                              ))}
+                            </select>
+                            <span>
+                              {s.start}–{s.end}
+                              {s.room ? ` · Sala ${s.room}` : ''}
+                            </span>
+                          </div>
                         </div>
                       </div>
                       <Badge tone={matched ? 'ok' : 'accent'}>

@@ -1,6 +1,8 @@
 import {
   Award,
   BookOpen,
+  CalendarDays,
+  Check,
   FileText,
   FolderOpen,
   MessageSquare,
@@ -26,18 +28,25 @@ import { UniBuddy } from '../components/brand/UnipediaMarks';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import GeminiKeyGuideModal from '../components/settings/GeminiKeyGuideModal';
 import { useNavigate } from 'react-router-dom';
-import { ActionSheet, Badge, Button, Modal, PillSelect, cx } from '../components/ui';
+import { ActionSheet, Badge, Button, Modal, PillSelect, cx, showToast } from '../components/ui';
 import {
   buildDocumentContext,
   buildStudyContext,
   hasCustomGeminiKey,
+  parseTimetableFromScreenshot,
   streamGeminiChat,
   SYSTEM_PROMPT,
   type ChatAttachment,
   type ChatMessage,
 } from '../integrations/gemini';
 import { getDailyQuotaSnapshot } from '../lib/aiQuota';
-import { courseColors } from '../lib/colors';
+import { courseColors, kindLabel, weekdayLong } from '../lib/colors';
+import {
+  commitScheduleSyncToStore,
+  resolveExtractedScheduleBundle,
+  type ResolvedScheduleSyncBundle,
+} from '../lib/scheduleSync';
+import { extractUniSyncBlock } from '../lib/visionParsers';
 import {
   TUTOR_SUBJECTS,
   appendMessage,
@@ -94,7 +103,15 @@ export default function Assistant() {
   const [keyGuideOpen, setKeyGuideOpen] = useState(false);
   const [collectiblesOpen, setCollectiblesOpen] = useState(false);
   const [contextModalOpen, setContextModalOpen] = useState(false);
+  const [pendingSyncByMsgId, setPendingSyncByMsgId] = useState<
+    Record<string, ResolvedScheduleSyncBundle>
+  >({});
   const abortRef = useRef<AbortController | null>(null);
+  const lastAttachmentsRef = useRef<{
+    convId: string;
+    msgId: string;
+    attachments: ChatAttachment[];
+  } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Escuta estado de autenticação
@@ -267,19 +284,56 @@ export default function Assistant() {
           system,
           attachments,
           signal: controller.signal,
-          onToken: (partial) => setStreamingText(partial),
+          onToken: (partial) => setStreamingText(extractUniSyncBlock(partial).displayText),
         });
         const now = new Date().toISOString();
+        const extractedFromReply = extractUniSyncBlock(reply);
+        let syncPayload = extractedFromReply.payload;
+
+        const lastUserText =
+          [...list].reverse().find((m) => m.role === 'user')?.text ?? '';
+        const imageAtt = attachments?.find((a) => a.mimeType.startsWith('image/'));
+        if (
+          !syncPayload &&
+          imageAtt &&
+          /(hor[aá]ri|test|exame|avalia[cç]|calend[aá]ri|atualiz|pauta|entrega|prazo|guarda|import|reconhec|site|app|resto)/i.test(
+            lastUserText,
+          )
+        ) {
+          try {
+            const parsed = await parseTimetableFromScreenshot(
+              imageAtt.dataBase64,
+              imageAtt.mimeType,
+              { focus: 'assessments' },
+            );
+            if (parsed.slots.length > 0 || parsed.assessments.length > 0) {
+              syncPayload = parsed;
+            }
+          } catch {
+            // Não bloqueia a resposta do chat se a extração secundária falhar
+          }
+        }
+
+        const msgId = newId();
         const modelMsg: ChatMessage = {
-          id: newId(),
+          id: msgId,
           role: 'model',
-          text: reply || 'Não consegui gerar texto desta vez. Podes tentar novamente?',
+          text:
+            extractedFromReply.displayText ||
+            'Não consegui gerar texto desta vez. Podes tentar novamente?',
           at: now,
           sourceDocTitles: [
             ...attachedMaterials.map((m) => m.title),
             ...(attachments?.map((a) => a.name) ?? []),
           ],
         };
+
+        if (syncPayload && (syncPayload.slots.length > 0 || syncPayload.assessments.length > 0)) {
+          const resolved = resolveExtractedScheduleBundle(syncPayload);
+          if (resolved.slots.length > 0 || resolved.assessments.length > 0) {
+            setPendingSyncByMsgId((prev) => ({ ...prev, [msgId]: resolved }));
+          }
+        }
 
         setStreamingText(null);
         await appendMessage(targetConvId, modelMsg);
@@ -340,6 +394,10 @@ export default function Assistant() {
 
       const nextMessages = [...messages, userMsg];
       setMessages(nextMessages);
+      lastAttachmentsRef.current =
+        attachments && attachments.length > 0
+          ? { convId, msgId: userMsg.id, attachments }
+          : null;
       await appendMessage(convId, userMsg);
       void run(nextMessages, convId, attachments);
     } catch (err) {
@@ -359,7 +417,16 @@ export default function Assistant() {
   };
 
   const retry = () => {
-    if (!loading && messages.length > 0) void run(messages, activeConvId);
+    if (!loading && messages.length > 0) {
+      const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
+      const retryAttachments =
+        lastAttachmentsRef.current &&
+        lastAttachmentsRef.current.convId === activeConvId &&
+        lastAttachmentsRef.current.msgId === lastUserMsg?.id
+          ? lastAttachmentsRef.current.attachments
+          : undefined;
+      void run(messages, activeConvId, retryAttachments);
+    }
   };
 
   return (
@@ -674,6 +741,39 @@ export default function Assistant() {
               className="rise max-w-[95%] rounded-[22px] rounded-bl-md bg-surface px-4 py-3.5 shadow-card"
             >
               <Markdown text={m.text} />
+              {pendingSyncByMsgId[m.id] && (
+                <UniSyncCard
+                  bundle={pendingSyncByMsgId[m.id]}
+                  onChange={(next) =>
+                    setPendingSyncByMsgId((prev) => ({ ...prev, [m.id]: next }))
+                  }
+                  onApply={() => {
+                    const current = pendingSyncByMsgId[m.id];
+                    if (!current) return;
+                    const res = commitScheduleSyncToStore(current);
+                    const parts: string[] = [];
+                    if (res.assessmentsCount > 0) {
+                      parts.push(`${res.assessmentsCount} avaliação(ões)`);
+                    }
+                    if (res.classesCount > 0) {
+                      parts.push(`${res.classesCount} aula(s)`);
+                    }
+                    if (res.createdCoursesCount > 0) {
+                      parts.push(`${res.createdCoursesCount} cadeira(s)`);
+                    }
+                    const summary =
+                      parts.length > 0
+                        ? `Atualizado: ${parts.join(', ')} no Calendário e Plano.`
+                        : 'Nada novo para adicionar — tudo já existia na app.';
+                    setPendingSyncByMsgId((prev) => ({
+                      ...prev,
+                      [m.id]: { ...current, applied: true, appliedSummary: summary },
+                    }));
+                    showToast(summary);
+                  }}
+                  onOpenCalendar={() => navigate('/calendario')}
+                />
+              )}
               <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-line/70 pt-2 text-xs text-muted">
                 <span>Sugestão do Uni · Valida sempre com a sebenta</span>
                 {m.sourceDocTitles && m.sourceDocTitles.length > 0 && (
@@ -998,6 +1098,212 @@ export default function Assistant() {
           });
         }}
       />
+    </div>
+  );
+}
+
+interface UniSyncCardProps {
+  bundle: ResolvedScheduleSyncBundle;
+  onChange: (next: ResolvedScheduleSyncBundle) => void;
+  onApply: () => void;
+  onOpenCalendar: () => void;
+}
+
+/** Cartão interativo dentro da resposta do Uni para aplicar aulas e avaliações no Calendário e Plano. */
+function UniSyncCard({ bundle, onChange, onApply, onOpenCalendar }: UniSyncCardProps) {
+  const selectedCount =
+    bundle.slots.filter((s) => s.selected).length +
+    bundle.assessments.filter((a) => a.selected).length;
+
+  return (
+    <div
+      data-testid="uni-sync-card"
+      className="mt-3 rounded-2xl border border-accent/25 bg-surface-2/80 p-3.5"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <CalendarDays size={15} className="text-accent" />
+          <span className="text-xs font-semibold text-fg">
+            Sincronizar com o resto da app
+          </span>
+        </div>
+        <Badge tone={bundle.applied ? 'accent' : 'neutral'}>
+          {bundle.applied
+            ? 'Aplicado'
+            : `${bundle.assessments.length} aval. · ${bundle.slots.length} aula(s)`}
+        </Badge>
+      </div>
+
+      {bundle.applied ? (
+        <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2.5 rounded-xl bg-accent-soft/60 px-3 py-2 text-xs text-accent">
+          <span className="inline-flex items-center gap-1.5 font-medium">
+            <Check size={14} />
+            {bundle.appliedSummary || 'Informação aplicada ao Calendário e Plano.'}
+          </span>
+          <button
+            type="button"
+            onClick={onOpenCalendar}
+            className="rounded-lg bg-accent px-2.5 py-1 text-xs font-semibold text-accent-fg transition hover:opacity-90"
+          >
+            Abrir Calendário
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="mt-2.5 max-h-60 space-y-1.5 overflow-y-auto pr-0.5">
+            {bundle.assessments.map((a, idx) => (
+              <div
+                key={a.id}
+                onClick={() => {
+                  const next = bundle.assessments.map((item, i) =>
+                    i === idx ? { ...item, selected: !item.selected } : item,
+                  );
+                  onChange({ ...bundle, assessments: next });
+                }}
+                role="checkbox"
+                aria-checked={a.selected}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === ' ' || e.key === 'Enter') {
+                    e.preventDefault();
+                    const next = bundle.assessments.map((item, i) =>
+                      i === idx ? { ...item, selected: !item.selected } : item,
+                    );
+                    onChange({ ...bundle, assessments: next });
+                  }
+                }}
+                className={cx(
+                  'flex cursor-pointer items-center justify-between gap-2 rounded-xl border px-3 py-2 transition',
+                  a.selected
+                    ? 'border-accent/40 bg-surface'
+                    : 'border-line bg-surface/50 opacity-60',
+                )}
+              >
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <span
+                    className={cx(
+                      'grid h-4 w-4 shrink-0 place-items-center rounded-full border transition',
+                      a.selected
+                        ? 'border-accent bg-accent text-accent-fg'
+                        : 'border-muted/40 bg-surface',
+                    )}
+                  >
+                    {a.selected && <Check size={10} />}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-medium text-fg">
+                      {a.courseName} · {a.title || kindLabel[a.kind]}
+                    </p>
+                    <p className="truncate text-[11px] text-muted">
+                      {a.date}
+                      {a.location ? ` · Sala ${a.location}` : ''}
+                    </p>
+                  </div>
+                </div>
+                <Badge tone={a.matchedCourse ? 'accent' : 'neutral'}>
+                  {a.matchedCourse
+                    ? `Liga a ${a.matchedCourse.shortName || a.matchedCourse.name}`
+                    : 'Cria cadeira'}
+                </Badge>
+              </div>
+            ))}
+
+            {bundle.slots.map((s, idx) => (
+              <div
+                key={s.id}
+                onClick={() => {
+                  const next = bundle.slots.map((item, i) =>
+                    i === idx ? { ...item, selected: !item.selected } : item,
+                  );
+                  onChange({ ...bundle, slots: next });
+                }}
+                role="checkbox"
+                aria-checked={s.selected}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === ' ' || e.key === 'Enter') {
+                    e.preventDefault();
+                    const next = bundle.slots.map((item, i) =>
+                      i === idx ? { ...item, selected: !item.selected } : item,
+                    );
+                    onChange({ ...bundle, slots: next });
+                  }
+                }}
+                className={cx(
+                  'flex cursor-pointer items-center justify-between gap-2 rounded-xl border px-3 py-2 transition',
+                  s.selected
+                    ? 'border-accent/40 bg-surface'
+                    : 'border-line bg-surface/50 opacity-60',
+                )}
+              >
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <span
+                    className={cx(
+                      'grid h-4 w-4 shrink-0 place-items-center rounded-full border transition',
+                      s.selected
+                        ? 'border-accent bg-accent text-accent-fg'
+                        : 'border-muted/40 bg-surface',
+                    )}
+                  >
+                    {s.selected && <Check size={10} />}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-medium text-fg">
+                      {s.courseName} · {s.type}
+                    </p>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted">
+                      <select
+                        aria-label={`Dia da semana para ${s.courseName}`}
+                        value={s.weekday}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => {
+                          const nextWeekday = Number(e.target.value);
+                          const next = bundle.slots.map((item, i) =>
+                            i === idx ? { ...item, weekday: nextWeekday } : item,
+                          );
+                          onChange({ ...bundle, slots: next });
+                        }}
+                        className="rounded-md border border-line bg-surface-2 px-1.5 py-0.5 text-[11px] text-fg outline-none focus:border-accent"
+                      >
+                        {[1, 2, 3, 4, 5, 6, 0].map((wd) => (
+                          <option key={wd} value={wd}>
+                            {weekdayLong[wd]}
+                          </option>
+                        ))}
+                      </select>
+                      <span>
+                        {s.start}–{s.end}
+                        {s.room ? ` · Sala ${s.room}` : ''}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <Badge tone={s.matchedCourse ? 'accent' : 'neutral'}>
+                  {s.matchedCourse
+                    ? `Liga a ${s.matchedCourse.shortName || s.matchedCourse.name}`
+                    : 'Cria cadeira'}
+                </Badge>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-[11px] text-muted">
+              Podes ajustar o dia da semana ou desmarcar itens antes de guardar.
+            </span>
+            <Button
+              size="sm"
+              variant="primary"
+              disabled={selectedCount === 0}
+              onClick={onApply}
+              className="gap-1.5"
+            >
+              <Check size={13} />
+              Aplicar no Calendário e Plano ({selectedCount})
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

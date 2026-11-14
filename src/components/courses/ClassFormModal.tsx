@@ -8,6 +8,7 @@ import { weekOrder } from './helpers';
 
 interface Props {
   course: Course;
+  initialSlot?: ClassSlot;
   onClose: () => void;
 }
 
@@ -16,13 +17,13 @@ const classTypeLabel: Record<ClassType, string> = {
   T: 'Teórica (T)', TP: 'Teórico-prática (TP)', P: 'Prática (P)', OT: 'Orientação tutorial (OT)',
 };
 
-export default function ClassFormModal({ course, onClose }: Props) {
+export default function ClassFormModal({ course, initialSlot, onClose }: Props) {
   const upsert = useStore((s) => s.upsert);
-  const [type, setType] = useState<ClassType>('T');
-  const [weekday, setWeekday] = useState(1);
-  const [start, setStart] = useState('09:00');
-  const [end, setEnd] = useState('10:30');
-  const [room, setRoom] = useState('');
+  const [type, setType] = useState<ClassType>(initialSlot?.type ?? 'T');
+  const [weekday, setWeekday] = useState(initialSlot?.weekday ?? 1);
+  const [start, setStart] = useState(initialSlot?.start ?? '09:00');
+  const [end, setEnd] = useState(initialSlot?.end ?? '10:30');
+  const [room, setRoom] = useState(initialSlot?.room ?? '');
   const [error, setError] = useState<string | null>(null);
 
   const save = (e: FormEvent) => {
@@ -31,14 +32,14 @@ export default function ClassFormModal({ course, onClose }: Props) {
     if (end <= start) return setError('A hora de fim tem de ser depois do início.');
     setError(null);
     const item: ClassSlot = {
-      id: newId(),
+      id: initialSlot?.id ?? newId(),
       courseId: course.id,
       type,
       weekday,
       start,
       end,
       room: room.trim() || undefined,
-      source: 'local',
+      source: initialSlot?.source ?? 'local',
     };
     upsert('classes', item);
     onClose();
@@ -48,7 +49,7 @@ export default function ClassFormModal({ course, onClose }: Props) {
     <Modal
       open
       onClose={onClose}
-      title="Nova aula"
+      title={initialSlot ? 'Editar aula' : 'Nova aula'}
       footer={
         <>
           <Button onClick={onClose}>Cancelar</Button>

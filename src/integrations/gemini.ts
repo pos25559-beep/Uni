@@ -6,6 +6,7 @@ import { getGenerativeModel, type Content, type GenerationConfig, type Part } fr
 import { statusLabel } from '../lib/colors';
 import { consumeDailyQuota, refundDailyQuota, type QuotaKind } from '../lib/aiQuota';
 import { getNativeAI } from '../lib/firebase';
+import { readNormalizedScreenshot } from '../lib/imageUpload';
 import {
   collectKnownCourseCandidates,
   getDegreeCurriculum,
@@ -66,6 +67,7 @@ const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
 const DEFAULT_MODEL = 'gemini-3.8-flash';
 const FALLBACK_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'] as const;
 const PRIMARY_TIMEOUT_MS = 10_000;
+const CHAT_ATTACHMENT_PRIMARY_TIMEOUT_MS = 18_000;
 const OCR_PRIMARY_TIMEOUT_MS = 8_000;
 const FALLBACK_TIMEOUT_MS = 25_000;
 const STREAM_IDLE_TIMEOUT_MS = 25_000;
@@ -106,15 +108,32 @@ export function hasCustomGeminiKey(): boolean {
   return Boolean(getCustomGeminiKey());
 }
 
-/** Converte uma imagem ou PDF anexado pelo utilizador em parte multimodal pronta para o Gemini. */
+/** Converte uma imagem ou PDF anexado pelo utilizador em parte multimodal pronta e leve para o Gemini. */
 export async function fileToChatAttachment(file: File): Promise<ChatAttachment> {
-  const isImage = file.type.startsWith('image/');
+  const isImage =
+    file.type.startsWith('image/') ||
+    /\.(png|jpe?g|webp|gif|heic|heif|bmp)$/i.test(file.name);
   const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
   if (!isImage && !isPdf) {
     throw new Error(`Formato não suportado (${file.name}). Anexa imagens (PNG/JPG/WebP) ou PDFs.`);
   }
   if (file.size > MAX_ATTACHMENT_BYTES) {
     throw new Error(`O ficheiro "${file.name}" excede 8 MB. Escolhe uma versão mais leve.`);
+  }
+
+  if (isImage) {
+    try {
+      const normalized = await readNormalizedScreenshot(file);
+      return {
+        id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        name: file.name,
+        mimeType: normalized.mimeType,
+        dataBase64: normalized.base64,
+        sizeBytes: Math.round((normalized.base64.length * 3) / 4),
+      };
+    } catch {
+      // fallback abaixo se descodificação canvas falhar
+    }
   }
 
   const dataBase64 = await new Promise<string>((resolve, reject) => {
@@ -404,10 +423,12 @@ async function callDirectRestStream(args: {
   system: string;
   generationConfig?: GenerationConfig;
   signal?: AbortSignal;
+  primaryTimeoutMs?: number;
   onToken: (accumulatedText: string) => void;
 }): Promise<string> {
   return runModelChain({
     primaryModel: args.model,
+    primaryTimeoutMs: args.primaryTimeoutMs,
     outerSignal: args.signal,
     attempt: async (targetModel, ctx) => {
       const res = await fetch(
@@ -504,12 +525,14 @@ async function runNativeStream(args: {
   system: string;
   generationConfig?: GenerationConfig;
   signal?: AbortSignal;
+  primaryTimeoutMs?: number;
   onToken: (accumulatedText: string) => void;
 }): Promise<string> {
   const ai = getNativeAI();
   try {
     return await runModelChain({
       primaryModel: args.model,
+      primaryTimeoutMs: args.primaryTimeoutMs,
       outerSignal: args.signal,
       attempt: async (targetModel, ctx) => {
         const gm = getGenerativeModel(ai, {
@@ -693,6 +716,10 @@ export async function streamGeminiChat(args: {
   const { customKey, model } = resolveGeminiConfig();
   const contents = buildContentsWithAttachments(args.messages, args.attachments);
   const generationConfig: GenerationConfig = { temperature: 0.65 };
+  const primaryTimeoutMs =
+    args.attachments && args.attachments.length > 0
+      ? CHAT_ATTACHMENT_PRIMARY_TIMEOUT_MS
+      : PRIMARY_TIMEOUT_MS;
 
   const text = await withQuotaAndFallback('chat', customKey, () =>
     customKey
@@ -703,6 +730,7 @@ export async function streamGeminiChat(args: {
           system: args.system,
           generationConfig,
           signal: args.signal,
+          primaryTimeoutMs,
           onToken: args.onToken,
         })
       : runNativeStream({
@@ -711,6 +739,7 @@ export async function streamGeminiChat(args: {
           system: args.system,
           generationConfig,
           signal: args.signal,
+          primaryTimeoutMs,
           onToken: args.onToken,
         }),
   );
@@ -766,13 +795,15 @@ export function buildStudyContext(state: AppState): string {
         .join(', ');
       lines.push(`- Atividades extra-curriculares: ${extraDesc}`);
     }
-    if (academicProfile.difficultCourseIds.length > 0) {
-      const hardNames = academicProfile.difficultCourseIds
+    const difficultIds = academicProfile.difficultCourseIds ?? [];
+    const completedList = academicProfile.completedCourses ?? [];
+    if (difficultIds.length > 0) {
+      const hardNames = difficultIds
         .map(
           (id) =>
             courses.find((c) => c.id === id)?.shortName ??
-            academicProfile.completedCourses.find((c) => c.id === id)?.code ??
-            academicProfile.completedCourses.find((c) => c.id === id)?.name,
+            completedList.find((c) => c.id === id)?.code ??
+            completedList.find((c) => c.id === id)?.name,
         )
         .filter((v): v is string => Boolean(v));
       if (hardNames.length > 0) {
@@ -782,7 +813,7 @@ export function buildStudyContext(state: AppState): string {
     if (academicProfile.difficultTopicsNotes?.trim()) {
       lines.push(`- Dificuldades declaradas pelo aluno: ${academicProfile.difficultTopicsNotes.trim()}`);
     }
-    const approved = academicProfile.completedCourses.filter((c) => c.status === 'aprovada');
+    const approved = completedList.filter((c) => c.status === 'aprovada');
     if (approved.length > 0) {
       const preview = approved
         .slice(0, 12)
@@ -802,7 +833,7 @@ export function buildStudyContext(state: AppState): string {
     const current = g.current === null
       ? 'sem notas ainda'
       : `média atual ${fmtGrade(g.current)} (${Math.round(g.gradedWeight)}% avaliado)`;
-    const hardTag = academicProfile?.difficultCourseIds.includes(c.id) ? ' [PRIORIDADE/DIFICULDADE]' : '';
+    const hardTag = academicProfile?.difficultCourseIds?.includes(c.id) ? ' [PRIORIDADE/DIFICULDADE]' : '';
     lines.push(`- ${c.name} (${c.ects} ECTS)${hardTag}: ${current}; objetivo ${fmtGrade(c.targetGrade)}${needed}.`);
     if (c.topics.length > 0) {
       const topics = c.topics.map((t) => `${t.title} [${statusLabel[t.status].toLowerCase()}, confiança ${t.confidence}/5]`);
@@ -936,6 +967,9 @@ ${toneDirective}
 - Usa Markdown: títulos curtos (###), listas e **negrito** para destacar o essencial.
 - Em quizzes: faz UMA pergunta de cada vez e espera pela resposta antes de corrigir e avançar.
 - Se a conversa fugir do estudo, brinca brevemente como o Uni e traz o foco de volta às cadeiras.
+- SINCRONIZAÇÃO COM O CADERNO (Calendário, Cadeiras e Plano): sempre que o estudante enviar uma imagem/print ou texto com datas de testes, exames, entregas de projetos ou aulas semanais do horário (ou pedir para guardar/atualizar no resto da app), explica claramente o que encontraste e no FINAL da tua resposta inclui exatamente um bloco técnico (que a interface transforma num cartão de 1 toque):
+<uni-sync>{"hasSaturdayColumn":false,"slots":[{"courseName":"Nome real da cadeira","courseCode":"SIGLA","dayHeader":"2ª|3ª|4ª|5ª|6ª|Sáb","type":"T|TP|P|OT","weekday":1,"start":"09:00","end":"11:00","room":"Sala opcional"}],"assessments":[{"courseName":"Nome real da cadeira","courseCode":"SIGLA opcional","title":"1.º Teste","date":"2026-11-25T14:00:00","kind":"teste|exame|trabalho|projeto|quiz","location":"Sala opcional"}]}</uni-sync>
+(Regra Portugal: "2ª"=1, "3ª"=2, "4ª"=3, "5ª"=4, "6ª"=5 — "6ª" é Sexta-feira, NUNCA 6! Usa os nomes reais das cadeiras do resumo do aluno. Se não houver aulas nem avaliações para guardar na app, NÃO incluas <uni-sync>.)
 ${docContext ? `\n${docContext}\n` : ''}
 Resumo atual do caderno do estudante:
 """
@@ -1071,15 +1105,24 @@ Regras importantes para leitura de provas e testes:
       : `Analisa esta foto ou print de um horário escolar/universitário ou agenda académica portuguesa.
 Devolve APENAS JSON válido no formato exato:
 {
+  "hasSaturdayColumn": false,
   "slots": [
-    {"courseName": "Nome real da cadeira ou sigla exata visível", "courseCode": "SIGLA opcional", "type": "T|TP|P|OT", "weekday": 1, "start": "09:00", "end": "11:00", "room": "Sala opcional"}
+    {"courseName": "Nome real da cadeira ou sigla exata visível", "courseCode": "SIGLA opcional", "dayHeader": "2ª|3ª|4ª|5ª|6ª|Sáb|Dom", "type": "T|TP|P|OT", "weekday": 1, "start": "09:00", "end": "11:00", "room": "Sala opcional"}
   ],
   "assessments": [
     {"courseName": "Nome da Cadeira", "title": "Teste 1", "date": "2026-11-25T14:00:00", "kind": "teste|exame|trabalho|projeto|quiz"}
   ]
 }
 Regras muito importantes para grelhas visuais de horários:
-- Cabeçalhos comuns em Portugal: "2ª" / "Seg" = weekday 1, "3ª" / "Ter" = 2, "4ª" / "Qua" = 3, "5ª" / "Qui" = 4, "6ª" / "Sex" = 5, "Sáb" = 6, "Dom" = 0.
+- PORTUGAL DAY RULE (CRÍTICA):
+  * "2ª" / "Seg" = dayHeader "2ª", weekday = 1 (Segunda-feira)
+  * "3ª" / "Ter" = dayHeader "3ª", weekday = 2 (Terça-feira)
+  * "4ª" / "Qua" = dayHeader "4ª", weekday = 3 (Quarta-feira)
+  * "5ª" / "Qui" = dayHeader "5ª", weekday = 4 (Quinta-feira)
+  * "6ª" / "Sex" = dayHeader "6ª", weekday = 5 (Sexta-feira)
+  * CUIDADO: "6ª" é SEXTA-FEIRA (weekday 5), NUNCA uses 6 para "6ª"!
+  * Sábado (weekday = 6) e hasSaturdayColumn = true SÓ existem se houver explicitamente uma coluna escrita "Sáb" ou "Sábado" à direita de "6ª"/"Sex". Horários normais de faculdade vão apenas de "2ª" a "6ª" (hasSaturdayColumn: false).
+- Para CADA retângulo de aula, verifica com precisão em que coluna vertical ele está alinhado olhando diretamente para o cabeçalho no topo dessa coluna e preenche sempre "dayHeader" com o texto exato do cabeçalho ("2ª", "3ª", "4ª", "5ª", "6ª"...) além do número "weekday".
 - Se as horas não estiverem escritas dentro do retângulo colorido, LÊ a hora de início e de fim pela posição vertical do topo e fundo do retângulo relativamente ao eixo de horas à esquerda (ex.: 8:00, 9:00, 10:00... 24:00) e às linhas da grelha (ex.: meio bloco = 30 min).
 - Quando o bloco só mostrar sigla curta (ex.: "FabAd tp.1 Ed 7: 3.4/Ed.VII", "MdF l.1 Ed 8: 3.09", "C3 D t.2", "SNTI t.1"):
   * courseCode = sigla principal visível ("FabAd", "MdF", "C3 D", "SNTI")

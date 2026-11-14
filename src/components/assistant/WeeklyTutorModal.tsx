@@ -72,7 +72,9 @@ export default function WeeklyTutorModal({
     latest?.weekOf === currentWeekKey ? latest.pendingNextWeek.join(', ') : '',
   );
   const [hardCourseIds, setHardCourseIds] = useState<string[]>(
-    latest?.hardCourseIds.length ? latest.hardCourseIds : academicProfile.difficultCourseIds,
+    latest?.hardCourseIds?.length
+      ? latest.hardCourseIds
+      : (academicProfile?.difficultCourseIds ?? []),
   );
   const [notes, setNotes] = useState(latest?.weekOf === currentWeekKey ? latest.notes : '');
   const [savedMsg, setSavedMsg] = useState<string | null>(null);

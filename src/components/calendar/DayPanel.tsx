@@ -1,13 +1,14 @@
 // Painel do dia selecionado: lista completa com ações (apagar eventos locais, concluir sessões, abrir avaliações).
 import { format, parseISO } from 'date-fns';
 import { pt } from 'date-fns/locale';
-import { CalendarPlus, ChevronRight, Check, MapPin, Trash2 } from 'lucide-react';
+import { CalendarPlus, ChevronRight, Check, MapPin, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
-import type { Course } from '../../types';
+import type { ClassSlot, Course } from '../../types';
 import { Badge, Button, Card, CourseChip, EmptyState, cx } from '../ui';
 import { capitalizeFirst } from '../../lib/selectors';
+import ClassFormModal from '../courses/ClassFormModal';
 import { ConfirmModal } from '../courses/ConfirmModal';
 import type { CalItem } from './items';
 import { KIND_META, SOURCE_LABEL, isImported, itemTone, timeLabel } from './shared';
@@ -20,10 +21,12 @@ interface Props {
 }
 
 export default function DayPanel({ date, items, courseById, onNewEvent }: Props) {
+  const classes = useStore((s) => s.classes);
   const remove = useStore((s) => s.remove);
   const patch = useStore((s) => s.patch);
   const heading = format(parseISO(date), "EEEE, d 'de' MMMM", { locale: pt });
-  const [toDelete, setToDelete] = useState<CalItem | null>(null);
+  const [toDelete, setToDelete] = useState<{ storeKey: 'events' | 'classes'; refId: string; title: string } | null>(null);
+  const [editingClass, setEditingClass] = useState<{ slot: ClassSlot; course: Course } | null>(null);
 
   return (
     <>
@@ -48,6 +51,8 @@ export default function DayPanel({ date, items, courseById, onNewEvent }: Props)
             const course = it.courseId ? courseById.get(it.courseId) : undefined;
             const Icon = KIND_META[it.kind].icon;
             const localEvent = it.kind === 'evento' && it.source === 'local';
+            const classSlot =
+              it.kind === 'aula' ? classes.find((c) => c.id === it.refId) : undefined;
             return (
               <li
                 key={it.id}
@@ -77,11 +82,38 @@ export default function DayPanel({ date, items, courseById, onNewEvent }: Props)
                     type="button"
                     aria-label="Apagar evento"
                     title="Apagar evento"
-                    onClick={() => setToDelete(it)}
+                    onClick={() =>
+                      setToDelete({ storeKey: 'events', refId: it.refId, title: it.title })
+                    }
                     className="grid size-8 shrink-0 place-items-center rounded-lg text-muted transition hover:bg-danger/12 hover:text-danger"
                   >
                     <Trash2 size={15} />
                   </button>
+                )}
+
+                {classSlot && course && (
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button
+                      type="button"
+                      aria-label={`Editar aula ${it.title}`}
+                      title="Alterar dia ou hora da aula"
+                      onClick={() => setEditingClass({ slot: classSlot, course })}
+                      className="grid size-8 place-items-center rounded-lg text-muted transition hover:bg-surface hover:text-fg"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Apagar aula ${it.title}`}
+                      title="Apagar aula"
+                      onClick={() =>
+                        setToDelete({ storeKey: 'classes', refId: classSlot.id, title: it.title })
+                      }
+                      className="grid size-8 place-items-center rounded-lg text-muted transition hover:bg-danger/12 hover:text-danger"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 )}
 
                 {it.kind === 'estudo' && (
@@ -119,12 +151,19 @@ export default function DayPanel({ date, items, courseById, onNewEvent }: Props)
         </ul>
       )}
     </Card>
+    {editingClass && (
+      <ClassFormModal
+        course={editingClass.course}
+        initialSlot={editingClass.slot}
+        onClose={() => setEditingClass(null)}
+      />
+    )}
     {toDelete && (
       <ConfirmModal
-        title="Apagar evento"
-        message={`Apagar o evento "${toDelete.title}"? Esta ação não se pode desfazer.`}
+        title={toDelete.storeKey === 'classes' ? 'Apagar aula' : 'Apagar evento'}
+        message={`Apagar "${toDelete.title}"? Esta ação não se pode desfazer.`}
         confirmLabel="Apagar"
-        onConfirm={() => remove('events', toDelete.refId)}
+        onConfirm={() => remove(toDelete.storeKey, toDelete.refId)}
         onClose={() => setToDelete(null)}
       />
     )}

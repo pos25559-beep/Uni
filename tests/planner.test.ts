@@ -29,7 +29,11 @@ import {
 } from '../src/lib/studyHub';
 import { getUniCollectibleStates } from '../src/lib/uniCollectibles';
 import { pickNextShyBehavior, resolveVisibleUniPeers } from '../src/lib/uniPetEngine';
-import { parseHistoryJsonText, parseScheduleJsonText } from '../src/lib/visionParsers';
+import {
+  extractUniSyncBlock,
+  parseHistoryJsonText,
+  parseScheduleJsonText,
+} from '../src/lib/visionParsers';
 import type {
   AcademicProfile,
   Assessment,
@@ -1164,4 +1168,59 @@ test('resolveKnownCourseIdentity e matchCourse corrigem siglas expandidas errada
 
   const matchedSnti = matchCourse('Segurança nas Novas Tecnologias de Informação', realCourses, 'SNTI');
   assert.equal(matchedSnti?.id, 'c-snti');
+});
+
+test('parseScheduleJsonText impede falso Sábado em colunas "6ª" sem coluna de Sábado e preserva Sábado explícito', () => {
+  const noSat = parseScheduleJsonText(
+    JSON.stringify({
+      hasSaturdayColumn: false,
+      slots: [
+        { courseCode: 'MS2', type: 'P', dayHeader: '6ª', weekday: 6, start: '10:00', end: '12:00' },
+        { courseCode: 'C3 D', type: 'TP', dayHeader: 'Sexta', weekday: 6, start: '14:00', end: '16:00' },
+      ],
+    }),
+  );
+  assert.equal(noSat.slots.length, 2);
+  assert.equal(noSat.slots[0]?.weekday, 5, '"6ª" deve mapear para Sexta (5)');
+  assert.equal(noSat.slots[1]?.weekday, 5, 'weekday 6 sem coluna de Sábado deve voltar a Sexta (5)');
+
+  const withSat = parseScheduleJsonText(
+    JSON.stringify({
+      hasSaturdayColumn: true,
+      slots: [
+        { courseCode: 'Lab', type: 'P', dayHeader: 'Sáb', weekday: 6, start: '09:00', end: '11:00' },
+      ],
+    }),
+  );
+  assert.equal(withSat.slots[0]?.weekday, 6, 'Sábado explícito mantém weekday 6');
+});
+
+test('extractUniSyncBlock oculta bloco durante streaming e extrai avaliações + aulas completas', () => {
+  const partialStream = 'Organizei as tuas datas:\n\n<uni-sync>{"assessments":[';
+  const partialRes = extractUniSyncBlock(partialStream);
+  assert.equal(partialRes.displayText, 'Organizei as tuas datas:');
+  assert.equal(partialRes.payload, null);
+
+  const fullReply =
+    'Atualizei as datas dos testes de TEP!\n\n<uni-sync>' +
+    JSON.stringify({
+      slots: [],
+      assessments: [
+        {
+          courseCode: 'TEP',
+          courseName: 'Tecnologias de Energias e Processos',
+          title: '2º Teste',
+          kind: 'teste',
+          date: '2026-11-20 14:30',
+          location: 'Ed 8 · 3.09',
+        },
+      ],
+    }) +
+    '</uni-sync>';
+  const fullRes = extractUniSyncBlock(fullReply);
+  assert.equal(fullRes.displayText, 'Atualizei as datas dos testes de TEP!');
+  assert.equal(fullRes.payload?.assessments.length, 1);
+  assert.equal(fullRes.payload?.assessments[0]?.courseCode, 'TEP');
+  assert.equal(fullRes.payload?.assessments[0]?.date, '2026-11-20 14:30');
+  assert.equal(fullRes.payload?.assessments[0]?.location, 'Ed 8 · 3.09');
 });
