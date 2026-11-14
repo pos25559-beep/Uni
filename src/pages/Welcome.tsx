@@ -152,7 +152,7 @@ export default function WelcomePage() {
       </header>
 
       {/* Palco central animado */}
-      <main className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center py-6 text-center">
+      <main className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col py-4 text-center">
         <AnimatePresence mode="wait">
           <motion.div
             key={slide.id}
@@ -160,9 +160,10 @@ export default function WelcomePage() {
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: -28, scale: 0.96 }}
             transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="flex w-full flex-col items-center space-y-6"
+            className="flex w-full flex-1 flex-col items-center justify-between gap-4 pb-3"
           >
-            {/* Ilustração viva por slide */}
+            {/* Ilustração viva por slide centrada no espaço superior */}
+            <div className="flex w-full flex-1 items-center justify-center">
             {step === 0 && (
               <div className="relative flex h-56 w-full items-center justify-center">
                 <motion.div
@@ -326,6 +327,7 @@ export default function WelcomePage() {
                 </div>
               </div>
             )}
+            </div>
 
             <div className="space-y-2.5 px-2">
               <StickerBadge tone={step === 1 || step === 4 ? 'sage' : 'butter'} tilt={-1.5}>

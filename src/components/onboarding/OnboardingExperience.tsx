@@ -1365,7 +1365,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
 
                   <div className="space-y-1.5">
                     <span className="block text-xs font-medium text-muted">
-                      Unis discretos nos cantos («com vergonha»)
+                      Unis discretos nos cantos
                     </span>
                     <div className="flex flex-wrap gap-1.5">
                       {(

@@ -9,7 +9,7 @@ import { useStore } from '../../store/useStore';
 import { UniBuddy, type BuddyMood } from './UnipediaMarks';
 
 /**
- * Companheiros Uni discretos («Unis com vergonha»).
+ * Companheiros Uni discretos.
  * Ficam nas margens/cantos do ecrã sem bloquear toques nem distrair:
  * escondem-se automaticamente quando o estudante escreve, faz scroll ou ativa o modo sério.
  */

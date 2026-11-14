@@ -471,7 +471,7 @@ export default function AppShell() {
         onClose={() => setCollectiblesOpen(false)}
       />
 
-      {/* Companheiros discretos («Unis com vergonha») apenas nas abas principais */}
+      {/* Companheiros discretos apenas nas abas principais */}
       {!isBypassRoute && <UniLivingOverlay />}
     </div>
   );
