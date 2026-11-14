@@ -1,28 +1,6 @@
 import { OnboardingProvider, useOnboarding } from '@onboardjs/react';
 import type { OnboardingStep } from '@onboardjs/core';
-import {
-  AlertCircle,
-  ArrowRight,
-  BookOpen,
-  CalendarDays,
-  Camera,
-  Check,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  ClipboardPaste,
-  Cloud,
-  ExternalLink,
-  HardDrive,
-  KeyRound,
-  Loader2,
-  Mail,
-  Palette,
-  Plus,
-  ShieldCheck,
-  Trash2,
-  X,
-} from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight, ExternalLink, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAcademicEmails } from '../../hooks/useGoogleData';
@@ -35,10 +13,7 @@ import {
   type ExtractedScheduleSlot,
 } from '../../integrations/gemini';
 import {
-  APP_PALETTES,
-  CHALLENGE_OPTIONS,
   defaultTargetEctsForCycle,
-  ECTS_TARGETS,
   EXTRA_ACTIVITY_PRESETS,
   inferAcademicStageFromEcts,
 } from '../../lib/academicCredits';
@@ -56,19 +31,13 @@ import {
   buildInitialCompletedRecords,
   computeWeightedAverage,
   deriveCourseAcronym,
-  formatAcademicYearLabel,
-  formatAcademicYearShort,
   getUniversityById,
   mergeCurriculumCatalog,
   PORTUGAL_CURRICULA,
   type ImportedRecordCourseInput,
 } from '../../lib/portugalCurriculum';
-import {
-  UNI_ACCESSORIES,
-  UNI_PERSONAS,
-  type UniAccessoryId,
-  type UniPersonaMode,
-} from '../../lib/uniAccessories';
+import { parsePtGrade } from '../../lib/selectors';
+import type { UniAccessoryId, UniPersonaMode } from '../../lib/uniAccessories';
 import { newId, useStore } from '../../store/useStore';
 import type {
   AcademicProfile,
@@ -83,22 +52,19 @@ import type {
   ThemePalette,
   UniLiveCompanionsMode,
 } from '../../types';
-import { UniBuddy, UnipediaLogoMark } from '../brand/UnipediaMarks';
+import { UnipediaLogoMark } from '../brand/UnipediaMarks';
 import SmartScheduleImportModal, {
   type SmartImportInitialMode,
   type SmartScheduleImportSummary,
 } from '../courses/SmartScheduleImportModal';
-import {
-  celebrateStationery,
-  StickerBadge,
-  UNIPEDIA_BOUNCE_SPRING,
-  UNIPEDIA_SPRING,
-} from '../motion/Primitives';
-import GeminiKeyGuideModal from '../settings/GeminiKeyGuideModal';
-import { Badge, Button, Field, Input, Select, Textarea, cx } from '../ui';
+import { celebrateStationery, UNIPEDIA_SPRING } from '../motion/Primitives';
+import { Button, cx } from '../ui';
+import Step1Identity from './steps/Step1Identity';
+import Step2Academic, { type AcademicCycleMode } from './steps/Step2Academic';
+import Step3Courses from './steps/Step3Courses';
+import Step4RhythmPrivacy from './steps/Step4RhythmPrivacy';
 
-type OnboardingStepId = 'boas-vindas' | 'estilo-uni' | 'avaliacao' | 'cadeiras' | 'ritmo';
-type AcademicCycleMode = 'licenciatura' | 'mestrado' | 'misto';
+type OnboardingStepId = 'identidade' | 'curso' | 'cadeiras' | 'ritmo';
 
 type OnboardingContextData = {
   flowData: Record<string, unknown>;
@@ -106,36 +72,17 @@ type OnboardingContextData = {
 };
 
 const ONBOARDING_STEPS: OnboardingStep<OnboardingContextData>[] = [
-  { id: 'boas-vindas', type: 'INFORMATION', nextStep: 'estilo-uni' },
-  { id: 'estilo-uni', type: 'INFORMATION', previousStep: 'boas-vindas', nextStep: 'avaliacao' },
-  { id: 'avaliacao', type: 'INFORMATION', previousStep: 'estilo-uni', nextStep: 'cadeiras' },
-  { id: 'cadeiras', type: 'INFORMATION', previousStep: 'avaliacao', nextStep: 'ritmo' },
+  { id: 'identidade', type: 'INFORMATION', nextStep: 'curso' },
+  { id: 'curso', type: 'INFORMATION', previousStep: 'identidade', nextStep: 'cadeiras' },
+  { id: 'cadeiras', type: 'INFORMATION', previousStep: 'curso', nextStep: 'ritmo' },
   { id: 'ritmo', type: 'CONFIRMATION', previousStep: 'cadeiras', nextStep: null },
 ];
 
 const STEP_META: Array<{ id: OnboardingStepId; label: string }> = [
-  { id: 'boas-vindas', label: 'Porquê a Unipedia' },
-  { id: 'estilo-uni', label: 'O Uni & Visual' },
-  { id: 'avaliacao', label: 'Créditos & Perfil' },
-  { id: 'cadeiras', label: 'Cadeiras & Histórico' },
-  { id: 'ritmo', label: 'Contas & Ritmo' },
-];
-
-const DAY_LABELS = [
-  { day: 1, label: 'Seg' },
-  { day: 2, label: 'Ter' },
-  { day: 3, label: 'Qua' },
-  { day: 4, label: 'Qui' },
-  { day: 5, label: 'Sex' },
-  { day: 6, label: 'Sáb' },
-  { day: 0, label: 'Dom' },
-];
-
-const DAILY_PRESETS = [
-  { minutes: 90, label: '1h30', hint: 'Leve' },
-  { minutes: 120, label: '2h', hint: 'Constante' },
-  { minutes: 180, label: '3h', hint: 'Recomendado' },
-  { minutes: 240, label: '4h', hint: 'Intensivo' },
+  { id: 'identidade', label: 'Tu & Estilo' },
+  { id: 'curso', label: 'Curso & Semestre' },
+  { id: 'cadeiras', label: 'Cadeiras' },
+  { id: 'ritmo', label: 'Ritmo & Privacidade' },
 ];
 
 export interface OnboardingExperienceProps {
@@ -158,12 +105,13 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
   } = useAcademicEmails('onboarding');
 
   const { currentStep, next, previous } = useOnboarding<OnboardingContextData>();
-  const activeStepId = (currentStep?.id as OnboardingStepId) ?? 'boas-vindas';
+  const activeStepId = (currentStep?.id as OnboardingStepId) ?? 'identidade';
   const stepIndex = Math.max(0, STEP_META.findIndex((s) => s.id === activeStepId));
   const [direction, setDirection] = useState(1);
   const [finishingWipe, setFinishingWipe] = useState(false);
 
-  // Passo 2: Personalidade do Uni, Tom & Paleta ao vivo
+  // Passo 1: Identidade, Paleta, Tom & Personalidade do Uni
+  const [userName, setUserName] = useState(settings.userName);
   const [themePref, setThemePref] = useState<Settings['theme']>(settings.theme ?? 'system');
   const [themePalette, setThemePalette] = useState<ThemePalette>(settings.themePalette ?? 'caderno');
   const [appTone, setAppTone] = useState<AppTone>(settings.appTone ?? 'vibrante');
@@ -179,21 +127,15 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     void syncNativeTheme(themePref, themePalette, appTone);
   }, [themePref, themePalette, appTone]);
 
-  // Idade mínima PT + privacidade
-  const [ageConfirmed, setAgeConfirmed] = useState<boolean>(
-    Boolean(settings.ageConfirmed13Plus || storedProfile.onboardingCompleted),
-  );
-  const [legalPreview, setLegalPreview] = useState<'privacy' | 'terms' | null>(null);
-  const [cloudSyncConsent, setCloudSyncConsent] = useState<boolean>(
-    Boolean(settings.cloudSyncConsent),
-  );
-  const [aiConsent, setAiConsent] = useState<boolean>(Boolean(settings.aiConsent ?? true));
+  // Passo 2: Instituição, Curso, Ciclo, Ano/Semestre e ECTS
+  const isFreshUnconfigured = !storedProfile.onboardingCompleted;
+  const initialUniversityId = isFreshUnconfigured
+    ? 'outra'
+    : storedProfile.universityId || 'outra';
+  const initialDegreeId = isFreshUnconfigured
+    ? 'outro'
+    : storedProfile.degreeId || 'outro';
 
-  // Passo 1: Identidade, Instituição, Ciclo e Anos simultâneos
-  const isFreshUnconfigured = !storedProfile.onboardingCompleted && (!storedProfile.universityId || storedProfile.universityId === 'outra');
-  const initialUniversityId = isFreshUnconfigured ? 'nova-fct' : storedProfile.universityId || 'nova-fct';
-  const initialDegreeId = isFreshUnconfigured ? 'lemc' : storedProfile.degreeId || 'lemc';
-  const [userName, setUserName] = useState(settings.userName);
   const [universityId, setUniversityId] = useState(initialUniversityId);
   const [customUniversity, setCustomUniversity] = useState(
     initialUniversityId === 'outra' ? storedProfile.universityName : '',
@@ -239,7 +181,6 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
         ),
   );
 
-  // Passo 3: Avaliação pessoal — ECTS, dificuldades & atividades extra
   const [targetTotalEcts, setTargetTotalEcts] = useState<number>(() => {
     if (typeof storedProfile.targetTotalEcts === 'number' && storedProfile.targetTotalEcts > 0) {
       return storedProfile.targetTotalEcts;
@@ -263,17 +204,15 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
   );
   const [customExtraLabel, setCustomExtraLabel] = useState('');
   const [customExtraHours, setCustomExtraHours] = useState(4);
-  const [customExtraDays, setCustomExtraDays] = useState<number[]>([2, 4]);
 
   const ectsStage = useMemo(
     () => inferAcademicStageFromEcts(completedEcts, targetTotalEcts),
     [completedEcts, targetTotalEcts],
   );
 
-  // Passo 4: Filtros por ano, semestre, opcionais colapsáveis, adição manual e OCR
+  // Passo 3: Cadeiras
   const [yearFilter, setYearFilter] = useState<number | 'all'>('all');
   const [showOtherTermsHistory, setShowOtherTermsHistory] = useState(false);
-  const [step1TipIdx, setStep1TipIdx] = useState<number | null>(null);
   const [showOptionalCourses, setShowOptionalCourses] = useState(false);
   const [optionalSearch, setOptionalSearch] = useState('');
   const [replaceCoursesWithCurriculum, setReplaceCoursesWithCurriculum] = useState(true);
@@ -297,15 +236,22 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
   const [showPastePlan, setShowPastePlan] = useState(false);
   const [pastedPlanText, setPastedPlanText] = useState('');
 
-  // Passo 3: Conta institucional, Gemini Key, Ritmo e Tour
+  // Passo 4: Ritmo, Email Académico & Privacidade (aiConsent opt-in explícito: false por defeito!)
   const [academicHint, setAcademicHint] = useState(settings.academicEmail ?? '');
   const [academicBusy, setAcademicBusy] = useState(false);
-  const [showGeminiModal, setShowGeminiModal] = useState(false);
   const [difficultKeys, setDifficultKeys] = useState<string[]>(storedProfile.difficultCourseIds);
   const [difficultNotes, setDifficultNotes] = useState(storedProfile.difficultTopicsNotes ?? '');
   const [dailyMinutes, setDailyMinutes] = useState<number>(settings.dailyStudyMinutes || 180);
   const [studyDays, setStudyDays] = useState<number[]>(settings.studyDays);
-  const [launchTour, setLaunchTour] = useState<boolean>(!settings.tourCompleted);
+  const [ageConfirmed, setAgeConfirmed] = useState<boolean>(
+    Boolean(settings.ageConfirmed13Plus || storedProfile.onboardingCompleted),
+  );
+  const [aiConsent, setAiConsent] = useState<boolean>(Boolean(settings.aiConsent));
+  const [cloudSyncConsent, setCloudSyncConsent] = useState<boolean>(
+    Boolean(settings.cloudSyncConsent),
+  );
+  const [legalPreview, setLegalPreview] = useState<'privacy' | 'terms' | null>(null);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   useEffect(() => {
     if (!auth.currentUser) return;
@@ -322,7 +268,10 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     };
   }, []);
 
-  const selectedUniversity = useMemo(() => getUniversityById(universityId, catalog), [universityId, catalog]);
+  const selectedUniversity = useMemo(
+    () => getUniversityById(universityId, catalog),
+    [universityId, catalog],
+  );
   const availableDegrees = useMemo(() => selectedUniversity?.degrees ?? [], [selectedUniversity]);
   const currentDegreeTemplates = useMemo(
     () => availableDegrees.find((d) => d.id === degreeId)?.courses ?? [],
@@ -346,9 +295,20 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     setScheduleDoneInfo(null);
     if (nextUniId !== 'outra' && nextDegId !== 'outro') {
       const leadYear = (nextYears[nextYears.length - 1] ?? 1) as 1 | 2 | 3 | 4 | 5;
-      setRecords(
-        buildInitialCompletedRecords(nextUniId, nextDegId, leadYear, nextSem, catalog, nextYears),
+      const built = buildInitialCompletedRecords(
+        nextUniId,
+        nextDegId,
+        leadYear,
+        nextSem,
+        catalog,
+        nextYears,
       );
+      setRecords(built);
+      // Deduz ECTS aprovados automaticamente a partir dos anos anteriores selecionados
+      const deducedEcts = built
+        .filter((c) => c.status === 'aprovada')
+        .reduce((sum, c) => sum + (c.ects || 6), 0);
+      setCompletedEcts(deducedEcts);
     } else {
       setRecords([]);
     }
@@ -458,20 +418,14 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     if (nextCycle === 'mestrado') {
       nextYears = nextYears.filter((y) => y >= 4);
       if (nextYears.length === 0) nextYears = [4];
-      if (universityId === 'nova-fct' && degreeId === 'lemc') {
-        nextDeg = 'memec';
-      }
+      if (universityId === 'nova-fct' && degreeId === 'lemc') nextDeg = 'memec';
     } else if (nextCycle === 'misto') {
       if (nextYears.length === 0) nextYears = [2, 3, 4];
-      if (universityId === 'nova-fct' && (degreeId === 'lemc' || degreeId === 'memec')) {
-        nextDeg = 'lemc-memec';
-      }
+      if (universityId === 'nova-fct' && (degreeId === 'lemc' || degreeId === 'memec')) nextDeg = 'lemc-memec';
     } else {
       nextYears = nextYears.filter((y) => y <= 3);
       if (nextYears.length === 0) nextYears = [1];
-      if (universityId === 'nova-fct' && (degreeId === 'memec' || degreeId === 'lemc-memec')) {
-        nextDeg = 'lemc';
-      }
+      if (universityId === 'nova-fct' && (degreeId === 'memec' || degreeId === 'lemc-memec')) nextDeg = 'lemc';
     }
 
     setDegreeId(nextDeg);
@@ -526,10 +480,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
       setExtraActivities((prev) => prev.filter((a) => a.id !== exists.id));
       return;
     }
-    setExtraActivities((prev) => [
-      ...prev,
-      { id: newId(), ...preset },
-    ]);
+    setExtraActivities((prev) => [...prev, { id: newId(), ...preset }]);
   };
 
   const handleAddCustomExtra = () => {
@@ -543,7 +494,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
         label,
         kind: 'outro',
         hoursPerWeek: Math.max(1, Math.min(40, customExtraHours || 3)),
-        weekdays: customExtraDays.length > 0 ? customExtraDays : [2, 4],
+        weekdays: [2, 4],
       },
     ]);
     setCustomExtraLabel('');
@@ -560,7 +511,6 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
         nextYears = [...activeYears, year].sort((a, b) => a - b);
       }
     } else {
-      // Nos modos simples permite 1 toque para selecionar ou Shift/2º ano via Misto
       nextYears = [year];
     }
     setActiveYears(nextYears);
@@ -618,7 +568,6 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
   const removeRecord = (record: CompletedCourseRecord) => {
     void hapticTap();
     if (record.isOptional) {
-      // Cadeiras opcionais regressam à gaveta de escolha para continuar fácil adicioná-las depois
       setRecords((prev) =>
         prev.map((r) => (r.id === record.id ? { ...r, status: 'por_fazer', grade: undefined } : r)),
       );
@@ -628,14 +577,15 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
   };
 
   const updateRecordGrade = (id: string, raw: string) => {
-    const val = raw.trim() === '' ? undefined : Math.min(20, Math.max(0, Number(raw)));
+    const val = parsePtGrade(raw);
+    if (val === 'invalid') return;
     setRecords((prev) =>
       prev.map((r) =>
         r.id === id
           ? {
               ...r,
-              grade: typeof val === 'number' && !Number.isNaN(val) ? val : undefined,
-              status: typeof val === 'number' && val >= 10 ? 'aprovada' : r.status,
+              grade: val ?? undefined,
+              status: val !== null && val >= 10 ? 'aprovada' : r.status,
             }
           : r,
       ),
@@ -646,7 +596,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     const parsed = parseCurriculumFromText(pastedPlanText, primaryAcademicYear, currentSemester);
     if (parsed.length === 0) {
       setOcrError(
-        'Não detetei cadeiras nesse texto. Cola a tabela do Guia de Cursos ou portal académico, ou escreve uma cadeira por linha.',
+        'Não detetei cadeiras nesse texto. Cola a tabela do portal académico ou escreve uma cadeira por linha.',
       );
       return;
     }
@@ -722,7 +672,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     return 'image/jpeg';
   };
 
-  const handleScreenshotUpload = async (files: File[] | FileList | null) => {
+  const handleScreenshotUpload = async (files: FileList | null) => {
     const pickedFiles = files ? Array.from(files) : [];
     if (pickedFiles.length === 0) return;
     const imageFiles = pickedFiles.filter((f) => {
@@ -735,9 +685,10 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     }
 
     if (!aiConsent) {
-      setAiConsent(true);
+      setOcrError('Ativa a opção do Tutor Uni no passo seguinte (ou nas Definições) para ler prints com IA, ou usa «Colar texto do portal».');
+      return;
     }
-    updateSettings({ aiConsent: true });
+
     setOcrBusy(true);
     setOcrError(null);
     setOcrFeedback(null);
@@ -764,9 +715,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
           scheduleSlots.push(...scheduleRes.slots);
           scheduleAssessments.push(...scheduleRes.assessments);
         } catch (err) {
-          if (!firstError) {
-            firstError = err instanceof Error ? err : new Error(String(err));
-          }
+          if (!firstError) firstError = err instanceof Error ? err : new Error(String(err));
         }
 
         try {
@@ -776,21 +725,13 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
           anySucceeded = true;
           historyItems.push(...historyRes);
         } catch (err) {
-          if (!firstError) {
-            firstError = err instanceof Error ? err : new Error(String(err));
-          }
+          if (!firstError) firstError = err instanceof Error ? err : new Error(String(err));
         }
       }
 
-      if (!anySucceeded && firstError) {
-        throw firstError;
-      }
+      if (!anySucceeded && firstError) throw firstError;
 
-      if (
-        historyItems.length === 0 &&
-        scheduleSlots.length === 0 &&
-        scheduleAssessments.length === 0
-      ) {
+      if (historyItems.length === 0 && scheduleSlots.length === 0 && scheduleAssessments.length === 0) {
         setOcrError(
           'Não consegui reconhecer cadeiras nem aulas nessas imagens. Tenta um print mais nítido da pauta ou do horário semanal.',
         );
@@ -883,7 +824,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
         source: 'print',
       });
     } catch (err) {
-      setOcrError(err instanceof Error ? err.message : 'Erro ao analisar o print com Gemini Vision.');
+      setOcrError(err instanceof Error ? err.message : 'Erro ao analisar o print agora.');
     } finally {
       setOcrBusy(false);
     }
@@ -893,9 +834,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     setAcademicBusy(true);
     try {
       const cleaned = academicHint.trim();
-      if (cleaned) {
-        updateSettings({ academicEmail: cleaned });
-      }
+      if (cleaned) updateSettings({ academicEmail: cleaned });
       await connectAcademicMail(false, cleaned || undefined);
       void hapticSuccess();
     } finally {
@@ -903,10 +842,6 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     }
   };
 
-  /**
-   * Por defeito mostra apenas os anos escolhidos no Passo 3 e o semestre atual
-   * (mais eventuais cadeiras já marcadas como «Ativa agora»), escondendo cadeiras de anos/semestres irrelevantes.
-   */
   const scopedRecords = useMemo(() => {
     if (showOtherTermsHistory) return records;
     return records.filter((r) => {
@@ -934,7 +869,6 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     );
   }, [scopedRecords, effectiveYearFilter, getRecordEligibleYears]);
 
-  /** Oculta cadeiras opcionais não selecionadas para evitar listas gigantes nos Mestrados. */
   const mainFilteredRecords = useMemo(
     () => filteredRecords.filter((r) => !(r.isOptional && r.status === 'por_fazer')),
     [filteredRecords],
@@ -995,6 +929,9 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
   };
 
   const handleFinish = () => {
+    setSubmitAttempted(true);
+    if (!ageConfirmed) return;
+
     const uniName =
       universityId === 'outra'
         ? customUniversity.trim() || 'Outra Instituição'
@@ -1039,7 +976,8 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
       gdprPolicyVersion: LEGAL_INFO.policyVersion,
       aiConsent,
       cloudSyncConsent,
-      tourCompleted: !launchTour,
+      // Sem auto-arranque intrusivo de Driver.js; o estudante pode sempre abrir o tour em Definições.
+      tourCompleted: true,
       hasSeenWelcome: true,
       ...(!auth.currentUser ? { guestMode: true } : {}),
     });
@@ -1100,7 +1038,6 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
 
   const canSkipDirectly = storedProfile.onboardingCompleted && ageConfirmed;
   const activePersonalEmail = settings.personalEmail || auth.currentUser?.email || '';
-  const isExpressive = appTone !== 'serio';
 
   return (
     <div
@@ -1116,7 +1053,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
             initial={{ clipPath: 'circle(0% at 86% 92%)' }}
             animate={{ clipPath: 'circle(155% at 86% 92%)' }}
             transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
-            className="pointer-events-none fixed inset-0 z-[80] bg-[#157F58]"
+            className="pointer-events-none fixed inset-0 z-[80] bg-accent"
           />
         )}
       </AnimatePresence>
@@ -1167,7 +1104,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
         </div>
       </header>
 
-      {/* Corpo progressivo guiado pelo Uni */}
+      {/* Corpo em 4 passos curtos */}
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">
         <motion.div
           key={activeStepId}
@@ -1176,2043 +1113,159 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
           transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
           className="space-y-5"
         >
-          {/* PASSO 1: RAZÃO DE SER, COMO FUNCIONA E CONVITE PESSOAL */}
-          {activeStepId === 'boas-vindas' && (
-            <div className="space-y-4">
-              <div
-                className={cx(
-                  'relative overflow-hidden rounded-[28px] p-5 shadow-card',
-                  isExpressive
-                    ? 'bg-[#FCE99F] text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]'
-                    : 'border border-line bg-surface text-fg',
-                )}
-              >
-                {isExpressive && (
-                  <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-                    <motion.div
-                      className="absolute -top-8 -right-8 size-28 rounded-full bg-[#C9DC9F]/55 dark:bg-[#157F58]/25"
-                      animate={{ y: [0, 10, 0], x: [0, -6, 0], scale: [1, 1.06, 1] }}
-                      transition={{ repeat: Infinity, duration: 6.5, ease: 'easeInOut' }}
-                    />
-                    <motion.div
-                      className="absolute -bottom-6 left-10 size-20 rotate-12 rounded-2xl bg-[#FAD6BA]/60 dark:bg-[#E04F33]/20"
-                      animate={{ y: [0, -8, 0], rotate: [12, 22, 12] }}
-                      transition={{ repeat: Infinity, duration: 5.5, ease: 'easeInOut' }}
-                    />
-                  </div>
-                )}
-
-                <div className="relative z-10 space-y-2.5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 space-y-2">
-                      <StickerBadge tone="mint" tilt={-1.5}>
-                        Olá! Eu sou o Uni · Estúdio de Estudo
-                      </StickerBadge>
-                      <h2 className="font-display text-2xl font-extrabold leading-[1.08] tracking-tight sm:text-[28px]">
-                        Porque a Unipedia{' '}
-                        <span className="font-serif font-normal italic">funciona mesmo</span>
-                      </h2>
-                    </div>
-
-                    <div className="relative flex shrink-0 flex-col items-center gap-1">
-                      <motion.div
-                        whileTap={{ scale: 0.94 }}
-                        transition={UNIPEDIA_BOUNCE_SPRING}
-                        className="rounded-3xl bg-white/60 p-2 shadow-sm backdrop-blur-sm dark:bg-black/25"
-                      >
-                        <UniBuddy
-                          mood={step1TipIdx !== null ? 'celebrate' : 'happy'}
-                          accessory={uniAccessory === 'auto' ? 'default' : uniAccessory}
-                          size={66}
-                          onClick={() => {
-                            void hapticTap();
-                            setStep1TipIdx((prev) => (prev === null ? 0 : (prev + 1) % 3));
-                          }}
-                          ariaLabel="Tocar no Uni para ver uma dica"
-                        />
-                      </motion.div>
-                      <span className="max-w-[92px] text-center text-[10px] font-semibold leading-tight opacity-75">
-                        {step1TipIdx === null
-                          ? 'Toca no Uni'
-                          : [
-                              '«Menos pânico na véspera!»',
-                              '«Falhaste hoje? Recalculamos!»',
-                              '«Os teus dados ficam contigo.»',
-                            ][step1TipIdx]}
-                      </span>
-                    </div>
-                  </div>
-
-                  <p className="text-xs leading-relaxed opacity-85 sm:text-sm">
-                    Em vez de listas infinitas em folhas soltas que só dão culpa quando falhas um dia, a Unipedia junta <strong>cadeiras, calendário de provas, revisão espaçada</strong> e <strong>Tutor com fontes</strong> num caderno vivo feito para estudantes em Portugal.
-                  </p>
-                </div>
-              </div>
-
-              {/* Como funciona passo a passo em linguagem de caderno */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between px-1">
-                  <h3 className="font-display text-sm font-bold text-fg">
-                    Como funciona na prática em 3 tempos
-                  </h3>
-                  <StickerBadge tone="butter" tilt={1}>
-                    Método comprovado
-                  </StickerBadge>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-3">
-                  {[
-                    {
-                      step: '01 · Organiza',
-                      title: 'Plano adaptado à tua semana real',
-                      body: 'Marca as tuas cadeiras, dias livres, trabalho ou desporto. O plano distribui blocos curtos e recalcula sem acumular atrasos se um dia correr mal.',
-                      toneClass: isExpressive
-                        ? 'bg-[#C9DC9F] text-[#141312] dark:bg-[#192D21] dark:text-[#FAF6EC]'
-                        : 'border border-line bg-surface text-fg',
-                      pillClass: isExpressive
-                        ? 'bg-[#141312]/10 text-[#141312] dark:bg-white/10 dark:text-[#FAF6EC]'
-                        : 'bg-accent-soft text-accent',
-                    },
-                    {
-                      step: '02 · Memoriza',
-                      title: 'Recordação ativa 1→3→7→21d',
-                      body: 'Ao fechar cada tópico avalias o quanto te lembras. A revisão volta no dia exato antes de esqueceres — sem releituras passivas.',
-                      toneClass: isExpressive
-                        ? 'bg-[#C4E0FD] text-[#141312] dark:bg-[#192838] dark:text-[#FAF6EC]'
-                        : 'border border-line bg-surface text-fg',
-                      pillClass: isExpressive
-                        ? 'bg-[#141312]/10 text-[#141312] dark:bg-white/10 dark:text-[#FAF6EC]'
-                        : 'bg-accent-soft text-accent',
-                    },
-                    {
-                      step: '03 · Domina exames',
-                      title: 'Modo Teste + Tudo ligado',
-                      body: 'A 10 dias de uma prova, o foco vira para exercícios e revisão rápida. Drive (sebentas), Agenda, correio académico e Tutor Uni ficam à distância de 1 toque.',
-                      toneClass: isExpressive
-                        ? 'bg-[#FAD6BA] text-[#141312] dark:bg-[#332218] dark:text-[#FAF6EC]'
-                        : 'border border-line bg-surface text-fg',
-                      pillClass: isExpressive
-                        ? 'bg-[#141312]/10 text-[#141312] dark:bg-white/10 dark:text-[#FAF6EC]'
-                        : 'bg-accent-soft text-accent',
-                    },
-                  ].map((card) => (
-                    <div
-                      key={card.title}
-                      className={cx(
-                        'flex flex-col justify-between gap-2 rounded-[24px] p-4 shadow-card',
-                        card.toneClass,
-                      )}
-                    >
-                      <span
-                        className={cx(
-                          'w-fit rounded-full px-2.5 py-0.5 font-mono text-[10px] font-bold',
-                          card.pillClass,
-                        )}
-                      >
-                        {card.step}
-                      </span>
-                      <div>
-                        <h4 className="font-display text-sm font-bold leading-snug">{card.title}</h4>
-                        <p className="mt-1 text-xs leading-relaxed opacity-85">{card.body}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Porquê usar + Identificação pessoal */}
-              <div className="rounded-[24px] border border-line bg-surface p-4 shadow-sm sm:p-5 space-y-4">
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    'Funciona 100% offline',
-                    'Feito para ECTS & ensino PT',
-                    'Privado, sem anúncios',
-                    'Zero pressão — tu controlas o ritmo',
-                  ].map((reason) => (
-                    <span
-                      key={reason}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-3 py-1 text-[11px] font-semibold text-fg"
-                    >
-                      <CheckCircle2 size={12} className="text-ok" />
-                      {reason}
-                    </span>
-                  ))}
-                </div>
-
-                <Field label="Antes de afinarmos o teu perfil, como queres que o Uni te trate?">
-                  <Input
-                    value={userName}
-                    onChange={(e) => setUserName(e.target.value)}
-                    placeholder="Ex: Ana Martins"
-                  />
-                </Field>
-              </div>
-            </div>
+          {activeStepId === 'identidade' && (
+            <Step1Identity
+              userName={userName}
+              setUserName={setUserName}
+              themePref={themePref}
+              setThemePref={setThemePref}
+              themePalette={themePalette}
+              setThemePalette={setThemePalette}
+              appTone={appTone}
+              setAppTone={setAppTone}
+              uniAccessory={uniAccessory}
+              setUniAccessory={setUniAccessory}
+              uniPersona={uniPersona}
+              setUniPersona={setUniPersona}
+              uniLiveCompanions={uniLiveCompanions}
+              setUniLiveCompanions={setUniLiveCompanions}
+            />
           )}
 
-          {/* PASSO 2: O UNIVERSO UNI, PALETA & TOM DA APLICAÇÃO */}
-          {activeStepId === 'estilo-uni' && (
-            <div className="space-y-5">
-              <div
-                className={cx(
-                  'relative overflow-hidden rounded-[28px] p-5 shadow-card',
-                  isExpressive
-                    ? 'bg-[#C9DC9F] text-[#141312] dark:bg-[#192D21] dark:text-[#FAF6EC]'
-                    : 'border border-line bg-surface text-fg',
-                )}
-              >
-                {isExpressive && (
-                  <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-                    <motion.div
-                      className="absolute -top-8 -right-8 size-28 rounded-full bg-[#FCE99F]/60 dark:bg-[#FCE99F]/10"
-                      animate={{ y: [0, 8, 0], x: [0, -5, 0] }}
-                      transition={{ repeat: Infinity, duration: 6, ease: 'easeInOut' }}
-                    />
-                    <motion.div
-                      className="absolute -bottom-6 left-8 size-16 rotate-12 rounded-2xl bg-[#C4E0FD]/55 dark:bg-[#C4E0FD]/10"
-                      animate={{ y: [0, -6, 0], rotate: [12, 20, 12] }}
-                      transition={{ repeat: Infinity, duration: 5.5, ease: 'easeInOut' }}
-                    />
-                  </div>
-                )}
-                <div className="relative z-10 space-y-2.5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 space-y-2">
-                      <StickerBadge tone="butter" tilt={-1.5}>
-                        <Palette size={11} /> O teu companheiro de estudo
-                      </StickerBadge>
-                      <h2 className="font-display text-xl font-extrabold leading-tight tracking-tight sm:text-2xl">
-                        Escolhe a cara e o{' '}
-                        <span className="font-serif font-normal italic">tom do teu caderno</span>
-                      </h2>
-                    </div>
-                    <div className="flex h-18 w-18 shrink-0 items-center justify-center rounded-3xl bg-white/65 p-1.5 shadow-sm backdrop-blur-sm dark:bg-black/25">
-                      <UniBuddy
-                        mood="curious"
-                        accessory={uniAccessory === 'auto' ? 'math' : uniAccessory}
-                        size={58}
-                        interactive={false}
-                      />
-                    </div>
-                  </div>
-                  <p className="text-xs leading-relaxed opacity-85 sm:text-sm">
-                    Os Unis são pequenas mascotes colecionáveis que te acompanham e podem espreitar discretamente nos cantos do ecrã — ou ficar completamente silenciosos se preferires um estilo mais sério.
-                  </p>
-                </div>
-              </div>
-
-              {/* Tom da aplicação: Expressivo vs Sério */}
-              <div
-                className={cx(
-                  'space-y-3 rounded-[26px] p-4 shadow-card sm:p-5',
-                  isExpressive
-                    ? 'bg-[#FCE99F]/75 text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]'
-                    : 'border border-line bg-surface text-fg',
-                )}
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <h3 className="font-display text-sm font-bold">
-                      Qual o estilo de experiência que preferes?
-                    </h3>
-                    <p className="text-xs opacity-75">
-                      Podes mudar quando quiseres nas Definições.
-                    </p>
-                  </div>
-                  {isExpressive && (
-                    <StickerBadge tone="sage" tilt={1}>
-                      O teu estilo
-                    </StickerBadge>
-                  )}
-                </div>
-                <div className="grid gap-2.5 sm:grid-cols-2">
-                  {[
-                    {
-                      id: 'vibrante' as const,
-                      title: 'Expressivo & Vivo',
-                      desc: 'Caderno com ilustrações suaves, blocos pastel e os Unis discretos nos cantos.',
-                    },
-                    {
-                      id: 'serio' as const,
-                      title: 'Sério & Minimalista',
-                      desc: 'Visual sóbrio, movimento reduzido, tutor direto ao assunto e ecrã livre de mascotes nos cantos.',
-                    },
-                  ].map((option) => {
-                    const active = appTone === option.id;
-                    return (
-                      <button
-                        key={option.id}
-                        type="button"
-                        aria-pressed={active}
-                        onClick={() => {
-                          void hapticTap();
-                          setAppTone(option.id);
-                          if (option.id === 'serio') {
-                            setUniLiveCompanions('off');
-                            if (themePalette === 'caderno') setThemePalette('ardosia');
-                          } else {
-                            setUniLiveCompanions('all');
-                          }
-                        }}
-                        className={cx(
-                          'flex flex-col items-start gap-1 rounded-2xl border p-3.5 text-left transition',
-                          active
-                            ? isExpressive
-                              ? 'border-[#141312] bg-white text-[#141312] shadow-sm dark:border-[#FAF6EC] dark:bg-[#1E1B14] dark:text-[#FAF6EC]'
-                              : 'border-accent bg-accent-soft/50 text-fg shadow-sm'
-                            : isExpressive
-                              ? 'border-[#141312]/10 bg-white/65 text-[#141312] hover:bg-white/90 dark:border-white/10 dark:bg-black/25 dark:text-[#FAF6EC] dark:hover:bg-black/35'
-                              : 'border-line bg-bg text-fg hover:bg-surface-2',
-                        )}
-                      >
-                        <span className="flex items-center gap-1.5 text-xs font-bold">
-                          {active && <CheckCircle2 size={14} className="text-accent" />}
-                          {option.title}
-                        </span>
-                        <span className="text-[11px] leading-relaxed opacity-75">{option.desc}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Paleta de cores + Tema Claro/Escuro */}
-              <div className="space-y-4 rounded-[26px] border border-line bg-surface p-4 shadow-card sm:p-5">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="space-y-1">
-                    {isExpressive && (
-                      <StickerBadge tone="sky" tilt={-1}>
-                        Cores &amp; Papel
-                      </StickerBadge>
-                    )}
-                    <h3 className="font-display text-sm font-bold text-fg">Paleta de cores ao vivo</h3>
-                    <p className="text-xs text-muted">
-                      Toca para pré-visualizar imediatamente nesta janela.
-                    </p>
-                  </div>
-                  <div className="inline-flex rounded-full bg-surface-2 p-1">
-                    {(
-                      [
-                        ['system', 'Auto'],
-                        ['light', 'Claro'],
-                        ['dark', 'Escuro'],
-                      ] as const
-                    ).map(([pref, label]) => (
-                      <button
-                        key={pref}
-                        type="button"
-                        onClick={() => {
-                          void hapticTap();
-                          setThemePref(pref);
-                        }}
-                        className={cx(
-                          'min-h-[34px] rounded-full px-3 text-xs font-semibold transition',
-                          themePref === pref
-                            ? 'bg-ink-cta text-ink-cta-fg'
-                            : 'text-muted hover:text-fg',
-                        )}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {APP_PALETTES.map((pal) => {
-                    const active = themePalette === pal.id;
-                    return (
-                      <button
-                        key={pal.id}
-                        type="button"
-                        aria-pressed={active}
-                        onClick={() => {
-                          void hapticTap();
-                          setThemePalette(pal.id);
-                        }}
-                        className={cx(
-                          'flex min-h-[54px] items-center gap-2.5 rounded-2xl border px-3 py-2 text-left transition',
-                          active
-                            ? 'border-accent bg-accent-soft/60 shadow-sm'
-                            : 'border-line bg-bg hover:bg-surface-2',
-                        )}
-                      >
-                        <span className="flex shrink-0 items-center gap-1" aria-hidden="true">
-                          <span
-                            className="size-4 rounded-full border border-black/15"
-                            style={{ backgroundColor: pal.bgHex }}
-                          />
-                          <span
-                            className="size-4 rounded-full border border-black/15"
-                            style={{ backgroundColor: pal.accentHex }}
-                          />
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block truncate text-xs font-bold text-fg">{pal.name}</span>
-                          <span className="block truncate text-[10px] text-muted">{pal.tagline}</span>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Adereço do Uni, Personalidade do Tutor e Companheiros Discretos */}
-              <div
-                className={cx(
-                  'space-y-4 rounded-[26px] p-4 shadow-card sm:p-5',
-                  isExpressive
-                    ? 'bg-[#C4E0FD]/75 text-[#141312] dark:bg-[#192838] dark:text-[#FAF6EC]'
-                    : 'border border-line bg-surface text-fg',
-                )}
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="space-y-1">
-                    {isExpressive && (
-                      <StickerBadge tone="peach" tilt={-1}>
-                        O teu Uni
-                      </StickerBadge>
-                    )}
-                    <h3 className="font-display text-sm font-bold">
-                      Adereço &amp; comportamento do Uni
-                    </h3>
-                    <p className="text-xs opacity-75">
-                      Pode adaptar-se automaticamente a cada cadeira ou manter o teu estilo fixo.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void hapticTap();
-                      setUniAccessory('auto');
-                    }}
-                    className={cx(
-                      'min-h-[34px] rounded-full border px-3 text-xs font-semibold transition',
-                      uniAccessory === 'auto'
-                        ? 'border-transparent bg-ink-cta text-ink-cta-fg shadow-sm'
-                        : isExpressive
-                          ? 'border-[#141312]/15 bg-white/70 text-[#141312] hover:bg-white dark:border-white/15 dark:bg-black/25 dark:text-[#FAF6EC]'
-                          : 'border-line bg-surface-2 text-muted hover:text-fg',
-                    )}
-                  >
-                    Automático por cadeira
-                  </button>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {UNI_ACCESSORIES.map((acc) => {
-                    const active = uniAccessory === acc.id;
-                    return (
-                      <button
-                        key={acc.id}
-                        type="button"
-                        onClick={() => {
-                          void hapticTap();
-                          setUniAccessory(acc.id);
-                        }}
-                        className={cx(
-                          'flex min-h-[42px] items-center gap-1.5 rounded-2xl border px-2.5 py-1.5 text-xs font-medium transition',
-                          active
-                            ? 'border-transparent bg-ink-cta text-ink-cta-fg shadow-sm'
-                            : isExpressive
-                              ? 'border-[#141312]/10 bg-white/75 text-[#141312] hover:bg-white dark:border-white/10 dark:bg-black/25 dark:text-[#FAF6EC]'
-                              : 'border-line bg-bg text-fg hover:bg-surface-2',
-                        )}
-                      >
-                        <UniBuddy mood="happy" accessory={acc.id} size={26} interactive={false} />
-                        <span>{acc.shortLabel}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div
-                  className={cx(
-                    'grid gap-3 border-t pt-3 sm:grid-cols-2',
-                    isExpressive ? 'border-[#141312]/10 dark:border-white/10' : 'border-line',
-                  )}
-                >
-                  <div className="space-y-1.5">
-                    <span className="block text-xs font-medium opacity-75">
-                      Personalidade do Tutor Uni
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {UNI_PERSONAS.map((p) => (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => {
-                            void hapticTap();
-                            setUniPersona(p.id);
-                          }}
-                          className={cx(
-                            'min-h-[36px] rounded-full border px-3 text-xs font-semibold transition',
-                            uniPersona === p.id
-                              ? 'border-transparent bg-ink-cta text-ink-cta-fg shadow-sm'
-                              : isExpressive
-                                ? 'border-[#141312]/10 bg-white/75 text-[#141312] hover:bg-white dark:border-white/10 dark:bg-black/25 dark:text-[#FAF6EC]'
-                                : 'border-line bg-bg text-muted hover:text-fg',
-                          )}
-                        >
-                          {p.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <span className="block text-xs font-medium opacity-75">
-                      Unis discretos nos cantos
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {(
-                        [
-                          ['all', 'Até 2 discretos'],
-                          ['solo', 'Só 1 Uni'],
-                          ['off', 'Desligado'],
-                        ] as const
-                      ).map(([modeId, label]) => (
-                        <button
-                          key={modeId}
-                          type="button"
-                          onClick={() => {
-                            void hapticTap();
-                            setUniLiveCompanions(modeId);
-                          }}
-                          className={cx(
-                            'min-h-[36px] rounded-full border px-3 text-xs font-semibold transition',
-                            uniLiveCompanions === modeId
-                              ? 'border-transparent bg-ink-cta text-ink-cta-fg shadow-sm'
-                              : isExpressive
-                                ? 'border-[#141312]/10 bg-white/75 text-[#141312] hover:bg-white dark:border-white/10 dark:bg-black/25 dark:text-[#FAF6EC]'
-                                : 'border-line bg-bg text-muted hover:text-fg',
-                          )}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+          {activeStepId === 'curso' && (
+            <Step2Academic
+              catalog={catalog}
+              universityId={universityId}
+              onUniversityChange={handleUniversityChange}
+              customUniversity={customUniversity}
+              setCustomUniversity={setCustomUniversity}
+              degreeId={degreeId}
+              onDegreeChange={handleDegreeChange}
+              customDegree={customDegree}
+              setCustomDegree={setCustomDegree}
+              availableDegrees={availableDegrees}
+              isSecondarySchool={isSecondarySchool}
+              academicCycle={academicCycle}
+              onCycleChange={handleCycleChange}
+              yearChoices={yearChoices}
+              activeYears={activeYears}
+              onToggleYear={toggleYearPill}
+              currentSemester={currentSemester}
+              onSemesterChange={handleSemesterChange}
+              entryYear={entryYear}
+              setEntryYear={setEntryYear}
+              targetTotalEcts={targetTotalEcts}
+              onSelectEctsTarget={handleSelectEctsTarget}
+              completedEcts={completedEcts}
+              setCompletedEcts={setCompletedEcts}
+              ectsStage={ectsStage}
+              onApplyEctsStage={handleApplyEctsStage}
+              learningChallenges={learningChallenges}
+              onToggleChallenge={toggleLearningChallenge}
+              extraActivities={extraActivities}
+              onToggleExtraPreset={toggleExtraPreset}
+              onRemoveExtra={(id) => setExtraActivities((prev) => prev.filter((a) => a.id !== id))}
+              customExtraLabel={customExtraLabel}
+              setCustomExtraLabel={setCustomExtraLabel}
+              customExtraHours={customExtraHours}
+              setCustomExtraHours={setCustomExtraHours}
+              onAddCustomExtra={handleAddCustomExtra}
+            />
           )}
 
-          {/* PASSO 3: AVALIAÇÃO PESSOAL, ECTS (180 / 120 / 300), DIFICULDADES & ATIVIDADES EXTRA */}
-          {activeStepId === 'avaliacao' && (
-            <div className="space-y-5">
-              <div
-                className={cx(
-                  'relative overflow-hidden rounded-[28px] p-5 shadow-card',
-                  isExpressive
-                    ? 'bg-[#C4E0FD] text-[#141312] dark:bg-[#192838] dark:text-[#FAF6EC]'
-                    : 'border border-line bg-surface text-fg',
-                )}
-              >
-                {isExpressive && (
-                  <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-                    <motion.div
-                      className="absolute -bottom-6 -right-6 size-24 rounded-full bg-[#FCE99F]/60 dark:bg-[#FCE99F]/10"
-                      animate={{ y: [0, -7, 0], scale: [1, 1.05, 1] }}
-                      transition={{ repeat: Infinity, duration: 6, ease: 'easeInOut' }}
-                    />
-                    <motion.div
-                      className="absolute -top-6 left-12 size-16 rotate-12 rounded-2xl bg-[#C9DC9F]/55 dark:bg-[#C9DC9F]/10"
-                      animate={{ rotate: [12, 20, 12] }}
-                      transition={{ repeat: Infinity, duration: 5.5, ease: 'easeInOut' }}
-                    />
-                  </div>
-                )}
-                <div className="relative z-10 space-y-2.5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 space-y-2">
-                      <StickerBadge tone="sage" tilt={-1.5}>
-                        <BookOpen size={11} /> Avaliação pessoal
-                      </StickerBadge>
-                      <h2 className="font-display text-xl font-extrabold leading-tight tracking-tight sm:text-2xl">
-                        Onde estás nos{' '}
-                        <span className="font-serif font-normal italic">ECTS</span> e na tua semana?
-                      </h2>
-                    </div>
-                    <div className="flex h-18 w-18 shrink-0 items-center justify-center rounded-3xl bg-white/65 p-1.5 shadow-sm backdrop-blur-sm dark:bg-black/25">
-                      <UniBuddy mood="thinking" size={56} interactive={false} />
-                    </div>
-                  </div>
-                  <p className="text-xs leading-relaxed opacity-85 sm:text-sm">
-                    Com os teus créditos concluídos e compromissos fora das aulas, o Uni estima o teu ano letivo e evita planos irrealistas.
-                  </p>
-                </div>
-              </div>
-
-              {/* Meta ECTS + ECTS Concluídos */}
-              {!isSecondarySchool && (
-                <div
-                  className={cx(
-                    'space-y-4 rounded-[26px] p-4 shadow-card sm:p-5',
-                    isExpressive
-                      ? 'bg-[#FCE99F]/75 text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]'
-                      : 'border border-line bg-surface text-fg',
-                  )}
-                >
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="block text-xs font-bold">
-                        Qual é a meta total do teu percurso (ECTS)?
-                      </span>
-                      {isExpressive && (
-                        <StickerBadge tone="mint" tilt={1}>
-                          Créditos &amp; Nível
-                        </StickerBadge>
-                      )}
-                    </div>
-                    <div className="grid gap-2 sm:grid-cols-3">
-                      {ECTS_TARGETS.map((opt) => {
-                        const active = targetTotalEcts === opt.total;
-                        return (
-                          <button
-                            key={opt.total}
-                            type="button"
-                            aria-pressed={active}
-                            onClick={() => handleSelectEctsTarget(opt.total)}
-                            className={cx(
-                              'flex min-h-[52px] flex-col items-start justify-center rounded-2xl border px-3.5 py-2 text-left transition',
-                              active
-                                ? isExpressive
-                                  ? 'border-[#141312] bg-white text-[#141312] shadow-sm dark:border-[#FAF6EC] dark:bg-[#1E1B14] dark:text-[#FAF6EC]'
-                                  : 'border-accent bg-accent-soft text-accent shadow-sm'
-                                : isExpressive
-                                  ? 'border-[#141312]/10 bg-white/65 text-[#141312] hover:bg-white/90 dark:border-white/10 dark:bg-black/25 dark:text-[#FAF6EC]'
-                                  : 'border-line bg-bg text-fg hover:bg-surface-2',
-                            )}
-                          >
-                            <span className="font-mono text-sm font-extrabold">{opt.shortLabel}</span>
-                            <span className="text-[11px] opacity-75">{opt.label.split('·')[1]?.trim()}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div
-                    className={cx(
-                      'space-y-2 border-t pt-3',
-                      isExpressive ? 'border-[#141312]/10 dark:border-white/10' : 'border-line',
-                    )}
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <label htmlFor="onboarding-ects-slider" className="text-xs font-bold">
-                        Quantos ECTS já concluíste até agora?
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          min={0}
-                          max={targetTotalEcts}
-                          step={3}
-                          value={completedEcts}
-                          onChange={(e) =>
-                            setCompletedEcts(
-                              Math.max(0, Math.min(targetTotalEcts, Number(e.target.value) || 0)),
-                            )
-                          }
-                          className="w-20 text-center font-mono font-bold tabular"
-                        />
-                        <span className="whitespace-nowrap font-mono text-xs opacity-75">/ {targetTotalEcts} ECTS</span>
-                      </div>
-                    </div>
-
-                    <input
-                      id="onboarding-ects-slider"
-                      type="range"
-                      min={0}
-                      max={targetTotalEcts}
-                      step={3}
-                      value={completedEcts}
-                      onChange={(e) => setCompletedEcts(Number(e.target.value))}
-                      className="w-full accent-[var(--accent)]"
-                    />
-
-                    <div
-                      className={cx(
-                        'flex flex-wrap items-center justify-between gap-2 rounded-2xl border px-3.5 py-2.5 text-xs',
-                        isExpressive
-                          ? 'border-[#141312]/10 bg-[#C9DC9F]/85 text-[#141312] dark:border-white/10 dark:bg-[#192D21] dark:text-[#FAF6EC]'
-                          : 'border-accent/25 bg-accent-soft/45 text-fg',
-                      )}
-                    >
-                      <div>
-                        <p className="font-bold">
-                          Leitura do Uni: {ectsStage.stageSummary}
-                        </p>
-                        <p className="text-[11px] opacity-80">
-                          {ectsStage.progressPct}% concluído · faltam {ectsStage.remainingEcts} ECTS para fechar a meta.
-                        </p>
-                      </div>
-                      <Button size="sm" variant="secondary" onClick={handleApplyEctsStage}>
-                        Alinhar {ectsStage.estimatedYear}.º ano
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Faculdade, Curso, Ano de entrada, Ciclo & Anos simultâneos */}
-              <div className="space-y-3 rounded-[26px] border border-line bg-surface p-4 shadow-card sm:p-5">
-                {isExpressive && (
-                  <StickerBadge tone="butter" tilt={-1}>
-                    Faculdade &amp; Curso
-                  </StickerBadge>
-                )}
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Instituição / Ensino">
-                    <Select
-                      value={universityId}
-                      onChange={(e) => handleUniversityChange(e.target.value)}
-                    >
-                      {catalog.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.name} ({u.shortName})
-                        </option>
-                      ))}
-                      <option value="outra">Outra Escola / Universidade</option>
-                    </Select>
-                  </Field>
-
-                  <Field label={isSecondarySchool ? 'Área / Curso' : 'Curso / Plano Curricular'}>
-                    {universityId === 'outra' ? (
-                      <Input
-                        value={customDegree}
-                        onChange={(e) => setCustomDegree(e.target.value)}
-                        placeholder="Ex: Engenharia Mecânica"
-                      />
-                    ) : (
-                      <Select
-                        value={degreeId}
-                        onChange={(e) => handleDegreeChange(e.target.value)}
-                      >
-                        {availableDegrees.map((d) => (
-                          <option key={d.id} value={d.id}>
-                            {d.name}
-                          </option>
-                        ))}
-                        <option value="outro">Outro curso / plano próprio</option>
-                      </Select>
-                    )}
-                  </Field>
-
-                  <Field label={isSecondarySchool ? 'Ano de matrícula' : 'Ano de entrada'}>
-                    <Select
-                      value={String(entryYear)}
-                      onChange={(e) => setEntryYear(Number(e.target.value))}
-                    >
-                      {[2026, 2025, 2024, 2023, 2022, 2021, 2020].map((y) => (
-                        <option key={y} value={y}>{y}</option>
-                      ))}
-                    </Select>
-                  </Field>
-
-                  <div className="flex items-end">
-                    <p className="text-xs text-muted">
-                      Estudante: <strong className="text-fg">{userName.trim() || 'Por definir'}</strong> · podes voltar ao passo 1 ou ajustar depois.
-                    </p>
-                  </div>
-
-                  {(universityId === 'outra' || degreeId === 'outro') && (
-                    <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
-                      {universityId === 'outra' && (
-                        <Field label="Nome da Escola ou Universidade">
-                          <Input
-                            value={customUniversity}
-                            onChange={(e) => setCustomUniversity(e.target.value)}
-                            placeholder="Ex: Instituto Politécnico / Secundária"
-                          />
-                        </Field>
-                      )}
-                      {degreeId === 'outro' && universityId !== 'outra' && (
-                        <Field label="Nome do curso ou mestrado">
-                          <Input
-                            value={customDegree}
-                            onChange={(e) => setCustomDegree(e.target.value)}
-                            placeholder="Ex: Mestrado em Energia"
-                          />
-                        </Field>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Regime / Ciclos + Anos simultâneos */}
-              <div
-                className={cx(
-                  'space-y-4 rounded-[26px] p-4 shadow-card sm:p-5',
-                  isExpressive
-                    ? 'bg-[#C9DC9F]/70 text-[#141312] dark:bg-[#192D21] dark:text-[#FAF6EC]'
-                    : 'border border-line bg-surface text-fg',
-                )}
-              >
-                {!isSecondarySchool && (
-                  <div role="group" aria-label="Tipo de percurso neste momento" className="space-y-2">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="block text-xs font-bold">
-                        Tipo de percurso neste momento
-                      </span>
-                      {isExpressive && (
-                        <StickerBadge tone="sky" tilt={1}>
-                          Ano &amp; Semestre
-                        </StickerBadge>
-                      )}
-                    </div>
-                    <div className="grid gap-2 sm:grid-cols-3">
-                      {[
-                        { id: 'licenciatura' as const, title: 'Licenciatura', hint: '1.º ao 3.º ano' },
-                        { id: 'mestrado' as const, title: 'Mestrado', hint: '1.º e 2.º de Mestrado' },
-                        { id: 'misto' as const, title: 'Misto / Vários anos', hint: 'Cadeiras de vários anos + Mestrado' },
-                      ].map((item) => {
-                        const active = academicCycle === item.id;
-                        return (
-                          <button
-                            key={item.id}
-                            type="button"
-                            aria-pressed={active}
-                            onClick={() => handleCycleChange(item.id)}
-                            className={cx(
-                              'flex min-h-[52px] flex-col items-start justify-center rounded-2xl border px-3.5 py-2.5 text-left transition',
-                              active
-                                ? isExpressive
-                                  ? 'border-[#141312] bg-white text-[#141312] shadow-sm dark:border-[#FAF6EC] dark:bg-[#1E1B14] dark:text-[#FAF6EC]'
-                                  : 'border-accent bg-accent-soft text-accent shadow-sm'
-                                : isExpressive
-                                  ? 'border-[#141312]/10 bg-white/70 text-[#141312] hover:bg-white/95 dark:border-white/10 dark:bg-black/25 dark:text-[#FAF6EC]'
-                                  : 'border-line bg-bg text-fg hover:bg-surface-2',
-                            )}
-                          >
-                            <span className="text-xs font-bold">{item.title}</span>
-                            <span className="text-[11px] opacity-75">{item.hint}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                <div className="grid gap-4 sm:grid-cols-[1.5fr_1fr]">
-                  <div
-                    role="group"
-                    aria-label={
-                      isSecondarySchool
-                        ? 'Ano escolar'
-                        : academicCycle === 'misto'
-                          ? 'Seleciona TODOS os anos onde tens cadeiras agora'
-                          : 'Ano curricular atual'
-                    }
-                    className="space-y-1.5"
-                  >
-                    <span className="block text-xs font-bold">
-                      {isSecondarySchool
-                        ? 'Ano escolar'
-                        : academicCycle === 'misto'
-                          ? 'Seleciona TODOS os anos onde tens cadeiras agora'
-                          : 'Ano curricular atual'}
-                    </span>
-                    <div className="flex flex-wrap gap-2">
-                      {yearChoices.map((y) => {
-                        const active = activeYears.includes(y);
-                        return (
-                          <button
-                            key={y}
-                            type="button"
-                            aria-pressed={active}
-                            onClick={() => toggleYearPill(y)}
-                            className={cx(
-                              'inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border px-3.5 text-xs font-semibold transition',
-                              active
-                                ? 'border-transparent bg-ink-cta text-ink-cta-fg shadow-sm'
-                                : isExpressive
-                                  ? 'border-[#141312]/10 bg-white/75 text-[#141312] hover:bg-white dark:border-white/10 dark:bg-black/25 dark:text-[#FAF6EC]'
-                                  : 'border-line bg-bg text-muted hover:text-fg',
-                            )}
-                          >
-                            {active && <Check size={13} />}
-                            {formatAcademicYearShort(y, isSecondarySchool)}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div
-                    role="group"
-                    aria-label={isSecondarySchool ? 'Período' : 'Semestre atual'}
-                    className="space-y-1.5"
-                  >
-                    <span className="block text-xs font-bold">
-                      {isSecondarySchool ? 'Período' : 'Semestre atual'}
-                    </span>
-                    <div className="grid grid-cols-2 gap-2">
-                      {([1, 2] as const).map((s) => (
-                        <button
-                          key={s}
-                          type="button"
-                          aria-pressed={currentSemester === s}
-                          onClick={() => handleSemesterChange(s)}
-                          className={cx(
-                            'min-h-[44px] rounded-xl border text-xs font-semibold transition',
-                            currentSemester === s
-                              ? 'border-transparent bg-ink-cta text-ink-cta-fg shadow-sm'
-                              : isExpressive
-                                ? 'border-[#141312]/10 bg-white/75 text-[#141312] hover:bg-white dark:border-white/10 dark:bg-black/25 dark:text-[#FAF6EC]'
-                                : 'border-line bg-bg text-muted hover:text-fg',
-                          )}
-                        >
-                          {s}.º Semestre
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Dificuldades pessoais + Atividades extracurriculares */}
-              <div
-                className={cx(
-                  'space-y-4 rounded-[26px] p-4 shadow-card sm:p-5',
-                  isExpressive
-                    ? 'bg-[#FAD6BA]/75 text-[#141312] dark:bg-[#332218] dark:text-[#FAF6EC]'
-                    : 'border border-line bg-surface text-fg',
-                )}
-              >
-                <div className="space-y-2">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="block text-xs font-bold">
-                      Quais são os teus maiores desafios este semestre?
-                    </span>
-                    {isExpressive && (
-                      <StickerBadge tone="butter" tilt={-1}>
-                        Semana real
-                      </StickerBadge>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {CHALLENGE_OPTIONS.map((ch) => {
-                      const active = learningChallenges.includes(ch.id);
-                      return (
-                        <button
-                          key={ch.id}
-                          type="button"
-                          onClick={() => toggleLearningChallenge(ch.id)}
-                          className={cx(
-                            'inline-flex min-h-[38px] items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition',
-                            active
-                              ? 'border-transparent bg-ink-cta text-ink-cta-fg shadow-sm'
-                              : isExpressive
-                                ? 'border-[#141312]/10 bg-white/75 text-[#141312] hover:bg-white dark:border-white/10 dark:bg-black/25 dark:text-[#FAF6EC]'
-                                : 'border-line bg-bg text-muted hover:text-fg',
-                          )}
-                        >
-                          {active && <Check size={12} />}
-                          {ch.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div
-                  className={cx(
-                    'space-y-2.5 border-t pt-3',
-                    isExpressive ? 'border-[#141312]/10 dark:border-white/10' : 'border-line',
-                  )}
-                >
-                  <div>
-                    <span className="block text-xs font-bold">
-                      Tens trabalho, desporto, associação ou outras atividades extra?
-                    </span>
-                    <p className="text-[11px] opacity-80">
-                      O criador do plano semanal reduz automaticamente a carga nos dias em que estás ocupado.
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    {EXTRA_ACTIVITY_PRESETS.map((preset) => {
-                      const active = extraActivities.some((a) => a.label === preset.label);
-                      return (
-                        <button
-                          key={preset.label}
-                          type="button"
-                          onClick={() => toggleExtraPreset(preset)}
-                          className={cx(
-                            'inline-flex min-h-[38px] items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition',
-                            active
-                              ? 'border-transparent bg-ink-cta text-ink-cta-fg shadow-sm'
-                              : isExpressive
-                                ? 'border-[#141312]/10 bg-white/75 text-[#141312] hover:bg-white dark:border-white/10 dark:bg-black/25 dark:text-[#FAF6EC]'
-                                : 'border-line bg-bg text-fg hover:bg-surface-2',
-                          )}
-                        >
-                          {active ? <Check size={12} /> : <Plus size={12} />}
-                          {preset.label} ({preset.hoursPerWeek}h)
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Adição rápida de atividade própria */}
-                  <div className="grid gap-2 sm:grid-cols-[1.5fr_88px_auto]">
-                    <Input
-                      value={customExtraLabel}
-                      onChange={(e) => setCustomExtraLabel(e.target.value)}
-                      placeholder="Outra atividade (ex: Estágio, Explicações)"
-                    />
-                    <Input
-                      type="number"
-                      min={1}
-                      max={40}
-                      value={customExtraHours}
-                      onChange={(e) => setCustomExtraHours(Math.max(1, Number(e.target.value) || 1))}
-                      aria-label="Horas por semana"
-                      className="text-center tabular"
-                    />
-                    <Button variant="secondary" size="sm" onClick={handleAddCustomExtra}>
-                      <Plus size={14} /> Juntar
-                    </Button>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-1.5 text-[11px] opacity-85">
-                    <span>Dias da atividade personalizada:</span>
-                    {DAY_LABELS.map((d) => {
-                      const on = customExtraDays.includes(d.day);
-                      return (
-                        <button
-                          key={d.day}
-                          type="button"
-                          onClick={() =>
-                            setCustomExtraDays((prev) =>
-                              prev.includes(d.day)
-                                ? prev.filter((x) => x !== d.day)
-                                : [...prev, d.day],
-                            )
-                          }
-                          className={cx(
-                            'min-h-[28px] rounded-lg px-2 font-semibold transition',
-                            on
-                              ? 'bg-ink-cta text-ink-cta-fg'
-                              : isExpressive
-                                ? 'border border-[#141312]/15 bg-white/70 text-[#141312] dark:border-white/15 dark:bg-black/25 dark:text-[#FAF6EC]'
-                                : 'border border-line bg-bg text-muted hover:text-fg',
-                          )}
-                        >
-                          {d.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {extraActivities.length > 0 && (
-                    <div className="space-y-1.5 pt-1">
-                      {extraActivities.map((act) => (
-                        <div
-                          key={act.id}
-                          className={cx(
-                            'flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-xs',
-                            isExpressive
-                              ? 'border-[#141312]/10 bg-white/75 text-[#141312] dark:border-white/10 dark:bg-black/25 dark:text-[#FAF6EC]'
-                              : 'border-line bg-bg text-fg',
-                          )}
-                        >
-                          <span className="truncate font-medium">
-                            {act.label} · {act.hoursPerWeek}h/sem (
-                            {act.weekdays
-                              .map((w) => DAY_LABELS.find((d) => d.day === w)?.label ?? '')
-                              .filter(Boolean)
-                              .join(', ')}
-                            )
-                          </span>
-                          <button
-                            type="button"
-                            aria-label={`Remover ${act.label}`}
-                            onClick={() =>
-                              setExtraActivities((prev) => prev.filter((a) => a.id !== act.id))
-                            }
-                            className="inline-flex size-7 items-center justify-center rounded-lg opacity-75 hover:bg-black/10 hover:text-danger dark:hover:bg-white/10"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* PASSO 4: CADEIRAS REAIS, MESTRADOS, IMPORTS E ADIÇÃO MANUAL */}
           {activeStepId === 'cadeiras' && (
-            <div className="space-y-4">
-              <div
-                className={cx(
-                  'relative overflow-hidden rounded-[28px] p-5 shadow-card',
-                  isExpressive
-                    ? 'bg-[#FAD6BA] text-[#141312] dark:bg-[#332218] dark:text-[#FAF6EC]'
-                    : 'border border-line bg-surface text-fg',
-                )}
-              >
-                {isExpressive && (
-                  <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-                    <motion.div
-                      className="absolute -top-8 -right-8 size-28 rounded-full bg-[#FCE99F]/60 dark:bg-[#FCE99F]/10"
-                      animate={{ y: [0, 8, 0], x: [0, -5, 0] }}
-                      transition={{ repeat: Infinity, duration: 6.2, ease: 'easeInOut' }}
-                    />
-                    <motion.div
-                      className="absolute -bottom-6 left-10 size-16 rotate-12 rounded-2xl bg-[#C9DC9F]/55 dark:bg-[#C9DC9F]/10"
-                      animate={{ rotate: [12, 22, 12] }}
-                      transition={{ repeat: Infinity, duration: 5.4, ease: 'easeInOut' }}
-                    />
-                  </div>
-                )}
-
-                <div className="relative z-10 space-y-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 space-y-1.5">
-                      <StickerBadge tone="butter" tilt={-1.5}>
-                        {currentSemester}.º Semestre · Anos selecionados
-                      </StickerBadge>
-                      <h2 className="font-display text-xl font-extrabold leading-tight sm:text-2xl">
-                        As tuas cadeiras{' '}
-                        <span className="font-serif font-normal italic">deste semestre</span>
-                      </h2>
-                      <p className="text-xs opacity-85">
-                        A mostrar apenas os anos escolhidos no passo anterior e o {currentSemester}.º semestre.{' '}
-                        <span className="font-semibold">
-                          Se partilhares o teu horário por foto ou Google Agenda, esta etapa fica logo feita!
-                        </span>
-                      </p>
-                    </div>
-                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-3xl bg-white/65 p-1.5 shadow-sm backdrop-blur-sm dark:bg-black/25">
-                      <UniBuddy mood="curious" size={50} interactive={false} />
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <span
-                      className={cx(
-                        'rounded-full px-3 py-1 font-bold tabular',
-                        isExpressive
-                          ? 'bg-[#141312] text-[#FAF8F2] dark:bg-[#FAF6EC] dark:text-[#141312]'
-                          : 'bg-accent-soft text-accent',
-                      )}
-                    >
-                      {doingCount} ativas
-                    </span>
-                    <span className="rounded-full bg-white/70 px-3 py-1 font-medium text-[#141312] tabular dark:bg-black/25 dark:text-[#FAF6EC]">
-                      {approvedCount} aprovadas
-                    </span>
-                    {!isSecondarySchool && (
-                      <span className="rounded-full bg-white/70 px-3 py-1 font-mono font-semibold text-[#141312] tabular dark:bg-black/25 dark:text-[#FAF6EC]">
-                        {approvedEctsFromList + activeEctsFromList}/{targetTotalEcts} ECTS
-                      </span>
-                    )}
-                    {weightedAvg !== null && (
-                      <span className="rounded-full bg-[#C9DC9F] px-3 py-1 font-semibold text-[#141312] tabular">
-                        Média {weightedAvg.toFixed(1)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Atalhos rápidos de importação */}
-              <div
-                className={cx(
-                  'flex flex-col gap-3 rounded-[24px] px-4 py-3.5 shadow-card',
-                  isExpressive
-                    ? 'bg-[#FCE99F]/75 text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]'
-                    : 'border border-line bg-surface text-fg',
-                )}
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  {isExpressive ? (
-                    <StickerBadge tone="mint" tilt={-1}>
-                      Atalho automático
-                    </StickerBadge>
-                  ) : (
-                    <span className="text-xs font-semibold text-muted">Atalho automático:</span>
-                  )}
-                  <span className="text-xs font-semibold opacity-90">
-                    Partilha o teu horário (foto ou Google Agenda) e deixamos só as tuas cadeiras ativas
-                  </span>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    onClick={() => {
-                      const s = useStore.getState();
-                      setScheduleImportBaseline({
-                        courses: s.courses.length,
-                        classes: s.classes.length,
-                        assessments: s.assessments.length,
-                      });
-                      setScheduleImportMode('photo');
-                    }}
-                  >
-                    <Camera size={14} /> Foto do horário
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => {
-                      const s = useStore.getState();
-                      setScheduleImportBaseline({
-                        courses: s.courses.length,
-                        classes: s.classes.length,
-                        assessments: s.assessments.length,
-                      });
-                      setScheduleImportMode('gcal');
-                    }}
-                  >
-                    <CalendarDays size={14} /> Google Agenda
-                  </Button>
-                  <label className="inline-flex min-h-[38px] cursor-pointer items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 py-1.5 text-xs font-semibold text-fg shadow-sm transition hover:bg-surface-2">
-                    {ocrBusy ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
-                    {ocrBusy ? 'A ler prints…' : 'Print Horário / Pauta'}
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      className="hidden"
-                      disabled={ocrBusy}
-                      onChange={(e) => {
-                        const files = Array.from(e.target.files ?? []);
-                        e.target.value = '';
-                        void handleScreenshotUpload(files);
-                      }}
-                    />
-                  </label>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => {
-                      setShowPastePlan((v) => !v);
-                      void hapticTap();
-                    }}
-                  >
-                    <ClipboardPaste size={14} /> Colar Plano / Guia
-                  </Button>
-                </div>
-              </div>
-
-              {ocrBusy && (
-                <p className="flex items-center gap-2 rounded-2xl border border-line bg-surface px-4 py-3 text-xs font-semibold text-fg shadow-card">
-                  <Loader2 size={15} className="shrink-0 animate-spin text-accent" />
-                  A ler imagem do horário/pauta com o Uni… aguarda uns segundos.
-                </p>
-              )}
-
-              {showPastePlan && (
-                <div className="space-y-3 rounded-2xl border border-accent/35 bg-surface p-4 shadow-sm">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-xs font-semibold text-fg">
-                        Colar plano curricular (Portal académico, Guia de Curso ou lista de cadeiras)
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-muted">
-                        Se o plano mudou este ano ou vens de outro curso, copia a tabela com semestres, nomes e ECTS e cola abaixo — funciona offline sem gastar IA.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowPastePlan(false)}
-                      aria-label="Fechar caixa de importação"
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted hover:bg-surface-2 hover:text-fg"
-                    >
-                      <X size={15} />
-                    </button>
-                  </div>
-                  <Textarea
-                    rows={5}
-                    value={pastedPlanText}
-                    onChange={(e) => setPastedPlanText(e.target.value)}
-                    placeholder={`1.º Semestre\n13493\tCálculo I D\t6.0\n13501\tFísica Experimental\t6.0\nOpções:\n14123\tFabrico Aditivo\t6.0`}
-                  />
-                  <div className="flex flex-wrap items-center justify-end gap-2">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => handleApplyPastedCurriculum('merge')}
-                    >
-                      Adicionar à lista
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      onClick={() => handleApplyPastedCurriculum('replace')}
-                    >
-                      Substituir plano atual
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {scheduleDoneInfo && (
-                <div
-                  className={cx(
-                    'flex flex-col gap-3 rounded-[24px] p-4 shadow-card sm:flex-row sm:items-center sm:justify-between',
-                    isExpressive
-                      ? 'bg-[#C9DC9F]/85 text-[#141312] dark:bg-[#192D21] dark:text-[#FAF6EC]'
-                      : 'border border-ok/35 bg-ok/10 text-fg',
-                  )}
-                >
-                  <div className="space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      {isExpressive ? (
-                        <StickerBadge tone="butter" tilt={-1}>
-                          Etapa pronta!
-                        </StickerBadge>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-xs font-bold text-ok">
-                          <CheckCircle2 size={14} /> Etapa pronta!
-                        </span>
-                      )}
-                      <span className="text-xs font-bold">
-                        {doingCount === 1
-                          ? '1 cadeira ativa do teu horário'
-                          : `${doingCount} cadeiras ativas do teu horário`}
-                        {scheduleDoneInfo.classesCount > 0 && ` · ${scheduleDoneInfo.classesCount} aulas importadas`}
-                      </span>
-                    </div>
-                    <p className="text-xs opacity-85">
-                      As restantes cadeiras do plano ficaram arrumadas em «Depois». Podes ajustar abaixo ou avançar já para o último passo.
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => void handleGoNext()}
-                      className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full bg-ink-cta px-4 text-xs font-bold text-ink-cta-fg shadow-card transition hover:opacity-90"
-                    >
-                      <span>Avançar para o último passo</span>
-                      <ArrowRight size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={resetRecordsToDegreeDefaults}
-                      className="inline-flex min-h-[44px] items-center rounded-full border border-line bg-surface/80 px-3 text-xs font-semibold text-fg transition hover:bg-surface"
-                    >
-                      Restaurar lista do curso
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {ocrFeedback && !scheduleDoneInfo && (
-                <p className="flex items-center gap-1.5 rounded-xl bg-ok/10 px-3 py-2 text-xs text-ok">
-                  <CheckCircle2 size={14} /> {ocrFeedback}
-                </p>
-              )}
-              {ocrError && (
-                <p className="flex items-center gap-1.5 rounded-xl bg-danger/10 px-3 py-2 text-xs text-danger">
-                  <AlertCircle size={14} /> {ocrError}
-                </p>
-              )}
-
-              {/* Adicionar cadeira manualmente (qualquer ano / mestrado) */}
-              <div
-                className={cx(
-                  'rounded-[24px] border-2 border-dashed p-4 shadow-sm',
-                  isExpressive
-                    ? 'border-[#141312]/15 bg-[#C4E0FD]/55 text-[#141312] dark:border-white/15 dark:bg-[#192838]/75 dark:text-[#FAF6EC]'
-                    : 'border-accent/40 bg-surface text-fg',
-                )}
-              >
-                <p className="mb-2 text-xs font-bold">
-                  + Adicionar outra cadeira (ex: cadeira em atraso ou de Mestrado)
-                </p>
-                <div className="grid gap-2 sm:grid-cols-[110px_1fr_132px_72px_auto]">
-                  <Input
-                    value={newCourseCode}
-                    onChange={(e) => setNewCourseCode(e.target.value)}
-                    placeholder="Sigla (ex: OM1)"
-                  />
-                  <Input
-                    value={newCourseName}
-                    onChange={(e) => setNewCourseName(e.target.value)}
-                    placeholder="Nome completo da cadeira"
-                    onKeyDown={(e) => {
-                      if (e.nativeEvent.isComposing || e.keyCode === 229) return;
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        addCustomRecord();
-                      }
-                    }}
-                  />
-                  <Select
-                    aria-label="Ano da cadeira"
-                    value={String(newCourseYear)}
-                    onChange={(e) => setNewCourseYear(Number(e.target.value))}
-                  >
-                    {(isSecondarySchool ? [1, 2, 3] : [1, 2, 3, 4, 5]).map((y) => (
-                      <option key={y} value={y}>
-                        {formatAcademicYearShort(y, isSecondarySchool)}
-                      </option>
-                    ))}
-                  </Select>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={30}
-                    aria-label="ECTS"
-                    value={newCourseEcts}
-                    onChange={(e) => setNewCourseEcts(Number(e.target.value))}
-                    className="tabular"
-                  />
-                  <Button variant="primary" size="sm" onClick={addCustomRecord}>
-                    <Plus size={14} /> Adicionar
-                  </Button>
-                </div>
-              </div>
-
-              {/* Tabs por ano (mostra apenas os anos presentes no filtro atual) */}
-              {availableRecordYears.length > 1 && (
-                <div className="flex flex-wrap gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setYearFilter('all')}
-                    className={cx(
-                      'min-h-[36px] rounded-full px-3 text-xs font-semibold transition',
-                      effectiveYearFilter === 'all'
-                        ? 'bg-ink-cta text-ink-cta-fg'
-                        : 'border border-line bg-surface text-muted hover:text-fg',
-                    )}
-                  >
-                    Todos ({scopedRecords.filter((r) => !(r.isOptional && r.status === 'por_fazer')).length})
-                  </button>
-                  {availableRecordYears.map((y) => (
-                    <button
-                      key={y}
-                      type="button"
-                      onClick={() => setYearFilter(y)}
-                      className={cx(
-                        'min-h-[36px] rounded-full px-3 text-xs font-semibold transition',
-                        effectiveYearFilter === y
-                          ? 'bg-ink-cta text-ink-cta-fg'
-                          : 'border border-line bg-surface text-muted hover:text-fg',
-                      )}
-                    >
-                      {formatAcademicYearShort(y, isSecondarySchool)} (
-                      {scopedRecords.filter((r) => r.year === y && r.status === 'a_fazer').length})
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Lista editorial de cadeiras obrigatórias / escolhidas (sem poluir com opcionais soltas) */}
-              <div className="max-h-72 space-y-2 overflow-y-auto rounded-[26px] border border-line bg-surface p-3 shadow-card">
-                {mainFilteredRecords.length === 0 ? (
-                  <p className="p-6 text-center text-xs text-muted">
-                    Ainda sem cadeiras obrigatórias neste filtro. Podes escolher opcionais abaixo ou usar «+ Adicionar» / «Print Horário / Pauta».
-                  </p>
-                ) : (
-                  mainFilteredRecords.map((r) => (
-                    <div
-                      key={r.id}
-                      className={cx(
-                        'flex flex-col gap-2.5 rounded-2xl border px-3.5 py-2.5 text-xs transition sm:flex-row sm:items-center sm:justify-between',
-                        r.status === 'a_fazer'
-                          ? isExpressive
-                            ? 'border-[#157F58]/35 bg-[#C9DC9F]/30 dark:border-accent/40 dark:bg-[#192D21]/65'
-                            : 'border-accent/45 bg-accent-soft/35'
-                          : r.status === 'aprovada'
-                            ? 'border-ok/30 bg-bg'
-                            : 'border-line/70 bg-bg/70 opacity-75',
-                      )}
-                    >
-                      <div className="min-w-0 w-full sm:flex-1">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span
-                            className={cx(
-                              'shrink-0 rounded-md px-1.5 py-0.5 font-mono text-[10px] font-bold',
-                              isExpressive
-                                ? 'bg-[#FCE99F] text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]'
-                                : 'bg-surface-2 text-accent',
-                            )}
-                          >
-                            {r.code}
-                          </span>
-                          <span className="break-words font-semibold text-fg">{r.name}</span>
-                          {r.isOptional && (
-                            <span className="shrink-0 rounded-md bg-surface-2/80 px-1.5 py-0.5 text-[10px] font-medium text-muted">
-                              Opcional selecionada
-                            </span>
-                          )}
-                        </div>
-                        <p className="mt-0.5 text-[11px] text-muted">
-                          {formatAcademicYearLabel(r.year, isSecondarySchool)} · {r.semester}.º Sem · {r.ects} ECTS
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-1.5 sm:shrink-0">
-                        {(
-                          [
-                            { value: 'a_fazer', label: 'Ativa agora' },
-                            { value: 'aprovada', label: 'Aprovada' },
-                            ...(!r.isOptional ? [{ value: 'por_fazer', label: 'Depois' }] : []),
-                          ] as Array<{ value: CompletedCourseRecord['status']; label: string }>
-                        ).map((opt) => (
-                          <button
-                            key={opt.value}
-                            type="button"
-                            onClick={() => updateRecordStatus(r.id, opt.value)}
-                            className={cx(
-                              'min-h-[34px] rounded-xl px-2.5 text-[11px] font-semibold transition',
-                              r.status === opt.value
-                                ? opt.value === 'a_fazer'
-                                  ? 'bg-accent text-accent-fg shadow-sm'
-                                  : opt.value === 'aprovada'
-                                    ? 'bg-ok text-white'
-                                    : 'bg-ink-cta text-ink-cta-fg'
-                                : 'border border-line bg-surface text-muted hover:text-fg',
-                            )}
-                          >
-                            {opt.label}
-                          </button>
-                        ))}
-                        {r.status === 'aprovada' && (
-                          <input
-                            type="number"
-                            inputMode="decimal"
-                            min={0}
-                            max={20}
-                            step="0.5"
-                            placeholder="Nota"
-                            aria-label={`Nota de ${r.name}`}
-                            value={r.grade ?? ''}
-                            onChange={(e) => updateRecordGrade(r.id, e.target.value)}
-                            className="h-8 w-14 rounded-lg border border-line bg-surface px-1.5 text-center text-xs tabular text-fg"
-                          />
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => removeRecord(r)}
-                          aria-label={`Retirar ${r.name}`}
-                          title={r.isOptional ? 'Retirar opcional (volta para a lista de opcionais)' : 'Retirar cadeira da lista'}
-                          className="inline-flex min-h-[34px] items-center gap-1 rounded-xl border border-danger/35 bg-surface px-2.5 text-[11px] font-semibold text-danger transition hover:bg-danger/10"
-                        >
-                          {r.isOptional ? <X size={13} /> : <Trash2 size={13} />}
-                          <span>Retirar</span>
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              {/* Gaveta colapsável para escolher cadeiras opcionais de Mestrado/Licenciatura */}
-              {filteredRecords.some((r) => r.isOptional && r.status === 'por_fazer') && (
-                <div
-                  className={cx(
-                    'rounded-[24px] border-2 border-dashed p-3.5 shadow-sm',
-                    isExpressive
-                      ? 'border-[#141312]/15 bg-[#C9DC9F]/50 text-[#141312] dark:border-white/15 dark:bg-[#192D21]/70 dark:text-[#FAF6EC]'
-                      : 'border-line bg-surface/70 text-fg',
-                  )}
-                >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void hapticTap();
-                      setShowOptionalCourses((v) => !v);
-                    }}
-                    className="flex min-h-[40px] w-full items-center justify-between gap-2 text-left text-xs font-bold"
-                  >
-                    <span>
-                      {showOptionalCourses ? '− Esconder cadeiras opcionais disponíveis' : '+ Ver / escolher cadeiras opcionais disponíveis'}{' '}
-                      <span className="font-mono opacity-75">
-                        ({filteredRecords.filter((r) => r.isOptional && r.status === 'por_fazer').length})
-                      </span>
-                    </span>
-                    <span
-                      className={cx(
-                        'shrink-0 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px]',
-                        isExpressive
-                          ? 'bg-white/75 text-[#141312] dark:bg-black/30 dark:text-[#FAF6EC]'
-                          : 'bg-surface-2 text-muted',
-                      )}
-                    >
-                      {showOptionalCourses ? 'Fechar' : 'Abrir'}
-                    </span>
-                  </button>
-
-                  {showOptionalCourses && (
-                    <div className="mt-3 space-y-2.5">
-                      <Input
-                        value={optionalSearch}
-                        onChange={(e) => setOptionalSearch(e.target.value)}
-                        placeholder="Filtrar opcional por sigla ou nome…"
-                      />
-                      <div className="max-h-52 space-y-1.5 overflow-y-auto pr-1">
-                        {optionalAvailableRecords.length === 0 ? (
-                          <p className="py-3 text-center text-xs text-muted">
-                            Nenhuma opcional encontrada neste filtro.
-                          </p>
-                        ) : (
-                          optionalAvailableRecords.map((optCourse) => (
-                            <div
-                              key={optCourse.id}
-                              className="flex flex-col gap-2 rounded-2xl border border-line bg-bg px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between"
-                            >
-                              <div className="min-w-0">
-                                <span className="font-mono text-[10px] font-bold text-accent">
-                                  {optCourse.code}
-                                </span>{' '}
-                                <span className="font-semibold text-fg">{optCourse.name}</span>
-                                <span className="block text-[11px] text-muted">
-                                  {formatAcademicYearLabel(optCourse.year, isSecondarySchool)} · {optCourse.semester}.º Sem · {optCourse.ects} ECTS
-                                </span>
-                              </div>
-                              <div className="flex shrink-0 items-center gap-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() => updateRecordStatus(optCourse.id, 'a_fazer')}
-                                  className="min-h-[34px] rounded-xl bg-accent px-2.5 text-[11px] font-semibold text-accent-fg transition hover:opacity-90"
-                                >
-                                  + Ativa agora
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => updateRecordStatus(optCourse.id, 'aprovada')}
-                                  className="min-h-[34px] rounded-xl border border-line bg-surface px-2.5 text-[11px] font-semibold text-muted hover:text-fg"
-                                >
-                                  Já feita
-                                </button>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <label className="flex min-h-[44px] cursor-pointer items-center gap-2.5 rounded-2xl border border-line bg-surface px-4 py-2 text-xs text-fg">
-                <input
-                  type="checkbox"
-                  checked={replaceCoursesWithCurriculum}
-                  onChange={(e) => setReplaceCoursesWithCurriculum(e.target.checked)}
-                  className="h-4 w-4 rounded border-line text-accent focus:ring-accent"
-                />
-                Aplicar estas <strong>{doingCount} cadeiras ativas</strong> ao meu painel
-              </label>
-
-              {(records.length > scopedRecords.length || showOtherTermsHistory) && (
-                <div className="flex justify-center pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void hapticTap();
-                      setShowOtherTermsHistory((v) => !v);
-                    }}
-                    className="min-h-[34px] text-xs font-semibold text-muted underline-offset-2 hover:text-fg hover:underline"
-                  >
-                    {showOtherTermsHistory
-                      ? `Mostrar apenas anos selecionados e ${currentSemester}.º semestre`
-                      : `Ver também anos anteriores e ${currentSemester === 1 ? '2.º' : '1.º'} semestre (+${records.length - scopedRecords.length} cadeiras)`}
-                  </button>
-                </div>
-              )}
-            </div>
+            <Step3Courses
+              records={records}
+              mainFilteredRecords={mainFilteredRecords}
+              optionalAvailableRecords={optionalAvailableRecords}
+              availableRecordYears={availableRecordYears}
+              effectiveYearFilter={effectiveYearFilter}
+              setYearFilter={setYearFilter}
+              showOtherTermsHistory={showOtherTermsHistory}
+              setShowOtherTermsHistory={setShowOtherTermsHistory}
+              showOptionalCourses={showOptionalCourses}
+              setShowOptionalCourses={setShowOptionalCourses}
+              optionalSearch={optionalSearch}
+              setOptionalSearch={setOptionalSearch}
+              isSecondarySchool={isSecondarySchool}
+              doingCount={doingCount}
+              approvedCount={approvedCount}
+              weightedAvg={weightedAvg}
+              approvedEctsFromList={approvedEctsFromList}
+              activeEctsFromList={activeEctsFromList}
+              onUpdateStatus={updateRecordStatus}
+              onUpdateGrade={updateRecordGrade}
+              onRemoveRecord={removeRecord}
+              onResetDefaults={resetRecordsToDegreeDefaults}
+              replaceCoursesWithCurriculum={replaceCoursesWithCurriculum}
+              setReplaceCoursesWithCurriculum={setReplaceCoursesWithCurriculum}
+              hasExistingCourses={existingCourses.length > 0}
+              newCourseCode={newCourseCode}
+              setNewCourseCode={setNewCourseCode}
+              newCourseName={newCourseName}
+              setNewCourseName={setNewCourseName}
+              newCourseYear={newCourseYear}
+              setNewCourseYear={setNewCourseYear}
+              newCourseEcts={newCourseEcts}
+              setNewCourseEcts={setNewCourseEcts}
+              onAddCustomRecord={addCustomRecord}
+              yearChoices={yearChoices}
+              onOpenScheduleImport={(mode) => {
+                const st = useStore.getState();
+                setScheduleImportBaseline({
+                  courses: st.courses.length,
+                  classes: st.classes.length,
+                  assessments: st.assessments.length,
+                });
+                setScheduleImportMode(mode);
+              }}
+              onUploadScreenshot={(files) => void handleScreenshotUpload(files)}
+              ocrBusy={ocrBusy}
+              ocrFeedback={ocrFeedback}
+              ocrError={ocrError}
+              scheduleDoneInfo={scheduleDoneInfo}
+              showPastePlan={showPastePlan}
+              setShowPastePlan={setShowPastePlan}
+              pastedPlanText={pastedPlanText}
+              setPastedPlanText={setPastedPlanText}
+              onApplyPasted={handleApplyPastedCurriculum}
+            />
           )}
 
-          {/* PASSO 5: CONTAS SEPARADAS, CHAVE GEMINI, PRIVACIDADE & RITMO */}
           {activeStepId === 'ritmo' && (
-            <div className="space-y-5">
-              <div
-                className={cx(
-                  'relative overflow-hidden rounded-[28px] p-5 shadow-card',
-                  isExpressive
-                    ? 'bg-[#FCE99F] text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]'
-                    : 'border border-line bg-surface text-fg',
-                )}
-              >
-                {isExpressive && (
-                  <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-                    <motion.div
-                      className="absolute -top-8 -right-8 size-28 rounded-full bg-[#C9DC9F]/55 dark:bg-[#157F58]/25"
-                      animate={{ y: [0, 8, 0], x: [0, -5, 0] }}
-                      transition={{ repeat: Infinity, duration: 6, ease: 'easeInOut' }}
-                    />
-                    <motion.div
-                      className="absolute -bottom-6 left-10 size-18 rotate-12 rounded-2xl bg-[#FAD6BA]/60 dark:bg-[#E04F33]/20"
-                      animate={{ rotate: [12, 20, 12] }}
-                      transition={{ repeat: Infinity, duration: 5.5, ease: 'easeInOut' }}
-                    />
-                  </div>
-                )}
-                <div className="relative z-10 space-y-2.5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 space-y-2">
-                      <StickerBadge tone="mint" tilt={-1.5}>
-                        Último passo
-                      </StickerBadge>
-                      <h2 className="font-display text-xl font-extrabold leading-tight sm:text-2xl">
-                        Contas separadas,{' '}
-                        <span className="font-serif font-normal italic">Uni e ritmo</span>
-                      </h2>
-                    </div>
-                    <div className="flex h-18 w-18 shrink-0 items-center justify-center rounded-3xl bg-white/65 p-1.5 shadow-sm backdrop-blur-sm dark:bg-black/25">
-                      <UniBuddy mood="celebrate" size={56} interactive={false} />
-                    </div>
-                  </div>
-                  <p className="text-xs opacity-85 sm:text-sm">
-                    Liga opcionalmente o teu email institucional da faculdade, configura a chave Gemini se quiseres mensagens ilimitadas e define o teu ritmo semanal.
-                  </p>
-                  {extraActivities.length > 0 && (
-                    <p className="text-[11px] font-bold">
-                      ✓ Atividades extra consideradas ({extraActivities.reduce((s, a) => s + a.hoursPerWeek, 0)}h/semana ajustadas no plano).
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Ligação estrita de Email Institucional vs Pessoal */}
-              <div
-                className={cx(
-                  'space-y-3 rounded-[26px] p-4 shadow-card sm:p-5',
-                  isExpressive
-                    ? 'bg-[#C4E0FD]/75 text-[#141312] dark:bg-[#192838] dark:text-[#FAF6EC]'
-                    : 'border border-line bg-surface text-fg',
-                )}
-              >
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="space-y-1">
-                    {isExpressive && (
-                      <StickerBadge tone="butter" tilt={-1}>
-                        Correio separado
-                      </StickerBadge>
-                    )}
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Mail size={16} className="text-accent" />
-                      <h3 className="font-display text-sm font-bold">
-                        Email Institucional da Faculdade (Correio Académico)
-                      </h3>
-                      <Badge tone={academicMailConnected ? 'ok' : 'neutral'}>
-                        {academicMailConnected ? 'Ligado' : 'Opcional'}
-                      </Badge>
-                    </div>
-                    <p className="mt-1 text-xs opacity-80">
-                      Totalmente separado da tua conta pessoal{activePersonalEmail ? ` (${activePersonalEmail})` : ''}. Nunca lemos emails pessoais.
-                    </p>
-                  </div>
-                </div>
-
-                {academicMailConnected ? (
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-ok/30 bg-white/75 px-3.5 py-2.5 text-xs text-[#141312] dark:bg-black/30 dark:text-[#FAF6EC]">
-                    <span className="font-medium">
-                      Conta institucional ativa:{' '}
-                      <strong className="font-mono text-ok">
-                        {academicEmail || academicHint || 'Conta Google Académica'}
-                      </strong>
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => void connectAcademicMail(true, academicEmail || undefined)}
-                    >
-                      Trocar conta
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    <Input
-                      type="email"
-                      value={academicHint}
-                      onChange={(e) => setAcademicHint(e.target.value)}
-                      placeholder="ex: nome@universidade.pt"
-                      className="flex-1"
-                    />
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      disabled={academicBusy}
-                      onClick={() => void handleConnectAcademic()}
-                    >
-                      {academicBusy ? 'A abrir Google…' : 'Ligar Email Académico'}
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              {/* Uni + Chave Gemini & Armazenamento */}
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div
-                  className={cx(
-                    'flex flex-col justify-between gap-3 rounded-[24px] p-4 shadow-card',
-                    isExpressive
-                      ? 'bg-[#C9DC9F]/80 text-[#141312] dark:bg-[#192D21] dark:text-[#FAF6EC]'
-                      : 'border border-line bg-surface text-fg',
-                  )}
-                >
-                  <div className="space-y-2">
-                    {isExpressive && (
-                      <StickerBadge tone="butter" tilt={-1}>
-                        Tutor &amp; OCR
-                      </StickerBadge>
-                    )}
-                    <label className="flex cursor-pointer items-start gap-2.5">
-                      <input
-                        type="checkbox"
-                        checked={aiConsent}
-                        onChange={(e) => {
-                          setAiConsent(e.target.checked);
-                          void hapticTap();
-                        }}
-                        className="mt-1 h-4 w-4 rounded border-line text-accent focus:ring-accent"
-                      />
-                      <div>
-                        <p className="text-xs font-bold">Ativar Uni (Tutor & OCR)</p>
-                        <p className="text-[11px] opacity-80">
-                          Tens cota diária gratuita ou podes pôr a tua chave gratuita Gemini (sem limite de 15 msgs).
-                        </p>
-                      </div>
-                    </label>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => setShowGeminiModal(true)}
-                  >
-                    <KeyRound size={14} />{' '}
-                    {settings.geminiApiKey ? 'Chave Gemini configurada' : 'Adicionar chave Gemini'}
-                  </Button>
-                </div>
-
-                <div
-                  className={cx(
-                    'space-y-2.5 rounded-[24px] p-4 shadow-card',
-                    isExpressive
-                      ? 'bg-[#FAD6BA]/80 text-[#141312] dark:bg-[#332218] dark:text-[#FAF6EC]'
-                      : 'border border-line bg-surface text-fg',
-                  )}
-                >
-                  <div className="flex items-center gap-1.5 text-xs font-bold">
-                    <ShieldCheck size={15} className="text-accent" /> Onde guardar o caderno?
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      aria-pressed={!cloudSyncConsent}
-                      onClick={() => {
-                        setCloudSyncConsent(false);
-                        void hapticTap();
-                      }}
-                      className={cx(
-                        'flex min-h-[54px] flex-col items-start justify-center rounded-2xl border px-3 py-2 text-left text-[11px] transition',
-                        !cloudSyncConsent
-                          ? 'border-transparent bg-ink-cta text-ink-cta-fg shadow-sm'
-                          : isExpressive
-                            ? 'border-[#141312]/10 bg-white/70 text-[#141312] hover:bg-white dark:border-white/10 dark:bg-black/25 dark:text-[#FAF6EC]'
-                            : 'border-line bg-bg text-muted',
-                      )}
-                    >
-                      <span className="flex items-center gap-1 font-bold">
-                        <HardDrive size={12} /> Local
-                      </span>
-                      <span className="opacity-80">Só neste dispositivo</span>
-                    </button>
-                    <button
-                      type="button"
-                      aria-pressed={cloudSyncConsent}
-                      onClick={() => {
-                        setCloudSyncConsent(true);
-                        void hapticTap();
-                      }}
-                      className={cx(
-                        'flex min-h-[54px] flex-col items-start justify-center rounded-2xl border px-3 py-2 text-left text-[11px] transition',
-                        cloudSyncConsent
-                          ? 'border-transparent bg-ink-cta text-ink-cta-fg shadow-sm'
-                          : isExpressive
-                            ? 'border-[#141312]/10 bg-white/70 text-[#141312] hover:bg-white dark:border-white/10 dark:bg-black/25 dark:text-[#FAF6EC]'
-                            : 'border-line bg-bg text-muted',
-                      )}
-                    >
-                      <span className="flex items-center gap-1 font-bold">
-                        <Cloud size={12} /> Cloud
-                      </span>
-                      <span className="opacity-80">Sincronizado</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Ritmo semanal */}
-              <div className="space-y-4 rounded-[26px] border border-line bg-surface p-4 shadow-card sm:p-5">
-                {isExpressive && (
-                  <StickerBadge tone="mint" tilt={-1}>
-                    Plano &amp; Foco
-                  </StickerBadge>
-                )}
-                <div role="group" aria-label="Dias disponíveis para estudar" className="space-y-1.5">
-                  <span className="block text-xs font-medium text-muted">
-                    Dias disponíveis para estudar
-                  </span>
-                  <div className="grid grid-cols-7 gap-1.5">
-                    {DAY_LABELS.map((d) => {
-                      const active = studyDays.includes(d.day);
-                      return (
-                        <button
-                          key={d.day}
-                          type="button"
-                          aria-pressed={active}
-                          onClick={() => toggleStudyDay(d.day)}
-                          className={cx(
-                            'flex min-h-[44px] items-center justify-center rounded-xl border text-xs font-semibold transition',
-                            active
-                              ? 'border-transparent bg-ink-cta text-ink-cta-fg shadow-sm'
-                              : 'border-line bg-bg text-muted hover:text-fg',
-                          )}
-                        >
-                          {d.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div role="group" aria-label="Meta diária de foco" className="space-y-1.5">
-                  <span className="block text-xs font-medium text-muted">Meta diária de foco</span>
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    {DAILY_PRESETS.map((preset) => {
-                      const selected = dailyMinutes === preset.minutes;
-                      return (
-                        <button
-                          key={preset.minutes}
-                          type="button"
-                          aria-pressed={selected}
-                          onClick={() => {
-                            setDailyMinutes(preset.minutes);
-                            void hapticTap();
-                          }}
-                          className={cx(
-                            'min-h-[54px] rounded-2xl border p-2.5 text-left transition',
-                            selected
-                              ? 'border-accent bg-accent-soft text-accent shadow-sm'
-                              : 'border-line bg-bg hover:bg-surface-2',
-                          )}
-                        >
-                          <p className="font-display text-base font-bold tabular">{preset.label}</p>
-                          <p className="text-[11px] text-muted">{preset.hint}</p>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {activeCandidates.length > 0 && (
-                  <div
-                    role="group"
-                    aria-label="Cadeiras que precisam de mais atenção"
-                    className="space-y-1.5"
-                  >
-                    <span className="block text-xs font-medium text-muted">
-                      Cadeiras que precisam de mais atenção
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {activeCandidates.map((item) => {
-                        const selected = difficultKeys.includes(item.key);
-                        return (
-                          <button
-                            key={item.key}
-                            type="button"
-                            aria-pressed={selected}
-                            onClick={() => toggleDifficult(item.key)}
-                            className={cx(
-                              'inline-flex min-h-[36px] items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition',
-                              selected
-                                ? 'border-accent bg-accent-soft text-accent'
-                                : 'border-line bg-bg text-muted hover:text-fg',
-                            )}
-                          >
-                            {selected && <Check size={12} />}
-                            {item.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                <Field label="Notas para o Uni adaptar o teu plano (opcional)">
-                  <Textarea
-                    rows={2}
-                    value={difficultNotes}
-                    onChange={(e) => setDifficultNotes(e.target.value)}
-                    placeholder="Ex: Preciso de reforço em integrais múltiplos ou equilíbrio de fases…"
-                  />
-                </Field>
-
-                <label className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-2xl border border-line bg-bg px-3.5 py-2 text-xs text-fg">
-                  <input
-                    type="checkbox"
-                    checked={launchTour}
-                    onChange={(e) => setLaunchTour(e.target.checked)}
-                    className="h-4 w-4 rounded border-line text-accent focus:ring-accent"
-                  />
-                  <span>
-                    Mostrar o <strong>guia rápido do Uni</strong> quando abrir o painel
-                  </span>
-                </label>
-              </div>
-
-              {!settings.ageConfirmed13Plus && !storedProfile.onboardingCompleted && (
-                <div className="rounded-2xl border border-line bg-surface p-4">
-                  <label className="flex cursor-pointer items-start gap-3">
-                    <input
-                      type="checkbox"
-                      checked={ageConfirmed}
-                      onChange={(e) => {
-                        setAgeConfirmed(e.target.checked);
-                        void hapticTap();
-                      }}
-                      className="mt-1 h-5 w-5 shrink-0 rounded border-line accent-accent"
-                    />
-                    <span className="text-xs leading-relaxed text-fg sm:text-sm">
-                      Confirmo que tenho pelo menos <strong>{LEGAL_INFO.minimumAgePT} anos</strong> (ou autorização) e aceito a{' '}
-                      <button
-                        type="button"
-                        onClick={() => setLegalPreview('privacy')}
-                        className="inline-link font-semibold text-accent underline underline-offset-2"
-                      >
-                        Política de Privacidade
-                      </button>{' '}
-                      e os{' '}
-                      <button
-                        type="button"
-                        onClick={() => setLegalPreview('terms')}
-                        className="inline-link font-semibold text-accent underline underline-offset-2"
-                      >
-                        Termos de Utilização
-                      </button>
-                      .
-                    </span>
-                  </label>
-                  {!ageConfirmed && (
-                    <p className="mt-2 flex items-center gap-1.5 text-xs text-coral">
-                      <AlertCircle size={14} className="shrink-0" />
-                      Marca esta caixa para concluir e abrir o teu caderno.
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
+            <Step4RhythmPrivacy
+              dailyMinutes={dailyMinutes}
+              setDailyMinutes={setDailyMinutes}
+              studyDays={studyDays}
+              onToggleStudyDay={toggleStudyDay}
+              activeCandidates={activeCandidates}
+              difficultKeys={difficultKeys}
+              onToggleDifficult={toggleDifficult}
+              difficultNotes={difficultNotes}
+              setDifficultNotes={setDifficultNotes}
+              academicMailConnected={academicMailConnected}
+              academicEmail={academicEmail ?? undefined}
+              academicHint={academicHint}
+              setAcademicHint={setAcademicHint}
+              academicBusy={academicBusy}
+              onConnectAcademic={() => void handleConnectAcademic()}
+              ageConfirmed={ageConfirmed}
+              setAgeConfirmed={setAgeConfirmed}
+              aiConsent={aiConsent}
+              setAiConsent={setAiConsent}
+              cloudSyncConsent={cloudSyncConsent}
+              setCloudSyncConsent={setCloudSyncConsent}
+              isSignedIn={Boolean(auth.currentUser)}
+              personalEmail={activePersonalEmail}
+              submitAttempted={submitAttempted}
+              onOpenLegal={setLegalPreview}
+            />
           )}
         </motion.div>
       </main>
 
-      {/* Rodapé CTA */}
-      <footer className="sticky bottom-0 z-10 border-t border-line bg-bg/92 px-4 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:px-6 sm:pb-4">
+      {/* Rodapé de navegação */}
+      <footer className="sticky bottom-0 z-10 border-t border-line/70 bg-bg/92 px-4 pt-3 pb-[max(0.9rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:px-6">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
           {stepIndex > 0 ? (
             <Button variant="ghost" onClick={() => void handleGoPrev()}>
@@ -3229,7 +1282,6 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
               type="button"
               layoutId="onboarding-cta"
               transition={UNIPEDIA_SPRING}
-              aria-label="Passo seguinte"
               onClick={() => void handleGoNext()}
               whileTap={{ scale: 0.94 }}
               className="inline-flex min-h-[48px] items-center gap-2 rounded-full bg-ink-cta px-5 text-sm font-bold text-ink-cta-fg shadow-card transition-opacity hover:opacity-90"
@@ -3242,10 +1294,9 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
               type="button"
               layoutId="onboarding-cta"
               transition={UNIPEDIA_SPRING}
-              disabled={!ageConfirmed}
               onClick={handleFinish}
               whileTap={{ scale: 0.96 }}
-              className="inline-flex min-h-[48px] items-center gap-2 rounded-full bg-ink-cta px-6 text-sm font-bold text-ink-cta-fg shadow-card transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex min-h-[48px] items-center gap-2 rounded-full bg-ink-cta px-6 text-sm font-bold text-ink-cta-fg shadow-card transition-opacity hover:opacity-90"
             >
               <span>Começar com o Uni</span>
               <ArrowRight size={17} aria-hidden="true" />
@@ -3270,7 +1321,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                 type="button"
                 aria-label="Fechar pré-visualização legal"
                 onClick={() => setLegalPreview(null)}
-                className="flex h-9 w-9 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-fg"
+                className="flex size-11 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-fg"
               >
                 <X size={18} />
               </button>
@@ -3286,7 +1337,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                     Os teus apontamentos, disciplinas, avaliações e sessões são guardados por predefinição no armazenamento local do teu dispositivo. Só há sincronização Firebase se iniciares sessão voluntariamente.
                   </p>
                   <p>
-                    O teu email institucional da faculdade é ligado de forma independente do Gmail pessoal.
+                    O teu email institucional é ligado apenas se quiseres, de forma independente do Gmail pessoal.
                   </p>
                 </>
               ) : (
@@ -3299,7 +1350,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                   href={legalPreview === 'privacy' ? '/privacidade' : '/termos'}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 font-semibold text-accent hover:underline"
+                  className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-accent-ink hover:underline"
                 >
                   Abrir página completa <ExternalLink size={13} />
                 </a>
@@ -3308,8 +1359,6 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
           </div>
         </div>
       )}
-
-      <GeminiKeyGuideModal open={showGeminiModal} onClose={() => setShowGeminiModal(false)} />
 
       {scheduleImportMode && (
         <SmartScheduleImportModal

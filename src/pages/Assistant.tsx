@@ -26,7 +26,7 @@ import { UniBuddy } from '../components/brand/UnipediaMarks';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import GeminiKeyGuideModal from '../components/settings/GeminiKeyGuideModal';
 import { useNavigate } from 'react-router-dom';
-import { ActionSheet, Badge, Button, Modal, PageHeader, PillSelect, cx } from '../components/ui';
+import { ActionSheet, Badge, Button, Modal, PillSelect, cx } from '../components/ui';
 import {
   buildDocumentContext,
   buildStudyContext,
@@ -349,43 +349,48 @@ export default function Assistant() {
   };
 
   return (
-    <div className="flex h-[calc(100dvh-6.25rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)-var(--keyboard-height,0px))] min-h-[26rem] flex-col md:h-[calc(100dvh-4rem)] md:min-h-0">
-      {/* Cabeçalho */}
-      <div className="shrink-0 space-y-2 md:space-y-3">
-        <div className="flex items-center justify-between gap-2 md:hidden">
+    <div className="flex h-[calc(100dvh-8.25rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)-var(--keyboard-height,0px))] min-h-0 flex-col md:h-[calc(100dvh-4rem)]">
+      {/* Cabeçalho unificado */}
+      <div className="shrink-0 space-y-2 md:space-y-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="min-w-0">
-            <h1 className="truncate font-display text-[19px] font-bold leading-tight tracking-tight text-fg sm:text-xl">
+            <p className="hidden text-xs font-medium tracking-wide text-muted md:block">
+              O teu companheiro de estudo
+            </p>
+            <h1 className="truncate font-display text-[19px] font-bold leading-tight tracking-tight text-fg sm:text-xl md:text-2xl">
               Conversa com o{' '}
-              <span className="font-serif font-medium italic text-accent">Uni</span>
+              <span className="font-serif font-medium italic text-accent-ink">Uni</span>
             </h1>
             <p className="truncate text-xs font-medium text-muted">
-              {user ? 'Sincronizado' : 'Neste dispositivo'} ·{' '}
+              {user ? 'Sincronizado na tua conta' : 'Neste dispositivo'} ·{' '}
               {quota.bypassed
                 ? 'Ilimitado'
                 : `${quota.chatRemaining}/${quota.chatLimit} msgs`}
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="flex shrink-0 items-center gap-1.5 md:gap-2">
             <TabGuideHelpButton tabKey="assistente" />
             <Button
               size="sm"
               variant="primary"
-              iconOnly
               onClick={() => setConvsModalMode('new')}
               aria-label="Nova conversa"
               title="Nova conversa"
+              className="min-h-[44px] px-2.5 md:px-3.5"
             >
-              <Plus size={17} />
+              <Plus size={16} />
+              <span className="hidden sm:inline">Nova conversa</span>
             </Button>
             <Button
               size="sm"
               variant="secondary"
               onClick={() => setConvsModalMode('list')}
               aria-label={`Conversas (${conversations.length})`}
-              className="min-h-[44px] px-2.5 font-mono text-xs tabular-nums"
+              className="min-h-[44px] px-2.5 font-mono text-xs tabular-nums md:px-3.5 md:font-sans"
             >
               <FolderOpen size={15} />
-              <span>{conversations.length}</span>
+              <span className="md:hidden">{conversations.length}</span>
+              <span className="hidden md:inline">Conversas ({conversations.length})</span>
             </Button>
             <Button
               variant="secondary"
@@ -399,161 +404,53 @@ export default function Assistant() {
           </div>
         </div>
 
-        <div className="hidden md:block">
-          <PageHeader
-            eyebrow="O teu companheiro de estudo"
-            title="Conversa com o"
-            accentTitle="Uni"
-            subtitle={user ? 'Sincronizado na tua conta' : 'Neste dispositivo'}
-            actions={
-              <div className="flex flex-wrap items-center gap-2">
-                <TabGuideHelpButton tabKey="assistente" />
-                <Button
-                  size="sm"
-                  variant="primary"
-                  onClick={() => setConvsModalMode('new')}
-                  className="min-h-[44px] px-3.5"
-                >
-                  <Plus size={16} />
-                  Nova conversa
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => setConvsModalMode('list')}
-                  className="min-h-[44px] px-3.5"
-                >
-                  <FolderOpen size={15} />
-                  Conversas ({conversations.length})
-                </Button>
-                <Button
-                  variant="secondary"
-                  iconOnly
-                  onClick={() => setMenuOpen(true)}
-                  aria-label="Mais opções do Tutor"
-                  title="Opções"
-                >
-                  <MoreHorizontal size={18} />
-                </Button>
-              </div>
-            }
-          />
-        </div>
-
-        {/* Barra de Filtro Tátil, Caderno do Uni e Personalidade */}
-        <div className="space-y-1.5 border-b border-line pb-2 text-xs md:space-y-2 md:pb-3">
-          <div className="flex items-center gap-1.5 md:flex-wrap md:gap-2">
-            <PillSelect
-              value={activeCourseId}
-              onChange={setActiveCourseId}
-              icon={<BookOpen size={14} />}
-              ariaLabel="Filtrar por cadeira"
-              className="min-w-0 flex-1 [&>button]:w-full [&>button]:max-w-full [&>button]:justify-between [&>button]:px-2.5 md:flex-none md:[&>button]:w-auto md:[&>button]:max-w-[210px] md:[&>button]:px-3.5"
-              options={[
-                { value: 'all', label: 'Todas as cadeiras', shortLabel: 'Todas', hint: 'Vista geral do semestre' },
-                ...courses.map((c) => ({
-                  value: c.id,
-                  label: c.shortName || c.name,
-                  hint: c.name !== c.shortName ? c.name : undefined,
-                  dotClass: courseColors[c.color]?.dot,
-                })),
-              ]}
-            />
-
-            <button
-              type="button"
-              onClick={() => setShowDocPicker(true)}
-              className={cx(
-                'flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition md:min-h-[42px] md:px-3.5',
-                attachedMaterials.length > 0
-                  ? 'border-accent bg-accent-soft text-accent'
-                  : 'border-line bg-surface text-muted hover:text-fg',
-              )}
-            >
-              <FileText size={14} />
-              <span>
-                {attachedMaterials.length === 0
-                  ? 'Anexar'
-                  : `${attachedMaterials.length} anexado(s)`}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setNotebookOpen(true)}
-              className="flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border border-[#141312]/10 bg-[#FCE99F]/85 px-3 py-1.5 text-xs font-semibold text-[#141312] transition hover:brightness-95 dark:border-white/10 dark:bg-surface-2 dark:text-[#FAF6EC] md:min-h-[42px] md:px-3.5"
-            >
-              <Sparkles size={13} className="text-accent" />
-              <span>Caderno</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setCollectiblesOpen(true)}
-              className="hidden min-h-[42px] shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 py-1.5 text-xs font-semibold text-fg transition hover:border-accent md:flex"
-            >
-              <span>Coleção Uni</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setMobileFiltersOpen((v) => !v)}
-              aria-expanded={mobileFiltersOpen}
-              aria-label="Personalidade, coleção e mensagens do Uni"
-              className={cx(
-                'flex min-h-[44px] shrink-0 items-center gap-1 rounded-full border px-2.5 text-xs font-semibold transition md:hidden',
-                mobileFiltersOpen
-                  ? 'border-accent bg-accent-soft text-accent'
-                  : 'border-line bg-surface text-muted hover:text-fg',
-              )}
-            >
-              <SlidersHorizontal size={14} />
-              <span className="sr-only">Tom e opções</span>
-            </button>
-          </div>
-
-          {/* Seletor rápido de tom/personalidade do Uni */}
-          <div
-            className={cx(
-              'flex-wrap items-center justify-between gap-2',
-              mobileFiltersOpen ? 'flex pt-1' : 'hidden md:flex',
-            )}
-          >
-            <div className="inline-flex items-center gap-1 rounded-full bg-surface-2/85 p-1">
-              {UNI_PERSONAS.map((p) => {
-                const active = uniPersona === p.id;
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => updateSettings({ uniPersona: p.id })}
-                    title={p.hint}
-                    className={cx(
-                      'min-h-[34px] rounded-full px-2.5 text-xs font-semibold transition md:min-h-[30px] md:text-[11px]',
-                      active ? 'bg-ink-cta text-ink-cta-fg' : 'text-muted hover:text-fg',
-                    )}
-                  >
-                    {p.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-1.5">
+        {/* Barra compacta de tom, Caderno do Uni e quota */}
+        <div className="space-y-1.5 border-b border-line pb-2 text-xs md:space-y-2 md:pb-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => setCollectiblesOpen(true)}
-                className="flex min-h-[34px] items-center gap-1 rounded-full border border-line bg-surface px-2.5 text-xs font-semibold text-fg transition hover:border-accent md:hidden"
+                onClick={() => setNotebookOpen(true)}
+                className="flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border border-[#141312]/10 bg-[#FCE99F]/85 px-3 py-1.5 text-xs font-semibold text-[#141312] transition hover:brightness-95 dark:border-white/10 dark:bg-surface-2 dark:text-[#FAF6EC] md:px-3.5"
               >
-                <Award size={13} className="text-accent" />
-                <span>Coleção</span>
+                <Sparkles size={13} className="text-accent-ink dark:text-accent" />
+                <span>Caderno</span>
               </button>
 
               <button
                 type="button"
+                onClick={() => setCollectiblesOpen(true)}
+                className="hidden min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 py-1.5 text-xs font-semibold text-fg transition hover:border-accent md:flex"
+              >
+                <span>Coleção Uni</span>
+              </button>
+            </div>
+
+            <div className="hidden items-center gap-2 md:flex">
+              <div className="inline-flex items-center gap-1 rounded-full bg-surface-2/85 p-1">
+                {UNI_PERSONAS.map((p) => {
+                  const active = uniPersona === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => updateSettings({ uniPersona: p.id })}
+                      title={p.hint}
+                      className={cx(
+                        'min-h-[34px] rounded-full px-3 text-xs font-semibold transition',
+                        active ? 'bg-ink-cta text-ink-cta-fg' : 'text-muted hover:text-fg',
+                      )}
+                    >
+                      {p.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                type="button"
                 onClick={() => setKeyGuideOpen(true)}
                 title="Ver como passar das 15 mensagens diárias com chave gratuita"
-                className="min-h-[34px] rounded-full border border-line bg-surface-2/90 px-2.5 py-1 text-xs font-medium tabular text-muted transition hover:border-accent hover:text-fg md:min-h-0 md:text-[11px]"
+                className="min-h-[36px] rounded-full border border-line bg-surface-2/90 px-3 py-1 text-xs font-medium tabular text-muted transition hover:border-accent hover:text-fg"
               >
                 {quota.bypassed
                   ? 'Chave própria · Ilimitado'
@@ -561,45 +458,91 @@ export default function Assistant() {
               </button>
             </div>
 
-            {attachedMaterials.map((m) => (
-              <span
-                key={m.id}
-                className="flex items-center gap-1 rounded-full bg-surface-2 px-2.5 py-1 text-xs text-muted"
-              >
-                <span className="max-w-[110px] truncate">{m.title}</span>
-                <button
-                  type="button"
-                  onClick={() => toggleMaterial(m.id)}
-                  aria-label={`Remover ${m.title}`}
-                  className="hover:text-danger"
-                >
-                  <X size={12} />
-                </button>
-              </span>
-            ))}
+            <button
+              type="button"
+              onClick={() => setMobileFiltersOpen((v) => !v)}
+              aria-expanded={mobileFiltersOpen}
+              aria-label="Personalidade, coleção e mensagens do Uni"
+              className={cx(
+                'flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition md:hidden',
+                mobileFiltersOpen
+                  ? 'border-accent bg-accent-soft text-accent-ink'
+                  : 'border-line bg-surface text-muted hover:text-fg',
+              )}
+            >
+              <SlidersHorizontal size={14} />
+              <span>Tom</span>
+            </button>
           </div>
 
-          {/* Filtro por assunto + conversas da cadeira/assunto com eliminação rápida */}
-          <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto pb-0.5 md:flex-wrap md:overflow-visible">
-            {[{ id: 'all', label: 'Todos assuntos' }, ...TUTOR_SUBJECTS].map((subj) => {
-              const active = activeSubject === subj.id;
-              return (
+          {mobileFiltersOpen && (
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 md:hidden">
+              <div className="inline-flex items-center gap-1 rounded-full bg-surface-2/85 p-1">
+                {UNI_PERSONAS.map((p) => {
+                  const active = uniPersona === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => updateSettings({ uniPersona: p.id })}
+                      title={p.hint}
+                      className={cx(
+                        'min-h-[36px] rounded-full px-2.5 text-xs font-semibold transition',
+                        active ? 'bg-ink-cta text-ink-cta-fg' : 'text-muted hover:text-fg',
+                      )}
+                    >
+                      {p.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1.5">
                 <button
-                  key={subj.id}
                   type="button"
-                  onClick={() => setActiveSubject(subj.id)}
-                  className={cx(
-                    'min-h-[34px] shrink-0 rounded-full border px-3 text-xs font-medium transition',
-                    active
-                      ? 'border-accent bg-accent-soft text-accent font-semibold'
-                      : 'border-line bg-surface text-muted hover:text-fg',
-                  )}
+                  onClick={() => setCollectiblesOpen(true)}
+                  className="flex min-h-[36px] items-center gap-1 rounded-full border border-line bg-surface px-2.5 text-xs font-semibold text-fg transition hover:border-accent"
                 >
-                  {subj.label}
+                  <Award size={13} className="text-accent-ink" />
+                  <span>Coleção</span>
                 </button>
-              );
-            })}
-          </div>
+                <button
+                  type="button"
+                  onClick={() => setKeyGuideOpen(true)}
+                  title="Ver como passar das 15 mensagens diárias com chave gratuita"
+                  className="min-h-[36px] rounded-full border border-line bg-surface-2/90 px-2.5 py-1 text-xs font-medium tabular text-muted transition hover:border-accent hover:text-fg"
+                >
+                  {quota.bypassed
+                    ? 'Chave própria · Ilimitado'
+                    : `${quota.chatRemaining}/${quota.chatLimit} msgs`}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Filtro por assunto só antes de iniciar a conversa */}
+          {messages.length === 0 && (
+            <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto pb-0.5 md:flex-wrap md:overflow-visible">
+              {[{ id: 'all', label: 'Todos assuntos' }, ...TUTOR_SUBJECTS].map((subj) => {
+                const active = activeSubject === subj.id;
+                return (
+                  <button
+                    key={subj.id}
+                    type="button"
+                    onClick={() => setActiveSubject(subj.id)}
+                    className={cx(
+                      'min-h-[36px] shrink-0 rounded-full border px-3 text-xs font-medium transition',
+                      active
+                        ? 'border-accent bg-accent-soft font-semibold text-accent-ink'
+                        : 'border-line bg-surface text-muted hover:text-fg',
+                    )}
+                  >
+                    {subj.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {filteredConversations.length > 0 && (
             <div
@@ -623,12 +566,12 @@ export default function Assistant() {
                     <button
                       type="button"
                       onClick={() => setActiveConvId(c.id)}
-                      className="flex min-h-[36px] max-w-[200px] items-center gap-1.5 px-3 text-xs font-medium"
+                      className="flex min-h-[36px] max-w-[210px] items-center gap-1.5 px-3 text-xs font-medium"
                     >
                       <span className="truncate">{c.title}</span>
                       <span
                         className={cx(
-                          'shrink-0 rounded-full px-1.5 py-0.5 text-[10px]',
+                          'shrink-0 rounded-full px-2 py-0.5 text-xs',
                           isActive ? 'bg-white/15' : 'bg-surface-2 text-muted',
                         )}
                       >
@@ -641,7 +584,7 @@ export default function Assistant() {
                         onClick={() => setConfirmDeleteConv(true)}
                         aria-label={`Apagar conversa ${c.title}`}
                         title="Apagar esta conversa"
-                        className="mr-1 grid size-7 place-items-center rounded-full text-ink-cta-fg/80 transition hover:bg-white/15 hover:text-ink-cta-fg"
+                        className="mr-1 grid size-8 place-items-center rounded-full text-ink-cta-fg/80 transition hover:bg-white/15 hover:text-ink-cta-fg"
                       >
                         <Trash2 size={13} />
                       </button>
@@ -655,7 +598,7 @@ export default function Assistant() {
       </div>
 
       {/* Área de Mensagens */}
-      <div className="mt-2 min-h-[12rem] flex-1 space-y-3 overflow-y-auto px-0.5 py-1.5 md:mt-3 md:min-h-0 md:space-y-4 md:px-1 md:py-2">
+      <div className="mt-2 min-h-0 flex-1 space-y-3 overflow-y-auto px-0.5 py-1.5 md:mt-3 md:space-y-4 md:px-1 md:py-2">
         <TabGuideBanner
           tabKey="assistente"
           actions={
@@ -700,13 +643,13 @@ export default function Assistant() {
             >
               <p>{m.text}</p>
               {m.attachmentNames && m.attachmentNames.length > 0 && (
-                <div className="flex flex-wrap gap-1 pt-0.5 text-[11px] opacity-85">
+                <div className="flex flex-wrap gap-1 pt-0.5 text-xs opacity-90">
                   {m.attachmentNames.map((name) => (
                     <span
                       key={name}
                       className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5"
                     >
-                      <FileText size={10} /> {name}
+                      <FileText size={11} /> {name}
                     </span>
                   ))}
                 </div>
@@ -734,8 +677,8 @@ export default function Assistant() {
         {loading && streamingText && (
           <div className="rise max-w-[95%] rounded-[22px] rounded-bl-md bg-surface px-4 py-3.5 shadow-card">
             <Markdown text={streamingText} />
-            <div className="mt-2 flex items-center gap-1.5 text-[11px] text-accent">
-              <Sparkles size={11} className="animate-pulse" />
+            <div className="mt-2 flex items-center gap-1.5 text-xs text-accent-ink">
+              <Sparkles size={12} className="animate-pulse" />
               <span>O Uni está a escrever…</span>
             </div>
           </div>
@@ -793,18 +736,80 @@ export default function Assistant() {
         </div>
       )}
 
-      {/* Compositor com espaço para teclado nativo */}
-      <div className="shrink-0 space-y-1.5 pt-2 md:space-y-3 md:pt-3">
-        <div className="flex items-center justify-between">
+      {/* Contexto do compositor + sugestões + entrada de mensagem */}
+      <div className="shrink-0 space-y-2 pt-2 md:space-y-2.5 md:pt-3">
+        <div className="flex items-center justify-between gap-1.5 sm:gap-2">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <PillSelect
+              value={activeCourseId}
+              onChange={setActiveCourseId}
+              icon={<BookOpen size={14} />}
+              ariaLabel="Contexto da cadeira"
+              className="min-w-0 [&>button]:max-w-[140px] [&>button]:px-2.5 sm:[&>button]:max-w-[210px] sm:[&>button]:px-3"
+              options={[
+                { value: 'all', label: 'Todas as cadeiras', shortLabel: 'Todas', hint: 'Vista geral do semestre' },
+                ...courses.map((c) => ({
+                  value: c.id,
+                  label: c.shortName || c.name,
+                  hint: c.name !== c.shortName ? c.name : undefined,
+                  dotClass: courseColors[c.color]?.dot,
+                })),
+              ]}
+            />
+            <button
+              type="button"
+              onClick={() => setShowDocPicker(true)}
+              aria-label="Anexar apontamentos"
+              className={cx(
+                'flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-semibold transition sm:px-3',
+                attachedMaterials.length > 0
+                  ? 'border-accent bg-accent-soft text-accent-ink'
+                  : 'border-line bg-surface text-muted hover:text-fg',
+              )}
+            >
+              <FileText size={14} />
+              <span className="sm:hidden">
+                {attachedMaterials.length === 0 ? 'Anexar' : `${attachedMaterials.length} anex.`}
+              </span>
+              <span className="hidden sm:inline">
+                {attachedMaterials.length === 0
+                  ? 'Anexar apontamentos'
+                  : `${attachedMaterials.length} anexado(s)`}
+              </span>
+            </button>
+          </div>
           <button
             type="button"
             onClick={() => setShowActions((v) => !v)}
             aria-expanded={showActions}
-            className="text-xs font-medium text-muted hover:text-fg"
+            className="min-h-[44px] shrink-0 whitespace-nowrap px-2 text-xs font-medium text-muted hover:text-fg"
           >
-            {showActions ? 'Ocultar sugestões' : 'Mostrar sugestões'}
+            <span className="sm:hidden">{showActions ? 'Ocultar' : 'Sugestões'}</span>
+            <span className="hidden sm:inline">{showActions ? 'Ocultar sugestões' : 'Mostrar sugestões'}</span>
           </button>
         </div>
+
+        {attachedMaterials.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {attachedMaterials.map((m) => (
+              <span
+                key={m.id}
+                className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-3 py-1 text-xs text-muted"
+              >
+                <span className="max-w-[140px] truncate">{m.title}</span>
+                <button
+                  type="button"
+                  onClick={() => toggleMaterial(m.id)}
+                  aria-label={`Remover ${m.title}`}
+                  className="hover:text-danger"
+                >
+                  <X size={12} />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
         {showActions && <QuickActions disabled={loading} onSend={send} />}
         <Composer loading={loading} onSend={send} onStop={stop} />
       </div>

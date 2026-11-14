@@ -16,7 +16,7 @@ import { AnimatedPage } from '../components/motion/Primitives';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import WeekView from '../components/calendar/WeekView';
 import { Button, PageHeader, SegmentedControl, cx } from '../components/ui';
-import { toDateStr } from '../lib/selectors';
+import { capitalizeFirst, toDateStr } from '../lib/selectors';
 import { useStore } from '../store/useStore';
 import type { Course } from '../types';
 
@@ -134,7 +134,7 @@ export default function Calendar() {
           <Button size="sm" iconOnly variant="secondary" aria-label="Seguinte" onClick={() => step(1)}>
             <ChevronRight size={16} />
           </Button>
-          <span className="ml-1 min-w-0 truncate font-display text-sm font-bold capitalize tabular">{label}</span>
+          <span className="ml-1 min-w-0 truncate font-display text-sm font-bold tabular">{capitalizeFirst(label)}</span>
         </div>
 
         <SegmentedControl

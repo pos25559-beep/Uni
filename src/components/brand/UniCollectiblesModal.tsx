@@ -121,14 +121,14 @@ export default function UniCollectiblesModal({ open, onClose }: Props) {
                         {skin.badgeText}
                       </Badge>
                     </div>
-                    <p className="text-[11px] leading-relaxed text-muted">{skin.tagline}</p>
+                    <p className="text-xs leading-relaxed text-muted">{skin.tagline}</p>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between text-[11px]">
+                  <div className="flex items-center justify-between text-xs">
                     <span className="text-muted">{unlocked ? progressLabel : skin.unlockHint}</span>
-                    {!unlocked && <span className="font-mono text-[10px] text-muted">{pct}%</span>}
+                    {!unlocked && <span className="font-mono text-xs text-muted">{pct}%</span>}
                   </div>
                   {!unlocked && (
                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface">

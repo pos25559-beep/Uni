@@ -117,33 +117,31 @@ export default function Courses() {
             </div>
           </StaggerItem>
 
-          {view === 'deck' && (
+          {view === 'deck' ? (
             <StaggerItem>
               <FolderCardDeck
                 courses={courses}
                 onOpenCourse={(id) => navigate(`/cadeiras/${id}`)}
               />
             </StaggerItem>
-          )}
-
-          <StaggerItem className={view === 'deck' ? 'pt-2' : ''}>
-            {view === 'deck' && (
+          ) : (
+            <StaggerItem>
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="font-display text-base font-bold">Todas as cadeiras</h2>
                 <span className="text-xs text-muted">{totalEcts} ECTS no total</span>
               </div>
-            )}
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {courses.map((c) => (
-                <CourseCard
-                  key={c.id}
-                  course={c}
-                  summary={summaries.get(c.id) ?? gradeSummary(c, [])}
-                  next={nextByCourse.get(c.id)}
-                />
-              ))}
-            </div>
-          </StaggerItem>
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {courses.map((c) => (
+                  <CourseCard
+                    key={c.id}
+                    course={c}
+                    summary={summaries.get(c.id) ?? gradeSummary(c, [])}
+                    next={nextByCourse.get(c.id)}
+                  />
+                ))}
+              </div>
+            </StaggerItem>
+          )}
         </StaggerContainer>
       )}
 

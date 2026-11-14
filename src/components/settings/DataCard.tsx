@@ -1,18 +1,18 @@
 import { format } from 'date-fns';
-import { Download, ShieldAlert, Trash2, Upload } from 'lucide-react';
+import { Download, Sparkles, Trash2, Upload } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { applyBackupJson, buildBackupPayload } from '../../lib/backup';
+import { loadDemoData } from '../../lib/demoSeed';
 import { useStore } from '../../store/useStore';
 import { Button, Card, Modal } from '../ui';
-import AccountDeletionModal from './AccountDeletionModal';
 import { errorMessage } from './shared';
 
 export default function DataCard() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
-  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
+  const [confirmDemoOpen, setConfirmDemoOpen] = useState(false);
 
   const exportBackup = () => {
     setError(null);
@@ -51,14 +51,29 @@ export default function DataCard() {
     setConfirmClearOpen(false);
   };
 
+  const applyDemo = () => {
+    loadDemoData();
+    setMessage('Semestre de exemplo carregado (podes limpar a qualquer momento).');
+    setError(null);
+    setConfirmDemoOpen(false);
+  };
+
+  const handleLoadDemo = () => {
+    if (useStore.getState().courses.length > 0) {
+      setConfirmDemoOpen(true);
+      return;
+    }
+    applyDemo();
+  };
+
   return (
     <Card title="Cópia de segurança & Dados">
       <div className="grid gap-5 md:grid-cols-2">
         <div className="space-y-3">
           <div>
-            <h3 className="text-sm font-semibold text-fg">Backup em ficheiro JSON</h3>
+            <h3 className="text-sm font-semibold text-fg">Backup e dados de exemplo</h3>
             <p className="mt-0.5 text-xs text-muted">
-              Guarda todas as cadeiras, notas e horários num ficheiro portátil. A tua chave Gemini não é exportada.
+              Guarda tudo num ficheiro JSON portátil ou experimenta a app com um semestre fictício. A chave Gemini nunca é exportada.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -80,14 +95,18 @@ export default function DataCard() {
                 }}
               />
             </label>
+            <Button variant="secondary" onClick={handleLoadDemo}>
+              <Sparkles size={16} />
+              Carregar exemplo
+            </Button>
           </div>
         </div>
 
         <div className="space-y-3">
           <div>
-            <h3 className="text-sm font-semibold text-fg">Reposição e limpeza</h3>
+            <h3 className="text-sm font-semibold text-fg">Limpeza local &amp; documentos legais</h3>
             <p className="mt-0.5 text-xs text-muted">
-              Podes limpar o dispositivo ou eliminar definitivamente a tua conta na nuvem.
+              Limpa apenas este dispositivo ou acede ao portal para eliminar a tua conta Cloud.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -95,24 +114,44 @@ export default function DataCard() {
               <Trash2 size={16} />
               Limpar dados locais
             </Button>
-            <Button variant="danger" onClick={() => setDeleteAccountOpen(true)}>
-              <ShieldAlert size={16} />
-              Eliminar conta
-            </Button>
           </div>
-          <p className="text-xs text-muted">
-            Documentos legais:{' '}
-            <Link to="/privacidade" className="font-semibold text-accent underline">Privacidade</Link> ·{' '}
-            <Link to="/termos" className="font-semibold text-accent underline">Termos</Link> ·{' '}
-            <Link to="/eliminar-conta" className="font-semibold text-accent underline">Eliminar conta</Link>
+          <p className="flex flex-wrap items-center gap-x-2 text-xs text-muted">
+            <span>Documentos legais:</span>
+            <Link to="/privacidade" className="inline-flex min-h-11 items-center font-semibold text-accent-ink underline">
+              Privacidade
+            </Link>
+            <span aria-hidden="true">·</span>
+            <Link to="/termos" className="inline-flex min-h-11 items-center font-semibold text-accent-ink underline">
+              Termos
+            </Link>
+            <span aria-hidden="true">·</span>
+            <Link to="/eliminar-conta" className="inline-flex min-h-11 items-center font-semibold text-coral-ink underline">
+              Eliminar conta
+            </Link>
           </p>
         </div>
       </div>
 
       {message && <p className="mt-4 text-sm font-medium text-ok">{message}</p>}
-      {error && <p className="mt-4 break-words text-sm font-medium text-coral">{error}</p>}
+      {error && <p className="mt-4 break-words text-sm font-medium text-coral-ink">{error}</p>}
 
-      <AccountDeletionModal open={deleteAccountOpen} onClose={() => setDeleteAccountOpen(false)} />
+      <Modal
+        open={confirmDemoOpen}
+        onClose={() => setConfirmDemoOpen(false)}
+        title="Substituir dados atuais pelo exemplo?"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setConfirmDemoOpen(false)}>Cancelar</Button>
+            <Button variant="primary" onClick={applyDemo}>
+              Carregar exemplo
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-muted">
+          Já tens cadeiras neste dispositivo. Carregar o semestre de exemplo irá substituir os dados locais atuais. Exporta uma cópia JSON antes se quiseres guardá-los.
+        </p>
+      </Modal>
 
       <Modal
         open={confirmClearOpen}

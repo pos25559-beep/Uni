@@ -40,30 +40,32 @@ export default function DayColumn({
         !isStudyDay && 'opacity-70',
       )}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-muted">{weekdayShort[date.getDay()]}</p>
-          <p className="text-lg font-semibold tracking-tight tabular">
-            {format(date, 'd MMM', { locale: pt })}
+      <div className="space-y-1">
+        <div className="flex items-center justify-between gap-1">
+          <p className="whitespace-nowrap text-xs font-medium uppercase tracking-wide text-muted">
+            {weekdayShort[date.getDay()]}
           </p>
-        </div>
-        <div className="flex items-center gap-1">
-          {isToday && <Badge tone="accent">Hoje</Badge>}
           <button
             type="button"
             onClick={() => onAdd(dateKey)}
             aria-label={`Adicionar sessão a ${format(date, 'd MMM', { locale: pt })}`}
-            className="grid size-7 place-items-center rounded-lg text-muted hover:bg-surface-2 hover:text-fg"
+            className="grid size-8 shrink-0 place-items-center rounded-lg text-muted hover:bg-surface-2 hover:text-fg"
           >
             <Plus size={15} />
           </button>
         </div>
+        <div className="flex items-center justify-between gap-1.5">
+          <p className="whitespace-nowrap text-base font-semibold tracking-tight tabular">
+            {format(date, 'd MMM', { locale: pt })}
+          </p>
+          {isToday && <Badge tone="accent">Hoje</Badge>}
+        </div>
       </div>
 
       <div className="mt-2">
-        <div className="flex items-center justify-between text-xs text-muted tabular">
-          <span className={cx(over && 'text-warn')}>{fmtMinutes(planned)}</span>
-          <span>de {fmtMinutes(budget)}</span>
+        <div className="flex flex-wrap items-center justify-between gap-x-1 text-xs text-muted tabular">
+          <span className={cx('whitespace-nowrap', over && 'text-warn')}>{fmtMinutes(planned)}</span>
+          <span className="whitespace-nowrap">de {fmtMinutes(budget)}</span>
         </div>
         <Progress
           value={ratio}

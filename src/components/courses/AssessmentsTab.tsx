@@ -2,10 +2,10 @@ import { ClipboardList, Pencil, Plus, CheckCircle2, AlertTriangle } from 'lucide
 import { useMemo, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { kindLabel } from '../../lib/colors';
-import { fmtGrade, gradeSummary } from '../../lib/selectors';
+import { daysUntil, fmtGrade, gradeSummary, parsePtGrade } from '../../lib/selectors';
 import { useStore } from '../../store/useStore';
 import type { Assessment, Course } from '../../types';
-import { Badge, Button, Card, EmptyState, Input, Progress } from '../ui';
+import { Badge, Button, Card, EmptyState, Input, Modal, Progress } from '../ui';
 import AssessmentFormModal from './AssessmentFormModal';
 import { DeleteButton } from './ConfirmModal';
 import { dueLabel, fmtAssessmentDate, sortAssessments } from './helpers';
@@ -19,6 +19,11 @@ export default function AssessmentsTab({ course }: Props) {
   const patch = useStore((s) => s.patch);
   const remove = useStore((s) => s.remove);
   const [form, setForm] = useState<Assessment | 'new' | null>(null);
+  const [pendingFutureGrade, setPendingFutureGrade] = useState<{
+    assessment: Assessment;
+    grade: number;
+    daysLeft: number;
+  } | null>(null);
 
   const mine = useMemo(
     () => sortAssessments(allAssessments.filter((a) => a.courseId === course.id)),
@@ -82,7 +87,14 @@ export default function AssessmentsTab({ course }: Props) {
                 <GradeInput
                   key={`${a.id}-${a.grade ?? ''}`}
                   value={a.grade}
-                  onCommit={(grade) => patch('assessments', a.id, { grade })}
+                  onCommit={(grade) => {
+                    const daysLeft = daysUntil(a.date);
+                    if (grade !== undefined && daysLeft > 0) {
+                      setPendingFutureGrade({ assessment: a, grade, daysLeft });
+                      return;
+                    }
+                    patch('assessments', a.id, { grade });
+                  }}
                 />
                 <div className="flex items-center gap-1">
                   <Button size="sm" variant="ghost" aria-label="Editar avaliação" title="Editar" onClick={() => setForm(a)}>
@@ -106,36 +118,93 @@ export default function AssessmentsTab({ course }: Props) {
           onClose={() => setForm(null)}
         />
       )}
+
+      <Modal
+        open={Boolean(pendingFutureGrade)}
+        onClose={() => setPendingFutureGrade(null)}
+        title="Já realizaste esta avaliação?"
+      >
+        {pendingFutureGrade && (
+          <div className="space-y-4 text-sm">
+            <p className="text-muted leading-relaxed">
+              <strong className="text-fg">{pendingFutureGrade.assessment.title}</strong> está marcada para daqui a{' '}
+              <strong className="text-fg">
+                {pendingFutureGrade.daysLeft} {pendingFutureGrade.daysLeft === 1 ? 'dia' : 'dias'}
+              </strong>
+              . Ao guardar a nota <strong className="text-fg tabular">{fmtGrade(pendingFutureGrade.grade)}</strong>, esta avaliação passa a contar como concluída no plano.
+            </p>
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button variant="ghost" onClick={() => setPendingFutureGrade(null)}>
+                Cancelar
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  patch('assessments', pendingFutureGrade.assessment.id, { grade: pendingFutureGrade.grade });
+                  setPendingFutureGrade(null);
+                }}
+              >
+                Sim, já realizei
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
 
-/** Nota inline (0–20). Vazio = ainda não avaliado. Grava ao sair do campo. */
+/** Nota inline (0–20) em formato português ou decimal. Vazio = ainda não avaliado. */
 function GradeInput({ value, onCommit }: { value?: number; onCommit: (grade: number | undefined) => void }) {
+  const [text, setText] = useState(() => (value !== undefined ? fmtGrade(value) : ''));
+  const [error, setError] = useState<string | null>(null);
+
+  const commit = () => {
+    const parsed = parsePtGrade(text);
+    if (parsed === 'invalid') {
+      setError('Usa um valor entre 0 e 20 (ex.: 12,5)');
+      return;
+    }
+    setError(null);
+    if (parsed === null) {
+      if (value !== undefined) onCommit(undefined);
+      return;
+    }
+    setText(fmtGrade(parsed));
+    if (parsed !== value) onCommit(parsed);
+  };
+
   return (
-    <label className="flex items-center gap-2 text-xs text-muted">
-      <span className="hidden sm:inline">Nota</span>
-      <Input
-        type="number"
-        min={0}
-        max={20}
-        step={0.1}
-        aria-label="Nota (0 a 20)"
-        placeholder="—"
-        defaultValue={value ?? ''}
-        className="h-8 w-20 text-right tabular"
-        onBlur={(e) => {
-          const raw = e.target.value.trim();
-          if (raw === '') { if (value !== undefined) onCommit(undefined); return; }
-          const n = Math.min(20, Math.max(0, Number(raw.replace(',', '.'))));
-          if (!Number.isFinite(n)) return;
-          if (n !== value) onCommit(n);
-        }}
-        onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
-          if (e.nativeEvent.isComposing || e.keyCode === 229) return;
-          if (e.key === 'Enter') e.currentTarget.blur();
-        }}
-      />
-    </label>
+    <div className="flex flex-col items-end gap-1">
+      <label className="flex items-center gap-2 text-xs text-muted">
+        <span className="hidden sm:inline">Nota</span>
+        <Input
+          type="text"
+          inputMode="decimal"
+          aria-label="Nota (0 a 20)"
+          aria-invalid={Boolean(error)}
+          placeholder="—"
+          value={text}
+          onChange={(e) => {
+            setText(e.target.value);
+            if (error) setError(null);
+          }}
+          className="min-h-[44px] w-20 text-right tabular sm:min-h-[36px]"
+          onBlur={commit}
+          onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+            if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              e.currentTarget.blur();
+            }
+          }}
+        />
+      </label>
+      {error && (
+        <span role="alert" className="text-xs font-medium text-coral-ink">
+          {error}
+        </span>
+      )}
+    </div>
   );
 }

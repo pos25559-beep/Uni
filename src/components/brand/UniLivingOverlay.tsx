@@ -5,6 +5,7 @@ import { studyStreak, todayStr } from '../../lib/selectors';
 import { resolveUniAccessory } from '../../lib/uniAccessories';
 import { readCollectibleTelemetry } from '../../lib/uniCollectibles';
 import { pickNextShyBehavior, pickQuietRouteNote, resolveVisibleUniPeers } from '../../lib/uniPetEngine';
+import { useHubUiStore } from '../../store/useHubUiStore';
 import { useStore } from '../../store/useStore';
 import { UniBuddy, type BuddyMood } from './UnipediaMarks';
 
@@ -20,6 +21,8 @@ export default function UniLivingOverlay() {
   const weeklyCheckIns = useStore((s) => s.weeklyCheckIns);
   const academicProfile = useStore((s) => s.academicProfile);
   const settings = useStore((s) => s.settings);
+  const focusTimerOpen = useHubUiStore((s) => s.focusTimerOpen);
+  const hubModalOpen = useHubUiStore((s) => s.modalOpen);
 
   const [tickSeed, setTickSeed] = useState(0);
   const [stepCount, setStepCount] = useState(0);
@@ -111,7 +114,7 @@ export default function UniLivingOverlay() {
     return () => window.clearTimeout(timer);
   }, [blushed]);
 
-  if (visibleSkins.length === 0 || reducedMotion) return null;
+  if (visibleSkins.length === 0 || reducedMotion || focusTimerOpen || hubModalOpen) return null;
 
   const isHidden = inputFocused || scrolling;
   const behavior = pickNextShyBehavior({
@@ -150,10 +153,10 @@ export default function UniLivingOverlay() {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none fixed inset-0 z-20 overflow-hidden select-none"
+      className="pointer-events-none fixed inset-0 z-20 hidden overflow-hidden select-none sm:block"
     >
       <div
-        className="absolute right-3.5 bottom-[calc(4.9rem+env(safe-area-inset-bottom))] flex items-end gap-1.5 transition-all duration-700 ease-out md:right-6 md:bottom-3.5"
+        className="absolute right-6 bottom-4 flex items-end gap-1.5 transition-all duration-700 ease-out"
         style={{
           opacity: isHidden ? 0 : behavior === 'shy_hide' ? 0.55 : 0.9,
           transform: isHidden
@@ -168,7 +171,7 @@ export default function UniLivingOverlay() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 4, scale: 0.94 }}
               transition={{ duration: 0.22 }}
-              className="mb-1.5 max-w-[168px] rounded-xl border border-line/80 bg-surface/95 px-2.5 py-1 text-[10px] font-medium leading-tight text-muted shadow-sm backdrop-blur-sm"
+              className="mb-1.5 max-w-[180px] rounded-xl border border-line/80 bg-surface/95 px-2.5 py-1 text-xs font-medium leading-tight text-muted shadow-sm backdrop-blur-sm"
             >
               {blushed ? 'shh… estamos só a espreitar' : quietNote}
             </motion.div>

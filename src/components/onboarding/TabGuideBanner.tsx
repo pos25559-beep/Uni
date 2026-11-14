@@ -1,13 +1,26 @@
 import { Check, HelpCircle, Sparkles, X } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { create } from 'zustand';
 import { TAB_GUIDES, type AppTabKey } from '../../lib/tabGuides';
 import { resolveUniAccessory } from '../../lib/uniAccessories';
 import { useStore } from '../../store/useStore';
 import { UniBuddy } from '../brand/UnipediaMarks';
 import { Button, cx } from '../ui';
 
-const EMPTY_SEEN_GUIDES: AppTabKey[] = [];
+const useTabGuideOverlay = create<{
+  openTab: AppTabKey | null;
+  toggleTab: (tab: AppTabKey) => void;
+  closeTab: () => void;
+}>((set) => ({
+  openTab: null,
+  toggleTab: (tab) => set((s) => ({ openTab: s.openTab === tab ? null : tab })),
+  closeTab: () => set({ openTab: null }),
+}));
 
+/**
+ * Cartão de ajuda contextual: surge apenas quando pedido pelo utilizador no botão «Guia (?)»,
+ * mantendo a interface inicial limpa e sem ruído visual.
+ */
 export function TabGuideBanner({
   tabKey,
   isEmpty = false,
@@ -17,23 +30,17 @@ export function TabGuideBanner({
   isEmpty?: boolean;
   actions?: ReactNode;
 }) {
-  const seen = useStore((s) => s.settings.seenTabGuides) ?? EMPTY_SEEN_GUIDES;
+  const openTab = useTabGuideOverlay((s) => s.openTab);
+  const closeTab = useTabGuideOverlay((s) => s.closeTab);
   const courses = useStore((s) => s.courses);
   const degreeName = useStore((s) => s.academicProfile.degreeName);
   const uniPreference = useStore((s) => s.settings.uniAccessory);
-  const updateSettings = useStore((s) => s.updateSettings);
 
-  if (seen.includes(tabKey)) return null;
+  if (openTab !== tabKey) return null;
 
   const spec = TAB_GUIDES[tabKey];
   const accessory = resolveUniAccessory(uniPreference, degreeName, courses[0]?.name);
   const body = isEmpty && spec.emptySummary ? spec.emptySummary : spec.summary;
-
-  const dismiss = () => {
-    if (!seen.includes(tabKey)) {
-      updateSettings({ seenTabGuides: [...seen, tabKey] });
-    }
-  };
 
   return (
     <section
@@ -45,11 +52,11 @@ export function TabGuideBanner({
     >
       <button
         type="button"
-        onClick={dismiss}
+        onClick={closeTab}
         aria-label="Fechar guia desta aba"
-        className="absolute top-3 right-3 rounded-full p-1.5 text-muted transition hover:bg-black/5 hover:text-fg dark:hover:bg-white/10"
+        className="absolute top-2.5 right-2.5 flex size-11 items-center justify-center rounded-full text-muted transition hover:bg-black/5 hover:text-fg dark:hover:bg-white/10"
       >
-        <X size={15} />
+        <X size={16} />
       </button>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
@@ -60,13 +67,13 @@ export function TabGuideBanner({
             size={60}
             interactive={false}
           />
-          <span className="inline-flex items-center gap-1 rounded-full bg-white/80 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent sm:hidden dark:bg-black/25">
-            <Sparkles size={10} /> {spec.eyebrow}
+          <span className="inline-flex items-center gap-1 rounded-full bg-white/80 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider text-accent-ink sm:hidden dark:bg-black/25">
+            <Sparkles size={11} /> {spec.eyebrow}
           </span>
         </div>
 
-        <div className="min-w-0 flex-1 space-y-2 pr-4">
-          <p className="hidden text-[11px] font-bold uppercase tracking-[0.12em] text-accent sm:block">
+        <div className="min-w-0 flex-1 space-y-2 pr-8">
+          <p className="hidden text-xs font-bold uppercase tracking-[0.12em] text-accent-ink sm:block">
             {spec.eyebrow}
           </p>
           <h2 className="font-display text-base font-bold text-fg sm:text-lg">{spec.title}</h2>
@@ -75,7 +82,7 @@ export function TabGuideBanner({
           <ul className="space-y-1 pt-0.5">
             {spec.highlights.map((h) => (
               <li key={h} className="flex items-start gap-2 text-xs text-muted">
-                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-[#E04F33]" />
+                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-coral" />
                 <span>{h}</span>
               </li>
             ))}
@@ -83,7 +90,7 @@ export function TabGuideBanner({
 
           <div className="flex flex-wrap items-center gap-2 pt-2">
             {actions}
-            <Button size="sm" variant="secondary" onClick={dismiss}>
+            <Button size="sm" variant="secondary" onClick={closeTab}>
               <Check size={14} /> Entendido
             </Button>
           </div>
@@ -93,19 +100,19 @@ export function TabGuideBanner({
   );
 }
 
-/** Botão discreto no cabeçalho da página para reabrir o guia do Uni desta aba. */
+/** Botão discreto no cabeçalho da página para abrir/fechar o guia do Uni desta aba. */
 export function TabGuideHelpButton({ tabKey }: { tabKey: AppTabKey }) {
-  const seen = useStore((s) => s.settings.seenTabGuides) ?? EMPTY_SEEN_GUIDES;
-  const updateSettings = useStore((s) => s.updateSettings);
-
-  if (!seen.includes(tabKey)) return null;
+  const openTab = useTabGuideOverlay((s) => s.openTab);
+  const toggleTab = useTabGuideOverlay((s) => s.toggleTab);
+  const isOpen = openTab === tabKey;
 
   return (
     <Button
       size="sm"
-      variant="ghost"
-      onClick={() => updateSettings({ seenTabGuides: seen.filter((k) => k !== tabKey) })}
-      aria-label="Reabrir guia do Uni para esta aba"
+      variant={isOpen ? 'secondary' : 'ghost'}
+      onClick={() => toggleTab(tabKey)}
+      aria-label="Abrir guia do Uni para esta aba"
+      aria-expanded={isOpen}
       title="O que faz esta aba? (Guia do Uni)"
     >
       <HelpCircle size={15} />

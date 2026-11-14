@@ -1,3 +1,5 @@
+import { format, parseISO } from 'date-fns';
+import { pt } from 'date-fns/locale';
 import { ChevronDown, Cloud, ExternalLink, ShieldCheck, Smartphone, Sparkles, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -6,6 +8,8 @@ import AccountDeletionModal from '../components/settings/AccountDeletionModal';
 import { Button, Card, SubpageHeader, cx } from '../components/ui';
 import { auth } from '../lib/firebase';
 import { LEGAL_INFO } from '../lib/legal';
+
+const formattedLegalDate = format(parseISO(LEGAL_INFO.lastUpdated), "d 'de' MMMM 'de' yyyy", { locale: pt });
 
 function LegalShell({
   title,
@@ -18,19 +22,19 @@ function LegalShell({
 }) {
   return (
     <AnimatedPage className="mx-auto max-w-2xl space-y-5 pb-10">
-      <SubpageHeader title={title} subtitle={`Atualizado em ${LEGAL_INFO.lastUpdated}`} backTo="/definicoes" />
+      <SubpageHeader title={title} subtitle={`Atualizado em ${formattedLegalDate}`} backTo="/definicoes" />
       <p className="text-sm text-muted">{subtitle}</p>
 
       {children}
 
       <footer className="flex flex-wrap items-center gap-4 border-t border-line pt-4 text-xs text-muted">
-        <Link to="/privacidade" className="hover:text-fg underline-offset-2 hover:underline">
+        <Link to="/privacidade" className="inline-flex min-h-11 items-center hover:text-fg underline-offset-2 hover:underline">
           Privacidade
         </Link>
-        <Link to="/termos" className="hover:text-fg underline-offset-2 hover:underline">
+        <Link to="/termos" className="inline-flex min-h-11 items-center hover:text-fg underline-offset-2 hover:underline">
           Termos
         </Link>
-        <Link to="/eliminar-conta" className="hover:text-fg underline-offset-2 hover:underline">
+        <Link to="/eliminar-conta" className="inline-flex min-h-11 items-center hover:text-fg underline-offset-2 hover:underline">
           Eliminar conta
         </Link>
       </footer>
@@ -94,7 +98,7 @@ export function PrivacyPolicyPage() {
             <Cloud size={18} className="text-[#1D5FAD] dark:text-[#93C5FD]" />
             <p className="mt-2 font-display text-sm font-bold">Na nuvem só se quiseres</p>
             <p className="mt-1 text-xs opacity-80">
-              Só sincronizamos se criares conta em /entrar. Podes usar tudo sem conta.
+              Só sincronizamos se criares conta no ecrã Entrar. Podes usar tudo sem conta.
             </p>
           </div>
           <div className="rounded-[18px] bg-white/75 p-3.5 dark:bg-black/25">
@@ -111,7 +115,7 @@ export function PrivacyPolicyPage() {
         <div className="space-y-2">
           <p>
             <strong className="text-fg">Responsável:</strong> {LEGAL_INFO.controllerName} ({LEGAL_INFO.country}) ·{' '}
-            <a className="font-semibold text-accent underline" href={`mailto:${LEGAL_INFO.contactEmail}`}>
+            <a className="font-semibold text-accent-ink underline" href={`mailto:${LEGAL_INFO.contactEmail}`}>
               {LEGAL_INFO.contactEmail}
             </a>
           </p>
@@ -126,7 +130,7 @@ export function PrivacyPolicyPage() {
         <ul className="list-disc space-y-2 pl-5">
           <li>
             <strong className="text-fg">Exportar tudo:</strong> em{' '}
-            <Link to="/definicoes" className="font-semibold text-accent underline">
+            <Link to="/definicoes" className="font-semibold text-accent-ink underline">
               Definições → Privacidade &amp; Dados
             </Link>{' '}
             descarregas uma cópia JSON completa a qualquer momento.
@@ -136,7 +140,7 @@ export function PrivacyPolicyPage() {
           </li>
           <li>
             <strong className="text-fg">Apagar conta para sempre:</strong> usa o portal{' '}
-            <Link to="/eliminar-conta" className="font-semibold text-accent underline">
+            <Link to="/eliminar-conta" className="font-semibold text-accent-ink underline">
               Eliminar conta
             </Link>.
           </li>
@@ -146,7 +150,7 @@ export function PrivacyPolicyPage() {
               href={LEGAL_INFO.supervisoryAuthority.url}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 font-semibold text-accent underline"
+              className="inline-flex items-center gap-1 font-semibold text-accent-ink underline"
             >
               {LEGAL_INFO.supervisoryAuthority.name}
               <ExternalLink size={12} />

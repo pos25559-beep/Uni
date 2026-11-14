@@ -26,6 +26,8 @@ export interface PlanInput {
   settings: Settings;
   /** yyyy-MM-dd */
   from: string;
+  /** Minutos atuais desde a meia-noite no dia `from` (opcional; evita agendar no passado). */
+  nowMinutes?: number;
   /** Número de dias a planear (por omissão 14). */
   days?: number;
   /**
@@ -52,8 +54,14 @@ interface Block {
 interface WorkItem {
   assessment: Assessment;
   due: Date;
+  dueMinutes?: number;
   courseId: ID;
   topics: Topic[];
+}
+
+interface BusyInterval {
+  start: number;
+  end: number;
 }
 
 const BLOCK = 50;
@@ -84,6 +92,25 @@ const toMin = (hhmm: string) => {
   return h * 60 + m;
 };
 const fmtTime = (min: number) => `${pad(Math.floor(min / 60))}:${pad(min % 60)}`;
+/** Extrai minutos do dia (entre 07:00 e 22:00) de `yyyy-MM-ddTHH:mm...`, se aplicável. */
+const parseDueMinutes = (s: string): number | undefined => {
+  const tIdx = s.indexOf('T');
+  if (tIdx === -1) return undefined;
+  const hhmm = s.slice(tIdx + 1, tIdx + 6);
+  if (!/^\d{2}:\d{2}$/.test(hhmm)) return undefined;
+  const mins = toMin(hhmm);
+  return mins >= 7 * 60 && mins <= 22 * 60 ? mins : undefined;
+};
+/** Avança `cursor` até evitar colisões com intervalos ocupados (aulas, eventos, sessões existentes). */
+const advanceCursorPastBusy = (cursor: number, duration: number, busy: BusyInterval[]): number => {
+  let next = cursor;
+  for (const iv of busy) {
+    if (next < iv.end && next + duration > iv.start) {
+      next = Math.max(next, iv.end + BREAK);
+    }
+  }
+  return next;
+};
 /** Minutos "ocupados" por uma sessão: realizados se concluída, planeados caso contrário. */
 const occupied = (s: StudySession) => (s.done ? sessionMinutes(s) : s.minutes);
 
@@ -181,7 +208,13 @@ export function generatePlan(input: PlanInput): StudySession[] {
       ? course.topics.filter((t) => a.topicIds.includes(t.id))
       : course.topics;
     const topics = covered.filter((t) => !(t.status === 'done' && t.confidence >= 4));
-    items.push({ assessment: a, due: parseDay(a.date), courseId: course.id, topics });
+    items.push({
+      assessment: a,
+      due: parseDay(a.date),
+      dueMinutes: parseDueMinutes(a.date),
+      courseId: course.id,
+      topics,
+    });
   }
 
   const lastScheduled = new Map<ID, string>(); // revisões espaçadas já marcadas neste plano
@@ -194,6 +227,42 @@ export function generatePlan(input: PlanInput): StudySession[] {
     const key = dayKey(day);
     const weekday = day.getDay();
     if (!settings.studyDays.includes(weekday)) continue;
+
+    // Hora mínima de início para este dia (evita agendar no passado quando `nowMinutes` é fornecido).
+    const roundedNow =
+      i === 0 && input.nowMinutes !== undefined
+        ? Math.ceil((input.nowMinutes + 10) / 30) * 30
+        : undefined;
+    if (roundedNow !== undefined && roundedNow > 22 * 60 + 30) continue;
+
+    const weekend = weekday === 0 || weekday === 6;
+    const baseStart = Math.max(weekend ? 10 * 60 : 17 * 60, roundedNow ?? 0);
+
+    // Intervalos ocupados (aulas, eventos com hora marcada e sessões fixas existentes).
+    const dayBusy: BusyInterval[] = [];
+    for (const c of classes) {
+      if (c.weekday === weekday) {
+        dayBusy.push({ start: toMin(c.start), end: toMin(c.end) });
+      }
+    }
+    for (const e of events) {
+      if (!e.allDay && e.start.slice(0, 10) === key) {
+        const s = parseISO(e.start);
+        const en = parseISO(e.end);
+        dayBusy.push({
+          start: s.getHours() * 60 + s.getMinutes(),
+          end: en.getHours() * 60 + en.getMinutes(),
+        });
+      }
+    }
+    for (const s of existing) {
+      if (s.date === key && s.start && (s.done || !s.generated)) {
+        const st = toMin(s.start);
+        dayBusy.push({ start: st, end: st + occupied(s) });
+      }
+    }
+    dayBusy.sort((a, b) => a.start - b.start);
+    const earliestStart = advanceCursorPastBusy(baseStart, MIN_BLOCK, dayBusy);
 
     // Orçamento do dia.
     const classMinutes = classes
@@ -220,21 +289,62 @@ export function generatePlan(input: PlanInput): StudySession[] {
     const blocks: Block[] = [];
     const perCourse = new Map<ID, number>();
 
-    // Avaliações activas neste dia (dentro do horizonte).
+    // Avaliações activas neste dia (dentro do horizonte e antes da hora do exame no próprio dia).
     const active = items
       .map((it) => ({ ...it, daysLeft: differenceInCalendarDays(it.due, day) }))
-      .filter((it) => it.daysLeft >= 0 && it.daysLeft <= HORIZON_DAYS);
+      .filter((it) => {
+        if (it.daysLeft < 0 || it.daysLeft > HORIZON_DAYS) return false;
+        if (it.daysLeft === 0 && it.dueMinutes !== undefined && earliestStart + MIN_BLOCK > it.dueMinutes - 30) {
+          return false;
+        }
+        return true;
+      });
 
-    // Deteção dinâmica de Modo Teste (<= 10 dias) para este dia.
+    // Deteção dinâmica de Modo Teste progressivo (<= 10 dias).
     const urgentToday = active.filter((it) => it.daysLeft <= TEST_MODE_DAYS);
     const urgentCourseIdsToday = new Set(urgentToday.map((u) => u.courseId));
+    const minUrgentDays = urgentToday.reduce((min, u) => Math.min(min, u.daysLeft), Infinity);
     const singleTestMode = urgentCourseIdsToday.size === 1;
+    const strictSingleTestMode = singleTestMode && minUrgentDays <= 2;
     const multiTestMode = urgentCourseIdsToday.size >= 2;
+
+    // Revisão geral na véspera de cada avaliação (verificação prévia antes dos limites).
+    const hasImminentTomorrow = active.some((it) => it.daysLeft <= 1);
+    const activeCourseIds = new Set(active.map((it) => it.courseId));
+    const dueTopics = courses
+      .flatMap((c) => c.topics.map((topic) => ({ courseId: c.id, topic })))
+      .filter(({ topic }) => {
+        const scheduledOn = lastScheduled.get(topic.id);
+        if (scheduledOn) {
+          const interval = Math.max(1, topic.srsIntervalDays ?? 7);
+          return differenceInCalendarDays(day, parseDay(scheduledOn)) >= interval;
+        }
+        return isTopicReviewDue(topic, key);
+      })
+      .sort((a, b) => {
+        const aRelevant = activeCourseIds.has(a.courseId) ? 0 : 1;
+        const bRelevant = activeCourseIds.has(b.courseId) ? 0 : 1;
+        if (aRelevant !== bRelevant) return aRelevant - bRelevant;
+        const aScore = a.topic.lastRecallScore ?? 2;
+        const bScore = b.topic.lastRecallScore ?? 2;
+        if (aScore !== bScore) return aScore - bScore;
+        return (a.topic.nextReviewDate ?? a.topic.lastStudied ?? '').localeCompare(
+          b.topic.nextReviewDate ?? b.topic.lastStudied ?? '',
+        );
+      });
+
+    const hasOtherPriority =
+      dueTopics.length > 0 || active.some((it) => !urgentCourseIdsToday.has(it.courseId));
 
     const courseOk = (courseId: ID) => {
       const count = perCourse.get(courseId) ?? 0;
-      if (singleTestMode && urgentCourseIdsToday.has(courseId)) {
+      if (strictSingleTestMode && urgentCourseIdsToday.has(courseId)) {
         return count < MAX_BLOCKS_PER_DAY;
+      }
+      if (singleTestMode && urgentCourseIdsToday.has(courseId)) {
+        // Quando falta > 3 dias e há margem no dia, reserva 1 bloco para SRS/outras cadeiras.
+        const reserveForOther = minUrgentDays > 3 && budget >= BLOCK * 2 && hasOtherPriority;
+        return count < (reserveForOther ? MAX_BLOCKS_PER_DAY - 1 : MAX_BLOCKS_PER_DAY);
       }
       if (multiTestMode && urgentCourseIdsToday.has(courseId) && urgentCourseIdsToday.size >= 3) {
         return count < 2;
@@ -261,32 +371,8 @@ export function generatePlan(input: PlanInput): StudySession[] {
     }
 
     // Revisão espaçada contínua (SRS 1→3→7→21d): reserva 1 slot diário quando há matéria vencida,
-    // mesmo com avaliações no horizonte (exceto quando uma avaliação é hoje/amanhã ou foco exclusivo).
-    const hasImminentTomorrow = active.some((it) => it.daysLeft <= 1);
-    const activeCourseIds = new Set(active.map((it) => it.courseId));
-    const dueTopics = courses
-      .flatMap((c) => c.topics.map((topic) => ({ courseId: c.id, topic })))
-      .filter(({ topic }) => {
-        const scheduledOn = lastScheduled.get(topic.id);
-        if (scheduledOn) {
-          const interval = Math.max(1, topic.srsIntervalDays ?? 7);
-          return differenceInCalendarDays(day, parseDay(scheduledOn)) >= interval;
-        }
-        return isTopicReviewDue(topic, key);
-      })
-      .sort((a, b) => {
-        const aRelevant = activeCourseIds.has(a.courseId) ? 0 : 1;
-        const bRelevant = activeCourseIds.has(b.courseId) ? 0 : 1;
-        if (aRelevant !== bRelevant) return aRelevant - bRelevant;
-        const aScore = a.topic.lastRecallScore ?? 2;
-        const bScore = b.topic.lastRecallScore ?? 2;
-        if (aScore !== bScore) return aScore - bScore;
-        return (a.topic.nextReviewDate ?? a.topic.lastStudied ?? '').localeCompare(
-          b.topic.nextReviewDate ?? b.topic.lastStudied ?? '',
-        );
-      });
-
-    if (!hasImminentTomorrow && dueTopics.length > 0 && canTake()) {
+    // mesmo com avaliações no horizonte (exceto nos últimos 2 dias de um exame).
+    if (!hasImminentTomorrow && !strictSingleTestMode && dueTopics.length > 0 && canTake()) {
       const srsQuota = active.length === 0 ? dueTopics.length : 1;
       let addedSrs = 0;
       for (const s of dueTopics) {
@@ -315,8 +401,10 @@ export function generatePlan(input: PlanInput): StudySession[] {
         const difficultyFactor = isDifficult ? 1.35 : 1.0;
 
         let modeFactor = 1.0;
-        if (singleTestMode) {
-          modeFactor = urgentCourseIdsToday.has(it.courseId) ? 3.5 : 0.25;
+        if (strictSingleTestMode) {
+          modeFactor = urgentCourseIdsToday.has(it.courseId) ? 4.5 : 0.1;
+        } else if (singleTestMode) {
+          modeFactor = urgentCourseIdsToday.has(it.courseId) ? 3.5 : 0.45;
         } else if (multiTestMode) {
           if (urgentCourseIdsToday.has(it.courseId)) {
             const alreadyAssigned = perCourse.get(it.courseId) ?? 0;
@@ -327,8 +415,13 @@ export function generatePlan(input: PlanInput): StudySession[] {
           }
         }
 
+        const preferConsolidated =
+          it.daysLeft <= 2 &&
+          it.topics.some((t) => t.status !== 'todo' && (effort.get(t.id) ?? 0) > 0);
+
         for (const t of it.topics) {
           if ((effort.get(t.id) ?? 0) <= 0) continue;
+          if (preferConsolidated && t.status === 'todo') continue;
           const checkInBoost = isTopicHighlightedByCheckIn(t.title) ? 0.35 : 0;
           const recallPenalty = t.lastRecallScore === 1 ? 0.25 : 0;
           const needFactor = (needBase[t.status] + checkInBoost + recallPenalty) * (1.2 - t.confidence * 0.15);
@@ -402,10 +495,11 @@ export function generatePlan(input: PlanInput): StudySession[] {
       }
     }
 
-    // Horas de início sequenciais, com intervalo entre blocos.
-    const weekend = weekday === 0 || weekday === 6;
-    let cursor = weekend ? 10 * 60 : 17 * 60;
+    // Horas de início sequenciais, evitando colisões com aulas, eventos ou sessões existentes.
+    let cursor = baseStart;
     for (const b of blocks) {
+      cursor = advanceCursorPastBusy(cursor, b.minutes, dayBusy);
+      if (cursor + b.minutes > 23 * 60 + 30) break;
       result.push({
         id: newId(),
         courseId: b.courseId,

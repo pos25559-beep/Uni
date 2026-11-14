@@ -15,7 +15,7 @@ export interface GeminiKeyTestResult {
 /** Valida uma chave pessoal Gemini diretamente contra a Google Generative Language API. */
 export async function verifyGeminiApiKey(
   rawKey: string,
-  wantedModel = 'gemini-4-hydrogen',
+  wantedModel = 'gemini-3.8-flash',
 ): Promise<GeminiKeyTestResult> {
   const key = rawKey.trim();
   if (!key) {
@@ -46,7 +46,7 @@ export default function GeminiKeyGuideModal({
   onClose: () => void;
 }) {
   const apiKey = useStore((s) => s.settings.geminiApiKey);
-  const model = useStore((s) => s.settings.geminiModel || 'gemini-4-hydrogen');
+  const model = useStore((s) => s.settings.geminiModel || 'gemini-3.8-flash');
   const updateSettings = useStore((s) => s.updateSettings);
   const setIntegration = useStore((s) => s.setIntegration);
 

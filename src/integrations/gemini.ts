@@ -58,8 +58,8 @@ interface GenerateResponse {
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const MAX_CONTEXT_CHARS = 4500;
 const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
-const DEFAULT_MODEL = 'gemini-4-hydrogen';
-const FALLBACK_MODEL = 'gemini-2.5-flash';
+const DEFAULT_MODEL = 'gemini-3.8-flash';
+const FALLBACK_MODEL = 'gemini-3.5-flash-lite';
 
 export class AiConsentRequiredError extends Error {
   constructor() {
@@ -116,7 +116,12 @@ function resolveGeminiConfig() {
   }
   const customKey = getCustomGeminiKey();
   const raw = geminiModel.trim();
-  const model = !raw || raw.startsWith('gemini-2.0') || raw.startsWith('gemini-3.8') ? DEFAULT_MODEL : raw;
+  const isLegacyOrInvalid =
+    !raw ||
+    raw.startsWith('gemini-1.') ||
+    raw.startsWith('gemini-2.') ||
+    raw === 'gemini-4-hydrogen';
+  const model = isLegacyOrInvalid ? DEFAULT_MODEL : raw;
   return { customKey, model };
 }
 
@@ -124,15 +129,17 @@ function shouldFallbackModel(errorMessage: string, statusCode?: number): boolean
   const lower = errorMessage.toLowerCase();
   return (
     statusCode === 404 ||
-    statusCode === 400 ||
-    lower.includes('not found') ||
-    lower.includes('not supported') ||
-    lower.includes('model')
+    lower.includes('model not found') ||
+    lower.includes('is not found for api version') ||
+    lower.includes('is not supported for generatecontent')
   );
 }
 
 function friendlyNativeAiError(err: unknown): Error {
   const raw = err instanceof Error ? err.message : String(err ?? '');
+  if (import.meta.env.DEV) {
+    console.warn('[Uni IA]', raw);
+  }
   const lower = raw.toLowerCase();
   if (
     lower.includes('firebasevertexai') ||
@@ -142,10 +149,10 @@ function friendlyNativeAiError(err: unknown): Error {
     lower.includes('403')
   ) {
     return new Error(
-      'O serviço nativo Firebase AI Logic ainda aguarda ativação no projeto Firebase (ou App Check). Podes ativar na Consola Firebase ou usar temporariamente uma chave em Definições → Tutor → Avançado.',
+      'O Tutor Uni está temporariamente indisponível para pedidos sem chave própria. Podes tentar novamente mais tarde ou usar uma chave em Definições → Tutor.',
     );
   }
-  return err instanceof Error ? err : new Error('Não foi possível contactar o Uni agora. Tenta novamente.');
+  return new Error('Não foi possível contactar o Uni agora. Tenta novamente dentro de instantes.');
 }
 
 function buildContentsWithAttachments(

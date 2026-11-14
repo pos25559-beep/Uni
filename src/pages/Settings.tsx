@@ -9,9 +9,10 @@ import {
   Sparkles,
   Trash2,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import AuthStatus from '../components/auth/AuthStatus';
+import { UniBuddy } from '../components/brand/UnipediaMarks';
 import { AnimatedPage } from '../components/motion/Primitives';
 import OnboardingModal from '../components/onboarding/OnboardingModal';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
@@ -23,8 +24,10 @@ import GeminiCard from '../components/settings/GeminiCard';
 import GoogleCard from '../components/settings/GoogleCard';
 import NotebookCard from '../components/settings/NotebookCard';
 import ProfileCard from '../components/settings/ProfileCard';
-import { ListGroup, ListRow, PageHeader, SegmentedControl, SubpageHeader, Switch } from '../components/ui';
+import { Badge, Button, ListGroup, ListRow, PageHeader, SegmentedControl, SubpageHeader, Switch } from '../components/ui';
+import { auth, onAuthStateChanged, type User } from '../lib/firebase';
 import { fmtMinutes } from '../lib/selectors';
+import { resolveUniAccessory } from '../lib/uniAccessories';
 import { useStore } from '../store/useStore';
 import type { Settings as SettingsType } from '../types';
 
@@ -39,9 +42,13 @@ export default function SettingsPage() {
   const navigate = useNavigate();
   const settings = useStore((s) => s.settings);
   const academicProfile = useStore((s) => s.academicProfile);
+  const courses = useStore((s) => s.courses);
   const integrations = useStore((s) => s.integrations);
   const updateSettings = useStore((s) => s.updateSettings);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(() => auth.currentUser);
+
+  useEffect(() => onAuthStateChanged(auth, setUser), []);
 
   if (section === 'estudo') {
     return (
@@ -128,8 +135,47 @@ export default function SettingsPage() {
 
       <TabGuideBanner tabKey="definicoes" />
 
-      {/* Conta e sincronização */}
-      <AuthStatus />
+      {/* Hero de Perfil & Estado da Conta */}
+      <section className="flex flex-col gap-4 rounded-[24px] border border-line bg-surface p-5 shadow-card sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3.5">
+          <div className="grid size-14 shrink-0 place-items-center rounded-full bg-pastel-sage/75 dark:bg-surface-2">
+            <UniBuddy
+              mood="happy"
+              accessory={resolveUniAccessory(settings.uniAccessory, academicProfile.degreeName, courses[0]?.name)}
+              skin={settings.uniSkin}
+              size={44}
+              interactive={false}
+            />
+          </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="truncate font-display text-lg font-bold text-fg">
+                {settings.userName || user?.displayName || 'Estudante'}
+              </h2>
+              <Badge tone={user ? 'ok' : 'neutral'}>
+                {user ? 'Cloud ativa' : 'Apenas neste dispositivo'}
+              </Badge>
+            </div>
+            <p className="mt-0.5 truncate text-xs text-muted">
+              {academicProfile.degreeName
+                ? [academicProfile.universityName, academicProfile.degreeName].filter(Boolean).join(' · ')
+                : 'Define o teu curso e visual do Uni nas preferências abaixo'}
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" variant="secondary" onClick={() => navigate('/definicoes/estudo')}>
+            Editar perfil &amp; Uni
+          </Button>
+          {!user && (
+            <Button size="sm" variant="primary" onClick={() => navigate('/entrar')}>
+              Entrar para sincronizar
+            </Button>
+          )}
+        </div>
+      </section>
+
+      {user && <AuthStatus />}
 
       {/* Aparência rápida */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-[22px] bg-surface-2/75 px-4 py-3">
@@ -190,11 +236,11 @@ export default function SettingsPage() {
         />
         <ListRow
           icon={<Sparkles size={18} />}
-          title="Uni · Tutor IA (Gemini)"
+          title="Uni · Tutor IA"
           subtitle={
             settings.geminiApiKey
-              ? `Chave pessoal · ${settings.geminiModel}`
-              : `Uni Nativo · ${settings.geminiModel}`
+              ? 'Chave pessoal ligada · Limite alargado'
+              : 'Uni Nativo · Respostas diárias incluídas'
           }
           badge={settings.aiConsent ? 'Ativo' : 'Pausado'}
           badgeTone={settings.aiConsent ? 'accent' : 'neutral'}
@@ -207,7 +253,7 @@ export default function SettingsPage() {
         <ListRow
           icon={<Database size={18} />}
           title="Exportar cópia e gerir dados"
-          subtitle="Backup JSON, restauro local ou limpar tudo"
+          subtitle="Backup JSON, dados de exemplo e limpeza local"
           onClick={() => navigate('/definicoes/dados')}
         />
         <ListRow
@@ -221,13 +267,23 @@ export default function SettingsPage() {
           title="Termos de Utilização"
           onClick={() => navigate('/termos')}
         />
-        <ListRow
-          icon={<Trash2 size={18} />}
-          title="Eliminar conta e todos os dados"
-          danger
-          onClick={() => navigate('/eliminar-conta')}
-        />
       </ListGroup>
+
+      {/* Zona de perigo isolada */}
+      <section className="rounded-[22px] border border-coral/35 bg-coral-soft/45 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-coral-ink">Zona de perigo</h3>
+            <p className="mt-0.5 text-xs text-muted">
+              Remove permanentemente os dados deste dispositivo e, se tiveres conta, elimina a tua conta na nuvem.
+            </p>
+          </div>
+          <Button variant="danger" size="sm" onClick={() => navigate('/eliminar-conta')}>
+            <Trash2 size={15} />
+            Eliminar conta e dados
+          </Button>
+        </div>
+      </section>
 
       <OnboardingModal open={wizardOpen} onClose={() => setWizardOpen(false)} />
     </AnimatedPage>

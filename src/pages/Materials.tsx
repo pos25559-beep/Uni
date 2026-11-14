@@ -172,52 +172,56 @@ export default function Materials() {
               </button>
             </div>
           ) : null}
-          <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
-            <div className="relative min-w-0 flex-1">
-              <Search size={16} className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-muted" />
-              <Input
-                type="search"
-                placeholder="Procurar por título…"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                aria-label="Procurar materiais"
-                className="pl-10"
-              />
-            </div>
-            <Select
-              aria-label="Filtrar por cadeira"
-              value={courseFilter}
-              onChange={(e) => setCourseFilter(e.target.value)}
-              className="sm:w-56"
-            >
-              <option value="all">Todas as cadeiras</option>
-              {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              <option value="none">Sem cadeira</option>
-            </Select>
-          </div>
-
-          <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Filtrar por fornecedor">
-            {providerFilters.map((p) => {
-              const active = providerFilter === p;
-              return (
-                <button
-                  key={p}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => setProviderFilter(p)}
-                  className={cx(
-                    'inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-medium transition',
-                    active
-                      ? 'bg-ink-cta text-ink-cta-fg'
-                      : 'bg-surface-2 text-muted hover:text-fg',
-                  )}
+          {materials.length > 0 && (
+            <>
+              <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
+                <div className="relative min-w-0 flex-1">
+                  <Search size={16} className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-muted" />
+                  <Input
+                    type="search"
+                    placeholder="Procurar por título…"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    aria-label="Procurar materiais"
+                    className="pl-10"
+                  />
+                </div>
+                <Select
+                  aria-label="Filtrar por cadeira"
+                  value={courseFilter}
+                  onChange={(e) => setCourseFilter(e.target.value)}
+                  className="sm:w-56"
                 >
-                  {chipLabel[p]}
-                  <span className="tabular opacity-75">{counts[p]}</span>
-                </button>
-              );
-            })}
-          </div>
+                  <option value="all">Todas as cadeiras</option>
+                  {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  <option value="none">Sem cadeira</option>
+                </Select>
+              </div>
+
+              <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Filtrar por fornecedor">
+                {providerFilters.map((p) => {
+                  const active = providerFilter === p;
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setProviderFilter(p)}
+                      className={cx(
+                        'inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-medium transition',
+                        active
+                          ? 'bg-ink-cta text-ink-cta-fg'
+                          : 'bg-surface-2 text-muted hover:text-fg',
+                      )}
+                    >
+                      {chipLabel[p]}
+                      <span className="tabular opacity-75">{counts[p]}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
 
           {materials.length === 0 ? (
             <EmptyState

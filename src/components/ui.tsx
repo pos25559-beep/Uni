@@ -143,7 +143,7 @@ const buttonStyles: Record<ButtonVariant, string> = {
   accent: 'bg-accent text-accent-fg hover:opacity-90 active:scale-[0.98]',
   secondary: 'border border-line bg-surface text-fg hover:bg-surface-2 active:scale-[0.98]',
   ghost: 'text-muted hover:bg-surface-2 hover:text-fg active:scale-[0.98]',
-  danger: 'bg-coral-soft text-coral hover:opacity-90 active:scale-[0.98]',
+  danger: 'bg-coral-soft text-coral-ink hover:opacity-90 active:scale-[0.98]',
 };
 
 export function Button({
@@ -166,7 +166,7 @@ export function Button({
       ? 'size-11 rounded-full p-0'
       : 'size-11 rounded-full p-0'
     : size === 'sm'
-      ? 'min-h-[44px] sm:min-h-[38px] px-3.5 text-sm sm:text-xs rounded-full'
+      ? 'min-h-[44px] px-3.5 text-sm sm:text-xs rounded-full'
       : 'min-h-[44px] px-4.5 text-sm rounded-full';
 
   return (
@@ -190,10 +190,10 @@ export function Button({
 type Tone = 'neutral' | 'accent' | 'ok' | 'warn' | 'danger';
 const toneStyles: Record<Tone, string> = {
   neutral: 'bg-surface-2 text-muted',
-  accent: 'bg-accent-soft text-accent',
+  accent: 'bg-accent-soft text-accent-ink',
   ok: 'bg-accent-soft text-ok',
   warn: 'bg-[#FCE99F]/85 text-[#6B4800] dark:bg-[#352D14] dark:text-[#FDE68A]',
-  danger: 'bg-coral-soft text-coral',
+  danger: 'bg-coral-soft text-coral-ink',
 };
 
 export function Badge({

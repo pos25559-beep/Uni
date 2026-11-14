@@ -147,9 +147,9 @@ export default function ProfileCard() {
                   aria-pressed={on}
                   onClick={() => toggleDay(day)}
                   className={cx(
-                    'h-10 min-w-11 flex-1 rounded-xl border text-xs font-medium transition sm:flex-none sm:px-3',
+                    'min-h-[44px] min-w-11 flex-1 rounded-xl border text-xs font-medium transition sm:flex-none sm:px-3',
                     on
-                      ? 'border-accent bg-accent-soft text-accent'
+                      ? 'border-accent bg-accent-soft text-accent-ink'
                       : 'border-line bg-surface-2 text-muted hover:text-fg',
                   )}
                 >
@@ -157,114 +157,6 @@ export default function ProfileCard() {
                 </button>
               );
             })}
-          </div>
-        </div>
-
-        {/* Paleta de cores, Tom da App & Companheiros discretos */}
-        <div className="space-y-3 border-t border-line pt-4">
-          <div>
-            <span className="text-xs font-medium text-muted">Paleta de cores</span>
-            <p className="text-[11px] text-muted">
-              Escolhe entre o caderno quente ou paletas mais minimalistas e sóbrias.
-            </p>
-            <div className="mt-2 grid gap-2 sm:grid-cols-2">
-              {APP_PALETTES.map((pal) => {
-                const active = (settings.themePalette ?? 'caderno') === pal.id;
-                return (
-                  <button
-                    key={pal.id}
-                    type="button"
-                    onClick={() => updateSettings({ themePalette: pal.id })}
-                    className={cx(
-                      'flex min-h-[44px] items-center gap-2.5 rounded-2xl border px-3 py-2 text-left transition',
-                      active
-                        ? 'border-accent bg-accent-soft/60 text-fg'
-                        : 'border-line bg-surface-2/60 text-fg hover:bg-surface-2',
-                    )}
-                  >
-                    <span className="flex shrink-0 items-center gap-1" aria-hidden="true">
-                      <span
-                        className="size-4 rounded-full border border-black/15"
-                        style={{ backgroundColor: pal.bgHex }}
-                      />
-                      <span
-                        className="size-4 rounded-full border border-black/15"
-                        style={{ backgroundColor: pal.accentHex }}
-                      />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-xs font-semibold">{pal.name}</span>
-                      <span className="block truncate text-[11px] text-muted">{pal.tagline}</span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-            <div>
-              <span className="text-xs font-medium text-muted">Estilo &amp; Tom da app</span>
-              <p className="text-[11px] text-muted">
-                O modo Sério &amp; Minimalista reduz animações e oculta os Unis nos cantos.
-              </p>
-            </div>
-            <div className="inline-flex rounded-full bg-surface-2 p-1">
-              {(
-                [
-                  ['vibrante', 'Expressivo'],
-                  ['serio', 'Sério & Minimal'],
-                ] as const
-              ).map(([toneId, label]) => {
-                const active = (settings.appTone ?? 'vibrante') === toneId;
-                return (
-                  <button
-                    key={toneId}
-                    type="button"
-                    onClick={() => updateSettings({ appTone: toneId })}
-                    className={cx(
-                      'min-h-[34px] rounded-full px-3 text-xs font-semibold transition',
-                      active ? 'bg-ink-cta text-ink-cta-fg' : 'text-muted hover:text-fg',
-                    )}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-            <div>
-              <span className="text-xs font-medium text-muted">Unis discretos no ecrã</span>
-              <p className="text-[11px] text-muted">
-                Companheiros tímidos nos cantos que se escondem quando escreves ou fazes scroll.
-              </p>
-            </div>
-            <div className="inline-flex rounded-full bg-surface-2 p-1">
-              {(
-                [
-                  ['all', 'Até 2'],
-                  ['solo', 'Só 1'],
-                  ['off', 'Desligado'],
-                ] as const
-              ).map(([modeId, label]) => {
-                const active = (settings.uniLiveCompanions ?? 'all') === modeId;
-                return (
-                  <button
-                    key={modeId}
-                    type="button"
-                    onClick={() => updateSettings({ uniLiveCompanions: modeId })}
-                    className={cx(
-                      'min-h-[34px] rounded-full px-3 text-xs font-semibold transition',
-                      active ? 'bg-ink-cta text-ink-cta-fg' : 'text-muted hover:text-fg',
-                    )}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
           </div>
         </div>
       </div>
@@ -344,7 +236,7 @@ export default function ProfileCard() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <span className="text-xs font-medium text-muted">Estilo do Uni</span>
-            <p className="text-[11px] text-muted">
+            <p className="text-xs text-muted">
               Muda o chapéu ou adereço automaticamente pela cadeira ou fixa o teu preferido.
             </p>
           </div>
@@ -352,9 +244,9 @@ export default function ProfileCard() {
             type="button"
             onClick={() => updateSettings({ uniAccessory: 'auto' })}
             className={cx(
-              'min-h-[34px] rounded-full border px-3 text-xs font-semibold transition',
+              'min-h-[44px] rounded-full border px-3.5 text-xs font-semibold transition',
               (settings.uniAccessory ?? 'auto') === 'auto'
-                ? 'border-accent bg-accent-soft text-accent'
+                ? 'border-accent bg-accent-soft text-accent-ink'
                 : 'border-line bg-surface-2 text-muted hover:text-fg',
             )}
           >
@@ -371,9 +263,9 @@ export default function ProfileCard() {
                 type="button"
                 onClick={() => updateSettings({ uniAccessory: acc.id })}
                 className={cx(
-                  'flex items-center gap-1.5 rounded-2xl border px-2.5 py-1.5 text-xs font-medium transition',
+                  'flex min-h-[44px] items-center gap-1.5 rounded-2xl border px-3 py-1.5 text-xs font-medium transition',
                   active
-                    ? 'border-accent bg-accent-soft text-accent'
+                    ? 'border-accent bg-accent-soft text-accent-ink'
                     : 'border-line bg-surface-2/60 text-fg hover:bg-surface-2',
                 )}
               >
@@ -395,7 +287,7 @@ export default function ProfileCard() {
                   type="button"
                   onClick={() => updateSettings({ uniPersona: p.id })}
                   className={cx(
-                    'min-h-[34px] rounded-full px-3 text-xs font-semibold transition',
+                    'min-h-[40px] rounded-full px-3 text-xs font-semibold transition',
                     active ? 'bg-ink-cta text-ink-cta-fg' : 'text-muted hover:text-fg',
                   )}
                 >
@@ -410,7 +302,7 @@ export default function ProfileCard() {
         <div className="space-y-3 border-t border-line pt-4">
           <div>
             <span className="text-xs font-medium text-muted">Paleta de cores</span>
-            <p className="text-[11px] text-muted">
+            <p className="text-xs text-muted">
               Escolhe entre o caderno quente ou paletas mais minimalistas e sóbrias.
             </p>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -440,7 +332,7 @@ export default function ProfileCard() {
                     </span>
                     <span className="min-w-0">
                       <span className="block truncate text-xs font-semibold">{pal.name}</span>
-                      <span className="block truncate text-[11px] text-muted">{pal.tagline}</span>
+                      <span className="block truncate text-xs text-muted">{pal.tagline}</span>
                     </span>
                   </button>
                 );
@@ -451,7 +343,7 @@ export default function ProfileCard() {
           <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
             <div>
               <span className="text-xs font-medium text-muted">Estilo &amp; Tom da app</span>
-              <p className="text-[11px] text-muted">
+              <p className="text-xs text-muted">
                 O modo Sério &amp; Minimalista reduz animações e oculta os Unis nos cantos.
               </p>
             </div>
@@ -469,7 +361,7 @@ export default function ProfileCard() {
                     type="button"
                     onClick={() => updateSettings({ appTone: toneId })}
                     className={cx(
-                      'min-h-[34px] rounded-full px-3 text-xs font-semibold transition',
+                      'min-h-[40px] rounded-full px-3 text-xs font-semibold transition',
                       active ? 'bg-ink-cta text-ink-cta-fg' : 'text-muted hover:text-fg',
                     )}
                   >
@@ -483,7 +375,7 @@ export default function ProfileCard() {
           <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
             <div>
               <span className="text-xs font-medium text-muted">Unis discretos no ecrã</span>
-              <p className="text-[11px] text-muted">
+              <p className="text-xs text-muted">
                 Companheiros tímidos nos cantos que se escondem quando escreves ou fazes scroll.
               </p>
             </div>
@@ -502,7 +394,7 @@ export default function ProfileCard() {
                     type="button"
                     onClick={() => updateSettings({ uniLiveCompanions: modeId })}
                     className={cx(
-                      'min-h-[34px] rounded-full px-3 text-xs font-semibold transition',
+                      'min-h-[40px] rounded-full px-3 text-xs font-semibold transition',
                       active ? 'bg-ink-cta text-ink-cta-fg' : 'text-muted hover:text-fg',
                     )}
                   >

@@ -12,7 +12,7 @@ export const defaultSettings: Settings = {
   dailyStudyMinutes: 120,
   studyDays: [1, 2, 3, 4, 5, 6],
   geminiApiKey: '',
-  geminiModel: 'gemini-4-hydrogen',
+  geminiModel: 'gemini-3.8-flash',
   googleClientId: '',
   msClientId: '',
   uniAccessory: 'auto',

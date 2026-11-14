@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { ArrowRight, X } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { hapticTap } from '../../lib/nativeBridge';
 import { resolveUniAccessory } from '../../lib/uniAccessories';
 import { useStore } from '../../store/useStore';
@@ -9,19 +10,41 @@ import { UniBuddy } from '../brand/UnipediaMarks';
 import { UNIPEDIA_BOUNCE_SPRING } from '../motion/Primitives';
 import { Button } from '../ui';
 
-const EXPLORE_DELAY_MS = 10_000;
-const SESSION_KEY = 'unipedia.hubInviteShown';
+const EXPLORE_DELAY_MS = 12_000;
+const DISMISS_COOLDOWN_MS = 24 * 60 * 60_000;
+const DISMISS_KEY = 'unipedia.hubInviteDismissedAt';
+
+function isInviteDismissedRecently(): boolean {
+  try {
+    const raw = localStorage.getItem(DISMISS_KEY);
+    if (!raw) return false;
+    const ts = Number(raw);
+    return Number.isFinite(ts) && Date.now() - ts < DISMISS_COOLDOWN_MS;
+  } catch {
+    return false;
+  }
+}
+
+function markInviteDismissedNow(): void {
+  try {
+    localStorage.setItem(DISMISS_KEY, String(Date.now()));
+  } catch {
+    // ignore storage access failure
+  }
+}
 
 /**
- * Pop-up flutuante centrado com o Uni a convidar o estudante a completar o Hub
- * após explorar a app livremente durante alguns segundos depois do guia inicial.
+ * Pop-up flutuante centrado com o Uni a convidar o estudante a completar os Primeiros passos
+ * após explorar a app livremente no separador Hoje.
  */
 export default function UniHubInviteOverlay() {
+  const { pathname } = useLocation();
   const onboardingCompleted = useStore((s) => s.academicProfile.onboardingCompleted);
   const degreeName = useStore((s) => s.academicProfile.degreeName);
   const firstCourseName = useStore((s) => s.courses[0]?.name);
   const settings = useStore((s) => s.settings);
   const modalOpen = useHubUiStore((s) => s.modalOpen);
+  const focusTimerOpen = useHubUiStore((s) => s.focusTimerOpen);
   const openModal = useHubUiStore((s) => s.openModal);
   const reducedMotion = useReducedMotion();
 
@@ -33,50 +56,43 @@ export default function UniHubInviteOverlay() {
   );
 
   const eligible =
+    pathname === '/' &&
     Boolean(onboardingCompleted) &&
-    Boolean(settings.tourCompleted) &&
     !settings.hubSetupCompleted &&
-    !settings.hubSetupDismissed;
+    !settings.hubSetupDismissed &&
+    !modalOpen &&
+    !focusTimerOpen;
 
   useEffect(() => {
-    if (!eligible || modalOpen) return;
-
-    try {
-      if (sessionStorage.getItem(SESSION_KEY) === '1') return;
-    } catch {
-      // ignore storage access failure
-    }
+    if (!eligible || isInviteDismissedRecently()) return;
 
     const timer = window.setTimeout(() => {
-      if (useHubUiStore.getState().modalOpen) return;
-      try {
-        sessionStorage.setItem(SESSION_KEY, '1');
-      } catch {
-        // ignore storage access failure
-      }
+      const uiState = useHubUiStore.getState();
+      if (uiState.modalOpen || uiState.focusTimerOpen) return;
+      if (document.querySelector('[role="dialog"]')) return;
+      const activeTag = document.activeElement?.tagName;
+      if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT') return;
       setVisible(true);
     }, EXPLORE_DELAY_MS);
 
     return () => window.clearTimeout(timer);
-  }, [eligible, modalOpen]);
+  }, [eligible]);
+
+  useEffect(() => {
+    if ((focusTimerOpen || modalOpen || pathname !== '/') && visible) {
+      setVisible(false);
+    }
+  }, [focusTimerOpen, modalOpen, pathname, visible]);
 
   const dismissInvite = () => {
     void hapticTap();
-    try {
-      sessionStorage.setItem(SESSION_KEY, '1');
-    } catch {
-      // ignore storage access failure
-    }
+    markInviteDismissedNow();
     setVisible(false);
   };
 
   const acceptInvite = () => {
     void hapticTap();
-    try {
-      sessionStorage.setItem(SESSION_KEY, '1');
-    } catch {
-      // ignore storage access failure
-    }
+    markInviteDismissedNow();
     setVisible(false);
     openModal(null);
   };
@@ -96,13 +112,13 @@ export default function UniHubInviteOverlay() {
           className="fixed inset-0 z-50 flex items-center justify-center px-5 py-6"
         >
           {/* Véu atmosférico suave — permite ver a app por trás */}
-          <div
-            onClick={dismissInvite}
-            aria-hidden="true"
-            className="absolute inset-0 bg-[#141311]/45 backdrop-blur-[3px]"
-          />
+            <div
+              onClick={dismissInvite}
+              aria-hidden="true"
+              className="absolute inset-0 bg-fg/45 backdrop-blur-[3px]"
+            />
 
-          {/* Uni flutuando acima do balão orgânico (não é apenas uma caixa) */}
+          {/* Uni flutuando acima do balão orgânico */}
           <motion.div
             initial={{ opacity: 0, y: 26, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -122,7 +138,7 @@ export default function UniHubInviteOverlay() {
             >
               <div
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-x-2 top-3 -z-10 h-20 rounded-full bg-pastel-sage/90 blur-xl dark:bg-[#2E4633]"
+                className="pointer-events-none absolute inset-x-2 top-3 -z-10 h-20 rounded-full bg-pastel-sage/90 blur-xl dark:bg-accent-soft"
               />
               <UniBuddy mood="happy" accessory={uniAccessory} size={104} interactive={false} />
             </motion.div>
@@ -134,7 +150,7 @@ export default function UniHubInviteOverlay() {
               viewBox="0 0 42 20"
               fill="none"
               aria-hidden="true"
-              className="relative z-20 -mb-0.5 text-[#FAF8F2] drop-shadow-sm dark:text-[#1D1B18]"
+              className="relative z-20 -mb-0.5 text-bg drop-shadow-sm dark:text-surface"
             >
               <path
                 d="M21 0C24.5 9 32 16 42 20H0C10 16 17.5 9 21 0Z"
@@ -143,7 +159,7 @@ export default function UniHubInviteOverlay() {
             </svg>
 
             {/* Balão de conversa em forma de nuvem macia */}
-            <div className="relative w-full rounded-[36px] bg-[#FAF8F2] px-6 pt-6 pb-6 text-center text-[#141312] shadow-2xl ring-1 ring-black/5 dark:bg-[#1D1B18] dark:text-[#FAF6EC] dark:ring-white/10 sm:px-8">
+            <div className="relative w-full rounded-[36px] bg-bg px-6 pt-6 pb-6 text-center text-fg shadow-2xl ring-1 ring-line dark:bg-surface sm:px-8">
               <button
                 type="button"
                 onClick={dismissInvite}
@@ -157,12 +173,12 @@ export default function UniHubInviteOverlay() {
                 id="uni-hub-invite-title"
                 className="px-8 pt-1 font-display text-xl font-bold leading-snug tracking-tight sm:px-8 sm:text-2xl"
               >
-                Ei! Vamos completar o teu Hub para poderes{' '}
-                <span className="font-serif font-medium italic text-accent">começar a estudar</span>?
+                Ei! Vamos completar os teus Primeiros passos para{' '}
+                <span className="font-serif font-medium italic text-accent-ink">começares a estudar</span>?
               </h2>
 
               <p className="mt-2.5 text-sm leading-relaxed text-muted">
-                Junta aqui o horário, os prints dos testes, Drives partilhados e Gemini Notebook para eu organizar o teu ritmo logo hoje.
+                Junta aqui o horário, os testes, Drives partilhados e Gemini Notebook para eu organizar o teu ritmo logo hoje.
               </p>
 
               <div className="mt-6 flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
@@ -172,7 +188,7 @@ export default function UniHubInviteOverlay() {
                   onClick={acceptInvite}
                   className="w-full min-h-[48px] px-6 sm:w-auto"
                 >
-                  Completar o Hub <ArrowRight size={16} />
+                  Completar primeiros passos <ArrowRight size={16} />
                 </Button>
                 <Button
                   size="md"

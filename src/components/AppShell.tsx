@@ -239,10 +239,10 @@ export default function AppShell() {
           className="mb-2 flex min-h-[44px] items-center justify-between gap-2 rounded-2xl border border-accent/25 bg-accent-soft/45 px-3.5 py-2 text-xs font-semibold text-fg transition hover:bg-accent-soft"
         >
           <span className="inline-flex items-center gap-2">
-            <Award size={15} className="text-accent" />
+            <Award size={15} className="text-accent-ink" />
             Coleção do Uni
           </span>
-          <span className="rounded-full bg-surface px-2 py-0.5 font-mono text-[11px] font-bold text-accent">
+          <span className="rounded-full bg-surface px-2 py-0.5 font-mono text-xs font-bold text-accent-ink">
             {collectibleCounts.unlocked}/{collectibleCounts.total}
           </span>
         </button>

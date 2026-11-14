@@ -8,7 +8,8 @@ import { parseCurriculumFromText } from '../src/lib/curriculumParser';
 import { matchCourse } from '../src/integrations/clip';
 import { extractAcademicsFromGoogleCalendar } from '../src/integrations/gcal';
 import { groupConversations, subjectLabel } from '../src/lib/geminiConversations';
-import { generatePlan } from '../src/lib/planner';
+import { generatePlan, analyzeTestMode } from '../src/lib/planner';
+import { capitalizeFirst, parsePtGrade, sessionMinutes } from '../src/lib/selectors';
 import {
   applyImportedScheduleRecords,
   buildInitialCompletedRecords,
@@ -851,4 +852,256 @@ test('generatePlan entra em Modo Arranque de Semestre quando ha cadeiras sem ava
   assert.ok(sessions.some((s) => s.courseId === 'c2'));
   assert.ok(sessions.every((s) => s.minutes >= 30 && s.minutes <= 60));
   assert.ok(sessions.every((s) => s.notes?.includes('Arranque contínuo')));
+});
+
+test('parsePtGrade, capitalizeFirst e sessionMinutes respeitam regras PT e sessoes parciais', () => {
+  assert.equal(parsePtGrade(''), null);
+  assert.equal(parsePtGrade('   '), null);
+  assert.equal(parsePtGrade('14,5'), 14.5);
+  assert.equal(parsePtGrade('16.25'), 16.25);
+  assert.equal(parsePtGrade('20'), 20);
+  assert.equal(parsePtGrade('21'), 'invalid');
+  assert.equal(parsePtGrade('-1'), 'invalid');
+  assert.equal(parsePtGrade('abc'), 'invalid');
+
+  assert.equal(capitalizeFirst('sábado, 14 de novembro'), 'Sábado, 14 de novembro');
+  assert.equal(capitalizeFirst(''), '');
+
+  assert.equal(
+    sessionMinutes({
+      id: 's1',
+      courseId: 'c1',
+      date: '2026-11-14',
+      minutes: 45,
+      done: true,
+      actualMinutes: 20,
+      generated: true,
+    }),
+    20,
+  );
+  assert.equal(
+    sessionMinutes({
+      id: 's2',
+      courseId: 'c1',
+      date: '2026-11-14',
+      minutes: 45,
+      done: true,
+      generated: true,
+    }),
+    45,
+  );
+});
+
+test('generatePlan com nowMinutes nunca agenda no passado nem após as 22:30 e evita colisões', () => {
+  const courses: Course[] = [
+    {
+      id: 'c1',
+      code: 'C1',
+      name: 'Álgebra',
+      shortName: 'Álg',
+      ects: 6,
+      color: 'sky',
+      targetGrade: 14,
+      topics: [
+        { id: 't1', title: 'Matrizes', status: 'todo', confidence: 2 },
+        { id: 't2', title: 'Determinantes', status: 'todo', confidence: 2 },
+      ],
+    },
+  ];
+  const assessments: Assessment[] = [
+    {
+      id: 'a1',
+      courseId: 'c1',
+      kind: 'teste',
+      title: 'Teste Álgebra',
+      date: '2026-11-17T14:00:00',
+      weight: 40,
+      topicIds: ['t1', 't2'],
+      source: 'local',
+    },
+  ];
+
+  const eveningSessions = generatePlan({
+    courses,
+    assessments,
+    classes: [],
+    events: [],
+    settings: { ...defaultSettings, studyDays: [0, 1, 2, 3, 4, 5, 6], dailyStudyMinutes: 90 },
+    from: '2026-11-14',
+    days: 3,
+    existing: [],
+    nowMinutes: 22 * 60 + 35,
+  });
+  assert.equal(
+    eveningSessions.filter((s) => s.date === '2026-11-14').length,
+    0,
+    'Após as 22:30 não deve agendar sessões para hoje',
+  );
+
+  const daySessions = generatePlan({
+    courses,
+    assessments,
+    classes: [
+      { id: 'cl1', courseId: 'c1', type: 'T', weekday: 6, start: '14:00', end: '16:00', source: 'local' },
+    ],
+    events: [],
+    settings: { ...defaultSettings, studyDays: [0, 1, 2, 3, 4, 5, 6], dailyStudyMinutes: 90 },
+    from: '2026-11-14', // sábado = weekday 6
+    days: 2,
+    existing: [
+      {
+        id: 'manual1',
+        courseId: 'c1',
+        date: '2026-11-14',
+        start: '16:15',
+        minutes: 60,
+        done: false,
+        generated: false,
+      },
+    ],
+    nowMinutes: 13 * 60 + 30,
+  });
+
+  const todayPlanned = daySessions.filter((s) => s.date === '2026-11-14');
+  for (const s of todayPlanned) {
+    assert.ok(s.start, 'Sessão deve ter hora de início');
+    const [hh, mm] = s.start.split(':').map(Number);
+    const startMin = hh * 60 + mm;
+    assert.ok(startMin >= 13 * 60 + 30, `Sessão ${s.start} não pode estar no passado`);
+    const endMin = startMin + s.minutes;
+    const overlapsClass = startMin < 16 * 60 && endMin > 14 * 60;
+    const overlapsManual = startMin < 17 * 60 + 15 && endMin > 16 * 60 + 15;
+    assert.equal(overlapsClass, false, `Sessão ${s.start} colidiu com aula`);
+    assert.equal(overlapsManual, false, `Sessão ${s.start} colidiu com sessão manual`);
+  }
+});
+
+test('generatePlan respeita hora da prova no proprio dia e modo de teste progressivo', () => {
+  const courses: Course[] = [
+    {
+      id: 'c1',
+      code: 'C1',
+      name: 'Termodinâmica',
+      shortName: 'Termo',
+      ects: 6,
+      color: 'amber',
+      targetGrade: 14,
+      topics: [{ id: 't1', title: 'Entropia', status: 'learning', confidence: 2 }],
+    },
+    {
+      id: 'c2',
+      code: 'C2',
+      name: 'Redes',
+      shortName: 'Redes',
+      ects: 6,
+      color: 'cyan',
+      targetGrade: 15,
+      topics: [
+        {
+          id: 't2',
+          title: 'TCP/IP',
+          status: 'review',
+          confidence: 3,
+          lastStudied: '2026-11-10',
+          nextReviewDate: '2026-11-14',
+        },
+      ],
+    },
+  ];
+
+  // Prova a 5 dias -> foco não estrito (reserva espaço para SRS/outras cadeiras)
+  const earlyMode = analyzeTestMode(
+    courses,
+    [
+      {
+        id: 'a1',
+        courseId: 'c1',
+        kind: 'teste',
+        title: 'Teste Termo',
+        date: '2026-11-19T14:00:00',
+        weight: 40,
+        topicIds: ['t1'],
+        source: 'local',
+      },
+    ],
+    '2026-11-14',
+  );
+  assert.equal(earlyMode.mode, 'single_test');
+  assert.equal(earlyMode.urgentAssessments[0]?.daysLeft, 5);
+
+  const farPlan = generatePlan({
+    courses,
+    assessments: [
+      {
+        id: 'a1',
+        courseId: 'c1',
+        kind: 'teste',
+        title: 'Teste Termo',
+        date: '2026-11-19T14:00:00',
+        weight: 40,
+        topicIds: ['t1'],
+        source: 'local',
+      },
+    ],
+    classes: [],
+    events: [],
+    settings: { ...defaultSettings, studyDays: [0, 1, 2, 3, 4, 5, 6], dailyStudyMinutes: 120 },
+    from: '2026-11-14',
+    days: 2,
+    existing: [],
+  });
+  assert.ok(farPlan.some((s) => s.courseId === 'c2'), 'Deve reservar espaço para SRS/outra cadeira quando falta > 3 dias');
+
+  // Prova a 1 dia -> foco estrito na prova urgente (strictSingleTestMode)
+  const nearPlan = generatePlan({
+    courses,
+    assessments: [
+      {
+        id: 'a1',
+        courseId: 'c1',
+        kind: 'teste',
+        title: 'Teste Termo',
+        date: '2026-11-15T14:00:00',
+        weight: 40,
+        topicIds: ['t1'],
+        source: 'local',
+      },
+    ],
+    classes: [],
+    events: [],
+    settings: { ...defaultSettings, studyDays: [0, 1, 2, 3, 4, 5, 6], dailyStudyMinutes: 120 },
+    from: '2026-11-14',
+    days: 1,
+    existing: [],
+  });
+  assert.ok(nearPlan.length > 0 && nearPlan.every((s) => s.courseId === 'c1'), 'Quando falta <= 2 dias, concentra 100% na cadeira da prova');
+
+  // Prova no próprio dia às 14:00 com nowMinutes = 14:30 -> não deve agendar depois da prova
+  const examPassed = generatePlan({
+    courses,
+    assessments: [
+      {
+        id: 'a1',
+        courseId: 'c1',
+        kind: 'teste',
+        title: 'Teste Termo',
+        date: '2026-11-14T14:00:00',
+        weight: 40,
+        topicIds: ['t1'],
+        source: 'local',
+      },
+    ],
+    classes: [],
+    events: [],
+    settings: { ...defaultSettings, studyDays: [0, 1, 2, 3, 4, 5, 6], dailyStudyMinutes: 90 },
+    from: '2026-11-14',
+    days: 1,
+    existing: [],
+    nowMinutes: 14 * 60 + 30,
+  });
+  assert.equal(
+    examPassed.filter((s) => s.assessmentId === 'a1').length,
+    0,
+    'Não deve agendar estudo para uma prova cuja hora já passou',
+  );
 });

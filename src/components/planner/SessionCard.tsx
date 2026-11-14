@@ -37,13 +37,13 @@ export default function SessionCard({ session, course, topic, assessment, onFocu
   return (
     <article
       className={cx(
-        'rounded-xl border border-line bg-surface-2/60 p-3 transition',
+        'overflow-hidden rounded-xl border border-line bg-surface-2/60 p-3 transition',
         session.done && 'opacity-60',
       )}
       style={{ borderLeftWidth: 4, borderLeftColor: color }}
     >
-      <div className="flex items-center justify-between gap-2">
-        <CourseChip course={course} />
+      <div className="flex flex-wrap items-center justify-between gap-1.5">
+        <CourseChip course={course} className="max-w-full truncate" />
         <span className="shrink-0 text-xs text-muted tabular">
           {session.start ?? '—'}
         </span>

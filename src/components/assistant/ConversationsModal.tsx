@@ -257,7 +257,7 @@ export default function ConversationsModal({
                                 {conv.title}
                               </span>
                               {isActive && (
-                                <span className="shrink-0 rounded-full bg-ink-cta px-2 py-0.5 text-[10px] font-bold text-ink-cta-fg">
+                                <span className="shrink-0 rounded-full bg-ink-cta px-2 py-0.5 text-xs font-bold text-ink-cta-fg">
                                   Ativa
                                 </span>
                               )}

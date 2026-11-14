@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 import type { Course } from '../../types';
 import { Badge, Button, Card, CourseChip, EmptyState, cx } from '../ui';
+import { capitalizeFirst } from '../../lib/selectors';
 import { ConfirmModal } from '../courses/ConfirmModal';
 import type { CalItem } from './items';
 import { KIND_META, SOURCE_LABEL, isImported, itemTone, timeLabel } from './shared';
@@ -28,7 +29,7 @@ export default function DayPanel({ date, items, courseById, onNewEvent }: Props)
     <>
     <Card
       className="lg:sticky lg:top-4"
-      title={<span className="capitalize">{heading}</span>}
+      title={capitalizeFirst(heading)}
       action={items.length > 0 ? <Badge>{items.length}</Badge> : undefined}
     >
       {items.length === 0 ? (

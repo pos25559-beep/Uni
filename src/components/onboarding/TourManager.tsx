@@ -1,6 +1,4 @@
 import { driver, type DriveStep } from 'driver.js';
-import { useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 
 let activeTourInstance: ReturnType<typeof driver> | null = null;
@@ -90,20 +88,6 @@ export function startUnipediaGuidedTour(onComplete?: () => void): void {
 }
 
 export default function TourManager() {
-  const onboardingCompleted = useStore((s) => s.academicProfile.onboardingCompleted);
-  const tourCompleted = Boolean(useStore((s) => s.settings.tourCompleted));
-  const updateSettings = useStore((s) => s.updateSettings);
-  const location = useLocation();
-
-  useEffect(() => {
-    if (!onboardingCompleted || tourCompleted || location.pathname !== '/') return;
-    const timer = window.setTimeout(() => {
-      startUnipediaGuidedTour(() => {
-        updateSettings({ tourCompleted: true });
-      });
-    }, 550);
-    return () => window.clearTimeout(timer);
-  }, [onboardingCompleted, tourCompleted, location.pathname, updateSettings]);
-
+  // Tour guiado apenas manual (a partir das Definições → Ajuda) para não interromper a primeira entrada.
   return null;
 }

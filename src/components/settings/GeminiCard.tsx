@@ -30,7 +30,7 @@ export default function GeminiCard() {
 
   const test = async () => {
     const key = apiKey.trim() || (import.meta.env.DEV ? (import.meta.env.VITE_GEMINI_API_KEY ?? '') : '');
-    const wanted = model.trim() || 'gemini-4-hydrogen';
+    const wanted = model.trim() || 'gemini-3.8-flash';
     if (!aiConsent) {
       setLocalError('Ativa primeiro a autorização para o Uni abaixo.');
       return;
@@ -64,7 +64,7 @@ export default function GeminiCard() {
           <p className="font-semibold text-fg">
             {customKeyActive ? 'Modo Avançado (Chave Pessoal)' : 'Uni Nativo Incluído'}
           </p>
-          <p className="mt-0.5 text-[11px] text-muted">
+          <p className="mt-0.5 text-xs text-muted">
             {customKeyActive
               ? 'Sem limite diário da app · a usar a tua quota AI Studio.'
               : `${quota.chatRemaining}/${quota.chatLimit} mensagens e ${quota.notebookRemaining}/${quota.notebookLimit} cadernos disponíveis hoje.`}
@@ -108,10 +108,10 @@ export default function GeminiCard() {
         </summary>
 
         <div className="mt-3 space-y-3 border-t border-line pt-3">
-          <p className="text-[11px] text-muted">
+          <p className="text-xs text-muted">
             Opcional: para uso intensivo sem limite diário de {quota.chatLimit} mensagens/{quota.notebookLimit} cadernos, podes colar uma chave gratuita em{' '}
             <a
-              className="text-accent underline-offset-2 hover:underline"
+              className="text-accent-ink underline-offset-2 hover:underline"
               href="https://aistudio.google.com/apikey"
               target="_blank"
               rel="noreferrer"
@@ -142,22 +142,23 @@ export default function GeminiCard() {
             </div>
           </Field>
 
-          <Field label="Modelo do Uni (predefinido: Gemini 4 Hydrogen)">
+          <Field label="Modelo do Uni (predefinido: Gemini 3.8 Flash)">
             <div className="mb-2 flex flex-wrap gap-1.5">
               {[
-                { id: 'gemini-4-hydrogen', label: 'Gemini 4 Hydrogen (Recomendado)' },
-                { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Suplente)' },
+                { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash (Recomendado)' },
+                { id: 'gemini-4-argon', label: 'Gemini 4 Argon' },
+                { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash-Lite (Suplente)' },
               ].map((preset) => {
-                const active = (model || 'gemini-4-hydrogen') === preset.id;
+                const active = (model || 'gemini-3.8-flash') === preset.id;
                 return (
                   <button
                     key={preset.id}
                     type="button"
                     onClick={() => updateSettings({ geminiModel: preset.id })}
                     className={cx(
-                      'min-h-[36px] rounded-full border px-3 py-1 text-xs font-semibold transition',
+                      'min-h-11 rounded-full border px-3 py-1.5 text-xs font-semibold transition',
                       active
-                        ? 'border-accent bg-accent-soft text-accent'
+                        ? 'border-accent bg-accent-soft text-accent-ink'
                         : 'border-line bg-surface-2 text-muted hover:text-fg',
                     )}
                   >
@@ -170,7 +171,7 @@ export default function GeminiCard() {
               value={model}
               autoComplete="off"
               spellCheck={false}
-              placeholder="gemini-4-hydrogen"
+              placeholder="gemini-3.8-flash"
               onChange={(e) => updateSettings({ geminiModel: e.target.value })}
             />
           </Field>

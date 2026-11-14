@@ -1,7 +1,9 @@
 import { MotionConfig } from 'motion/react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { useEffect } from 'react';
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import AppShell from './components/AppShell';
 import TourManager from './components/onboarding/TourManager';
+import { loadDemoData } from './lib/demoSeed';
 import Assistant from './pages/Assistant';
 import Calendar from './pages/Calendar';
 import CourseDetail from './pages/CourseDetail';
@@ -20,10 +22,31 @@ import Progress from './pages/Progress';
 import SettingsPage from './pages/Settings';
 import WelcomePage from './pages/Welcome';
 
+function DemoQueryBootstrap() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('demo') === '1') {
+      loadDemoData();
+      params.delete('demo');
+      const nextSearch = params.toString();
+      navigate(
+        { pathname: location.pathname, search: nextSearch ? `?${nextSearch}` : '' },
+        { replace: true },
+      );
+    }
+  }, [location.pathname, location.search, navigate]);
+
+  return null;
+}
+
 export default function App() {
   return (
     <MotionConfig reducedMotion="user">
       <BrowserRouter>
+        <DemoQueryBootstrap />
         <TourManager />
         <Routes>
           <Route element={<AppShell />}>

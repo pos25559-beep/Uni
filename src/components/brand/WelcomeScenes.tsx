@@ -1,5 +1,6 @@
-import { motion } from 'motion/react';
-import { BookOpen, Sparkles } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { BookOpen, Brain, CalendarDays, CheckCircle2, HardDrive, Mail, Sparkles } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { UNIPEDIA_BOUNCE_SPRING } from '../motion/Primitives';
 import { UniBuddy } from './UnipediaMarks';
 
@@ -151,18 +152,18 @@ export function UniStudyGroupScene() {
       <motion.div
         animate={{ y: [0, -5, 0], rotate: [-4, -1, -4] }}
         transition={{ repeat: Infinity, duration: 4.2, ease: 'easeInOut' }}
-        className="absolute left-3 top-2 flex items-center gap-1.5 rounded-full bg-[#FAF8F2] px-3 py-1.5 text-[11px] font-bold text-[#141312] shadow-card dark:bg-[#23201B] dark:text-[#FAF6EC]"
+        className="absolute left-3 top-2 flex items-center gap-1.5 rounded-full bg-bg px-3 py-1.5 text-xs font-bold text-fg shadow-card dark:bg-surface"
       >
-        <Sparkles size={12} className="text-[#157F58] dark:text-[#4ADE80]" />
+        <Sparkles size={12} className="text-accent-ink" />
         <span>Revisão 1→3→7d</span>
       </motion.div>
 
       <motion.div
         animate={{ y: [0, 5, 0], rotate: [3, 6, 3] }}
         transition={{ repeat: Infinity, duration: 4.6, ease: 'easeInOut' }}
-        className="absolute right-3 top-4 flex items-center gap-1.5 rounded-full bg-[#FCE99F] px-3 py-1.5 text-[11px] font-bold text-[#141312] shadow-card"
+        className="absolute right-3 top-4 flex items-center gap-1.5 rounded-full bg-pastel-butter px-3 py-1.5 text-xs font-bold text-[#141312] shadow-card"
       >
-        <BookOpen size={12} className="text-[#157F58]" />
+        <BookOpen size={12} className="text-[#0F6344]" />
         <span>Caderno em grupo</span>
       </motion.div>
 
@@ -221,6 +222,239 @@ export function UniStudyGroupScene() {
           className="absolute -bottom-7 right-5"
         >
           <UniBuddy mood="thinking" accessory="science" skin="butter" size={58} />
+        </motion.div>
+      </motion.div>
+    </div>
+  );
+}
+
+/**
+ * Cena combinada (Slides 2+3): alterna suavemente entre a sala de aula e o grupo de estudo,
+ * sem precisar de intervenção do utilizador.
+ */
+export function UniLearningModesScene() {
+  const reducedMotion = useReducedMotion();
+  const [phase, setPhase] = useState<'classroom' | 'group'>('classroom');
+
+  useEffect(() => {
+    if (reducedMotion) return;
+    const id = window.setInterval(() => {
+      setPhase((prev) => (prev === 'classroom' ? 'group' : 'classroom'));
+    }, 4200);
+    return () => window.clearInterval(id);
+  }, [reducedMotion]);
+
+  return (
+    <div className="relative flex h-64 w-full max-w-[336px] flex-col items-center justify-center">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={phase}
+          initial={reducedMotion ? false : { opacity: 0, y: 10, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={reducedMotion ? undefined : { opacity: 0, y: -10, scale: 0.97 }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          className="flex w-full items-center justify-center"
+        >
+          {phase === 'classroom' ? <UniClassroomScene /> : <UniStudyGroupScene />}
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/**
+ * Cena combinada (Slides 4+5): agrupa plano diário + integrações Google opcionais,
+ * acompanhados por 2-3 pequenos Unis vivos discretos nas margens a passear e conversar.
+ */
+export function UniPlanAndConnectScene() {
+  const reducedMotion = useReducedMotion();
+  const [view, setView] = useState<'plan' | 'google'>('plan');
+
+  useEffect(() => {
+    if (reducedMotion) return;
+    const id = window.setInterval(() => {
+      setView((prev) => (prev === 'plan' ? 'google' : 'plan'));
+    }, 4200);
+    return () => window.clearInterval(id);
+  }, [reducedMotion]);
+
+  return (
+    <div
+      className="relative flex h-64 w-full max-w-[340px] items-center justify-center px-2 select-none"
+      aria-label="Ilustração do plano semanal e ligações Google opcionais com pequenos companheiros Uni discretos nas margens"
+    >
+      {/* Pequeno Uni curioso a passear discretamente na margem superior direita */}
+      <motion.div
+        aria-hidden="true"
+        animate={reducedMotion ? undefined : { x: [0, -14, -4, 0], y: [0, -2, 0] }}
+        transition={reducedMotion ? undefined : { repeat: Infinity, duration: 7.2, ease: 'easeInOut' }}
+        className="pointer-events-none absolute right-2 top-0 z-20 flex items-center gap-1 opacity-85"
+      >
+        <UniBuddy mood="curious" accessory="default" skin="butter" size={26} interactive={false} />
+      </motion.div>
+
+      {/* Dois pequenos Unis discretos a conversar num murmúrio sereno no canto inferior esquerdo */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-0 left-1 z-20 flex items-end gap-1 opacity-90"
+      >
+        <motion.div
+          animate={reducedMotion ? undefined : { y: [0, -2, 0], rotate: [-3, 2, -3] }}
+          transition={reducedMotion ? undefined : { repeat: Infinity, duration: 3.4, ease: 'easeInOut' }}
+        >
+          <UniBuddy mood="shy" accessory="arts" skin="sage" size={26} interactive={false} />
+        </motion.div>
+        <motion.div
+          animate={reducedMotion ? undefined : { y: [0, -2.5, 0], rotate: [2, -3, 2] }}
+          transition={reducedMotion ? undefined : { repeat: Infinity, duration: 3.8, delay: 0.4, ease: 'easeInOut' }}
+        >
+          <UniBuddy mood="curious" accessory="tech" skin="crimson" size={24} interactive={false} />
+        </motion.div>
+        <motion.span
+          animate={reducedMotion ? undefined : { opacity: [0.45, 0.9, 0.45] }}
+          transition={reducedMotion ? undefined : { repeat: Infinity, duration: 3.6 }}
+          className="mb-3 rounded-full bg-bg/90 px-2 py-0.5 text-xs font-medium text-muted shadow-sm dark:bg-surface/90"
+        >
+          psiu…
+        </motion.span>
+      </div>
+
+      {/* Centro alternando suavemente entre cartões de plano e Google opcional */}
+      <AnimatePresence mode="wait">
+        {view === 'plan' ? (
+          <motion.div
+            key="plan"
+            initial={reducedMotion ? false : { opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reducedMotion ? undefined : { opacity: 0, y: -10 }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            className="flex w-full max-w-[292px] flex-col items-center gap-2.5"
+          >
+            {[
+              { label: '09:30 · Rever capítulo 3', tone: 'bg-bg text-fg dark:bg-surface', tilt: -1.4 },
+              { label: '14:00 · Ficha prática com o Uni', tone: 'bg-pastel-sage text-[#141312]', tilt: 1.4 },
+              { label: '17:30 · Simulação de exame', tone: 'bg-pastel-butter text-[#141312]', tilt: -1 },
+            ].map((card, i) => (
+              <motion.div
+                key={card.label}
+                initial={reducedMotion ? false : { opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0, rotate: card.tilt }}
+                transition={{ ...UNIPEDIA_BOUNCE_SPRING, delay: i * 0.06 }}
+                className={`flex w-full items-center justify-between rounded-[20px] px-4 py-3 text-xs font-semibold shadow-card ${card.tone}`}
+              >
+                <span className="flex items-center gap-2">
+                  <CalendarDays size={14} className="shrink-0 opacity-75" />
+                  {card.label}
+                </span>
+                <Sparkles size={13} className="shrink-0 opacity-60" />
+              </motion.div>
+            ))}
+          </motion.div>
+        ) : (
+          <motion.div
+            key="google"
+            initial={reducedMotion ? false : { opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reducedMotion ? undefined : { opacity: 0, y: -10 }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            className="flex w-full max-w-[300px] flex-col gap-2 text-left"
+          >
+            {[
+              {
+                icon: HardDrive,
+                title: 'Google Drive nas cadeiras',
+                detail: 'Sebentas e fichas sem andar à procura.',
+                tone: 'bg-bg text-fg dark:bg-surface',
+              },
+              {
+                icon: CalendarDays,
+                title: 'Google Agenda sincronizada',
+                detail: 'Aulas e datas de provas sem duplicar.',
+                tone: 'bg-pastel-sky text-[#141312]',
+              },
+              {
+                icon: Mail,
+                title: 'Avisos académicos opcionais',
+                detail: 'Ativa quando quiseres, ao teu ritmo.',
+                tone: 'bg-pastel-butter text-[#141312]',
+              },
+            ].map((item, idx) => {
+              const Icon = item.icon;
+              return (
+                <motion.div
+                  key={item.title}
+                  initial={reducedMotion ? false : { opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ ...UNIPEDIA_BOUNCE_SPRING, delay: idx * 0.05 }}
+                  className={`flex items-center gap-3 rounded-[20px] px-3.5 py-2.5 shadow-card ${item.tone}`}
+                >
+                  <div className="grid size-8 shrink-0 place-items-center rounded-xl bg-black/5">
+                    <Icon size={15} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold leading-tight">{item.title}</p>
+                    <p className="mt-0.5 text-xs leading-snug opacity-75">{item.detail}</p>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/**
+ * Novo Slide 4: Cena simpática do Modo Foco & Recall Ativo com o Uni a celebrar minutos reais.
+ */
+export function UniFocusRecallScene() {
+  const reducedMotion = useReducedMotion();
+
+  return (
+    <div
+      className="relative flex h-64 w-full max-w-[336px] flex-col items-center justify-center select-none"
+      aria-label="Ilustração do modo foco com temporizador e revisão ativa acompanhada pelo Uni"
+    >
+      {/* Sticker superior com progresso de Recall */}
+      <motion.div
+        animate={reducedMotion ? undefined : { y: [0, -4, 0], rotate: [-3, -1, -3] }}
+        transition={reducedMotion ? undefined : { repeat: Infinity, duration: 3.8, ease: 'easeInOut' }}
+        className="absolute left-3 top-2 flex items-center gap-1.5 rounded-full bg-bg px-3 py-1.5 text-xs font-bold text-fg shadow-card dark:bg-surface"
+      >
+        <Brain size={14} className="text-accent-ink" />
+        <span>Lembrei bem · +7d</span>
+      </motion.div>
+
+      <motion.div
+        animate={reducedMotion ? undefined : { y: [0, 4, 0], rotate: [2, 5, 2] }}
+        transition={reducedMotion ? undefined : { repeat: Infinity, duration: 4.1, ease: 'easeInOut' }}
+        className="absolute right-3 bottom-3 flex items-center gap-1.5 rounded-full bg-pastel-mint px-3 py-1.5 text-xs font-bold text-[#141312] shadow-card"
+      >
+        <CheckCircle2 size={14} className="text-[#0F6344]" />
+        <span>25 min reais guardados</span>
+      </motion.div>
+
+      {/* Cartão circular de foco pastel */}
+      <motion.div
+        initial={reducedMotion ? false : { scale: 0.94, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={UNIPEDIA_BOUNCE_SPRING}
+        className="relative flex items-center gap-4 rounded-[32px] border-2 border-accent/20 bg-bg/95 px-6 py-5 shadow-card dark:bg-surface/95"
+      >
+        <div className="flex flex-col items-start text-left">
+          <span className="text-xs font-semibold text-accent-ink">Sessão de foco</span>
+          <span className="mt-0.5 font-display text-3xl font-extrabold tracking-tight tabular text-fg">
+            25:00
+          </span>
+          <span className="mt-1 text-xs text-muted">Sem pressa · recall no fim</span>
+        </div>
+
+        <motion.div
+          animate={reducedMotion ? undefined : { y: [0, -5, 0], rotate: [-2, 3, -2] }}
+          transition={reducedMotion ? undefined : { repeat: Infinity, duration: 3.2, ease: 'easeInOut' }}
+        >
+          <UniBuddy mood="celebrate" accessory="tech" skin="crimson" size={76} interactive={false} />
         </motion.div>
       </motion.div>
     </div>

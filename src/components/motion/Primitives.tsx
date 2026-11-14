@@ -160,12 +160,12 @@ export function StickerBadge({
   className?: string;
 }) {
   const toneClass = {
-    butter: 'bg-[#FCE99F] text-[#141312]',
-    sage: 'bg-[#C9DC9F] text-[#141312]',
-    mint: 'bg-[#BCEEE0] text-[#141312]',
-    sky: 'bg-[#C4E0FD] text-[#141312]',
-    peach: 'bg-[#FAD6BA] text-[#141312]',
-    blush: 'bg-[#F9C5BE] text-[#141312]',
+    butter: 'bg-pastel-butter text-[#141312]',
+    sage: 'bg-pastel-sage text-[#141312]',
+    mint: 'bg-pastel-mint text-[#141312]',
+    sky: 'bg-pastel-sky text-[#141312]',
+    peach: 'bg-pastel-peach text-[#141312]',
+    blush: 'bg-pastel-blush text-[#141312]',
   }[tone];
 
   return (
@@ -185,12 +185,12 @@ export function StickerBadge({
 export type BentoTone = 'sage' | 'butter' | 'mint' | 'sky' | 'peach' | 'blush' | 'neutral';
 
 const BENTO_STYLES: Record<BentoTone, string> = {
-  sage: 'bg-[#C9DC9F]/85 text-[#141312] dark:bg-[#23311B] dark:text-[#FAF6EC]',
-  butter: 'bg-[#FCE99F]/90 text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]',
-  mint: 'bg-[#BCEEE0]/85 text-[#141312] dark:bg-[#17312B] dark:text-[#FAF6EC]',
-  sky: 'bg-[#C4E0FD]/85 text-[#141312] dark:bg-[#192A3D] dark:text-[#FAF6EC]',
-  peach: 'bg-[#FAD6BA]/90 text-[#141312] dark:bg-[#382317] dark:text-[#FAF6EC]',
-  blush: 'bg-[#F9C5BE]/85 text-[#141312] dark:bg-[#381E21] dark:text-[#FAF6EC]',
+  sage: 'bg-pastel-sage/90 text-[#141312] dark:bg-[#23311B] dark:text-[#FAF6EC]',
+  butter: 'bg-pastel-butter/90 text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]',
+  mint: 'bg-pastel-mint/90 text-[#141312] dark:bg-[#17312B] dark:text-[#FAF6EC]',
+  sky: 'bg-pastel-sky/90 text-[#141312] dark:bg-[#192A3D] dark:text-[#FAF6EC]',
+  peach: 'bg-pastel-peach/90 text-[#141312] dark:bg-[#382317] dark:text-[#FAF6EC]',
+  blush: 'bg-pastel-blush/90 text-[#141312] dark:bg-[#381E21] dark:text-[#FAF6EC]',
   neutral: 'bg-surface border border-line text-fg shadow-card',
 };
 
@@ -312,7 +312,7 @@ export function WeekDayPills({
                 : 'text-muted hover:bg-surface/70 hover:text-fg',
             )}
           >
-            <span className="text-[11px] font-semibold uppercase tracking-wide opacity-80">
+            <span className="text-xs font-semibold uppercase tracking-wide opacity-80">
               {d.shortLabel}
             </span>
             <span className="font-mono text-sm font-bold tabular">{d.dayNumber}</span>
@@ -392,11 +392,11 @@ export function FolderCardDeck({
                 isActive ? 'z-20 shadow-float ring-1 ring-[#141312]/15 dark:ring-white/15' : 'z-10 opacity-95',
               )}
             >
-              {/* Rabisco orgânico discreto de caderno */}
+              {/* Rabisco orgânico discreto de caderno — à esquerda do % para nunca sobrepor números */}
               <svg
                 aria-hidden="true"
                 viewBox="0 0 120 60"
-                className="pointer-events-none absolute right-2 bottom-1 h-16 w-28 opacity-15"
+                className="pointer-events-none absolute right-14 bottom-1 h-14 w-24 opacity-15"
                 fill="none"
               >
                 <path
@@ -438,7 +438,7 @@ export function FolderCardDeck({
                     </motion.div>
                   )}
                 </div>
-                <span className="shrink-0 font-mono text-sm font-bold tabular opacity-80">
+                <span className="min-w-10 shrink-0 text-right font-mono text-sm font-bold tabular">
                   {pct}%
                 </span>
               </button>

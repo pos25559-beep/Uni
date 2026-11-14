@@ -23,6 +23,8 @@ import type {
   WeeklyCheckIn,
 } from '../types';
 import { buildActiveCoursesFromCurriculum } from '../lib/portugalCurriculum';
+import { generatePlan } from '../lib/planner';
+import { todayStr } from '../lib/selectors';
 
 type Key = keyof Collections;
 type Item<K extends Key> = Collections[K][number];
@@ -68,6 +70,8 @@ export interface AppState extends Collections {
     items: Item<K>[],
   ) => void;
   replaceGeneratedSessions: (fromDate: string, sessions: Collections['sessions']) => void;
+  /** Regenera sessões futuras pendentes se já existir um plano gerado ativo (ou quando `force = true`). */
+  reconcileFuturePlan: (force?: boolean) => void;
   updateTopic: (courseId: ID, topicId: ID, changes: Partial<Topic>) => void;
   updateSettings: (changes: Partial<Settings>) => void;
   setIntegration: (key: IntegrationKey, status: Partial<IntegrationStatus>) => void;
@@ -79,6 +83,35 @@ export interface AppState extends Collections {
 }
 
 export const newId = (): ID => crypto.randomUUID();
+
+function maybeReconcileSessions(
+  s: Pick<AppState, 'courses' | 'assessments' | 'classes' | 'events' | 'settings' | 'sessions' | 'academicProfile' | 'weeklyCheckIns'>,
+  force = false,
+): AppState['sessions'] {
+  const today = todayStr();
+  const hasPendingGenerated = s.sessions.some((x) => x.generated && !x.done && x.date >= today);
+  if (!force && !hasPendingGenerated) return s.sessions;
+  if (s.courses.length === 0) {
+    return s.sessions.filter((x) => !x.generated || x.done || x.date < today);
+  }
+  const now = new Date();
+  const preserved = s.sessions.filter((x) => !x.generated || x.done || x.date < today);
+  const nextPlan = generatePlan({
+    courses: s.courses,
+    assessments: s.assessments,
+    classes: s.classes,
+    events: s.events,
+    settings: s.settings,
+    from: today,
+    nowMinutes: now.getHours() * 60 + now.getMinutes(),
+    days: 14,
+    existing: preserved,
+    difficultCourseIds: s.academicProfile.difficultCourseIds,
+    weeklyCheckIns: s.weeklyCheckIns,
+    extraActivities: s.academicProfile.extraActivities,
+  });
+  return [...preserved, ...nextPlan];
+}
 
 export const useStore = create<AppState>()(
   persist(
@@ -94,9 +127,17 @@ export const useStore = create<AppState>()(
         return set((s) => {
           const list = s[key] as { id: ID }[];
           const exists = list.some((x) => x.id === item.id);
-          return {
+          const updated = {
+            ...s,
             [key]: exists ? list.map((x) => (x.id === item.id ? item : x)) : [...list, item],
-          } as Partial<AppState>;
+          };
+          if (key === 'assessments') {
+            return {
+              [key]: updated[key],
+              sessions: maybeReconcileSessions(updated),
+            } as Partial<AppState>;
+          }
+          return { [key]: updated[key] } as Partial<AppState>;
         });
       },
       upsertMany: (key, items) => {
@@ -109,9 +150,17 @@ export const useStore = create<AppState>()(
       },
       patch: (key, id, changes) => {
         syncPatch(key as any, id, changes).catch(() => {});
-        return set((s) => ({
-          [key]: (s[key] as { id: ID }[]).map((x) => (x.id === id ? { ...x, ...changes } : x)),
-        }) as Partial<AppState>);
+        return set((s) => {
+          const nextList = (s[key] as { id: ID }[]).map((x) => (x.id === id ? { ...x, ...changes } : x));
+          if (key === 'assessments') {
+            const updated = { ...s, assessments: nextList as AppState['assessments'] };
+            return {
+              [key]: nextList,
+              sessions: maybeReconcileSessions(updated),
+            } as Partial<AppState>;
+          }
+          return { [key]: nextList } as Partial<AppState>;
+        });
       },
       remove: (key, id) => {
         syncRemove(key as any, id).catch(() => {});
@@ -125,6 +174,9 @@ export const useStore = create<AppState>()(
             next.sessions = s.sessions.filter((x) => x.courseId !== id);
             next.tasks = s.tasks.filter((x) => x.courseId !== id);
             next.materials = s.materials.filter((x) => x.courseId !== id);
+          } else if (key === 'assessments') {
+            const updated = { ...s, assessments: next.assessments! };
+            next.sessions = maybeReconcileSessions(updated);
           }
           return next as Partial<AppState>;
         });
@@ -140,6 +192,10 @@ export const useStore = create<AppState>()(
             ...sessions,
           ],
         })),
+      reconcileFuturePlan: (force = false) =>
+        set((s) => ({
+          sessions: maybeReconcileSessions(s, force),
+        })),
       updateTopic: (courseId, topicId, changes) =>
         set((s) => {
           const nextCourses = s.courses.map((c) =>
@@ -149,7 +205,16 @@ export const useStore = create<AppState>()(
           );
           const updatedCourse = nextCourses.find((c) => c.id === courseId);
           if (updatedCourse) syncUpsert('courses', updatedCourse).catch(() => {});
-          return { courses: nextCourses };
+          const shouldReconcile =
+            changes.nextReviewDate !== undefined ||
+            changes.confidence !== undefined ||
+            changes.status !== undefined;
+          return {
+            courses: nextCourses,
+            ...(shouldReconcile
+              ? { sessions: maybeReconcileSessions({ ...s, courses: nextCourses }) }
+              : {}),
+          };
         }),
       updateSettings: (changes) => {
         syncSettings(changes).catch(() => {});

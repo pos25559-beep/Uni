@@ -44,7 +44,7 @@ export default function AuthStatus() {
         className="mb-3 flex min-h-[54px] items-center justify-between gap-3 rounded-[18px] border border-line bg-bg px-3.5 py-2.5 transition hover:bg-surface-2"
       >
         <div className="flex min-w-0 items-center gap-2.5">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent-ink">
             <Cloud size={17} aria-hidden="true" />
           </span>
           <div className="min-w-0">
@@ -64,7 +64,7 @@ export default function AuthStatus() {
           {user.photoURL ? (
             <img src={user.photoURL} alt="" className="size-8 shrink-0 rounded-full object-cover" />
           ) : (
-            <div className="grid size-8 shrink-0 place-items-center rounded-full bg-accent-soft text-xs font-bold text-accent">
+            <div className="grid size-8 shrink-0 place-items-center rounded-full bg-accent-soft text-xs font-bold text-accent-ink">
               {(user.displayName || user.email || 'U').slice(0, 1).toUpperCase()}
             </div>
           )}
@@ -91,7 +91,7 @@ export default function AuthStatus() {
             type="button"
             onClick={() => void handleLogout()}
             aria-label="Terminar sessão"
-            className="flex size-10 items-center justify-center rounded-full text-muted transition hover:bg-coral-soft hover:text-coral"
+            className="flex size-11 items-center justify-center rounded-full text-muted transition hover:bg-coral-soft hover:text-coral-ink"
           >
             <LogOut size={15} />
           </button>

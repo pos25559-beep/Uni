@@ -41,7 +41,7 @@ import {
 import { weekdayShort } from '../lib/colors';
 import { hapticTap } from '../lib/nativeBridge';
 import { analyzeTestMode, generatePlan, planSummary } from '../lib/planner';
-import { fmtMinutes, sessionMinutes, todayStr } from '../lib/selectors';
+import { capitalizeFirst, fmtMinutes, sessionMinutes, todayStr } from '../lib/selectors';
 import { useStore } from '../store/useStore';
 import type { StudySession } from '../types';
 
@@ -155,6 +155,7 @@ export default function Planner() {
 
   const generate = () => {
     void hapticTap();
+    const now = new Date();
     const plan = generatePlan({
       courses,
       assessments,
@@ -162,6 +163,7 @@ export default function Planner() {
       events,
       settings,
       from: today,
+      nowMinutes: now.getHours() * 60 + now.getMinutes(),
       days: 14,
       existing: sessions.filter((s) => !s.generated || s.done || s.date < today),
       difficultCourseIds: academicProfile.difficultCourseIds,
@@ -390,7 +392,7 @@ export default function Planner() {
                 >
                   <ChevronLeft size={16} />
                 </Button>
-                <span className="font-display text-sm font-bold capitalize">{weekLabel}</span>
+                <span className="font-display text-sm font-bold">{capitalizeFirst(weekLabel)}</span>
                 <Button
                   size="sm"
                   iconOnly

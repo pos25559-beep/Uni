@@ -46,8 +46,8 @@ import {
   Button,
   Card,
   CourseChip,
+  Modal,
   Progress,
-  Ring,
   SegmentedControl,
   cx,
   showToast,
@@ -61,14 +61,12 @@ import {
   daysUntil,
   fmtGrade,
   fmtMinutes,
-  gradeSummary,
   minutesThisWeek,
   readiness,
   semesterAverage,
   sessionMinutes,
   studyStreak,
   todayStr,
-  topicProgress,
   upcomingAssessments,
   urgency,
 } from '../lib/selectors';
@@ -157,6 +155,7 @@ export default function Dashboard() {
   const [tutorOpen, setTutorOpen] = useState(false);
   const [uniBubbleOpen, setUniBubbleOpen] = useState(false);
   const [collectiblesOpen, setCollectiblesOpen] = useState(false);
+  const [undoSession, setUndoSession] = useState<StudySession | null>(null);
   const openHubModal = useHubUiStore((s) => s.openModal);
 
   const hubProgress = useMemo(
@@ -221,16 +220,18 @@ export default function Dashboard() {
     [sessions, today],
   );
   const plannedToday = todaySessions.reduce((sum, s) => sum + s.minutes, 0);
-  const doneToday = todaySessions.reduce((sum, s) => sum + (s.done ? s.minutes : 0), 0);
+  const doneToday = todaySessions.reduce((sum, s) => sum + (s.done ? sessionMinutes(s) : 0), 0);
   const progressToday = plannedToday > 0 ? doneToday / plannedToday : 0;
 
   const topicTitle = (s: StudySession) =>
     courseById.get(s.courseId)?.topics.find((t) => t.id === s.topicId)?.title ?? 'Estudo geral';
 
-  const toggleSession = (s: StudySession) => {
-    const becomingDone = !s.done;
+  const applySessionToggle = (s: StudySession, becomingDone: boolean) => {
     void hapticTap();
-    patch('sessions', s.id, { done: becomingDone, actualMinutes: s.done ? undefined : s.minutes });
+    patch('sessions', s.id, {
+      done: becomingDone,
+      actualMinutes: becomingDone ? s.actualMinutes ?? s.minutes : undefined,
+    });
     if (becomingDone && todaySessions.length > 0) {
       const allOthersDone = todaySessions.every((item) => (item.id === s.id ? true : item.done));
       if (allOthersDone) {
@@ -239,6 +240,14 @@ export default function Dashboard() {
         showToast('Objetivo de hoje concluído!', 'ok');
       }
     }
+  };
+
+  const toggleSession = (s: StudySession) => {
+    if (s.done) {
+      setUndoSession(s);
+      return;
+    }
+    applySessionToggle(s, true);
   };
 
   const agenda = useMemo<AgendaItem[]>(() => {
@@ -368,24 +377,24 @@ export default function Dashboard() {
 
       <TabGuideBanner tabKey="dashboard" />
 
-      {/* Cartão compacto de progresso do Hub de Estudo */}
+      {/* Cartão compacto de Primeiros passos */}
       {!settings.hubSetupDismissed && !hubProgress.allReady && (
         <section
-          aria-label="Progresso do Hub de Estudo"
+          aria-label="Primeiros passos da tua configuração"
           className="rounded-[24px] bg-pastel-sage/55 p-4 text-[#141312] shadow-card dark:bg-surface dark:text-fg dark:ring-1 dark:ring-white/10"
         >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 flex-1 space-y-1">
               <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
                 <h2 className="font-display text-base font-bold">
-                  Hub de Estudo · {hubProgress.flow.shortLabel}
+                  Primeiros passos · {hubProgress.flow.shortLabel}
                 </h2>
-                <span className="text-xs font-semibold tabular-nums text-accent">
+                <span className="text-xs font-semibold tabular-nums text-accent-ink">
                   {hubProgress.readyCount}/{hubProgress.totalCount} ligadas
                 </span>
               </div>
               <p className="text-xs leading-relaxed opacity-85">
-                Liga horários, prints de testes, Drives/PC e Gemini Notebook para um plano sempre afinado.
+                Liga horários, provas, pastas de estudo e o Gemini para um plano sempre afinado.
               </p>
             </div>
             <div className="flex shrink-0 items-center justify-between gap-2 sm:justify-end">
@@ -394,12 +403,12 @@ export default function Dashboard() {
                 variant="primary"
                 onClick={() => openHubModal(null)}
               >
-                <Sparkles size={13} /> Completar Hub
+                <Sparkles size={13} /> Completar passos
               </Button>
               <button
                 type="button"
                 onClick={() => updateSettings({ hubSetupDismissed: true })}
-                aria-label="Dispensar lembrete do Hub"
+                aria-label="Dispensar cartão de Primeiros passos"
                 title="Dispensar"
                 className="grid size-11 place-items-center rounded-full text-muted transition hover:bg-surface/70 hover:text-fg"
               >
@@ -460,7 +469,7 @@ export default function Dashboard() {
             className="flex items-center justify-between gap-2.5 rounded-[22px] border border-line bg-surface p-3.5 shadow-card"
           >
             <div className="min-w-0 flex-1 space-y-0.5">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-accent">Uni · O teu tutor</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-accent-ink">Uni · O teu tutor</p>
               <p className="text-xs leading-relaxed text-fg">{uniTip}</p>
             </div>
             <Button size="sm" variant="primary" onClick={() => navigate('/assistente')}>
@@ -539,37 +548,50 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-4 gap-2 text-left">
-          <div>
-            <p className="text-[11px] font-medium opacity-70">Média</p>
-            <p className="mt-0.5 font-display text-xl font-bold tabular sm:text-2xl">{fmtGrade(average)}</p>
-          </div>
-          <div>
-            <p className="text-[11px] font-medium opacity-70">Semana</p>
-            <p className="mt-0.5 font-display text-xl font-bold tabular sm:text-2xl">{weekPct}%</p>
-          </div>
-          <div>
-            <p className="text-[11px] font-medium opacity-70">Sessões</p>
-            <p className="mt-0.5 font-display text-xl font-bold tabular sm:text-2xl">
-              {doneSessionsCount}/{todaySessions.length}
-            </p>
-          </div>
-          <div>
-            <p className="text-[11px] font-medium opacity-70">Provas</p>
-            <p className="mt-0.5 font-display text-xl font-bold tabular sm:text-2xl">{upcoming.length}</p>
-          </div>
-        </div>
+        {courses.length > 0 || todaySessions.length > 0 || pendingTasks.length > 0 ? (
+          <>
+            <div className="mt-4 grid grid-cols-4 gap-2 text-left">
+              <div>
+                <p className="text-xs font-medium opacity-75">Média</p>
+                <p className="mt-0.5 font-display text-xl font-bold tabular sm:text-2xl">{fmtGrade(average)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium opacity-75">Semana</p>
+                <p className="mt-0.5 font-display text-xl font-bold tabular sm:text-2xl">{weekPct}%</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium opacity-75">Sessões</p>
+                <p className="mt-0.5 font-display text-xl font-bold tabular sm:text-2xl">
+                  {doneSessionsCount}/{todaySessions.length}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-medium opacity-75">Provas</p>
+                <p className="mt-0.5 font-display text-xl font-bold tabular sm:text-2xl">{upcoming.length}</p>
+              </div>
+            </div>
 
-        <div className="mt-4">
-          <div className="mb-1.5 flex items-center justify-between text-xs font-medium opacity-80">
-            <span>{scope === 'today' ? 'Progresso de hoje' : 'Meta semanal'}</span>
-            <span className="tabular">{scope === 'today' ? pct(progressToday) : `${weekPct}%`}</span>
+            <div className="mt-4">
+              <div className="mb-1.5 flex items-center justify-between text-xs font-medium opacity-80">
+                <span>{scope === 'today' ? 'Progresso de hoje' : 'Meta semanal'}</span>
+                <span className="tabular">{scope === 'today' ? pct(progressToday) : `${weekPct}%`}</span>
+              </div>
+              <Progress
+                value={scope === 'today' ? progressToday : weekPct / 100}
+                color="bg-[#141312] dark:bg-accent"
+              />
+            </div>
+          </>
+        ) : (
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <Button size="sm" variant="primary" onClick={() => navigate('/cadeiras')}>
+              Adicionar cadeiras
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => navigate('/plano')}>
+              Criar plano de estudo
+            </Button>
           </div>
-          <Progress
-            value={scope === 'today' ? progressToday : weekPct / 100}
-            color="bg-[#141312] dark:bg-accent"
-          />
-        </div>
+        )}
       </section>
       </StaggerItem>
 
@@ -628,50 +650,7 @@ export default function Dashboard() {
         </StaggerItem>
       )}
 
-      {/* Bento 2x1 colorido estilo referência "Ver ->" */}
-      <StaggerItem>
-      <div className="grid grid-cols-2 gap-3">
-        <BentoMetricTile
-          tone="sage"
-          label="Próxima avaliação"
-          value={nextDays === null ? 'Livre' : capitalize(dayWord(nextDays))}
-          hint={next ? `${next.title}${nextCourse ? ` · ${nextCourse.shortName}` : ''}` : 'Sem provas próximas'}
-          icon={<CalendarClock size={16} />}
-          actionLabel="Ver"
-          onClick={() => navigate(next ? `/cadeiras/${next.courseId}` : '/calendario')}
-        />
-        <BentoMetricTile
-          tone="sky"
-          label="Caderno & Progresso"
-          value={courses.length > 0 ? `${courses.length} cad.` : 'Novo'}
-          hint={average !== null ? `Média atual ${fmtGrade(average)}` : 'Abre as tuas estatísticas'}
-          icon={<GraduationCap size={16} />}
-          actionLabel="Ver"
-          onClick={() => navigate(scope === 'week' ? '/progresso' : '/cadeiras')}
-        />
-      </div>
-      </StaggerItem>
-
-      {/* Mosaico orgânico de formas pastel ("Daily highlights") */}
-      <StaggerItem>
-        <HighlightShapesGrid
-          focusedLabel={fmtMinutes(weekMinutes)}
-          streakDays={streak}
-          sessionsLabel={`${doneSessionsCount}/${todaySessions.length}`}
-          pendingCount={pendingTasks.length}
-          onOpenProgress={() => navigate('/progresso')}
-          onOpenPlan={() => navigate('/plano')}
-          onFocusTasks={() => {
-            const el = document.getElementById('dashboard-quick-task');
-            if (el) {
-              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              el.focus();
-            }
-          }}
-        />
-      </StaggerItem>
-
-      {/* Conteúdo principal em blocos lúdicos de papelaria */}
+      {/* Conteúdo principal em blocos lúdicos de papelaria (acima da dobra) */}
       <StaggerItem>
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <div className="min-w-0 space-y-5">
@@ -740,7 +719,10 @@ export default function Dashboard() {
             <div className="space-y-2.5">
               <div className="flex items-center justify-between px-1">
                 <h2 className="font-display text-base font-bold">As tuas pastas</h2>
-                <Link to="/cadeiras" className="inline-link text-xs font-semibold text-accent hover:underline">
+                <Link
+                  to="/cadeiras"
+                  className="inline-flex min-h-11 items-center px-2 text-xs font-semibold text-accent-ink hover:underline"
+                >
                   Ver todas →
                 </Link>
               </div>
@@ -771,7 +753,7 @@ export default function Dashboard() {
                           .filter(Boolean)
                           .join(' · ')}
                       </p>
-                      {isNow && <span className="text-xs font-semibold text-accent">Agora</span>}
+                      {isNow && <span className="text-xs font-semibold text-accent-ink">Agora</span>}
                     </div>
                   </li>
                 );
@@ -780,23 +762,90 @@ export default function Dashboard() {
           </AgendaRibbonCard>
 
           <AcademicGmailWidget />
-
-          {courses.length > 0 && (
-            <Card title="Progresso por cadeira">
-              <ul className="space-y-1">
-                {courses.map((c) => (
-                  <CourseRow key={c.id} course={c} assessments={assessments} />
-                ))}
-              </ul>
-            </Card>
-          )}
         </div>
       </div>
       </StaggerItem>
+
+      {/* Bento 2x1 colorido estilo referência "Ver ->" */}
+      <StaggerItem>
+      <div className="grid grid-cols-2 gap-3">
+        <BentoMetricTile
+          tone="sage"
+          label="Próxima avaliação"
+          value={nextDays === null ? 'Livre' : capitalize(dayWord(nextDays))}
+          hint={next ? `${next.title}${nextCourse ? ` · ${nextCourse.shortName}` : ''}` : 'Sem provas próximas'}
+          icon={<CalendarClock size={16} />}
+          actionLabel="Ver"
+          onClick={() => navigate(next ? `/cadeiras/${next.courseId}` : '/calendario')}
+        />
+        <BentoMetricTile
+          tone="sky"
+          label="Caderno & Progresso"
+          value={courses.length > 0 ? `${courses.length} cad.` : 'Novo'}
+          hint={average !== null ? `Média atual ${fmtGrade(average)}` : 'Abre as tuas estatísticas'}
+          icon={<GraduationCap size={16} />}
+          actionLabel="Ver"
+          onClick={() => navigate(scope === 'week' ? '/progresso' : '/cadeiras')}
+        />
+      </div>
+      </StaggerItem>
+
+      {/* Mosaico orgânico de formas pastel ("Daily highlights") */}
+      {(courses.length > 0 || todaySessions.length > 0 || pendingTasks.length > 0) && (
+        <StaggerItem>
+          <HighlightShapesGrid
+            focusedLabel={fmtMinutes(weekMinutes)}
+            streakDays={streak}
+            sessionsLabel={`${doneSessionsCount}/${todaySessions.length}`}
+            pendingCount={pendingTasks.length}
+            onOpenProgress={() => navigate('/progresso')}
+            onOpenPlan={() => navigate('/plano')}
+            onFocusTasks={() => {
+              const el = document.getElementById('dashboard-quick-task');
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.focus();
+              }
+            }}
+          />
+        </StaggerItem>
+      )}
       </StaggerContainer>
 
       <WeeklyTutorModal open={tutorOpen} onClose={() => setTutorOpen(false)} />
       <UniCollectiblesModal open={collectiblesOpen} onClose={() => setCollectiblesOpen(false)} />
+
+      <Modal
+        open={undoSession !== null}
+        onClose={() => setUndoSession(null)}
+        title="Reabrir esta sessão?"
+      >
+        {undoSession && (
+          <div className="space-y-4">
+            <p className="text-sm text-muted">
+              A sessão{' '}
+              <span className="font-semibold text-fg">{topicTitle(undoSession)}</span> está marcada como
+              concluída ({fmtMinutes(sessionMinutes(undoSession))}). Queres mesmo reabri-la como por
+              concluir?
+            </p>
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button variant="secondary" onClick={() => setUndoSession(null)}>
+                Cancelar
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  const target = undoSession;
+                  setUndoSession(null);
+                  applySessionToggle(target, false);
+                }}
+              >
+                Sim, reabrir sessão
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </AnimatedPage>
   );
 }
@@ -812,11 +861,16 @@ function SessionRow({
   topic: string;
   onToggle: () => void;
 }) {
+  const isPartial =
+    session.done &&
+    session.actualMinutes !== undefined &&
+    session.actualMinutes < session.minutes * 0.8;
+
   return (
     <li
       className={cx(
         'flex min-h-[54px] items-center gap-3 rounded-2xl bg-surface-2/70 px-3 py-2.5 transition',
-        session.done && 'opacity-65',
+        session.done && 'opacity-70',
       )}
     >
       <button
@@ -824,7 +878,7 @@ function SessionRow({
         onClick={onToggle}
         aria-label={session.done ? 'Marcar como por concluir' : 'Marcar como concluída'}
         className={cx(
-          'grid size-8 shrink-0 place-items-center rounded-full border-2 transition',
+          'grid size-9 shrink-0 place-items-center rounded-full border-2 transition',
           session.done ? 'border-ok bg-ok text-white' : 'border-muted/50 bg-surface hover:border-accent',
         )}
       >
@@ -834,6 +888,7 @@ function SessionRow({
         <div className="flex flex-wrap items-center gap-2">
           <CourseChip course={course} />
           <span className="text-xs tabular text-muted">{session.start ?? 'Qualquer hora'}</span>
+          {isPartial && <Badge tone="warn">Parcial</Badge>}
         </div>
         <p className={cx('mt-1 truncate text-sm font-medium', session.done && 'text-muted line-through')}>
           {topic}
@@ -924,30 +979,6 @@ function TaskRow({
         aria-label={PRIORITY_LABEL[task.priority]}
         className={cx('size-2 shrink-0 rounded-full', PRIORITY_DOT[task.priority])}
       />
-    </li>
-  );
-}
-
-function CourseRow({ course, assessments }: { course: Course; assessments: Assessment[] }) {
-  const progress = topicProgress(course);
-  const grades = gradeSummary(course, assessments);
-  return (
-    <li>
-      <Link
-        to={`/cadeiras/${course.id}`}
-        className="flex min-h-[52px] items-center gap-3 rounded-xl px-2 py-1.5 transition hover:bg-surface-2"
-      >
-        <Ring value={progress} size={44} stroke={4} color={courseColors[course.color].hex}>
-          <span className="text-xs font-semibold tabular">{pct(progress)}</span>
-        </Ring>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{course.shortName}</p>
-          <p className="text-xs tabular text-muted">
-            Atual <span className="text-fg">{fmtGrade(grades.current)}</span> · Objetivo {fmtGrade(course.targetGrade)}
-          </p>
-        </div>
-        <ArrowRight size={14} className="shrink-0 text-muted" />
-      </Link>
     </li>
   );
 }

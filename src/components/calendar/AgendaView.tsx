@@ -5,6 +5,7 @@ import { MapPin } from 'lucide-react';
 import { useMemo } from 'react';
 import type { Course } from '../../types';
 import { Badge, CourseChip, EmptyState, cx } from '../ui';
+import { capitalizeFirst } from '../../lib/selectors';
 import type { CalItem } from './items';
 import { KIND_META, SOURCE_LABEL, isImported, itemDot, timeLabel } from './shared';
 
@@ -38,8 +39,8 @@ export default function AgendaView({ items, courseById, today }: Props) {
     <div className="space-y-6">
       {groups.map(({ date, list }) => (
         <section key={date} className="rise">
-          <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold capitalize">
-            {format(parseISO(date), "EEEE, d 'de' MMMM", { locale: pt })}
+          <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold">
+            {capitalizeFirst(format(parseISO(date), "EEEE, d 'de' MMMM", { locale: pt }))}
             {date === today && <Badge tone="accent">Hoje</Badge>}
           </h3>
           <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">

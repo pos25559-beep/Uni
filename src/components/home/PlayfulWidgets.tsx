@@ -33,7 +33,7 @@ export function HighlightShapesGrid({
         <h2 className="font-display text-sm font-bold uppercase tracking-wider text-muted">
           Destaques de hoje
         </h2>
-        <span className="inline-flex items-center gap-1 text-xs font-semibold text-accent">
+        <span className="inline-flex items-center gap-1 text-xs font-semibold text-accent-ink">
           <Flame size={13} />
           {streakDays > 0 ? `${streakDays}d seguidos` : 'Começa hoje'}
         </span>
@@ -50,11 +50,11 @@ export function HighlightShapesGrid({
             void hapticTap();
             onOpenProgress();
           }}
-          className="relative flex min-h-[126px] flex-col items-center justify-center overflow-hidden rounded-[30px] rounded-tl-[12px] bg-[#C4E0FD] p-3.5 text-center text-[#141312] shadow-card dark:bg-[#192A3D] dark:text-[#FAF6EC]"
+          className="relative flex min-h-[126px] flex-col items-center justify-center overflow-hidden rounded-[30px] rounded-tl-[12px] bg-pastel-sky p-3.5 text-center text-[#141312] shadow-card dark:bg-[#192A3D] dark:text-[#FAF6EC]"
         >
-          <span className="text-[11px] font-bold uppercase tracking-wider opacity-70">Focado</span>
+          <span className="text-xs font-bold uppercase tracking-wider opacity-70">Focado</span>
           <span className="mt-1 font-display text-2xl font-extrabold tabular">{focusedLabel}</span>
-          <span className="mt-1 text-[11px] font-medium opacity-75">esta semana</span>
+          <span className="mt-1 text-xs font-medium opacity-75">esta semana</span>
         </motion.button>
 
         {/* Trevo verde salva: Sequência */}
@@ -67,11 +67,11 @@ export function HighlightShapesGrid({
             void hapticTap();
             onOpenProgress();
           }}
-          className="relative flex min-h-[126px] flex-col items-center justify-center overflow-hidden rounded-[34px] rounded-br-[12px] bg-[#C9DC9F] p-3.5 text-center text-[#141312] shadow-card dark:bg-[#23311B] dark:text-[#FAF6EC]"
+          className="relative flex min-h-[126px] flex-col items-center justify-center overflow-hidden rounded-[34px] rounded-br-[12px] bg-pastel-sage p-3.5 text-center text-[#141312] shadow-card dark:bg-[#23311B] dark:text-[#FAF6EC]"
         >
-          <span className="text-[11px] font-bold uppercase tracking-wider opacity-70">Ritmo</span>
+          <span className="text-xs font-bold uppercase tracking-wider opacity-70">Ritmo</span>
           <span className="mt-1 font-display text-2xl font-extrabold tabular">{streakDays}d</span>
-          <span className="mt-1 text-[11px] font-medium opacity-75">sequência</span>
+          <span className="mt-1 text-xs font-medium opacity-75">sequência</span>
         </motion.button>
 
         {/* Cartão sol manteiga: Sessões */}
@@ -84,11 +84,11 @@ export function HighlightShapesGrid({
             void hapticTap();
             onOpenPlan();
           }}
-          className="relative flex min-h-[126px] flex-col items-center justify-center overflow-hidden rounded-[22px] rounded-tr-[38px] bg-[#FCE99F] p-3.5 text-center text-[#141312] shadow-card dark:bg-[#352D14] dark:text-[#FAF6EC]"
+          className="relative flex min-h-[126px] flex-col items-center justify-center overflow-hidden rounded-[22px] rounded-tr-[38px] bg-pastel-butter p-3.5 text-center text-[#141312] shadow-card dark:bg-[#352D14] dark:text-[#FAF6EC]"
         >
-          <span className="text-[11px] font-bold uppercase tracking-wider opacity-70">Sessões</span>
+          <span className="text-xs font-bold uppercase tracking-wider opacity-70">Sessões</span>
           <span className="mt-1 font-display text-2xl font-extrabold tabular">{sessionsLabel}</span>
-          <span className="mt-1 text-[11px] font-medium opacity-75">concluídas</span>
+          <span className="mt-1 text-xs font-medium opacity-75">concluídas</span>
         </motion.button>
 
         {/* Sticker pêssego: Tarefas */}
@@ -101,11 +101,11 @@ export function HighlightShapesGrid({
             void hapticTap();
             onFocusTasks();
           }}
-          className="relative flex min-h-[126px] flex-col items-center justify-center overflow-hidden rounded-[34px] rounded-bl-[12px] bg-[#FAD6BA] p-3.5 text-center text-[#141312] shadow-card dark:bg-[#382317] dark:text-[#FAF6EC]"
+          className="relative flex min-h-[126px] flex-col items-center justify-center overflow-hidden rounded-[34px] rounded-bl-[12px] bg-pastel-peach p-3.5 text-center text-[#141312] shadow-card dark:bg-[#382317] dark:text-[#FAF6EC]"
         >
-          <span className="text-[11px] font-bold uppercase tracking-wider opacity-70">Tarefas</span>
+          <span className="text-xs font-bold uppercase tracking-wider opacity-70">Tarefas</span>
           <span className="mt-1 font-display text-2xl font-extrabold tabular">{pendingCount}</span>
-          <span className="mt-1 text-[11px] font-medium opacity-75">por fechar</span>
+          <span className="mt-1 text-xs font-medium opacity-75">por fechar</span>
         </motion.button>
       </div>
     </section>
@@ -127,17 +127,17 @@ export function NotebookFocusSheet({
   children?: ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-[28px] border border-[#141312]/10 bg-[#FCFBF6] text-[#141312] shadow-card dark:border-white/10 dark:bg-surface dark:text-fg">
+    <section className="overflow-hidden rounded-[28px] border border-line bg-bg text-fg shadow-card dark:border-white/10 dark:bg-surface">
       {/* Cabeçalho com faixa verde salva de caderno */}
-      <div className="flex items-center justify-between gap-3 bg-[#E3EED0] px-5 py-3.5 dark:bg-[#23311B]">
+      <div className="flex items-center justify-between gap-3 bg-pastel-sage/65 px-5 py-3.5 text-[#141312] dark:bg-[#23311B] dark:text-[#FAF6EC]">
         <div className="flex items-center gap-2">
-          <Sparkles size={15} className="text-[#157F58] dark:text-[#4ADE80]" />
+          <Sparkles size={15} className="text-[#0F6344] dark:text-[#4ADE80]" />
           <h2 className="font-display text-base font-bold">Foco de hoje</h2>
         </div>
         <button
           type="button"
           onClick={onOpenPlan}
-          className="inline-flex min-h-[34px] items-center gap-1 rounded-full bg-white/85 px-3 text-xs font-semibold text-[#141312] shadow-sm transition hover:bg-white dark:bg-black/30 dark:text-[#FAF6EC]"
+          className="inline-flex min-h-11 items-center gap-1 rounded-full bg-white/85 px-3.5 text-xs font-semibold text-[#141312] shadow-sm transition hover:bg-white dark:bg-black/30 dark:text-[#FAF6EC]"
         >
           Abrir plano <ArrowRight size={12} />
         </button>
@@ -190,11 +190,11 @@ export function StickyTasksPad({
   children: ReactNode;
 }) {
   return (
-    <section className="relative overflow-hidden rounded-[28px] border border-[#141312]/10 bg-[#FFF5CA] p-5 text-[#141312] shadow-card dark:border-white/10 dark:bg-[#2C2512] dark:text-[#FAF6EC]">
+    <section className="relative overflow-hidden rounded-[28px] border border-line bg-pastel-butter/45 p-5 text-[#141312] shadow-card dark:border-white/10 dark:bg-[#2C2512] dark:text-[#FAF6EC]">
       {/* Marcador coral estilo post-it */}
       <div
         aria-hidden="true"
-        className="mx-auto mb-2.5 h-1.5 w-14 rounded-full bg-[#E04F33]/35 dark:bg-coral/40"
+        className="mx-auto mb-2.5 h-1.5 w-14 rounded-full bg-coral/40"
       />
 
       <div className="mb-3.5 flex items-center justify-between gap-2">
@@ -235,8 +235,8 @@ export function AgendaRibbonCard({
   children?: ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-[28px] border border-[#141312]/10 bg-[#FFF4EB] text-[#141312] shadow-card dark:border-white/10 dark:bg-[#2C1E17] dark:text-[#FAF6EC]">
-      <div className="flex items-center justify-between bg-[#FAD6BA] px-5 py-3.5 dark:bg-[#3B261C]">
+    <section className="overflow-hidden rounded-[28px] border border-line bg-pastel-peach/35 text-[#141312] shadow-card dark:border-white/10 dark:bg-[#2C1E17] dark:text-[#FAF6EC]">
+      <div className="flex items-center justify-between bg-pastel-peach px-5 py-3.5 dark:bg-[#3B261C]">
         <div className="flex items-center gap-2">
           <CalendarDays size={15} className="opacity-80" />
           <h2 className="font-display text-base font-bold">Agenda de hoje</h2>

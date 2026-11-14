@@ -117,3 +117,17 @@ export const fmtMinutes = (m: number) => {
 
 export const fmtGrade = (g: number | null | undefined) =>
   g === null || g === undefined ? '—' : g.toFixed(1).replace('.', ',');
+
+/** Capitaliza apenas a primeira letra, preservando preposições portuguesas ("Sábado, 14 de novembro"). */
+export const capitalizeFirst = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
+
+/** Lê nota em formato português ou decimal ("12,5" ou "12.5") dentro de 0–20. */
+export function parsePtGrade(raw: string): number | null | 'invalid' {
+  const clean = raw.trim().replace(/\s+/g, '');
+  if (clean === '') return null;
+  const normalized = clean.replace(',', '.');
+  if (!/^\d+(\.\d{1,2})?$/.test(normalized)) return 'invalid';
+  const n = Number(normalized);
+  if (!Number.isFinite(n) || n < 0 || n > 20) return 'invalid';
+  return Math.round(n * 100) / 100;
+}

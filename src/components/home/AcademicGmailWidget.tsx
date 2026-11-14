@@ -79,7 +79,7 @@ export default function AcademicGmailWidget() {
 
         <div className="relative z-10 flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-0">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/75 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-[#157F58] dark:bg-black/25 dark:text-accent">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/75 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider text-accent-ink dark:bg-black/25 dark:text-accent">
               <Mail size={11} />
               Caixa Postal
             </span>
@@ -125,12 +125,12 @@ export default function AcademicGmailWidget() {
                           )}
                           <span className="truncate font-semibold text-fg">{em.fromName}</span>
                           {course && (
-                            <span className="rounded-full bg-surface-2 px-2 py-0.5 font-mono text-[11px] text-accent">
+                            <span className="rounded-full bg-surface-2 px-2 py-0.5 font-mono text-xs text-accent-ink">
                               {course.shortName}
                             </span>
                           )}
                         </div>
-                        <span className="shrink-0 font-mono text-[11px] text-muted">
+                        <span className="shrink-0 font-mono text-xs text-muted">
                           {format(parseISO(em.date), 'd MMM', { locale: pt })}
                         </span>
                       </div>
@@ -149,38 +149,40 @@ export default function AcademicGmailWidget() {
                 {personalEmail
                   ? `A tua conta pessoal (${personalEmail}) fica só para Drive e Agenda. Liga abaixo o teu email institucional da faculdade ou importa um aviso `
                   : 'Liga o teu email institucional da faculdade para ver avisos dos docentes num só cartão ou importa já um ficheiro '}
-                <code className="rounded bg-white/70 px-1 py-0.5 font-mono text-[11px] dark:bg-black/25">.eml</code>.
+                <code className="rounded bg-white/70 px-1 py-0.5 font-mono text-xs dark:bg-black/25">.eml</code>.
               </p>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                 <input
                   type="email"
                   value={emailInput}
                   onChange={(e) => setEmailInput(e.target.value)}
                   placeholder="ex: nome@universidade.pt"
                   aria-label="Email institucional"
-                  className="min-h-[38px] flex-1 min-w-[190px] rounded-xl border border-black/15 bg-white/85 px-3 py-1.5 text-xs text-[#141312] placeholder:text-black/45 focus:border-[#157F58] focus:outline-none dark:border-white/15 dark:bg-black/30 dark:text-[#FAF6EC] dark:placeholder:text-white/40"
+                  className="min-h-11 w-full rounded-xl border border-black/15 bg-white/85 px-3 py-1.5 text-xs text-[#141312] placeholder:text-black/45 focus:border-accent focus:outline-none sm:min-w-[190px] sm:flex-1 dark:border-white/15 dark:bg-black/30 dark:text-[#FAF6EC] dark:placeholder:text-white/40"
                 />
-                <Button
-                  size="sm"
-                  variant="primary"
-                  onClick={() => {
-                    const trimmed = emailInput.trim();
-                    if (trimmed) updateSettings({ academicEmail: trimmed });
-                    void handleConnect(false, trimmed || undefined);
-                  }}
-                >
-                  <Mail size={13} />
-                  Ligar Email Académico
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => emlInputRef.current?.click()}
-                  className="bg-white/85 text-[#141312] dark:bg-surface dark:text-fg"
-                >
-                  <Upload size={13} />
-                  Importar (.eml)
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={() => {
+                      const trimmed = emailInput.trim();
+                      if (trimmed) updateSettings({ academicEmail: trimmed });
+                      void handleConnect(false, trimmed || undefined);
+                    }}
+                  >
+                    <Mail size={13} />
+                    Ligar Email Académico
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => emlInputRef.current?.click()}
+                    className="bg-white/85 text-[#141312] dark:bg-surface dark:text-fg"
+                  >
+                    <Upload size={13} />
+                    Importar (.eml)
+                  </Button>
+                </div>
               </div>
             </div>
           ) : needsPermission ? (
