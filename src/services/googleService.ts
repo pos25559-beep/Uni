@@ -12,7 +12,7 @@ import {
   logoutFirebase,
   type User,
 } from '../lib/firebase';
-import { signOutGoogle } from '../integrations/googleAuth';
+import { hasValidGisToken, signOutGoogle } from '../integrations/googleAuth';
 import {
   driveFolderIdFromUrl,
   listDriveFolder,
@@ -73,15 +73,18 @@ export const googleService = {
   },
 
   isDriveConnected(): boolean {
-    return Boolean(getCachedGoogleAccessToken() || auth.currentUser);
+    return Boolean(getCachedGoogleAccessToken() || hasValidGisToken());
   },
 
   isGmailConnected(): boolean {
     return checkGmailConnected();
   },
 
-  async connectPersonalAccount(forceConsent = false): Promise<User> {
-    return loginWithGoogle({ forceConsent });
+  async connectPersonalAccount(forceConsent = false, loginHint?: string): Promise<User> {
+    return loginWithGoogle({
+      forceConsent,
+      loginHint: loginHint ?? auth.currentUser?.email ?? undefined,
+    });
   },
 
   async switchPersonalAccount(): Promise<User> {
@@ -121,7 +124,10 @@ export const googleService = {
     extraFolderUrls: string[] = [],
   ): Promise<AutoScanResult> {
     if (ensureAuth && !this.isDriveConnected()) {
-      await this.connectPersonalAccount(false);
+      await this.connectPersonalAccount(false, auth.currentUser?.email ?? undefined);
+      if (!this.isDriveConnected()) {
+        throw new Error('A Google não devolveu permissão de leitura do Drive. Aceita o acesso ao Google Drive na janela de autenticação.');
+      }
     }
     return scanAndAutoLinkGoogleDrive(courses, extraFolderUrls);
   },

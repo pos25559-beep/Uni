@@ -102,9 +102,12 @@ export default function CourseRepositoryTab({
         (shortLower && mCourseId === shortLower);
 
       if (isDirectMatch) {
-        // Para Cálculo 3D, certifica-se de que não são conteúdos de AM1/AM2 ou ficheiros aleatórios
+        // Rejeita apenas material explicitamente de AM1/AM2 caso venha com etiqueta errada em C3D
         if (course.id === 'c3d') {
-          return matchesCourse(m.title || '', course) || (m.fileName ? matchesCourse(m.fileName, course) : true);
+          const raw = `${m.title || ''} ${m.fileName || ''}`.toLowerCase();
+          if (/\b(am\s?i{1,2}|am\s?[12]|c1\s?d|c2\s?d)\b/.test(raw) && !/\b(c3\s?d|am\s?3|am\s?iii)\b/.test(raw)) {
+            return false;
+          }
         }
         return true;
       }

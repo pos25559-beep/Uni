@@ -137,41 +137,47 @@ export default function Materials() {
 
       <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-4">
-          {/* Banner de Ligação / Varredura do Google Drive */}
-          {!isGoogleConnected ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-[22px] bg-pastel-mint/75 p-4 text-xs text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]">
+          {/* Barra direta de Varredura: HD Pessoal (pastas/CLIP) & Google Drive */}
+          <div className="rounded-[22px] border border-line bg-surface p-4 shadow-card space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex min-w-0 flex-1 items-center gap-3">
-                <div className="grid size-10 shrink-0 place-items-center rounded-full bg-surface/85 text-accent dark:bg-black/25">
+                <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent">
                   <Sparkles size={18} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold">Ligar o teu Google Drive?</p>
-                  <p className="opacity-80">
-                    Organiza e encontra apontamentos, exames e slides das tuas pastas do Drive automaticamente por cadeira.
+                  <p className="text-sm font-semibold text-fg">
+                    Varredura automática (HD pessoal & Google Drive)
+                  </p>
+                  <p className="text-xs text-muted">
+                    Organiza os apontamentos ou ficheiros do CLIP em <strong className="text-fg">pastas com o nome/sigla da cadeira</strong> (ex.: <span className="font-mono">C3D/</span>, <span className="font-mono">MF/</span>, <span className="font-mono">TEP/</span>) — a varredura associa tudo o que estiver dentro, mesmo sem a sigla no nome do PDF.
                   </p>
                 </div>
               </div>
-              <Button variant="primary" size="sm" onClick={handleAutoScanDrive} disabled={scanningDrive}>
-                {scanningDrive ? <Loader2 size={14} className="animate-spin" /> : <HardDrive size={14} />}
-                Varrer Drive
-              </Button>
-            </div>
-          ) : scanFeedback ? (
-            <div className="flex items-center justify-between gap-3 rounded-[20px] bg-pastel-sage/75 p-3.5 text-xs text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]">
-              <div className="flex min-w-0 items-center gap-2">
-                <Sparkles size={15} className="shrink-0 text-accent" />
-                <span className="truncate">{scanFeedback}</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="secondary" size="sm" onClick={() => setDeviceImportOpen(true)}>
+                  <HardDrive size={14} /> Varrer HD / Pasta local
+                </Button>
+                <Button variant="primary" size="sm" onClick={handleAutoScanDrive} disabled={scanningDrive}>
+                  {scanningDrive ? <Loader2 size={14} className="animate-spin" /> : <FolderOpen size={14} />}
+                  {isGoogleConnected ? 'Revarrer Google Drive' : 'Ligar e varrer Drive'}
+                </Button>
               </div>
-              <button
-                type="button"
-                onClick={clearFeedback}
-                aria-label="Fechar aviso"
-                className="shrink-0 font-semibold opacity-70 hover:opacity-100"
-              >
-                ✕
-              </button>
             </div>
-          ) : null}
+
+            {scanFeedback && (
+              <div className="flex items-center justify-between gap-3 rounded-xl bg-pastel-sage/65 px-3 py-2 text-xs text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]">
+                <span className="min-w-0 truncate font-medium">{scanFeedback}</span>
+                <button
+                  type="button"
+                  onClick={clearFeedback}
+                  aria-label="Fechar aviso"
+                  className="shrink-0 font-semibold opacity-70 hover:opacity-100"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+          </div>
           {materials.length > 0 && (
             <>
               <div className="flex min-w-0 flex-col gap-3 sm:flex-row">

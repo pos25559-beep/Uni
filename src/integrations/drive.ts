@@ -1,7 +1,7 @@
 // Google Drive (API v3) — só leitura. Usa o token partilhado de googleAuth.ts.
 import { googleFetch } from './googleAuth';
 import type { Course, Material } from '../types';
-import { parseFilenameToParsedItem, isNonAcademicDocument } from '../lib/courseAliases';
+import { matchCourseByText, normalizeAliasText, parseFilenameToParsedItem, isNonAcademicDocument } from '../lib/courseAliases';
 import { useStore } from '../store/useStore';
 
 export interface CloudFile {
@@ -75,7 +75,7 @@ function toCloudFile(f: DriveFile): CloudFile {
   };
 }
 
-async function listFiles(params: Record<string, string>, maxPages = 3): Promise<CloudFile[]> {
+async function listFiles(params: Record<string, string>, maxPages = 6): Promise<CloudFile[]> {
   const collected: CloudFile[] = [];
   let pageToken: string | undefined;
 
@@ -171,9 +171,24 @@ export function driveFolderIdFromUrl(url: string): string | null {
   return null;
 }
 
+/** Reconhece pastas académicas na raiz (inclui nomes sem espaço como FCT2627, 25/26, LEMc, etc.). */
+export function isLikelyAcademicDriveFolderName(folderName: string, courses: Course[]): boolean {
+  const norm = normalizeAliasText(folderName);
+  if (!norm) return false;
+  if (matchCourseByText(folderName, courses)) return true;
+  if (
+    /(lemc|memc|fct|nova|ist|feup|ua\b|uc\b|uminho|isel|iscte|universidade|faculdade|cadeira|semestre|trimestre|exame|teste|calculo|analise|mecanica|termodinamica|algebra|apontamentos|sebenta|estudo|\buni\b|\bucs?\b)/.test(
+      norm,
+    )
+  ) {
+    return true;
+  }
+  return /(?:^|\D)(?:202[0-9]|2[3-9]2[4-9])(?:\D|$)/.test(norm);
+}
+
 /**
  * Faz uma varredura BFS autónoma de uma pasta do Google Drive até `maxDepth` níveis:
- * Recolhe ficheiros de todas as subpastas relevantes (ex: "2º Ano / AM3 / Testes / 1T.pdf"),
+ * Recolhe ficheiros de todas as subpastas relevantes (ex: "FCT2627 / C3D / AM3D 2025.pdf"),
  * resolvendo atalhos e preservando o caminho completo das pastas no nome para deteção de cadeira.
  */
 export async function scanDriveFolderRecursively(
@@ -185,8 +200,8 @@ export async function scanDriveFolderRecursively(
     throw new Error('Link ou ID da pasta do Google Drive inválido.');
   }
 
-  const maxDepth = options?.maxDepth ?? 4;
-  const maxFolders = options?.maxFolders ?? 60;
+  const maxDepth = options?.maxDepth ?? 5;
+  const maxFolders = options?.maxFolders ?? 140;
   const visitedFolders = new Set<string>();
   const files: CloudFile[] = [];
   const queue: Array<{ id: string; prefix: string; depth: number }> = [
@@ -301,8 +316,8 @@ export async function scanAndAutoLinkGoogleDrive(
     try {
       foldersScanned++;
       const scanned = await scanDriveFolderRecursively(folderId, {
-        maxDepth: 4,
-        maxFolders: 50,
+        maxDepth: 5,
+        maxFolders: 120,
         initialPrefix: meta.initialPrefix,
       });
       for (const f of scanned) {
@@ -323,8 +338,8 @@ export async function scanAndAutoLinkGoogleDrive(
         try {
           foldersScanned++;
           const scanned = await scanDriveFolderRecursively(item.id, {
-            maxDepth: 4,
-            maxFolders: 40,
+            maxDepth: 5,
+            maxFolders: 100,
             initialPrefix: item.name,
           });
           for (const sub of scanned) {
@@ -342,21 +357,37 @@ export async function scanAndAutoLinkGoogleDrive(
   }
 
   // 3. Pastas académicas no "Meu Drive" raiz e atalhos salvos lá
+  // Também espreita 1 nível dentro de outras pastas raiz para encontrar subpastas com nomes de cadeiras (ex.: Pasta / C3D)
   try {
     const rootItems = await listDriveFolder('root');
-    const academicFolderHint = /\b(lemc|fct|nova|ist|feup|uni|faculdade|cadeira|semestre|exame|teste|calculo|mecanica|termodinamica|algebra)\b/i;
     for (const item of rootItems) {
       if (!item.isFolder) continue;
-      const isAcademicFolder =
-        academicFolderHint.test(item.name) ||
-        courses.some((c) => item.name.toLowerCase().includes(c.shortName.toLowerCase()));
-      if (!isAcademicFolder) continue;
+      let shouldScan = isLikelyAcademicDriveFolderName(item.name, courses);
+
+      if (!shouldScan) {
+        try {
+          const childFolders = await listFiles(
+            {
+              q: `'${escapeQ(item.id)}' in parents and mimeType = '${DRIVE_FOLDER_MIME}' and trashed = false`,
+              orderBy: 'name',
+            },
+            1,
+          );
+          shouldScan = childFolders.some(
+            (sub) => isLikelyAcademicDriveFolderName(sub.name, courses),
+          );
+        } catch (err) {
+          if (isAuthError(err)) throw err;
+        }
+      }
+
+      if (!shouldScan) continue;
 
       try {
         foldersScanned++;
         const scanned = await scanDriveFolderRecursively(item.id, {
-          maxDepth: 3,
-          maxFolders: 30,
+          maxDepth: 5,
+          maxFolders: 120,
           initialPrefix: item.name,
         });
         for (const sub of scanned) {

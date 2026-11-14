@@ -31,11 +31,80 @@ const categoryOptions: { value: MaterialCategory; label: string }[] = [
   { value: 'outro', label: 'Outro' },
 ];
 
+interface LocalCandidate extends ParsedFileItem {
+  relPath: string;
+  alreadyImported?: boolean;
+}
+
+interface DroppedFileWithRel {
+  file: File;
+  relPath: string;
+}
+
+interface FsEntryLike {
+  isFile: boolean;
+  isDirectory: boolean;
+  name: string;
+  fullPath?: string;
+  file?: (cb: (f: File) => void, err?: (e: unknown) => void) => void;
+  createReader?: () => { readEntries: (cb: (entries: FsEntryLike[]) => void, err?: (e: unknown) => void) => void };
+}
+
+async function readFsEntryRecursive(entry: FsEntryLike, prefix = ''): Promise<DroppedFileWithRel[]> {
+  if (entry.isFile && entry.file) {
+    return new Promise((resolve) => {
+      entry.file!(
+        (file) => resolve([{ file, relPath: prefix ? `${prefix}/${file.name}` : file.name }]),
+        () => resolve([]),
+      );
+    });
+  }
+  if (entry.isDirectory && entry.createReader) {
+    const reader = entry.createReader();
+    const nextPrefix = prefix ? `${prefix}/${entry.name}` : entry.name;
+    const allEntries: FsEntryLike[] = [];
+    const readBatch = (): Promise<FsEntryLike[]> =>
+      new Promise((resolve) => {
+        reader.readEntries(
+          (batch) => resolve(batch),
+          () => resolve([]),
+        );
+      });
+    // readEntries devolve blocos de ~100 entradas até devolver []
+    while (true) {
+      const batch = await readBatch();
+      if (!batch.length) break;
+      allEntries.push(...batch);
+    }
+    const nested = await Promise.all(allEntries.map((child) => readFsEntryRecursive(child, nextPrefix)));
+    return nested.flat();
+  }
+  return [];
+}
+
+async function collectDroppedFilesWithPaths(dataTransfer: DataTransfer): Promise<DroppedFileWithRel[]> {
+  const items = Array.from(dataTransfer.items ?? []);
+  const entries = items
+    .map((it) => (it as unknown as { webkitGetAsEntry?: () => FsEntryLike | null }).webkitGetAsEntry?.())
+    .filter((e): e is FsEntryLike => Boolean(e));
+
+  if (entries.length > 0 && entries.some((e) => e.isDirectory)) {
+    const nested = await Promise.all(entries.map((entry) => readFsEntryRecursive(entry, '')));
+    return nested.flat();
+  }
+
+  return Array.from(dataTransfer.files ?? []).map((file) => ({
+    file,
+    relPath: (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name,
+  }));
+}
+
 export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
   const courses = useStore((s) => s.courses);
+  const existingMaterials = useStore((s) => s.materials);
   const upsertMany = useStore((s) => s.upsertMany);
 
-  const [items, setItems] = useState<ParsedFileItem[]>([]);
+  const [items, setItems] = useState<LocalCandidate[]>([]);
   const [filterQuery, setFilterQuery] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveProgress, setSaveProgress] = useState(0);
@@ -44,27 +113,64 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
 
-  const processFiles = (fileList: FileList | File[]) => {
-    const rawFiles = Array.from(fileList);
-    // Ignora ficheiros de sistema (.DS_Store, Thumbs.db, etc.)
-    const validFiles = rawFiles.filter(
-      (f) => !f.name.startsWith('.') && !f.name.startsWith('Thumbs.db'),
+  const existingLocalSigs = useMemo(
+    () =>
+      new Set(
+        existingMaterials
+          .filter((m) => m.provider === 'upload' && m.fileName)
+          .map((m) => `${m.fileName!.toLowerCase()}|${m.fileSize ?? 0}`),
+      ),
+    [existingMaterials],
+  );
+
+  const processFileEntries = (entries: DroppedFileWithRel[]) => {
+    // Ignora ficheiros de sistema e metadados (.DS_Store, Thumbs.db, ~$temp)
+    const valid = entries.filter(
+      ({ file }) =>
+        !file.name.startsWith('.') &&
+        !file.name.startsWith('~$') &&
+        !file.name.startsWith('Thumbs.db'),
     );
 
-    const parsed = validFiles.map((f) => {
-      const item = parseFilenameToParsedItem(f.name, courses, initialCourseId, 'upload');
-      item.file = f;
-      item.fileSize = f.size;
-      return item;
+    const parsed: LocalCandidate[] = valid.map(({ file, relPath }) => {
+      const pathForScan = relPath || file.name;
+      const item = parseFilenameToParsedItem(
+        pathForScan,
+        courses,
+        initialCourseId,
+        'upload',
+        undefined,
+        undefined,
+        { allowImages: true },
+      );
+      const sig = `${file.name.toLowerCase()}|${file.size}`;
+      const alreadyImported = existingLocalSigs.has(sig);
+      return {
+        ...item,
+        file,
+        fileSize: file.size,
+        relPath: pathForScan,
+        alreadyImported,
+        selected: !alreadyImported && Boolean(item.courseId),
+      };
     });
 
-    setItems((prev) => [...prev, ...parsed]);
+    setItems((prev) => {
+      const seen = new Set(prev.map((p) => `${p.relPath}|${p.fileSize ?? 0}`));
+      const fresh = parsed.filter((p) => !seen.has(`${p.relPath}|${p.fileSize ?? 0}`));
+      return [...prev, ...fresh];
+    });
   };
 
   const handleFilesChosen = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      processFiles(e.target.files);
+      const entries = Array.from(e.target.files).map((file) => ({
+        file,
+        relPath: (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name,
+      }));
+      processFileEntries(entries);
     }
+    e.target.value = '';
   };
 
   const handleDragOver = (e: DragEvent) => {
@@ -76,11 +182,12 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
     setIsDragging(false);
   };
 
-  const handleDrop = (e: DragEvent) => {
+  const handleDrop = async (e: DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      processFiles(e.dataTransfer.files);
+    const collected = await collectDroppedFilesWithPaths(e.dataTransfer);
+    if (collected.length > 0) {
+      processFileEntries(collected);
     }
   };
 
@@ -177,16 +284,19 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
       title="Importador do Disco / HD (Ficheiros & Pastas)"
     >
       <div className="space-y-4 max-h-[80vh] flex flex-col">
-        {/* Descrição */}
-        <p className="text-xs text-muted leading-relaxed">
-          Seleciona ficheiros ou uma pasta do teu computador (provas antigas, slides ou enunciados descarregados). O sistema lê os nomes de forma autónoma, categoriza e guarda os ficheiros no armazenamento local para abrires diretamente no site.
-        </p>
+        {/* Orientação de organização por pastas */}
+        <div className="rounded-2xl border border-accent/25 bg-accent-soft/45 px-3.5 py-2.5 text-xs leading-relaxed text-fg">
+          <p className="font-semibold">Dica para CLIP e HD pessoal: organiza em pastas por cadeira</p>
+          <p className="mt-0.5 text-muted">
+            Cria subpastas com a sigla ou nome da cadeira (ex.: <span className="font-mono text-fg">C3D/</span>, <span className="font-mono text-fg">MF/</span>, <span className="font-mono text-fg">TEP/</span>). A varredura associa tudo o que estiver lá dentro — mesmo ficheiros com nomes genéricos como <span className="italic">1- Introducao.pdf</span> ou <span className="italic">Corr T1.pdf</span>.
+          </p>
+        </div>
 
         {/* Zona de seleção / Drag & Drop */}
         <div
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
+          onDrop={(e) => void handleDrop(e)}
           className={cx(
             'flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center transition',
             isDragging
@@ -199,10 +309,10 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
           </div>
 
           <h4 className="text-sm font-semibold text-fg">
-            Arrasta ficheiros ou pastas do teu computador para aqui
+            Varre uma pasta do teu computador (ou arrasta para aqui)
           </h4>
           <p className="mt-1 text-xs text-muted max-w-sm">
-            PDFs, apresentações PowerPoint, resoluções de testes ou pastas inteiras.
+            PDFs, slides, fotografias de exames ou a pasta inteira do semestre (os ficheiros ficam guardados offline neste dispositivo).
           </p>
 
           <div className="mt-4 flex flex-wrap gap-2 justify-center">
@@ -210,22 +320,22 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
               type="button"
               variant="primary"
               size="sm"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => folderInputRef.current?.click()}
               disabled={saving}
             >
-              <Upload size={14} />
-              Selecionar Ficheiros
+              <FolderOpen size={14} />
+              Varrer Pasta Inteira (HD)
             </Button>
 
             <Button
               type="button"
               variant="secondary"
               size="sm"
-              onClick={() => folderInputRef.current?.click()}
+              onClick={() => fileInputRef.current?.click()}
               disabled={saving}
             >
-              <FolderOpen size={14} />
-              Selecionar Pasta Inteira
+              <Upload size={14} />
+              Selecionar Ficheiros Soltos
             </Button>
           </div>
 
@@ -310,7 +420,14 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
 
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium text-fg">{it.name}</p>
-                      <div className="flex items-center gap-2 text-[11px] text-muted">
+                      <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted">
+                        {it.relPath !== it.name && (
+                          <span className="max-w-[180px] truncate rounded bg-surface-2 px-1.5 py-0.5 font-mono text-[10px]">
+                            {it.relPath.slice(0, it.relPath.lastIndexOf('/'))}
+                          </span>
+                        )}
+                        {it.matchSource === 'folder' && <Badge tone="ok">Por pasta</Badge>}
+                        {it.alreadyImported && <Badge tone="neutral">Já guardada</Badge>}
                         {it.fileSize && <span>{formatBytes(it.fileSize)}</span>}
                         {it.year && <span className="font-mono">{it.year}</span>}
                         {it.epoch && <Badge tone="accent">{it.epoch}</Badge>}
@@ -326,10 +443,11 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
                   <div className="flex items-center gap-2 shrink-0">
                     <Select
                       aria-label="Cadeira associada"
-                      value={it.courseId}
+                      value={it.courseId ?? ''}
                       onChange={(e) => updateItemCourse(it.id, e.target.value)}
                       className="text-xs h-7 w-36"
                     >
+                      <option value="">Sem cadeira</option>
                       {courses.map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.code || c.name}

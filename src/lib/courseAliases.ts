@@ -28,8 +28,14 @@ export const COURSE_ALIASES_MAP: Record<string, string[]> = {
     'analise 3',
     'analise iii',
     'am3',
+    'am3d',
     'am iii',
+    'am iii d',
+    'amiiid',
+    'am iiid',
+    'amiii',
     'am 3',
+    'am 3 d',
     'cdi 3',
     'cdi iii',
     'cdi3',
@@ -148,8 +154,12 @@ export function getAliasesForCourse(course: Course): string[] {
     }
   }
 
-  // 2. Inferência por termos contidos no nome ou sigla
-  if (normName.includes('fluido') || codeKey.includes('mdf') || shortKey.includes('mdf')) {
+  // 2. Inferência por termos contidos no nome ou sigla (protege MdF Discreta vs Fluidos)
+  const looksLikeDiscreteMath = normName.includes('discret');
+  if (
+    normName.includes('fluido') ||
+    (!looksLikeDiscreteMath && (codeKey.includes('mdf') || shortKey.includes('mdf') || codeKey === 'mf' || shortKey === 'mf'))
+  ) {
     COURSE_ALIASES_MAP.mdf?.forEach((a) => result.add(a));
   }
   if (normName.includes('solido') || normName.includes('resistencia') || codeKey.includes('ms2') || shortKey.includes('ms2')) {
@@ -181,7 +191,7 @@ export function isNonAcademicDocument(
   opts?: { allowImages?: boolean },
 ): boolean {
   if (!filename) return false;
-  const baseName = filename.split('/').pop()?.trim() || filename.trim();
+  const baseName = filename.split(/[/\\]/).pop()?.trim() || filename.trim();
   const lower = baseName.toLowerCase();
   const norm = normalizeAliasText(baseName);
 
@@ -349,6 +359,8 @@ export interface ParsedFileItem {
   id: string;
   name: string;
   title: string;
+  folderHint?: string;
+  matchSource?: 'folder' | 'filename' | 'fallback';
   courseId?: string;
   category: MaterialCategory;
   epoch?: string;
@@ -362,8 +374,9 @@ export interface ParsedFileItem {
 }
 
 /**
- * Analisa o nome de um ficheiro (do HD ou Google Drive) e extrai
- * metadados estruturados (cadeira, teste/exame, ano, época, se tem resolução).
+ * Analisa o nome/caminho de um ficheiro (do HD ou Google Drive) dando PRIORIDADE às pastas pai
+ * (ex.: `FCT2627 / MF / 1- Introducao.pdf` associa a `MF` mesmo sem sigla no nome do PDF)
+ * e extrai metadados estruturados (cadeira, teste/exame, ano, época, se tem resolução).
  */
 export function parseFilenameToParsedItem(
   filename: string,
@@ -375,16 +388,41 @@ export function parseFilenameToParsedItem(
   options?: { allowImages?: boolean },
 ): ParsedFileItem {
   const clean = filename.trim();
-  const segments = clean.split('/').map((s) => s.trim()).filter(Boolean);
+  const segments = clean.split(/[/\\]/).map((s) => s.trim()).filter(Boolean);
   const baseName = segments.length > 0 ? segments[segments.length - 1] : clean;
-  const parentHint = segments.length > 1 ? segments[segments.length - 2] : '';
+  const folderSegments = segments.length > 1 ? segments.slice(0, -1) : [];
+  const parentHint = folderSegments.length > 0 ? folderSegments[folderSegments.length - 1] : '';
   const lower = clean.toLowerCase();
 
-  // Deteção inteligente da cadeira usando sinónimos históricos (ex.: AM3 -> Cálculo III D)
-  // Se for documento pessoal ou financeiro (faturas, recibos, etc.), rejeita e não atribui cadeira
+  // Rejeita lixo / ficheiros não académicos pelo nome base do ficheiro
   const isJunk = isNonAcademicDocument(baseName, { allowImages: options?.allowImages });
-  const matched = isJunk ? undefined : matchCourseByText(clean, courses);
+
+  // Prioridade 1: pasta pai mais específica -> pasta avó (garante "pasta com nome da cadeira pega tudo lá dentro")
+  let matchedByFolder: Course | undefined;
+  let matchedFolderLabel: string | undefined;
+  if (!isJunk && folderSegments.length > 0) {
+    for (let i = folderSegments.length - 1; i >= 0; i -= 1) {
+      const seg = folderSegments[i];
+      const hit = matchCourseByText(seg, courses);
+      if (hit) {
+        matchedByFolder = hit;
+        matchedFolderLabel = seg;
+        break;
+      }
+    }
+  }
+
+  // Prioridade 2: nome do próprio ficheiro (para ficheiros soltos na raiz ou Downloads)
+  const matchedByName = !isJunk && !matchedByFolder ? matchCourseByText(baseName, courses) : undefined;
+  const matched = matchedByFolder ?? matchedByName;
   const courseId = isJunk ? undefined : (matched ? matched.id : defaultCourseId);
+  const matchSource: ParsedFileItem['matchSource'] = matchedByFolder
+    ? 'folder'
+    : matchedByName
+      ? 'filename'
+      : courseId
+        ? 'fallback'
+        : undefined;
 
   // Deteção de categoria
   let category: MaterialCategory = 'outro';
@@ -427,20 +465,22 @@ export function parseFilenameToParsedItem(
     year = '2022/23';
   }
 
-  // Deteção de Resolução
-  const hasSolution =
-    lower.includes('resolv') ||
-    lower.includes('soluc') ||
-    lower.includes('criterio') ||
-    lower.includes('resolucao') ||
-    lower.includes('solucoes');
-
   const baseTitle = baseName
     .replace(/\.[^/.]+$/, '')
     .replace(/[._-]+/g, ' ')
     .trim();
 
   const normalizedBase = normalizeAliasText(baseTitle);
+
+  // Deteção de Resolução
+  const hasSolution =
+    lower.includes('resolv') ||
+    lower.includes('soluc') ||
+    lower.includes('criterio') ||
+    lower.includes('resolucao') ||
+    lower.includes('solucoes') ||
+    /(^|[^a-z0-9])(corr|correc|correcao|corrigido)([^a-z0-9]|$)/.test(normalizedBase);
+
   const isGenericTitle =
     baseTitle.length <= 6 ||
     /^(1t|2t|t1|t2|teste ?\d*|exame ?\d*|recurso|especial|resolucao|resolvido|solucao|solucoes|ficha ?\d*)$/.test(normalizedBase);
@@ -454,6 +494,8 @@ export function parseFilenameToParsedItem(
     id: `parsed-${Math.random().toString(36).slice(2, 9)}`,
     name: baseName || clean,
     title: title || baseName || clean,
+    folderHint: matchedFolderLabel || parentHint || undefined,
+    matchSource,
     courseId,
     category,
     epoch,

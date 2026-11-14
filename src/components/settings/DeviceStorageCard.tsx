@@ -82,7 +82,7 @@ export default function DeviceStorageCard() {
           </div>
 
           <p className="text-muted leading-relaxed">
-            Podes arrastar pastas inteiras do teu disco com testes, exames e slides descarregados. O sistema analisa os nomes dos ficheiros, categoriza-os e associa-os à cadeira correta autonomamente.
+            Podes varrer pastas inteiras do teu disco com testes, sebentas e ficheiros descarregados do CLIP. <strong>Dica:</strong> divide os documentos em subpastas com o nome/sigla da cadeira (ex.: <span className="font-mono">C3D/</span>, <span className="font-mono">MF/</span>, <span className="font-mono">TEP/</span>) para a varredura associar tudo lá dentro mesmo sem a sigla no nome do ficheiro.
           </p>
         </div>
       </div>

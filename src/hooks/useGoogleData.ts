@@ -241,7 +241,7 @@ export function useGoogleAccounts() {
     setMessage(null);
     try {
       const extraUrls = useStore.getState().settings.sharedHubDriveUrls ?? [];
-      const res = await googleService.scanDriveForCourses(courses, false, extraUrls);
+      const res = await googleService.scanDriveForCourses(courses, true, extraUrls);
       if (res.added > 0) {
         setMessage(`Varredura concluída: ${res.added} novos materiais académicos adicionados às tuas cadeiras!`);
       } else {
@@ -290,10 +290,16 @@ export function useGoogleAccounts() {
     setPersonalBusy(true);
     setMessage(null);
     try {
+      if (!googleService.isDriveConnected()) {
+        await googleService.connectPersonalAccount(false);
+      }
       const n = await googleService.syncCalendar();
       setMessage(`${n} ${n === 1 ? 'evento importado' : 'eventos importados'} da agenda.`);
-    } catch {
-      // O erro fica registado no estado da integração
+    } catch (err: unknown) {
+      const code = typeof err === 'object' && err && 'code' in err ? String((err as { code: unknown }).code) : '';
+      if (code !== 'auth/popup-closed-by-user') {
+        setMessage(err instanceof Error ? err.message : 'Erro ao sincronizar a Google Agenda.');
+      }
     } finally {
       setPersonalBusy(false);
     }

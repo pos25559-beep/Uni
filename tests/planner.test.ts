@@ -8,6 +8,8 @@ import { parseCurriculumFromText } from '../src/lib/curriculumParser';
 import { matchCourse } from '../src/integrations/clip';
 import { extractAcademicsFromGoogleCalendar } from '../src/integrations/gcal';
 import { buildIcsCalendar } from '../src/integrations/ics';
+import { isLikelyAcademicDriveFolderName } from '../src/integrations/drive';
+import { parseFilenameToParsedItem } from '../src/lib/courseAliases';
 import { groupConversations, subjectLabel } from '../src/lib/geminiConversations';
 import { CustomKeyError, HttpStatusError, friendlyCustomKeyError } from '../src/lib/geminiErrors';
 import { sanitizePdfWinAnsi } from '../src/lib/pdfExport';
@@ -1472,4 +1474,66 @@ test('buildIcsCalendar, semesterShare e sanitizePdfWinAnsi geram artefactos vál
 
   const winAnsi = sanitizePdfWinAnsi('• Resumo → Cálculo III — Equação ✓🔥');
   assert.equal(winAnsi, '* Resumo -> Cálculo III -- Equação [OK]');
+});
+
+test('varredura dá prioridade a pastas por cadeira (FCT2627/C3D, MF, AMIII) e reconhece AM3D mesmo sem nome da cadeira no PDF', () => {
+  const courses: Course[] = [
+    {
+      id: 'c-c3d',
+      code: 'C3D',
+      name: 'Cálculo III D',
+      shortName: 'C3 D',
+      ects: 6,
+      color: 'amber',
+      targetGrade: 14,
+      topics: [],
+    },
+    {
+      id: 'c-mdf',
+      code: 'MdF',
+      name: 'Mecânica dos Fluidos',
+      shortName: 'MdF',
+      ects: 6,
+      color: 'sky',
+      targetGrade: 14,
+      topics: [],
+    },
+    {
+      id: 'c-disc',
+      code: 'MdF',
+      name: 'Matemática Discreta e Fundamentos',
+      shortName: 'MdF',
+      ects: 6,
+      color: 'rose',
+      targetGrade: 14,
+      topics: [],
+    },
+  ];
+
+  assert.equal(isLikelyAcademicDriveFolderName('FCT2627', courses), true);
+  assert.equal(isLikelyAcademicDriveFolderName('Fotos Férias', courses), false);
+
+  // 1) Ficheiro genérico dentro de FCT2627/MF associa diretamente a Fluidos (por pasta) e não a Matemática Discreta
+  const mfIntro = parseFilenameToParsedItem('FCT2627 / MF / 1- Introducao.pdf', courses, undefined, 'upload');
+  assert.equal(mfIntro.courseId, 'c-mdf');
+  assert.equal(mfIntro.matchSource, 'folder');
+
+  // 2) Ficheiro genérico Corr T1.pdf dentro de FCT2627/C3D associa a C3D por pasta
+  const c3dCorr = parseFilenameToParsedItem('FCT2627 / C3D / Corr T1.pdf', courses, undefined, 'gdrive');
+  assert.equal(c3dCorr.courseId, 'c-c3d');
+  assert.equal(c3dCorr.matchSource, 'folder');
+  assert.equal(c3dCorr.hasSolution, true);
+
+  // 3) Pasta compartilhada AMIII com nomes AM3D e até TP AMII dentro -> prioridade à pasta AMIII -> C3D!
+  const am3d = parseFilenameToParsedItem('AM3D 24-25-3.pdf', courses, undefined, 'gdrive');
+  assert.equal(am3d.courseId, 'c-c3d');
+  assert.equal(am3d.matchSource, 'filename');
+
+  const sharedT1 = parseFilenameToParsedItem('AMIII / Prep T1.pdf', courses, undefined, 'gdrive');
+  assert.equal(sharedT1.courseId, 'c-c3d');
+  assert.equal(sharedT1.matchSource, 'folder');
+
+  const sharedAmiiTypo = parseFilenameToParsedItem('AMIII / TP AMII 09-10-2024.pdf', courses, undefined, 'gdrive');
+  assert.equal(sharedAmiiTypo.courseId, 'c-c3d');
+  assert.equal(sharedAmiiTypo.matchSource, 'folder');
 });

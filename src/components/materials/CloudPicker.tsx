@@ -46,8 +46,9 @@ export default function CloudPicker({ source, onClose }: { source: CloudSource; 
   const upsertMany = useStore((s) => s.upsertMany);
   const setIntegration = useStore((s) => s.setIntegration);
 
-  const isFirebaseAuthed = googleService.isDriveConnected();
-  const configured = isFirebaseAuthed || clientId.trim() !== '';
+  const personal = googleService.getPersonalAccountStatus();
+  const hasDriveToken = googleService.isDriveConnected();
+  const configured = hasDriveToken || clientId.trim() !== '';
   const [tab, setTab] = useState<Tab>('folders');
   const [text, setText] = useState('');
   const [submitted, setSubmitted] = useState('');
@@ -55,9 +56,40 @@ export default function CloudPicker({ source, onClose }: { source: CloudSource; 
   const [files, setFiles] = useState<CloudFile[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [reloadTick, setReloadTick] = useState(0);
   const [selected, setSelected] = useState<Map<string, CloudFile>>(() => new Map());
   const [courseId, setCourseId] = useState('');
+
+  const handleAuthorizeDrive = async (forceConsent = false) => {
+    setAuthBusy(true);
+    setAuthError(null);
+    setError(null);
+    try {
+      await googleService.connectPersonalAccount(forceConsent, personal.email ?? undefined);
+      if (!googleService.isDriveConnected() && !forceConsent) {
+        await googleService.connectPersonalAccount(true, personal.email ?? undefined);
+      }
+      if (!googleService.isDriveConnected() && clientId.trim() === '') {
+        setAuthError('A Google não devolveu permissão de leitura do Drive. Tenta novamente e aceita o acesso ao Google Drive.');
+        return;
+      }
+      setReloadTick((t) => t + 1);
+    } catch (err: unknown) {
+      const code = typeof err === 'object' && err && 'code' in err ? String((err as { code: unknown }).code) : '';
+      if (code === 'auth/popup-closed-by-user') return;
+      if (code === 'auth/popup-blocked') {
+        setAuthError('O navegador bloqueou a janela da Google. Permite popups para este site e tenta novamente.');
+        return;
+      }
+      const msg = err instanceof Error ? err.message : 'Não foi possível autorizar o Google Drive.';
+      setAuthError(msg);
+      setError(msg);
+    } finally {
+      setAuthBusy(false);
+    }
+  };
 
   const folderId = stack.at(-1)?.id;
 
@@ -195,7 +227,20 @@ export default function CloudPicker({ source, onClose }: { source: CloudSource; 
       return (
         <div className="space-y-3 px-4 py-6">
           <p className="text-sm text-danger">{error}</p>
-          <Button size="sm" onClick={() => setReloadTick((t) => t + 1)}>Tentar novamente</Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="primary"
+              disabled={authBusy}
+              onClick={() => void handleAuthorizeDrive(true)}
+            >
+              {authBusy ? <LoaderCircle size={13} className="animate-spin" /> : <HardDrive size={13} />}
+              Autorizar Google Drive
+            </Button>
+            <Button size="sm" onClick={() => setReloadTick((t) => t + 1)}>
+              Tentar novamente
+            </Button>
+          </div>
         </div>
       );
     }
@@ -230,21 +275,21 @@ export default function CloudPicker({ source, onClose }: { source: CloudSource; 
       {!configured ? (
         <EmptyState
           icon={<HardDrive size={24} />}
-          title="Google Drive não ligado"
-          hint="Inicia sessão com a tua conta Google para acederes diretamente às tuas pastas pessoais e pastas partilhadas do Drive."
+          title={personal.connected ? 'Autorizar acesso ao Google Drive' : 'Google Drive não ligado'}
+          hint={
+            authError ||
+            (personal.connected
+              ? `A tua conta Unipedia (${personal.email ?? 'Google'}) está ligada, mas a sessão temporária do Google Drive expirou ou ainda não foi autorizada neste separador.`
+              : 'Inicia sessão com a tua conta Google para acederes diretamente às tuas pastas pessoais e pastas partilhadas do Drive.')
+          }
           action={(
             <Button
               variant="primary"
-              onClick={async () => {
-                try {
-                  await googleService.connectPersonalAccount();
-                  setReloadTick((t) => t + 1);
-                } catch (err) {
-                  console.warn(err);
-                }
-              }}
+              disabled={authBusy}
+              onClick={() => void handleAuthorizeDrive(false)}
             >
-              <HardDrive size={14} /> Entrar com a Google
+              {authBusy ? <LoaderCircle size={14} className="animate-spin" /> : <HardDrive size={14} />}
+              {personal.connected ? 'Autorizar Google Drive' : 'Entrar com a Google'}
             </Button>
           )}
         />

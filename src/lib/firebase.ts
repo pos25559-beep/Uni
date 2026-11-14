@@ -97,6 +97,16 @@ export function getCachedGoogleAccessToken(): string | null {
   return null;
 }
 
+export function clearGoogleAccessToken() {
+  cachedGoogleToken = null;
+  try {
+    sessionStorage.removeItem('campus_google_access_token');
+    sessionStorage.removeItem('campus_google_token_exp');
+  } catch {
+    // Ignore storage quota
+  }
+}
+
 export function setGoogleAccessToken(token: string, expiresInSeconds = 3600) {
   const expiresAt = Date.now() + expiresInSeconds * 1000;
   cachedGoogleToken = { token, expiresAt };
@@ -304,9 +314,7 @@ export function logoutAcademicGoogle(): void {
 }
 
 export async function logoutFirebase(): Promise<void> {
-  cachedGoogleToken = null;
-  sessionStorage.removeItem('campus_google_access_token');
-  sessionStorage.removeItem('campus_google_token_exp');
+  clearGoogleAccessToken();
   logoutAcademicGoogle();
   if (Capacitor.isNativePlatform()) {
     await SocialLogin.logout({ provider: 'google' }).catch(() => {});

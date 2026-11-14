@@ -1,7 +1,12 @@
 // Autenticação Google partilhada (Drive + Calendar) via Google Identity Services ou Firebase Google Auth.
 // Só leitura. O token vive em memória — nunca é guardado em disco.
 import { useStore } from '../store/useStore';
-import { getCachedGoogleAccessToken, setGoogleAccessToken, logoutFirebase } from '../lib/firebase';
+import {
+  clearGoogleAccessToken,
+  getCachedGoogleAccessToken,
+  setGoogleAccessToken,
+  logoutFirebase,
+} from '../lib/firebase';
 
 export const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/drive.readonly',
@@ -43,6 +48,10 @@ function loadScript(): Promise<void> {
   return scriptPromise;
 }
 
+export function hasValidGisToken(): boolean {
+  return Boolean(cached && cached.expiresAt > Date.now() + 60_000);
+}
+
 /** Devolve um access token válido, verificando primeiro a sessão Firebase e depois o Google Identity Services. */
 export async function getGoogleToken(): Promise<string> {
   const fbToken = getCachedGoogleAccessToken();
@@ -51,7 +60,7 @@ export async function getGoogleToken(): Promise<string> {
   if (cached && cached.expiresAt > Date.now() + 60_000) return cached.token;
   const clientId = useStore.getState().settings.googleClientId.trim();
   if (!clientId) {
-    throw new Error('Inicia sessão com a tua conta Google no topo ou configura o Client ID nas Definições.');
+    throw new Error('Autoriza o acesso ao Google Drive na janela de ligação (ou configura um Client ID nas Definições).');
   }
   await loadScript();
   return new Promise((resolve, reject) => {
@@ -77,6 +86,13 @@ export async function getGoogleToken(): Promise<string> {
 export async function googleFetch<T>(url: string, tokenOverride?: string): Promise<T> {
   const token = tokenOverride || (await getGoogleToken());
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (res.status === 401) {
+    if (!tokenOverride) {
+      cached = null;
+      clearGoogleAccessToken();
+    }
+    throw new Error('A sessão do Google Drive expirou ou precisa de nova autorização. Clica em «Autorizar Google Drive».');
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => null) as { error?: { message?: string } } | null;
     throw new Error(body?.error?.message ?? `Erro Google ${res.status}`);
