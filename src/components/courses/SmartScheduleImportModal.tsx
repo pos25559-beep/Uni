@@ -10,6 +10,7 @@ import {
 import { extractAcademicsFromGoogleCalendar, syncGoogleCalendar } from '../../integrations/gcal';
 import { colorNames, kindLabel, weekdayLong } from '../../lib/colors';
 import { deriveCourseAcronym, isCourseIdentityMatch } from '../../lib/portugalCurriculum';
+import { readNormalizedScreenshot } from '../../lib/imageUpload';
 import { newId, useStore } from '../../store/useStore';
 import type { Assessment, ClassSlot, Course, CourseColor } from '../../types';
 import { StickerBadge } from '../motion/Primitives';
@@ -45,30 +46,6 @@ interface PreviewCourse {
   code?: string;
   ects: number;
   selected: boolean;
-}
-
-function inferImageMimeType(file: File): string {
-  if (file.type) return file.type;
-  const lower = file.name.toLowerCase();
-  if (lower.endsWith('.png')) return 'image/png';
-  if (lower.endsWith('.webp')) return 'image/webp';
-  if (lower.endsWith('.gif')) return 'image/gif';
-  if (lower.endsWith('.heic')) return 'image/heic';
-  if (lower.endsWith('.heif')) return 'image/heif';
-  return 'image/jpeg';
-}
-
-function readImageBase64(file: File): Promise<{ base64: string; mimeType: string }> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () =>
-      resolve({
-        base64: String(reader.result ?? ''),
-        mimeType: inferImageMimeType(file),
-      });
-    reader.onerror = () => reject(new Error(`Não foi possível ler "${file.name}".`));
-    reader.readAsDataURL(file);
-  });
 }
 
 function makeCourseShortName(name: string, code?: string): string {
@@ -253,7 +230,7 @@ export default function SmartScheduleImportModal({
       let anySucceeded = false;
 
       for (const file of imageFiles) {
-        const { base64, mimeType } = await readImageBase64(file);
+        const { base64, mimeType } = await readNormalizedScreenshot(file);
 
         try {
           const scheduleRes = await parseTimetableFromScreenshot(base64, mimeType, focus);

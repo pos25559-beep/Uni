@@ -24,6 +24,7 @@ import {
   fetchSharedCurriculaFromCloud,
   publishSharedCurriculum,
 } from '../../lib/firestoreSync';
+import { readNormalizedScreenshot } from '../../lib/imageUpload';
 import { LEGAL_INFO } from '../../lib/legal';
 import { hapticSuccess, hapticTap, syncNativeTheme } from '../../lib/nativeBridge';
 import {
@@ -662,17 +663,6 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     void hapticSuccess();
   };
 
-  const inferScreenshotMime = (file: File) => {
-    if (file.type) return file.type;
-    const lower = file.name.toLowerCase();
-    if (lower.endsWith('.png')) return 'image/png';
-    if (lower.endsWith('.webp')) return 'image/webp';
-    if (lower.endsWith('.gif')) return 'image/gif';
-    if (lower.endsWith('.heic')) return 'image/heic';
-    if (lower.endsWith('.heif')) return 'image/heif';
-    return 'image/jpeg';
-  };
-
   const handleScreenshotUpload = async (files: FileList | null) => {
     const pickedFiles = files ? Array.from(files) : [];
     if (pickedFiles.length === 0) return;
@@ -702,13 +692,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
       let anySucceeded = false;
 
       for (const file of imageFiles) {
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result ?? ''));
-          reader.onerror = () => reject(new Error(`Não foi possível ler "${file.name}".`));
-          reader.readAsDataURL(file);
-        });
-        const mimeType = inferScreenshotMime(file);
+        const { base64, mimeType } = await readNormalizedScreenshot(file);
 
         try {
           const scheduleRes = await parseTimetableFromScreenshot(base64, mimeType);
@@ -1253,7 +1237,10 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
               ageConfirmed={ageConfirmed}
               setAgeConfirmed={setAgeConfirmed}
               aiConsent={aiConsent}
-              setAiConsent={setAiConsent}
+              setAiConsent={(next) => {
+                setAiConsent(next);
+                updateSettings({ aiConsent: next });
+              }}
               cloudSyncConsent={cloudSyncConsent}
               setCloudSyncConsent={setCloudSyncConsent}
               isSignedIn={Boolean(auth.currentUser)}

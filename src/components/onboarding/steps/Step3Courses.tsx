@@ -162,13 +162,19 @@ export default function Step3Courses({
           <Button size="sm" variant="secondary" onClick={() => onOpenScheduleImport('photo')}>
             <CalendarDays size={14} /> Importar horário
           </Button>
-          <label className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-xl border border-line bg-surface-2 px-3.5 text-xs font-semibold text-fg transition hover:bg-surface">
+          <label
+            className={cx(
+              'inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-line bg-surface-2 px-3.5 text-xs font-semibold text-fg transition',
+              ocrBusy ? 'pointer-events-none opacity-75' : 'cursor-pointer hover:bg-surface',
+            )}
+          >
             {ocrBusy ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
-            <span>Ler print do horário</span>
+            <span>{ocrBusy ? 'A ler print…' : 'Ler print do horário'}</span>
             <input
               type="file"
               accept="image/*"
               multiple
+              disabled={ocrBusy}
               className="sr-only"
               onChange={(e) => {
                 onUploadScreenshot(e.target.files);
