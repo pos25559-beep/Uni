@@ -57,7 +57,13 @@ interface Step3CoursesProps {
   ocrBusy: boolean;
   ocrFeedback: string | null;
   ocrError: string | null;
-  scheduleDoneInfo: { classesCount: number; source: 'photo' | 'gcal' | 'print' } | null;
+  scheduleDoneInfo: {
+    classesCount: number;
+    assessmentsCount?: number;
+    source: 'photo' | 'gcal' | 'print';
+    courseLabels?: string[];
+    slotSummaries?: string[];
+  } | null;
   showPastePlan: boolean;
   setShowPastePlan: (val: boolean) => void;
   pastedPlanText: string;
@@ -192,9 +198,33 @@ export default function Step3Courses({
         </div>
 
         {scheduleDoneInfo && (
-          <p className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-ok">
-            <CheckCircle2 size={14} /> {scheduleDoneInfo.classesCount} aula(s) importadas com sucesso.
-          </p>
+          <div className="mt-3 space-y-2 rounded-2xl border border-ok/25 bg-ok/10 px-3.5 py-2.5 text-xs">
+            <p className="flex items-center gap-1.5 font-semibold text-ok">
+              <CheckCircle2 size={14} /> {scheduleDoneInfo.classesCount} aula(s)
+              {scheduleDoneInfo.assessmentsCount
+                ? ` e ${scheduleDoneInfo.assessmentsCount} avaliação(ões)`
+                : ''}{' '}
+              importadas com sucesso.
+            </p>
+            {scheduleDoneInfo.courseLabels && scheduleDoneInfo.courseLabels.length > 0 && (
+              <p className="text-[11px] leading-relaxed text-fg/85">
+                <span className="font-semibold text-fg">Cadeiras reconhecidas:</span>{' '}
+                {scheduleDoneInfo.courseLabels.join(' · ')}
+              </p>
+            )}
+            {scheduleDoneInfo.slotSummaries && scheduleDoneInfo.slotSummaries.length > 0 && (
+              <ul className="space-y-0.5 text-[11px] text-muted">
+                {scheduleDoneInfo.slotSummaries.slice(0, 6).map((line, i) => (
+                  <li key={`${i}-${line}`}>• {line}</li>
+                ))}
+                {scheduleDoneInfo.slotSummaries.length > 6 && (
+                  <li className="text-[11px] font-medium text-fg/75">
+                    + {scheduleDoneInfo.slotSummaries.length - 6} outra(s) aula(s) no horário
+                  </li>
+                )}
+              </ul>
+            )}
+          </div>
         )}
         {ocrFeedback && (
           <p className="mt-2 rounded-xl bg-ok/10 px-3 py-2 text-xs text-ok">{ocrFeedback}</p>

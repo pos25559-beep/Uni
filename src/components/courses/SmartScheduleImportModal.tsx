@@ -9,7 +9,14 @@ import {
 } from '../../integrations/gemini';
 import { extractAcademicsFromGoogleCalendar, syncGoogleCalendar } from '../../integrations/gcal';
 import { colorNames, kindLabel, weekdayLong } from '../../lib/colors';
-import { deriveCourseAcronym, isCourseIdentityMatch } from '../../lib/portugalCurriculum';
+import {
+  collectKnownCourseCandidates,
+  deriveCourseAcronym,
+  getDegreeCurriculum,
+  isCourseIdentityMatch,
+  resolveKnownCourseIdentity,
+  type CurriculumCourseTemplate,
+} from '../../lib/portugalCurriculum';
 import { readNormalizedScreenshot } from '../../lib/imageUpload';
 import { newId, useStore } from '../../store/useStore';
 import type { Assessment, ClassSlot, Course, CourseColor } from '../../types';
@@ -58,6 +65,7 @@ export interface SmartScheduleImportSummary {
   classesCount: number;
   assessmentsCount: number;
   source: 'photo' | 'gcal';
+  slotSummaries?: string[];
 }
 
 export default function SmartScheduleImportModal({
@@ -105,24 +113,47 @@ export default function SmartScheduleImportModal({
     [events],
   );
 
+  const getKnownCourseContext = () => {
+    const state = useStore.getState();
+    const profile = state.academicProfile;
+    const degreeTemplates: CurriculumCourseTemplate[] =
+      profile?.universityId && profile?.degreeId
+        ? (getDegreeCurriculum(profile.universityId, profile.degreeId)?.courses ?? [])
+        : [];
+    const knownCourses = collectKnownCourseCandidates({
+      courses: state.courses,
+      completedCourses: profile?.completedCourses ?? [],
+      degreeTemplates,
+    });
+    return { degreeTemplates, knownCourses };
+  };
+
   const applyExtracted = (
     payload: ExtractedSchedulePayload,
     src: 'local' | 'google',
     extraCourses: ExtractedHistoryItem[] = [],
   ) => {
     setSourceLabel(src);
+    const { degreeTemplates, knownCourses } = getKnownCourseContext();
+    const resolveCourse = (raw: { code?: string; name: string }) =>
+      resolveKnownCourseIdentity(raw, knownCourses, degreeTemplates);
 
     // Coalesce cadeiras detetadas do mesmo semestre (evitando duplicados sem/com sigla)
     const activeExtra: Array<{ name: string; code?: string; ects: number }> = [];
     const deferredOtherSem: Array<{ code?: string; name: string; ects?: number; semester: 1 | 2 }> = [];
 
     for (const item of extraCourses) {
+      const resolved = resolveCourse({ code: item.code, name: item.name });
+      const resolvedName = resolved?.name ?? item.name;
+      const resolvedCode = resolved?.shortName || resolved?.code || item.code;
+      const resolvedEcts = item.ects ?? resolved?.ects ?? 6;
+
       if (item.status === 'aprovada') continue;
       if (item.semester !== undefined && item.semester !== activeSemester) {
         deferredOtherSem.push({
-          code: item.code,
-          name: item.name,
-          ects: item.ects ?? 6,
+          code: resolvedCode,
+          name: resolvedName,
+          ects: resolvedEcts,
           semester: item.semester,
         });
         continue;
@@ -130,51 +161,60 @@ export default function SmartScheduleImportModal({
       if (item.status === 'por_fazer') continue;
 
       const existingIdx = activeExtra.findIndex((c) =>
-        isCourseIdentityMatch({ code: c.code, name: c.name }, { code: item.code, name: item.name }),
+        isCourseIdentityMatch({ code: c.code, name: c.name }, { code: resolvedCode, name: resolvedName }, degreeTemplates),
       );
       if (existingIdx >= 0) {
         const cur = activeExtra[existingIdx]!;
         activeExtra[existingIdx] = {
-          name: item.name.length > cur.name.length ? item.name : cur.name,
-          code: cur.code || item.code,
-          ects: item.ects ?? cur.ects,
+          name: resolvedName.length > cur.name.length ? resolvedName : cur.name,
+          code: cur.code || resolvedCode,
+          ects: resolvedEcts ?? cur.ects,
         };
       } else {
         activeExtra.push({
-          name: item.name,
-          code: item.code,
-          ects: item.ects ?? 6,
+          name: resolvedName,
+          code: resolvedCode,
+          ects: resolvedEcts,
         });
       }
     }
 
-    // Enriquece slots com o nome completo quando vieram só com sigla, e evita duplicar em detectedCourses
+    // Resolve slots contra cadeiras reais do aluno/plano (sobrepõe nomes alucinados por siglas reais)
     const enrichedSlots: PreviewSlot[] = payload.slots.map((s, idx) => {
-      const matchedExtra = activeExtra.find((c) =>
-        isCourseIdentityMatch({ code: c.code, name: c.name }, { code: s.courseCode, name: s.courseName }),
-      );
+      const resolved = resolveCourse({ code: s.courseCode, name: s.courseName });
+      const matchedExtra = !resolved
+        ? activeExtra.find((c) =>
+            isCourseIdentityMatch({ code: c.code, name: c.name }, { code: s.courseCode, name: s.courseName }, degreeTemplates),
+          )
+        : undefined;
       return {
         id: `slot-${idx}-${s.courseName}-${s.weekday}-${s.start}`,
         ...s,
         courseName:
-          matchedExtra && matchedExtra.name.length > s.courseName.length
+          resolved?.name ??
+          (matchedExtra && matchedExtra.name.length > s.courseName.length
             ? matchedExtra.name
-            : s.courseName,
-        courseCode: s.courseCode || matchedExtra?.code,
+            : s.courseName),
+        courseCode: resolved?.shortName || resolved?.code || s.courseCode || matchedExtra?.code,
         selected: true,
       };
+    });
+
+    const resolvedAssessments = payload.assessments.map((a) => {
+      const resolved = resolveCourse({ name: a.courseName });
+      return resolved ? { ...a, courseName: resolved.name } : a;
     });
 
     const uniqueDetectedCourses = activeExtra.filter(
       (c) =>
         !enrichedSlots.some((s) =>
-          isCourseIdentityMatch({ code: c.code, name: c.name }, { code: s.courseCode, name: s.courseName }),
+          isCourseIdentityMatch({ code: c.code, name: c.name }, { code: s.courseCode, name: s.courseName }, degreeTemplates),
         ),
     );
 
     setSlots(enrichedSlots);
     setAssessments(
-      payload.assessments.map((a, idx) => ({
+      resolvedAssessments.map((a, idx) => ({
         id: `ass-${idx}-${a.courseName}-${a.date}`,
         ...a,
         selected: true,
@@ -193,7 +233,7 @@ export default function SmartScheduleImportModal({
 
     if (
       enrichedSlots.length === 0 &&
-      payload.assessments.length === 0 &&
+      resolvedAssessments.length === 0 &&
       uniqueDetectedCourses.length === 0
     ) {
       setError(
@@ -223,6 +263,7 @@ export default function SmartScheduleImportModal({
     setError(null);
     setImportedSummary(null);
     try {
+      const { knownCourses } = getKnownCourseContext();
       const combinedSlots: ExtractedSchedulePayload['slots'] = [];
       const combinedAssessments: ExtractedSchedulePayload['assessments'] = [];
       const combinedCourses: ExtractedHistoryItem[] = [];
@@ -233,7 +274,10 @@ export default function SmartScheduleImportModal({
         const { base64, mimeType } = await readNormalizedScreenshot(file);
 
         try {
-          const scheduleRes = await parseTimetableFromScreenshot(base64, mimeType, focus);
+          const scheduleRes = await parseTimetableFromScreenshot(base64, mimeType, {
+            focus,
+            knownCourses,
+          });
           anySucceeded = true;
           combinedSlots.push(...scheduleRes.slots);
           combinedAssessments.push(...scheduleRes.assessments);
@@ -247,6 +291,7 @@ export default function SmartScheduleImportModal({
           try {
             const historyRes = await parseAcademicHistoryFromScreenshot(base64, mimeType, {
               currentSemester: activeSemester,
+              knownCourses,
             });
             anySucceeded = true;
             combinedCourses.push(...historyRes);
@@ -324,9 +369,7 @@ export default function SmartScheduleImportModal({
     let colorIdx = currentCourses.length;
 
     const ensureCourseId = (courseName: string, courseCode?: string, ects = 6): string => {
-      const existing =
-        matchCourse(courseName, [...currentCourses, ...createdCourses]) ||
-        (courseCode ? matchCourse(courseCode, [...currentCourses, ...createdCourses]) : undefined);
+      const existing = matchCourse(courseName, [...currentCourses, ...createdCourses], courseCode);
       if (existing) {
         if (!importedCourseRefs.has(existing.id)) {
           importedCourseRefs.set(existing.id, {
@@ -387,6 +430,14 @@ export default function SmartScheduleImportModal({
       source: sourceLabel,
     }));
 
+    const allKnownCourses = [...currentCourses, ...createdCourses];
+    const slotSummaries = selectedSlots.map((s, idx) => {
+      const cls = newClasses[idx];
+      const crs = cls ? allKnownCourses.find((c) => c.id === cls.courseId) : undefined;
+      const dayLabel = weekdayLong[s.weekday]?.slice(0, 3) ?? '';
+      return `${dayLabel} ${s.start}–${s.end} · ${crs?.shortName || crs?.name || s.courseName} (${s.type})`;
+    });
+
     if (createdCourses.length > 0) upsertMany('courses', createdCourses);
     if (newClasses.length > 0) upsertMany('classes', newClasses);
     if (newAssessments.length > 0) upsertMany('assessments', newAssessments);
@@ -397,6 +448,7 @@ export default function SmartScheduleImportModal({
       classesCount: newClasses.length,
       assessmentsCount: newAssessments.length,
       source: mode === 'gcal' ? 'gcal' : 'photo',
+      slotSummaries,
     });
 
     setImportedSummary(
@@ -593,7 +645,8 @@ export default function SmartScheduleImportModal({
                   Aulas detetadas ({slots.length})
                 </p>
                 {slots.map((s) => {
-                  const matched = matchCourse(s.courseName, courses);
+                  const matched = matchCourse(s.courseName, courses, s.courseCode);
+                  const displayName = matched?.name || s.courseName;
                   return (
                     <label
                       key={s.id}
@@ -612,7 +665,7 @@ export default function SmartScheduleImportModal({
                         />
                         <div>
                           <p className="font-semibold text-fg">
-                            {s.courseName} · {s.type}
+                            {displayName} · {s.type}
                           </p>
                           <p className="text-[11px] text-muted">
                             {weekdayLong[s.weekday]} {s.start}–{s.end}
@@ -670,9 +723,7 @@ export default function SmartScheduleImportModal({
                   Cadeiras detetadas ({detectedCourses.length})
                 </p>
                 {detectedCourses.map((c) => {
-                  const matched =
-                    matchCourse(c.name, courses) ||
-                    (c.code ? matchCourse(c.code, courses) : undefined);
+                  const matched = matchCourse(c.name, courses, c.code);
                   return (
                     <label
                       key={c.id}
@@ -690,7 +741,7 @@ export default function SmartScheduleImportModal({
                           className="size-4 accent-accent"
                         />
                         <div>
-                          <p className="font-semibold text-fg">{c.name}</p>
+                          <p className="font-semibold text-fg">{matched?.name || c.name}</p>
                           <p className="text-[11px] text-muted">
                             {c.code ? `${c.code} · ` : ''}
                             {c.ects} ECTS

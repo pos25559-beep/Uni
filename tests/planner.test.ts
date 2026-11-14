@@ -13,9 +13,11 @@ import { capitalizeFirst, parsePtGrade, sessionMinutes } from '../src/lib/select
 import {
   applyImportedScheduleRecords,
   buildInitialCompletedRecords,
+  collectKnownCourseCandidates,
   findMatchingCourseRecordIndex,
   formatAcademicYearLabel,
   getUniversityById,
+  resolveKnownCourseIdentity,
 } from '../src/lib/portugalCurriculum';
 import { defaultSettings } from '../src/lib/seed';
 import { computeNextSrsState, isTopicReviewDue } from '../src/lib/spacedRepetition';
@@ -1104,4 +1106,62 @@ test('generatePlan respeita hora da prova no proprio dia e modo de teste progres
     0,
     'Não deve agendar estudo para uma prova cuja hora já passou',
   );
+});
+
+test('resolveKnownCourseIdentity e matchCourse corrigem siglas expandidas erradamente contra cadeiras reais', () => {
+  const realCourses: Course[] = [
+    {
+      id: 'c-mdf',
+      code: 'MDF',
+      name: 'Mecânica dos Fluidos',
+      shortName: 'MdF',
+      ects: 6,
+      color: 'emerald',
+      targetGrade: 14,
+      topics: [],
+    },
+    {
+      id: 'c-snti',
+      code: 'SDN',
+      name: 'Sociologia das Novas Tecnologias de Informação',
+      shortName: 'SDN',
+      ects: 6,
+      color: 'sky',
+      targetGrade: 14,
+      topics: [],
+    },
+    {
+      id: 'c-fabad',
+      code: 'FABAD',
+      name: 'Fabrico Aditivo',
+      shortName: 'Fab. Aditivo',
+      ects: 6,
+      color: 'amber',
+      targetGrade: 14,
+      topics: [],
+    },
+  ];
+
+  const known = collectKnownCourseCandidates({ courses: realCourses });
+
+  const resolvedMdf = resolveKnownCourseIdentity(
+    { code: 'MdF', name: 'Matemática discreta e Fundamentos' },
+    known,
+  );
+  assert.equal(resolvedMdf?.name, 'Mecânica dos Fluidos');
+
+  const resolvedSnti = resolveKnownCourseIdentity(
+    { code: 'SNTI', name: 'Segurança nas Novas Tecnologias de Informação' },
+    known,
+  );
+  assert.equal(resolvedSnti?.name, 'Sociologia das Novas Tecnologias de Informação');
+
+  const resolvedFab = resolveKnownCourseIdentity(
+    { code: 'FabAd', name: 'Fabricação Aditiva' },
+    known,
+  );
+  assert.equal(resolvedFab?.name, 'Fabrico Aditivo');
+
+  const matchedSnti = matchCourse('Segurança nas Novas Tecnologias de Informação', realCourses, 'SNTI');
+  assert.equal(matchedSnti?.id, 'c-snti');
 });

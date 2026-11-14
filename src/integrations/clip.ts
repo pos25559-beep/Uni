@@ -80,9 +80,10 @@ export function normalize(s: string): string {
 }
 
 /** Encontra a cadeira pelo código, nome curto, iniciais/sigla ou nome (exato primeiro, depois parcial). */
-export function matchCourse(name: string, courses: Course[]): Course | undefined {
+export function matchCourse(name: string, courses: Course[], codeHint?: string): Course | undefined {
   const n = normalize(name);
-  if (!n) return undefined;
+  const cHint = codeHint ? normalize(codeHint) : '';
+  if (!n && !cHint) return undefined;
   const tokens = n.split(/[^a-z0-9]+/).filter(Boolean);
   const prepared = courses.map((c) => ({
     course: c,
@@ -91,6 +92,11 @@ export function matchCourse(name: string, courses: Course[]): Course | undefined
     full: normalize(c.name),
   }));
 
+  if (cHint) {
+    const byHint = prepared.find((p) => p.code === cHint || p.short === cHint || p.full === cHint);
+    if (byHint) return byHint.course;
+  }
+
   const exactCode = prepared.find((p) => p.code === n);
   if (exactCode) return exactCode.course;
   const exact = prepared.find((p) => p.short === n || p.full === n);
@@ -98,8 +104,8 @@ export function matchCourse(name: string, courses: Course[]): Course | undefined
 
   const smartMatch = courses.find(
     (c) =>
-      isCourseIdentityMatch({ code: name, name }, { code: c.code, name: c.name }) ||
-      isCourseIdentityMatch({ code: name, name }, { code: c.shortName, name: c.name }),
+      isCourseIdentityMatch({ code: codeHint, name }, { code: c.code, name: c.name }) ||
+      isCourseIdentityMatch({ code: codeHint, name }, { code: c.shortName, name: c.name }),
   );
   if (smartMatch) return smartMatch;
 

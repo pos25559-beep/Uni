@@ -3,12 +3,13 @@ import {
   addDays, addMonths, addWeeks, format, startOfDay, startOfMonth, startOfWeek,
 } from 'date-fns';
 import { pt } from 'date-fns/locale';
-import { CalendarPlus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CalendarPlus, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import AgendaView from '../components/calendar/AgendaView';
 import DayPanel from '../components/calendar/DayPanel';
 import MonthView from '../components/calendar/MonthView';
 import NewEventModal from '../components/calendar/NewEventModal';
+import SmartScheduleImportModal from '../components/courses/SmartScheduleImportModal';
 import { buildCalendarItems } from '../components/calendar/items';
 import type { CalItem, CalKind, CalState } from '../components/calendar/items';
 import { KIND_META, KIND_ORDER } from '../components/calendar/shared';
@@ -44,6 +45,7 @@ export default function Calendar() {
   const [selected, setSelected] = useState(() => toDateStr(new Date()));
   const [kinds, setKinds] = useState<Record<CalKind, boolean>>(ALL_ON);
   const [newOpen, setNewOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const today = toDateStr(new Date());
 
@@ -113,8 +115,11 @@ export default function Calendar() {
         accentTitle="calendário"
         subtitle="Aulas, avaliações, estudo, eventos e tarefas num só lugar."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <TabGuideHelpButton tabKey="calendario" />
+            <Button variant="secondary" onClick={() => setImportOpen(true)}>
+              <Upload size={16} /> Importar horário
+            </Button>
             <Button variant="primary" onClick={() => setNewOpen(true)}>
               <CalendarPlus size={16} /> Novo evento
             </Button>
@@ -217,6 +222,8 @@ export default function Calendar() {
           onClose={() => setNewOpen(false)}
         />
       )}
+
+      {importOpen && <SmartScheduleImportModal onClose={() => setImportOpen(false)} />}
     </AnimatedPage>
   );
 }

@@ -5,8 +5,8 @@ import { useStore } from '../../store/useStore';
 import { cx } from '../ui';
 
 /** Mostra exatamente o texto que é enviado à Google em cada pergunta. */
-export function ContextPanel() {
-  const [open, setOpen] = useState(false);
+export function ContextPanel({ defaultOpen = false }: { defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
   // Re-calcula quando os dados mudam, para o painel refletir o estado atual.
   const courses = useStore((s) => s.courses);
   const assessments = useStore((s) => s.assessments);

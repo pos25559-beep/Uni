@@ -7,6 +7,11 @@ import { statusLabel } from '../lib/colors';
 import { consumeDailyQuota, refundDailyQuota, type QuotaKind } from '../lib/aiQuota';
 import { getNativeAI } from '../lib/firebase';
 import {
+  collectKnownCourseCandidates,
+  getDegreeCurriculum,
+  type CourseIdentityCandidate,
+} from '../lib/portugalCurriculum';
+import {
   daysUntil, fmtGrade, fmtMinutes, gradeSummary, minutesThisWeek, readiness, studyStreak,
   todayStr, upcomingAssessments,
 } from '../lib/selectors';
@@ -549,11 +554,45 @@ async function withQuotaAndFallback<T>(
   }
 }
 
+export interface KnownCourseHint {
+  code?: string;
+  shortName?: string;
+  name: string;
+}
+
+function buildKnownCoursesPromptSection(explicitHints?: KnownCourseHint[]): string {
+  const state = useStore.getState();
+  const profile = state.academicProfile;
+  const degreeTemplates =
+    profile?.universityId && profile?.degreeId
+      ? (getDegreeCurriculum(profile.universityId, profile.degreeId)?.courses ?? [])
+      : [];
+
+  const merged: CourseIdentityCandidate[] = collectKnownCourseCandidates({
+    extraHints: explicitHints,
+    courses: state.courses,
+    completedCourses: profile?.completedCourses ?? [],
+    degreeTemplates,
+  }).slice(0, 40);
+
+  if (merged.length === 0) return '';
+
+  const listText = merged
+    .map((c) => (c.code ? `- ${c.code}: ${c.name}` : `- ${c.name}`))
+    .join('\n');
+
+  return `\n\nCADEIRAS REAIS CONHECIDAS DO ESTUDANTE (usa esta lista como referência prioritária para resolver siglas):
+${listText}
+REGRA CRÍTICA ANTI-ALUCINAÇÃO:
+- Se o print mostrar apenas uma sigla curta (ex.: "MdF", "SNTI", "FabAd", "C3 D", "TEP") e ela corresponder a uma cadeira da lista acima, usa o nome REAL dessa lista (ex.: "Mecânica dos Fluidos") e mantém a sigla visível em "code"/"courseCode".
+- Se uma sigla não existir na lista acima e o nome completo não estiver escrito na imagem, NUNCA adivinhes nem inventes um nome completo — devolve apenas a sigla exata que lês na imagem.`;
+}
+
 /** Analisa um print/captura do portal académico com Gemini Vision (nativo ou chave própria). */
 export async function parseAcademicHistoryFromScreenshot(
   base64Data: string,
   mimeType: string,
-  options?: { currentSemester?: 1 | 2 },
+  options?: { currentSemester?: 1 | 2; knownCourses?: KnownCourseHint[] },
 ): Promise<ExtractedHistoryItem[]> {
   const { customKey, model } = resolveGeminiConfig();
   const cleanBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
@@ -564,6 +603,8 @@ export async function parseAcademicHistoryFromScreenshot(
         ? 'O aluno está atualmente no 1.º Semestre: cadeiras sem nota em "2º Semestre" ou "2º Trimestre" devem vir com "semester": 2 e "status": "por_fazer" (ainda não começaram).'
         : 'Usa "semester": 1 para cadeiras do 1.º Semestre/1.º Trimestre e "semester": 2 para 2.º Semestre/2.º Trimestre.';
 
+  const knownSection = buildKnownCoursesPromptSection(options?.knownCourses);
+
   const prompt = `Extrai todas as unidades curriculares (cadeiras/disciplinas) visíveis nesta captura de ecrã de um portal académico ou lista de inscrições/pauta em português.
 Devolve APENAS um array JSON válido onde cada item segue exatamente o formato:
 {"code": "sigla curta ou null", "name": "nome completo da cadeira", "grade": número entre 0 e 20 ou null se ainda não tiver nota, "ects": número ou 6, "semester": 1 | 2 | null, "status": "aprovada" | "a_fazer" | "por_fazer"}
@@ -573,7 +614,7 @@ Regras:
 - ${activeSemHint}
 - Só marques status = "a_fazer" para cadeiras atualmente inscritas no semestre ativo sem nota final.
 - Se tiver reprovado ou indicado como falta realizar/em atraso, status = "por_fazer".
-- Não dupliques a mesma cadeira com e sem sigla e não inventes cadeiras que não estejam na imagem.`;
+- Não dupliques a mesma cadeira com e sem sigla e não inventes cadeiras que não estejam na imagem.${knownSection}`;
 
   const contents: Content[] = [
     {
@@ -691,14 +732,26 @@ export function buildStudyContext(state: AppState): string {
 
   if (academicProfile) {
     lines.push('', 'PERFIL ACADÉMICO DO ESTUDANTE (UNIPEDIA):');
-    lines.push(`- Faculdade/Curso: ${academicProfile.universityName} — ${academicProfile.degreeName}`);
+    const schoolLabel = [academicProfile.universityName, academicProfile.degreeName]
+      .filter(Boolean)
+      .join(' — ');
+    if (schoolLabel) {
+      lines.push(`- Faculdade/Curso: ${schoolLabel}`);
+    }
     const yearDesc =
       academicProfile.activeYears && academicProfile.activeYears.length > 1
         ? `Anos ativos: ${academicProfile.activeYears.map((y) => (y > 3 ? `${y - 3}.º Mestrado` : `${y}.º ano`)).join(', ')}`
         : academicProfile.currentAcademicYear > 3
           ? `Ano atual: ${academicProfile.currentAcademicYear - 3}.º ano Mestrado`
-          : `Ano atual: ${academicProfile.currentAcademicYear}.º ano`;
-    lines.push(`- Ingresso: ${academicProfile.entryYear} · ${yearDesc}, ${academicProfile.currentSemester}.º semestre`);
+          : typeof academicProfile.currentAcademicYear === 'number'
+            ? `Ano atual: ${academicProfile.currentAcademicYear}.º ano`
+            : '';
+    const entryPart = academicProfile.entryYear ? `Ingresso: ${academicProfile.entryYear}` : '';
+    const semPart = academicProfile.currentSemester ? `${academicProfile.currentSemester}.º semestre` : '';
+    const termSummary = [entryPart, [yearDesc, semPart].filter(Boolean).join(', ')].filter(Boolean).join(' · ');
+    if (termSummary) {
+      lines.push(`- ${termSummary}`);
+    }
     if (typeof academicProfile.targetTotalEcts === 'number' && academicProfile.targetTotalEcts > 0) {
       const doneEcts = academicProfile.completedEcts ?? 0;
       const pct = Math.min(100, Math.round((doneEcts / academicProfile.targetTotalEcts) * 100));
@@ -714,10 +767,17 @@ export function buildStudyContext(state: AppState): string {
       lines.push(`- Atividades extra-curriculares: ${extraDesc}`);
     }
     if (academicProfile.difficultCourseIds.length > 0) {
-      const hardNames = academicProfile.difficultCourseIds.map(
-        (id) => courses.find((c) => c.id === id)?.shortName ?? id,
-      );
-      lines.push(`- Cadeiras onde tem mais dificuldade: ${hardNames.join(', ')}`);
+      const hardNames = academicProfile.difficultCourseIds
+        .map(
+          (id) =>
+            courses.find((c) => c.id === id)?.shortName ??
+            academicProfile.completedCourses.find((c) => c.id === id)?.code ??
+            academicProfile.completedCourses.find((c) => c.id === id)?.name,
+        )
+        .filter((v): v is string => Boolean(v));
+      if (hardNames.length > 0) {
+        lines.push(`- Cadeiras onde tem mais dificuldade: ${hardNames.join(', ')}`);
+      }
     }
     if (academicProfile.difficultTopicsNotes?.trim()) {
       lines.push(`- Dificuldades declaradas pelo aluno: ${academicProfile.difficultTopicsNotes.trim()}`);
@@ -981,8 +1041,15 @@ Devolve APENAS JSON válido no formato: {"question": "pergunta objetiva em 1-2 f
 export async function parseTimetableFromScreenshot(
   base64Data: string,
   mimeType: string,
-  focus: 'schedule' | 'assessments' = 'schedule',
+  focusOrOptions:
+    | 'schedule'
+    | 'assessments'
+    | { focus?: 'schedule' | 'assessments'; knownCourses?: KnownCourseHint[] } = 'schedule',
 ): Promise<ExtractedSchedulePayload> {
+  const focus =
+    typeof focusOrOptions === 'string' ? focusOrOptions : (focusOrOptions.focus ?? 'schedule');
+  const knownCourses = typeof focusOrOptions === 'string' ? undefined : focusOrOptions.knownCourses;
+  const knownSection = buildKnownCoursesPromptSection(knownCourses);
   const { customKey, model } = resolveGeminiConfig();
   const cleanBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
   const prompt =
@@ -999,13 +1066,13 @@ Regras importantes para leitura de provas e testes:
 - Extrai TODAS as datas de testes, frequências, exames (normal/recurso), minitestes, quizzes, apresentações e entregas de projetos visíveis na imagem.
 - Formata date em ISO local "YYYY-MM-DDTHH:mm:00" (se não houver hora visível, usa "09:00:00"; se não houver ano visível, infere o ano letivo atual 2026/2027 com meses Set–Dez em 2026 e Jan–Jul em 2027).
 - kind deve ser exatamente um de: "teste", "exame", "trabalho", "projeto", "quiz".
-- Usa o nome ou sigla exata da cadeira visível (ex.: "Cálculo III D", "FabAd", "MdF", "SNTI").
-- Só devolvas "slots" se a imagem também contiver claramente uma grelha semanal de aulas. Caso contrário devolve "slots": [].`
+- Usa o nome real da cadeira (da lista de cadeiras conhecidas abaixo se existir correspondência) ou a sigla exata visível (ex.: "C3 D", "FabAd", "MdF", "SNTI") sem inventar nomes.
+- Só devolvas "slots" se a imagem também contiver claramente uma grelha semanal de aulas. Caso contrário devolve "slots": [].${knownSection}`
       : `Analisa esta foto ou print de um horário escolar/universitário ou agenda académica portuguesa.
 Devolve APENAS JSON válido no formato exato:
 {
   "slots": [
-    {"courseName": "Nome ou sigla da cadeira", "courseCode": "SIGLA opcional", "type": "T|TP|P|OT", "weekday": 1, "start": "09:00", "end": "11:00", "room": "Sala opcional"}
+    {"courseName": "Nome real da cadeira ou sigla exata visível", "courseCode": "SIGLA opcional", "type": "T|TP|P|OT", "weekday": 1, "start": "09:00", "end": "11:00", "room": "Sala opcional"}
   ],
   "assessments": [
     {"courseName": "Nome da Cadeira", "title": "Teste 1", "date": "2026-11-25T14:00:00", "kind": "teste|exame|trabalho|projeto|quiz"}
@@ -1015,13 +1082,13 @@ Regras muito importantes para grelhas visuais de horários:
 - Cabeçalhos comuns em Portugal: "2ª" / "Seg" = weekday 1, "3ª" / "Ter" = 2, "4ª" / "Qua" = 3, "5ª" / "Qui" = 4, "6ª" / "Sex" = 5, "Sáb" = 6, "Dom" = 0.
 - Se as horas não estiverem escritas dentro do retângulo colorido, LÊ a hora de início e de fim pela posição vertical do topo e fundo do retângulo relativamente ao eixo de horas à esquerda (ex.: 8:00, 9:00, 10:00... 24:00) e às linhas da grelha (ex.: meio bloco = 30 min).
 - Quando o bloco só mostrar sigla curta (ex.: "FabAd tp.1 Ed 7: 3.4/Ed.VII", "MdF l.1 Ed 8: 3.09", "C3 D t.2", "SNTI t.1"):
-  * courseCode = sigla principal ("FabAd", "MdF", "C3 D", "SNTI")
-  * courseName = nome completo se visível, senão a própria sigla
+  * courseCode = sigla principal visível ("FabAd", "MdF", "C3 D", "SNTI")
+  * courseName = nome completo real se estiver visível na imagem OU se existir na lista de cadeiras conhecidas abaixo; caso contrário usa APENAS a própria sigla exata visível (NUNCA inventes um nome completo por dedução!)
   * type: "t.*" -> "T", "tp.*" -> "TP", "l.*" / "p.*" -> "P", "s.*" / "ot.*" -> "OT"
   * room = localização/sala (ex.: "Ed 7: 3.4/Ed.VII")
 - start e end no formato "HH:mm".
 - Se não houver avaliações visíveis na foto, devolve "assessments": [].
-- Não inventes blocos que não existam visualmente na grelha.`;
+- Não inventes blocos que não existam visualmente na grelha.${knownSection}`;
 
   const contents: Content[] = [
     {

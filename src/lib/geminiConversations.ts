@@ -140,11 +140,17 @@ export function subscribeConversations(callback: (list: Conversation[]) => void)
 
   const colRef = collection(db, 'users', user.uid, 'conversations');
   const q = query(colRef, orderBy('updatedAt', 'desc'));
-  return onSnapshot(q, (snap) => {
-    const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Conversation));
-    list.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-    callback(list);
-  });
+  return onSnapshot(
+    q,
+    (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Conversation));
+      list.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+      callback(list);
+    },
+    (err) => {
+      console.warn('[Conversations] Falha ao sincronizar conversas:', err.message);
+    },
+  );
 }
 
 /**
@@ -226,10 +232,16 @@ export function subscribeMessages(
 
   const msgsRef = collection(db, 'users', user.uid, 'conversations', conversationId, 'messages');
   const q = query(msgsRef, orderBy('at', 'asc'));
-  return onSnapshot(q, (snap) => {
-    const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as ChatMessage));
-    callback(list);
-  });
+  return onSnapshot(
+    q,
+    (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as ChatMessage));
+      callback(list);
+    },
+    (err) => {
+      console.warn('[Conversations] Falha ao sincronizar mensagens:', err.message);
+    },
+  );
 }
 
 /**
@@ -239,9 +251,13 @@ export async function appendMessage(
   conversationId: string,
   message: ChatMessage,
 ): Promise<void> {
+  const cleanMessage = Object.fromEntries(
+    Object.entries(message).filter(([, value]) => value !== undefined),
+  ) as unknown as ChatMessage;
+
   const user = auth.currentUser;
   if (!user) {
-    const updated = [...readLocalMessages(conversationId), message];
+    const updated = [...readLocalMessages(conversationId), cleanMessage];
     try {
       localStorage.setItem(`${LOCAL_MESSAGES_PREFIX}${conversationId}`, JSON.stringify(updated));
     } catch {
@@ -251,7 +267,7 @@ export async function appendMessage(
     const convs = readLocalConversations();
     if (convs.some((c) => c.id === conversationId)) {
       const updatedConvs = convs
-        .map((c) => (c.id === conversationId ? { ...c, updatedAt: message.at } : c))
+        .map((c) => (c.id === conversationId ? { ...c, updatedAt: cleanMessage.at } : c))
         .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
       try {
         localStorage.setItem(LOCAL_CONVERSATIONS_KEY, JSON.stringify(updatedConvs));
@@ -263,10 +279,10 @@ export async function appendMessage(
     return;
   }
 
-  const msgRef = doc(db, 'users', user.uid, 'conversations', conversationId, 'messages', message.id);
-  await setDoc(msgRef, message);
+  const msgRef = doc(db, 'users', user.uid, 'conversations', conversationId, 'messages', cleanMessage.id);
+  await setDoc(msgRef, cleanMessage);
 
   // Atualiza conversa
   const convRef = doc(db, 'users', user.uid, 'conversations', conversationId);
-  await setDoc(convRef, { updatedAt: message.at }, { merge: true });
+  await setDoc(convRef, { updatedAt: cleanMessage.at }, { merge: true });
 }

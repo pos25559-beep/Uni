@@ -615,6 +615,78 @@ export function isCourseIdentityMatch(
   return false;
 }
 
+export interface CourseIdentityCandidate {
+  code?: string;
+  shortName?: string;
+  name: string;
+  ects?: number;
+}
+
+/** Constrói lista priorizada de cadeiras reais do aluno (ativas → histórico → plano curricular). */
+export function collectKnownCourseCandidates(opts: {
+  courses?: Course[];
+  completedCourses?: CompletedCourseRecord[];
+  degreeTemplates?: CurriculumCourseTemplate[];
+  extraHints?: CourseIdentityCandidate[];
+}): CourseIdentityCandidate[] {
+  const result: CourseIdentityCandidate[] = [];
+  const seen = new Set<string>();
+  const push = (c: CourseIdentityCandidate) => {
+    const cleanName = c.name.trim();
+    if (!cleanName) return;
+    const key = `${compactCurriculumKey(c.code || c.shortName || '')}|${compactCurriculumKey(cleanName)}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    result.push({
+      code: c.code?.trim() || undefined,
+      shortName: c.shortName?.trim() || undefined,
+      name: cleanName,
+      ects: c.ects,
+    });
+  };
+
+  for (const h of opts.extraHints ?? []) push(h);
+  for (const c of opts.courses ?? []) {
+    push({ code: c.code || c.shortName, shortName: c.shortName, name: c.name, ects: c.ects });
+  }
+  for (const r of opts.completedCourses ?? []) {
+    push({ code: r.code, name: r.name, ects: r.ects });
+  }
+  for (const t of opts.degreeTemplates ?? []) {
+    push({ code: t.code, shortName: t.shortName, name: t.name, ects: t.ects });
+  }
+  return result;
+}
+
+/** Resolve um nome/sigla detetado via OCR contra a lista prioritária de cadeiras reais do aluno/plano. */
+export function resolveKnownCourseIdentity(
+  raw: { code?: string; name: string },
+  knownCourses: CourseIdentityCandidate[],
+  templates: CurriculumCourseTemplate[] = [],
+): CourseIdentityCandidate | undefined {
+  const rawCodeKey = raw.code ? compactCurriculumKey(raw.code) : '';
+  const rawNameKey = compactCurriculumKey(raw.name);
+
+  const exact = knownCourses.find((k) => {
+    const kc = k.code ? compactCurriculumKey(k.code) : '';
+    const ks = k.shortName ? compactCurriculumKey(k.shortName) : '';
+    const kn = compactCurriculumKey(k.name);
+    return (
+      (rawCodeKey && (kc === rawCodeKey || ks === rawCodeKey || kn === rawCodeKey)) ||
+      (rawNameKey && (kn === rawNameKey || kc === rawNameKey || ks === rawNameKey))
+    );
+  });
+  if (exact) return exact;
+
+  return knownCourses.find(
+    (k) =>
+      isCourseIdentityMatch({ code: raw.code, name: raw.name }, { code: k.code, name: k.name }, templates) ||
+      (k.shortName
+        ? isCourseIdentityMatch({ code: raw.code, name: raw.name }, { code: k.shortName, name: k.name }, templates)
+        : false),
+  );
+}
+
 /**
  * Encontra o índice de uma cadeira no histórico do aluno usando sigla, shortName do catálogo,
  * iniciais do nome e correspondência normalizada sem acentos/espaços (ex: "C3 D" ↔ "C3D", "MdF" ↔ "MDF").

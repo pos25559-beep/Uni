@@ -204,6 +204,9 @@ service cloud.firestore {
     // Fields:
     //   - id: string (optional, immutable, max 100 chars)
     //   - title: string (optional, max 200 chars)
+    //   - courseId: string (optional, 1 - 100 chars)
+    //   - subject: string (optional, 1 - 50 chars)
+    //   - materialIds: list (optional, max 50 items)
     //   - userId: string (optional, immutable, must match {userId})
     //   - createdAt: timestamp/string (optional, immutable)
     //   - updatedAt: timestamp/string (optional)
@@ -216,6 +219,8 @@ service cloud.firestore {
     //   - role: string (required, 'user'|'model'|'assistant'|'system')
     //   - text: string (required, 1 - 20000 chars)
     //   - at: string/timestamp (required, max 35 chars)
+    //   - sourceDocTitles: list (optional, max 50 items)
+    //   - attachmentNames: list (optional, max 20 items)
     //   - userId: string (optional, immutable, must match {userId})
     //   - createdAt: timestamp/string (optional, immutable)
     //
@@ -634,9 +639,15 @@ service cloud.firestore {
 
     // Validates conversation document
     function isValidConversation(data, userId) {
-      return data.keys().hasOnly(['id', 'title', 'userId', 'createdAt', 'updatedAt']) &&
+      return data.keys().hasOnly([
+          'id', 'title', 'courseId', 'subject', 'materialIds',
+          'userId', 'createdAt', 'updatedAt'
+        ]) &&
         isValidOptionalString(data, 'id', 1, 100) &&
         isValidOptionalString(data, 'title', 1, 200) &&
+        isValidOptionalString(data, 'courseId', 1, 100) &&
+        isValidOptionalString(data, 'subject', 1, 50) &&
+        (!('materialIds' in data) || (data.materialIds is list && data.materialIds.size() <= 50)) &&
         (!('userId' in data) || data.userId == userId) &&
         isValidOptionalDateOrTimestamp(data, 'createdAt') &&
         isValidOptionalDateOrTimestamp(data, 'updatedAt');
@@ -644,13 +655,18 @@ service cloud.firestore {
 
     // Validates chat message document
     function isValidMessage(data, userId, conversationId) {
-      return data.keys().hasOnly(['id', 'conversationId', 'role', 'text', 'at', 'userId', 'createdAt']) &&
+      return data.keys().hasOnly([
+          'id', 'conversationId', 'role', 'text', 'at',
+          'sourceDocTitles', 'attachmentNames', 'userId', 'createdAt'
+        ]) &&
         data.keys().hasAll(['role', 'text', 'at']) &&
         isValidOptionalString(data, 'id', 1, 100) &&
         (!('conversationId' in data) || data.conversationId == conversationId) &&
         data.role in ['user', 'model', 'assistant', 'system'] &&
         data.text is string && data.text.size() > 0 && data.text.size() <= 20000 &&
         isValidDateOrTimestamp(data.at) &&
+        (!('sourceDocTitles' in data) || (data.sourceDocTitles is list && data.sourceDocTitles.size() <= 50)) &&
+        (!('attachmentNames' in data) || (data.attachmentNames is list && data.attachmentNames.size() <= 20)) &&
         (!('userId' in data) || data.userId == userId) &&
         isValidOptionalDateOrTimestamp(data, 'createdAt');
     }

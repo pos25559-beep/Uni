@@ -93,6 +93,7 @@ export default function Assistant() {
   const [tutorOpen, setTutorOpen] = useState(false);
   const [keyGuideOpen, setKeyGuideOpen] = useState(false);
   const [collectiblesOpen, setCollectiblesOpen] = useState(false);
+  const [contextModalOpen, setContextModalOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -302,39 +303,52 @@ export default function Assistant() {
 
   const send = async (text: string, attachments?: ChatAttachment[]) => {
     if (loading) return;
-
-    let convId = activeConvId;
-    if (!currentConv) {
-      convId = newId();
-      const newConv: Conversation = {
-        id: convId,
-        title: text.slice(0, 40) + (text.length > 40 ? '…' : ''),
-        courseId: activeCourseId !== 'all' ? activeCourseId : undefined,
-        subject: activeSubject !== 'all' ? activeSubject : 'geral',
-        materialIds: selectedMaterialIds,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      await upsertConversation(newConv);
-      setActiveConvId(convId);
-    } else if (currentConv.title === 'Nova conversa') {
-      await upsertConversation({
-        ...currentConv,
-        title: text.slice(0, 40) + (text.length > 40 ? '…' : ''),
-        updatedAt: new Date().toISOString(),
-      });
-    }
+    setError(null);
 
     const userMsg: ChatMessage = {
       id: newId(),
       role: 'user',
       text,
       at: new Date().toISOString(),
-      attachmentNames: attachments?.map((a) => a.name),
+      ...(attachments && attachments.length > 0
+        ? { attachmentNames: attachments.map((a) => a.name) }
+        : {}),
     };
 
-    await appendMessage(convId, userMsg);
-    void run([...messages, userMsg], convId, attachments);
+    let convId = activeConvId;
+    try {
+      if (!currentConv) {
+        convId = newId();
+        const newConv: Conversation = {
+          id: convId,
+          title: text.slice(0, 40) + (text.length > 40 ? '…' : ''),
+          courseId: activeCourseId !== 'all' ? activeCourseId : undefined,
+          subject: activeSubject !== 'all' ? activeSubject : 'geral',
+          materialIds: selectedMaterialIds,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        await upsertConversation(newConv);
+        setActiveConvId(convId);
+      } else if (currentConv.title === 'Nova conversa') {
+        await upsertConversation({
+          ...currentConv,
+          title: text.slice(0, 40) + (text.length > 40 ? '…' : ''),
+          updatedAt: new Date().toISOString(),
+        });
+      }
+
+      const nextMessages = [...messages, userMsg];
+      setMessages(nextMessages);
+      await appendMessage(convId, userMsg);
+      void run(nextMessages, convId, attachments);
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : 'Não foi possível guardar ou enviar a mensagem agora. Tenta novamente.';
+      setError(msg);
+    }
   };
 
   const stop = () => {
@@ -609,7 +623,6 @@ export default function Assistant() {
             ) : undefined
           }
         />
-        <ContextPanel />
         {messages.length === 0 && (
           <div className="flex flex-col items-center px-3 py-2 text-center sm:px-4 sm:py-6">
             <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-pastel-sage/85 shadow-card dark:bg-surface-2 sm:size-22">
@@ -848,6 +861,13 @@ export default function Assistant() {
             onSelect: () => navigate('/definicoes/tutor'),
           },
           {
+            id: 'context-view',
+            label: 'O que o Uni sabe',
+            hint: 'Ver resumo enviado com as perguntas',
+            icon: <Shield size={16} />,
+            onSelect: () => setContextModalOpen(true),
+          },
+          {
             id: 'clear',
             label: 'Apagar esta conversa',
             danger: true,
@@ -928,6 +948,20 @@ export default function Assistant() {
       <WeeklyTutorModal open={tutorOpen} onClose={() => setTutorOpen(false)} />
       <GeminiKeyGuideModal open={keyGuideOpen} onClose={() => setKeyGuideOpen(false)} />
       <UniCollectiblesModal open={collectiblesOpen} onClose={() => setCollectiblesOpen(false)} />
+      {contextModalOpen && (
+        <Modal
+          open
+          onClose={() => setContextModalOpen(false)}
+          title="O que o Uni sabe"
+          footer={
+            <Button variant="primary" onClick={() => setContextModalOpen(false)}>
+              Fechar
+            </Button>
+          }
+        >
+          <ContextPanel defaultOpen />
+        </Modal>
+      )}
       {convsModalMode && (
         <ConversationsModal
           open

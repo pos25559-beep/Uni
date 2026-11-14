@@ -17,7 +17,7 @@ import {
   EXTRA_ACTIVITY_PRESETS,
   inferAcademicStageFromEcts,
 } from '../../lib/academicCredits';
-import { colorNames } from '../../lib/colors';
+import { colorNames, weekdayLong } from '../../lib/colors';
 import { parseCurriculumFromText } from '../../lib/curriculumParser';
 import { auth } from '../../lib/firebase';
 import {
@@ -30,11 +30,13 @@ import { hapticSuccess, hapticTap, syncNativeTheme } from '../../lib/nativeBridg
 import {
   applyImportedScheduleRecords,
   buildInitialCompletedRecords,
+  collectKnownCourseCandidates,
   computeWeightedAverage,
   deriveCourseAcronym,
   getUniversityById,
   mergeCurriculumCatalog,
   PORTUGAL_CURRICULA,
+  resolveKnownCourseIdentity,
   type ImportedRecordCourseInput,
 } from '../../lib/portugalCurriculum';
 import { parsePtGrade } from '../../lib/selectors';
@@ -227,7 +229,10 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
   const [ocrError, setOcrError] = useState<string | null>(null);
   const [scheduleDoneInfo, setScheduleDoneInfo] = useState<{
     classesCount: number;
+    assessmentsCount?: number;
     source: 'photo' | 'gcal' | 'print';
+    courseLabels?: string[];
+    slotSummaries?: string[];
   } | null>(null);
   const [scheduleImportMode, setScheduleImportMode] = useState<SmartImportInitialMode | null>(null);
   const [scheduleImportBaseline, setScheduleImportBaseline] = useState<{
@@ -325,7 +330,12 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
 
   const applyScheduleScopeToRecords = (
     importedCourses: ImportedRecordCourseInput[],
-    meta: { classesCount: number; assessmentsCount: number; source: 'photo' | 'gcal' | 'print' },
+    meta: {
+      classesCount: number;
+      assessmentsCount: number;
+      source: 'photo' | 'gcal' | 'print';
+      slotSummaries?: string[];
+    },
   ) => {
     const hasActiveItems = importedCourses.some(
       (item) =>
@@ -343,9 +353,27 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
       }),
     );
 
-    if (hasActiveItems) {
+    const activeCourseLabels = Array.from(
+      new Set(
+        importedCourses
+          .filter(
+            (item) =>
+              item.status === 'a_fazer' &&
+              (item.semester === undefined || item.semester === currentSemester),
+          )
+          .map((item) => (item.code && item.code !== item.name ? `${item.code} (${item.name})` : item.name)),
+      ),
+    );
+
+    if (hasActiveItems || meta.classesCount > 0 || meta.assessmentsCount > 0) {
       setYearFilter('all');
-      setScheduleDoneInfo({ classesCount: meta.classesCount, source: meta.source });
+      setScheduleDoneInfo({
+        classesCount: meta.classesCount,
+        assessmentsCount: meta.assessmentsCount,
+        source: meta.source,
+        courseLabels: activeCourseLabels,
+        slotSummaries: meta.slotSummaries,
+      });
     }
 
     const parts: string[] = [];
@@ -685,6 +713,13 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     setOcrFeedback(null);
 
     try {
+      const storeState = useStore.getState();
+      const knownCourses = collectKnownCourseCandidates({
+        courses: storeState.courses,
+        completedCourses: records,
+        degreeTemplates: currentDegreeTemplates,
+      });
+
       const historyItems: ExtractedHistoryItem[] = [];
       const scheduleSlots: ExtractedScheduleSlot[] = [];
       const scheduleAssessments: ExtractedScheduleAssessment[] = [];
@@ -695,7 +730,10 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
         const { base64, mimeType } = await readNormalizedScreenshot(file);
 
         try {
-          const scheduleRes = await parseTimetableFromScreenshot(base64, mimeType);
+          const scheduleRes = await parseTimetableFromScreenshot(base64, mimeType, {
+            focus: 'schedule',
+            knownCourses,
+          });
           anySucceeded = true;
           scheduleSlots.push(...scheduleRes.slots);
           scheduleAssessments.push(...scheduleRes.assessments);
@@ -706,6 +744,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
         try {
           const historyRes = await parseAcademicHistoryFromScreenshot(base64, mimeType, {
             currentSemester,
+            knownCourses,
           });
           anySucceeded = true;
           historyItems.push(...historyRes);
@@ -723,8 +762,48 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
         return;
       }
 
+      const resolvedHistory = historyItems.map((item) => {
+        const resolved = resolveKnownCourseIdentity(
+          { code: item.code, name: item.name },
+          knownCourses,
+          currentDegreeTemplates,
+        );
+        return resolved
+          ? {
+              ...item,
+              code: resolved.shortName || resolved.code || item.code,
+              name: resolved.name,
+              ects: item.ects ?? resolved.ects,
+            }
+          : item;
+      });
+
+      const resolvedSlots = scheduleSlots.map((slot) => {
+        const resolved = resolveKnownCourseIdentity(
+          { code: slot.courseCode, name: slot.courseName },
+          knownCourses,
+          currentDegreeTemplates,
+        );
+        return resolved
+          ? {
+              ...slot,
+              courseCode: resolved.shortName || resolved.code || slot.courseCode,
+              courseName: resolved.name,
+            }
+          : slot;
+      });
+
+      const resolvedAssessments = scheduleAssessments.map((a) => {
+        const resolved = resolveKnownCourseIdentity(
+          { name: a.courseName },
+          knownCourses,
+          currentDegreeTemplates,
+        );
+        return resolved ? { ...a, courseName: resolved.name } : a;
+      });
+
       const importedCourses: ImportedRecordCourseInput[] = [
-        ...historyItems.map((item) => ({
+        ...resolvedHistory.map((item) => ({
           code: item.code,
           name: item.name,
           ects: item.ects,
@@ -732,14 +811,14 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
           status: item.status,
           grade: item.grade,
         })),
-        ...scheduleSlots.map((slot) => ({
+        ...resolvedSlots.map((slot) => ({
           code: slot.courseCode,
           name: slot.courseName,
           ects: isSecondarySchool ? 4 : 6,
           semester: currentSemester,
           status: 'a_fazer' as const,
         })),
-        ...scheduleAssessments.map((a) => ({
+        ...resolvedAssessments.map((a) => ({
           name: a.courseName,
           ects: isSecondarySchool ? 4 : 6,
           semester: currentSemester,
@@ -747,7 +826,8 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
         })),
       ];
 
-      if (scheduleSlots.length > 0 || scheduleAssessments.length > 0) {
+      let slotSummaries: string[] | undefined;
+      if (resolvedSlots.length > 0 || resolvedAssessments.length > 0) {
         const state = useStore.getState();
         const currentCourses = [...state.courses];
         const createdCourses: Course[] = [];
@@ -756,9 +836,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
           colorNames.length > 0 ? colorNames : (['emerald', 'sky', 'amber'] as CourseColor[]);
 
         const ensureCourseId = (courseName: string, courseCode?: string): string => {
-          const matched =
-            matchCourse(courseName, [...currentCourses, ...createdCourses]) ||
-            (courseCode ? matchCourse(courseCode, [...currentCourses, ...createdCourses]) : undefined);
+          const matched = matchCourse(courseName, [...currentCourses, ...createdCourses], courseCode);
           if (matched) return matched.id;
 
           const code = deriveCourseAcronym(courseName, courseCode);
@@ -776,7 +854,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
           return created.id;
         };
 
-        const importedClasses: ClassSlot[] = scheduleSlots.map((s) => ({
+        const importedClasses: ClassSlot[] = resolvedSlots.map((s) => ({
           id: newId(),
           courseId: ensureCourseId(s.courseName, s.courseCode),
           type: s.type,
@@ -787,7 +865,15 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
           source: 'local',
         }));
 
-        const importedAssessments: Assessment[] = scheduleAssessments.map((a) => ({
+        const allKnown = [...currentCourses, ...createdCourses];
+        slotSummaries = resolvedSlots.map((s, idx) => {
+          const cls = importedClasses[idx];
+          const crs = cls ? allKnown.find((c) => c.id === cls.courseId) : undefined;
+          const dayLabel = weekdayLong[s.weekday]?.slice(0, 3) ?? '';
+          return `${dayLabel} ${s.start}–${s.end} · ${crs?.shortName || crs?.name || s.courseName} (${s.type})`;
+        });
+
+        const importedAssessments: Assessment[] = resolvedAssessments.map((a) => ({
           id: newId(),
           courseId: ensureCourseId(a.courseName),
           kind: a.kind,
@@ -804,9 +890,10 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
       }
 
       applyScheduleScopeToRecords(importedCourses, {
-        classesCount: scheduleSlots.length,
-        assessmentsCount: scheduleAssessments.length,
+        classesCount: resolvedSlots.length,
+        assessmentsCount: resolvedAssessments.length,
         source: 'print',
+        slotSummaries,
       });
     } catch (err) {
       setOcrError(err instanceof Error ? err.message : 'Erro ao analisar o print agora.');
@@ -1374,6 +1461,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                 classesCount: summary.classesCount,
                 assessmentsCount: summary.assessmentsCount,
                 source: summary.source,
+                slotSummaries: summary.slotSummaries,
               },
             );
             setScheduleImportMode(null);
