@@ -64,7 +64,7 @@ import Step2Academic, { type AcademicCycleMode } from './steps/Step2Academic';
 import Step3Courses from './steps/Step3Courses';
 import Step4RhythmPrivacy from './steps/Step4RhythmPrivacy';
 
-type OnboardingStepId = 'identidade' | 'curso' | 'cadeiras' | 'ritmo';
+export type OnboardingStepId = 'identidade' | 'curso' | 'cadeiras' | 'ritmo';
 
 type OnboardingContextData = {
   flowData: Record<string, unknown>;
@@ -88,6 +88,7 @@ const STEP_META: Array<{ id: OnboardingStepId; label: string }> = [
 export interface OnboardingExperienceProps {
   onClose: () => void;
   fullScreen?: boolean;
+  initialStepId?: OnboardingStepId;
 }
 
 function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperienceProps) {
@@ -1431,10 +1432,15 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
   );
 }
 
-export default function OnboardingExperience({ onClose, fullScreen = true }: OnboardingExperienceProps) {
+export default function OnboardingExperience({
+  onClose,
+  fullScreen = true,
+  initialStepId = 'identidade',
+}: OnboardingExperienceProps) {
   return (
     <OnboardingProvider<OnboardingContextData>
       steps={ONBOARDING_STEPS}
+      initialStepId={initialStepId}
       initialContext={{ flowData: {}, flowVersion: LEGAL_INFO.policyVersion }}
     >
       <OnboardingFlowBody onClose={onClose} fullScreen={fullScreen} />

@@ -35,8 +35,8 @@ const THEME_OPTIONS: Array<{ id: Settings['theme']; label: string; icon: typeof 
 ];
 
 const TONE_OPTIONS: Array<{ id: AppTone; label: string; hint: string }> = [
-  { id: 'vibrante', label: 'Vibrante', hint: 'Papelaria viva e acolhedora' },
-  { id: 'serio', label: 'Minimal', hint: 'Foco absoluto sem distrações' },
+  { id: 'vibrante', label: 'Expressivo', hint: 'Pastéis vivos, movimento tátil e Uni ativo' },
+  { id: 'serio', label: 'Sério & Minimal', hint: 'Superfícies neutras, foco calmo e sem distrações' },
 ];
 
 export default function Step1Identity({
@@ -109,7 +109,7 @@ export default function Step1Identity({
                   setThemePref(t.id);
                 }}
                 className={cx(
-                  'flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-semibold transition',
+                  'flex min-h-11 items-center justify-center gap-1 whitespace-nowrap rounded-xl border px-2 text-xs font-semibold transition sm:gap-1.5 sm:px-3',
                   active
                     ? 'border-accent bg-accent-soft text-accent-ink'
                     : 'border-line bg-surface-2 text-muted hover:text-fg',

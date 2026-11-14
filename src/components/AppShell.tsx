@@ -14,7 +14,7 @@ import {
   Target,
   X,
 } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { useEffect, useMemo, useState } from 'react';
 import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { auth, onAuthStateChanged, type User } from '../lib/firebase';
@@ -156,6 +156,7 @@ export default function AppShell() {
 
   const themePalette = useStore((s) => s.settings.themePalette ?? 'caderno');
   const appTone = useStore((s) => s.settings.appTone ?? 'vibrante');
+  const isMinimalTone = appTone === 'serio';
 
   useEffect(() => {
     void syncNativeTheme(theme, themePalette, appTone);
@@ -192,6 +193,7 @@ export default function AppShell() {
   };
 
   return (
+    <MotionConfig reducedMotion={isMinimalTone ? 'always' : 'user'}>
     <div className="flex min-h-dvh h-dvh bg-bg text-fg">
       <ToastViewport />
 
@@ -230,22 +232,24 @@ export default function AppShell() {
           ))}
         </nav>
 
-        <button
-          type="button"
-          onClick={() => {
-            void hapticTap();
-            setCollectiblesOpen(true);
-          }}
-          className="mb-2 flex min-h-[44px] items-center justify-between gap-2 rounded-2xl border border-accent/25 bg-accent-soft/45 px-3.5 py-2 text-xs font-semibold text-fg transition hover:bg-accent-soft"
-        >
-          <span className="inline-flex items-center gap-2">
-            <Award size={15} className="text-accent-ink" />
-            Coleção do Uni
-          </span>
-          <span className="rounded-full bg-surface px-2 py-0.5 font-mono text-xs font-bold text-accent-ink">
-            {collectibleCounts.unlocked}/{collectibleCounts.total}
-          </span>
-        </button>
+        {!isMinimalTone && (
+          <button
+            type="button"
+            onClick={() => {
+              void hapticTap();
+              setCollectiblesOpen(true);
+            }}
+            className="mb-2 flex min-h-[44px] items-center justify-between gap-2 rounded-2xl border border-accent/25 bg-accent-soft/45 px-3.5 py-2 text-xs font-semibold text-fg transition hover:bg-accent-soft"
+          >
+            <span className="inline-flex items-center gap-2">
+              <Award size={15} className="text-accent-ink" />
+              Coleção do Uni
+            </span>
+            <span className="rounded-full bg-surface px-2 py-0.5 font-mono text-xs font-bold text-accent-ink">
+              {collectibleCounts.unlocked}/{collectibleCounts.total}
+            </span>
+          </button>
+        )}
 
         <AuthStatus />
 
@@ -436,23 +440,25 @@ export default function AppShell() {
               </div>
 
               <div className="mt-4 space-y-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    void hapticTap();
-                    setMoreOpen(false);
-                    setCollectiblesOpen(true);
-                  }}
-                  className="flex min-h-[48px] w-full items-center justify-between rounded-[18px] border border-accent/25 bg-accent-soft/50 px-3.5 py-2.5 text-left transition hover:bg-accent-soft"
-                >
-                  <span className="inline-flex items-center gap-2 text-xs font-bold text-fg">
-                    <Award size={16} className="text-accent" />
-                    Coleção do Uni &amp; Mascotes
-                  </span>
-                  <span className="rounded-full bg-surface px-2.5 py-0.5 font-mono text-xs font-bold text-accent">
-                    {collectibleCounts.unlocked}/{collectibleCounts.total}
-                  </span>
-                </button>
+                {!isMinimalTone && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void hapticTap();
+                      setMoreOpen(false);
+                      setCollectiblesOpen(true);
+                    }}
+                    className="flex min-h-[48px] w-full items-center justify-between rounded-[18px] border border-accent/25 bg-accent-soft/50 px-3.5 py-2.5 text-left transition hover:bg-accent-soft"
+                  >
+                    <span className="inline-flex items-center gap-2 text-xs font-bold text-fg">
+                      <Award size={16} className="text-accent" />
+                      Coleção do Uni &amp; Mascotes
+                    </span>
+                    <span className="rounded-full bg-surface px-2.5 py-0.5 font-mono text-xs font-bold text-accent">
+                      {collectibleCounts.unlocked}/{collectibleCounts.total}
+                    </span>
+                  </button>
+                )}
 
                 <AuthStatus />
 
@@ -499,5 +505,6 @@ export default function AppShell() {
         </>
       )}
     </div>
+    </MotionConfig>
   );
 }

@@ -1,16 +1,20 @@
 import { Modal } from '../ui';
-import OnboardingExperience from './OnboardingExperience';
+import OnboardingExperience, { type OnboardingStepId } from './OnboardingExperience';
 
 interface OnboardingModalProps {
   open: boolean;
   onClose: () => void;
   fullScreen?: boolean;
+  initialStepId?: OnboardingStepId;
+  title?: string;
 }
 
 export default function OnboardingModal({
   open,
   onClose,
   fullScreen = false,
+  initialStepId = 'identidade',
+  title = 'Configurar percurso e ritmo',
 }: OnboardingModalProps) {
   if (!open) return null;
 
@@ -22,7 +26,7 @@ export default function OnboardingModal({
         aria-label="Configuração inicial da Unipedia"
         className="fixed inset-0 z-50 overflow-y-auto bg-bg"
       >
-        <OnboardingExperience onClose={onClose} fullScreen />
+        <OnboardingExperience onClose={onClose} fullScreen initialStepId={initialStepId} />
       </div>
     );
   }
@@ -31,10 +35,10 @@ export default function OnboardingModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="Configurar percurso e ritmo"
+      title={title}
       maxWidthClass="sm:max-w-3xl"
     >
-      <OnboardingExperience onClose={onClose} fullScreen={false} />
+      <OnboardingExperience onClose={onClose} fullScreen={false} initialStepId={initialStepId} />
     </Modal>
   );
 }

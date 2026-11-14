@@ -1,16 +1,12 @@
-import { Compass, Download, GraduationCap, Moon, Sun } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 import { APP_PALETTES } from '../../lib/academicCredits';
-import { computeWeightedAverage } from '../../lib/portugalCurriculum';
 import { fmtMinutes } from '../../lib/selectors';
 import { weekdayShort } from '../../lib/colors';
 import { UNI_ACCESSORIES, UNI_PERSONAS } from '../../lib/uniAccessories';
 import { UniBuddy } from '../brand/UnipediaMarks';
-import OnboardingModal from '../onboarding/OnboardingModal';
-import { startUnipediaGuidedTour } from '../onboarding/TourManager';
-import { Badge, Button, Card, Field, Input, cx } from '../ui';
+import { Button, Card, Field, Input, cx } from '../ui';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -22,11 +18,8 @@ const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
 export default function ProfileCard() {
   const settings = useStore((s) => s.settings);
-  const academicProfile = useStore((s) => s.academicProfile);
   const updateSettings = useStore((s) => s.updateSettings);
-  const navigate = useNavigate();
   const [minutesText, setMinutesText] = useState(String(settings.dailyStudyMinutes));
-  const [wizardOpen, setWizardOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches,
@@ -68,9 +61,6 @@ export default function ProfileCard() {
       if (choice.outcome === 'accepted') setInstallPrompt(null);
     }
   };
-
-  const avg = computeWeightedAverage(academicProfile.completedCourses);
-  const approvedCount = academicProfile.completedCourses.filter((c) => c.status === 'aprovada').length;
 
   const endBeforeStart = settings.semesterEnd < settings.semesterStart;
 
@@ -161,78 +151,8 @@ export default function ProfileCard() {
         </div>
       </div>
 
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
-        <div className="min-w-0 flex-1 space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium text-muted">Percurso académico</span>
-            {approvedCount > 0 && <Badge tone="ok">{approvedCount} cadeiras concluídas</Badge>}
-            {avg !== null && <Badge tone="accent">Média: {avg.toFixed(1)} val.</Badge>}
-          </div>
-          <p className="truncate text-xs text-fg">
-            {academicProfile.universityName} · {academicProfile.degreeName} (
-            {academicProfile.activeYears && academicProfile.activeYears.length > 1
-              ? `Anos ${academicProfile.activeYears.map((y) => (y > 3 ? `${y - 3}.º Mest.` : `${y}.º`)).join(' + ')}`
-              : academicProfile.currentAcademicYear > 3
-                ? `${academicProfile.currentAcademicYear - 3}.º Mestrado`
-                : `${academicProfile.currentAcademicYear}.º ano`}
-            , {academicProfile.currentSemester}.º sem.)
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => navigate('/bem-vindo')}
-          >
-            Ver boas-vindas
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => navigate('/configurar')}
-          >
-            Onboarding completo
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              navigate('/');
-              window.setTimeout(() => startUnipediaGuidedTour(), 350);
-            }}
-          >
-            <Compass size={14} /> Repetir tour guiado
-          </Button>
-          <Button size="sm" onClick={() => setWizardOpen(true)}>
-            <GraduationCap size={14} /> Editar curso &amp; histórico
-          </Button>
-        </div>
-      </div>
-
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
-        <span className="text-xs font-medium text-muted">Tema</span>
-        <div className="inline-flex rounded-full bg-surface-2 p-1">
-          {([
-            ['system', 'Sistema', Compass],
-            ['light', 'Claro', Sun],
-            ['dark', 'Escuro', Moon],
-          ] as const).map(([value, label, Icon]) => (
-            <Button
-              key={value}
-              size="sm"
-              variant={settings.theme === value ? 'primary' : 'ghost'}
-              aria-pressed={settings.theme === value}
-              onClick={() => updateSettings({ theme: value })}
-            >
-              <Icon size={14} />
-              {label}
-            </Button>
-          ))}
-        </div>
-      </div>
-
       {/* Visual & Personalidade do Uni */}
-      <div className="mt-4 space-y-3 border-t border-line pt-4">
+      <div className="mt-5 space-y-3 border-t border-line pt-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <span className="text-xs font-medium text-muted">Estilo do Uni</span>
@@ -298,7 +218,7 @@ export default function ProfileCard() {
           </div>
         </div>
 
-        {/* Paleta de cores, Tom da App & Companheiros discretos */}
+        {/* Paleta de cores & Companheiros discretos */}
         <div className="space-y-3 border-t border-line pt-4">
           <div>
             <span className="text-xs font-medium text-muted">Paleta de cores</span>
@@ -342,41 +262,11 @@ export default function ProfileCard() {
 
           <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
             <div>
-              <span className="text-xs font-medium text-muted">Estilo &amp; Tom da app</span>
-              <p className="text-xs text-muted">
-                O modo Sério &amp; Minimalista reduz animações e oculta os Unis nos cantos.
-              </p>
-            </div>
-            <div className="inline-flex rounded-full bg-surface-2 p-1">
-              {(
-                [
-                  ['vibrante', 'Expressivo'],
-                  ['serio', 'Sério & Minimal'],
-                ] as const
-              ).map(([toneId, label]) => {
-                const active = (settings.appTone ?? 'vibrante') === toneId;
-                return (
-                  <button
-                    key={toneId}
-                    type="button"
-                    onClick={() => updateSettings({ appTone: toneId })}
-                    className={cx(
-                      'min-h-[40px] rounded-full px-3 text-xs font-semibold transition',
-                      active ? 'bg-ink-cta text-ink-cta-fg' : 'text-muted hover:text-fg',
-                    )}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-            <div>
               <span className="text-xs font-medium text-muted">Unis discretos no ecrã</span>
               <p className="text-xs text-muted">
-                Companheiros tímidos nos cantos que se escondem quando escreves ou fazes scroll.
+                {(settings.appTone ?? 'vibrante') === 'serio'
+                  ? 'Em pausa porque o estilo Sério & Minimal está ativo.'
+                  : 'Companheiros tímidos nos cantos que se escondem quando escreves ou fazes scroll.'}
               </p>
             </div>
             <div className="inline-flex rounded-full bg-surface-2 p-1">
@@ -419,7 +309,6 @@ export default function ProfileCard() {
         </div>
       )}
 
-      <OnboardingModal open={wizardOpen} onClose={() => setWizardOpen(false)} />
     </Card>
   );
 }

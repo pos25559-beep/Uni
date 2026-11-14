@@ -5,6 +5,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { courseColors } from '../../lib/colors';
 import { hapticSuccess, hapticTap } from '../../lib/nativeBridge';
+import { useStore } from '../../store/useStore';
 import type { Course } from '../../types';
 import { cx } from '../ui';
 
@@ -41,6 +42,10 @@ export function celebrateStationery() {
 }
 
 export function AnimatedPage({ children, className }: { children: ReactNode; className?: string }) {
+  const isMinimal = useStore((s) => (s.settings.appTone ?? 'vibrante') === 'serio');
+  if (isMinimal) {
+    return <div className={className}>{children}</div>;
+  }
   return (
     <motion.div
       initial={{ opacity: 0, y: 16, scale: 0.985 }}
@@ -61,6 +66,10 @@ export function StaggerContainer({
   children: ReactNode;
   className?: string;
 }) {
+  const isMinimal = useStore((s) => (s.settings.appTone ?? 'vibrante') === 'serio');
+  if (isMinimal) {
+    return <div className={className}>{children}</div>;
+  }
   return (
     <motion.div
       initial="hidden"
@@ -88,6 +97,10 @@ export function StaggerItem({
   children: ReactNode;
   className?: string;
 }) {
+  const isMinimal = useStore((s) => (s.settings.appTone ?? 'vibrante') === 'serio');
+  if (isMinimal) {
+    return <div className={className}>{children}</div>;
+  }
   return (
     <motion.div
       variants={{
@@ -159,20 +172,24 @@ export function StickerBadge({
   tilt?: number;
   className?: string;
 }) {
-  const toneClass = {
-    butter: 'bg-pastel-butter text-[#141312]',
-    sage: 'bg-pastel-sage text-[#141312]',
-    mint: 'bg-pastel-mint text-[#141312]',
-    sky: 'bg-pastel-sky text-[#141312]',
-    peach: 'bg-pastel-peach text-[#141312]',
-    blush: 'bg-pastel-blush text-[#141312]',
-  }[tone];
+  const isMinimal = useStore((s) => (s.settings.appTone ?? 'vibrante') === 'serio');
+  const toneClass = isMinimal
+    ? 'bg-surface-2 text-fg border-line'
+    : {
+        butter: 'bg-pastel-butter text-[#141312]',
+        sage: 'bg-pastel-sage text-[#141312]',
+        mint: 'bg-pastel-mint text-[#141312]',
+        sky: 'bg-pastel-sky text-[#141312]',
+        peach: 'bg-pastel-peach text-[#141312]',
+        blush: 'bg-pastel-blush text-[#141312]',
+      }[tone];
 
   return (
     <span
-      style={{ transform: `rotate(${tilt}deg)` }}
+      style={isMinimal ? undefined : { transform: `rotate(${tilt}deg)` }}
       className={cx(
-        'inline-flex items-center gap-1.5 rounded-full border border-[#141312]/15 px-3 py-1 text-xs font-bold shadow-card',
+        'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold',
+        isMinimal ? 'shadow-none' : 'border-[#141312]/15 font-bold shadow-card',
         toneClass,
         className,
       )}
@@ -217,6 +234,8 @@ export function BentoMetricTile({
   onClick?: () => void;
   className?: string;
 }) {
+  const isMinimal = useStore((s) => (s.settings.appTone ?? 'vibrante') === 'serio');
+  const resolvedTone: BentoTone = isMinimal ? 'neutral' : tone;
   const Tag = onClick ? motion.button : motion.div;
   return (
     <Tag
@@ -227,16 +246,18 @@ export function BentoMetricTile({
               void hapticTap();
               onClick();
             },
-            whileTap: { scale: 0.98 },
+            whileTap: isMinimal ? undefined : { scale: 0.98 },
           }
         : {})}
-      initial={{ opacity: 0, scale: 0.97 }}
+      initial={isMinimal ? false : { opacity: 0, scale: 0.97 }}
       animate={{ opacity: 1, scale: 1 }}
-      transition={UNIPEDIA_SPRING}
+      transition={isMinimal ? { duration: 0 } : UNIPEDIA_SPRING}
       className={cx(
-        'relative flex flex-col justify-between overflow-hidden rounded-[22px] p-4 text-left',
-        BENTO_STYLES[tone],
-        onClick && 'w-full cursor-pointer transition-transform hover:-translate-y-0.5',
+        'relative flex flex-col justify-between overflow-hidden p-4 text-left',
+        isMinimal ? 'rounded-2xl' : 'rounded-[22px]',
+        BENTO_STYLES[resolvedTone],
+        onClick && !isMinimal && 'w-full cursor-pointer transition-transform hover:-translate-y-0.5',
+        onClick && isMinimal && 'w-full cursor-pointer transition-colors hover:border-muted/60',
         className,
       )}
     >
@@ -353,10 +374,45 @@ export function FolderCardDeck({
   onSelect?: (courseId: string) => void;
   onOpenCourse: (courseId: string) => void;
 }) {
+  const isMinimal = useStore((s) => (s.settings.appTone ?? 'vibrante') === 'serio');
   const [internalId, setInternalId] = useState<string>(courses[0]?.id ?? '');
   const activeId = selectedId ?? internalId;
 
   if (courses.length === 0) return null;
+
+  if (isMinimal) {
+    return (
+      <div className="space-y-2">
+        {courses.map((course) => {
+          const doneTopics = course.topics.filter((t) => t.status === 'done' || t.status === 'review').length;
+          const totalTopics = course.topics.length;
+          const pct = totalTopics > 0 ? Math.round((doneTopics / totalTopics) * 100) : 0;
+          const scheme = courseColors[course.color];
+          return (
+            <button
+              key={course.id}
+              type="button"
+              onClick={() => onOpenCourse(course.id)}
+              className="flex min-h-[54px] w-full items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-3 text-left transition-colors hover:border-muted/60"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className={cx('size-2 shrink-0 rounded-full', scheme.dot)} aria-hidden="true" />
+                  <span className="font-mono text-xs font-semibold text-muted">{course.shortName}</span>
+                  <span className="text-xs text-muted tabular">· {course.ects} ECTS</span>
+                </div>
+                <p className="mt-0.5 truncate font-display text-sm font-bold text-fg">{course.name}</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <span className="font-mono text-xs font-semibold text-muted tabular">{pct}%</span>
+                <ArrowRight size={14} className="text-muted" aria-hidden="true" />
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
 
   const choose = (id: string) => {
     void hapticTap();

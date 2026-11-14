@@ -4,6 +4,8 @@ import {
   Database,
   FileText,
   GraduationCap,
+  LogOut,
+  RefreshCw,
   Shield,
   Sliders,
   Sparkles,
@@ -11,7 +13,6 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import AuthStatus from '../components/auth/AuthStatus';
 import { UniBuddy } from '../components/brand/UnipediaMarks';
 import { AnimatedPage } from '../components/motion/Primitives';
 import OnboardingModal from '../components/onboarding/OnboardingModal';
@@ -24,12 +25,24 @@ import GeminiCard from '../components/settings/GeminiCard';
 import GoogleCard from '../components/settings/GoogleCard';
 import NotebookCard from '../components/settings/NotebookCard';
 import ProfileCard from '../components/settings/ProfileCard';
-import { Badge, Button, ListGroup, ListRow, PageHeader, SegmentedControl, SubpageHeader, Switch } from '../components/ui';
-import { auth, onAuthStateChanged, type User } from '../lib/firebase';
+import {
+  Badge,
+  Button,
+  ListGroup,
+  ListRow,
+  PageHeader,
+  SegmentedControl,
+  SubpageHeader,
+  Switch,
+  showToast,
+} from '../components/ui';
+import { APP_PALETTES } from '../lib/academicCredits';
+import { auth, logoutFirebase, onAuthStateChanged, type User } from '../lib/firebase';
+import { migrateLocalDataToCloud } from '../lib/firestoreSync';
 import { fmtMinutes } from '../lib/selectors';
 import { resolveUniAccessory } from '../lib/uniAccessories';
 import { useStore } from '../store/useStore';
-import type { Settings as SettingsType } from '../types';
+import type { AppTone, Settings as SettingsType } from '../types';
 
 const THEME_LABELS: Record<SettingsType['theme'], string> = {
   system: 'Sistema',
@@ -47,8 +60,27 @@ export default function SettingsPage() {
   const updateSettings = useStore((s) => s.updateSettings);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [user, setUser] = useState<User | null>(() => auth.currentUser);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => onAuthStateChanged(auth, setUser), []);
+
+  const handleManualSync = async () => {
+    setSyncing(true);
+    try {
+      await migrateLocalDataToCloud();
+      showToast('Dados sincronizados com a nuvem!');
+    } catch {
+      showToast('Erro ao sincronizar agora. Tenta mais tarde.', 'danger');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await logoutFirebase();
+    updateSettings({ guestMode: false, userName: '' });
+    showToast('Sessão terminada.', 'neutral');
+  };
 
   if (section === 'estudo') {
     return (
@@ -122,6 +154,10 @@ export default function SettingsPage() {
   }
 
   const googleConnected = integrations.google.connected;
+  const appTone: AppTone = settings.appTone ?? 'vibrante';
+  const isMinimal = appTone === 'serio';
+  const activePaletteName =
+    APP_PALETTES.find((p) => p.id === (settings.themePalette ?? 'caderno'))?.name ?? 'Caderno Vivo';
 
   return (
     <AnimatedPage className="space-y-6">
@@ -135,18 +171,30 @@ export default function SettingsPage() {
 
       <TabGuideBanner tabKey="definicoes" />
 
-      {/* Hero de Perfil & Estado da Conta */}
+      {/* Hero unificado de Perfil & Cloud (sem duplicar cartão AuthStatus abaixo) */}
       <section className="flex flex-col gap-4 rounded-[24px] border border-line bg-surface p-5 shadow-card sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-3.5">
-          <div className="grid size-14 shrink-0 place-items-center rounded-full bg-pastel-sage/75 dark:bg-surface-2">
-            <UniBuddy
-              mood="happy"
-              accessory={resolveUniAccessory(settings.uniAccessory, academicProfile.degreeName, courses[0]?.name)}
-              skin={settings.uniSkin}
-              size={44}
-              interactive={false}
+          {isMinimal && user?.photoURL ? (
+            <img
+              src={user.photoURL}
+              alt=""
+              className="size-14 shrink-0 rounded-full border border-line object-cover"
             />
-          </div>
+          ) : isMinimal ? (
+            <div className="grid size-14 shrink-0 place-items-center rounded-full border border-line bg-surface-2 font-display text-lg font-bold text-fg">
+              {(settings.userName || user?.displayName || 'E').slice(0, 1).toUpperCase()}
+            </div>
+          ) : (
+            <div className="grid size-14 shrink-0 place-items-center rounded-full bg-pastel-sage/75 dark:bg-surface-2">
+              <UniBuddy
+                mood="happy"
+                accessory={resolveUniAccessory(settings.uniAccessory, academicProfile.degreeName, courses[0]?.name)}
+                skin={settings.uniSkin}
+                size={44}
+                interactive={false}
+              />
+            </div>
+          )}
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="truncate font-display text-lg font-bold text-fg">
@@ -159,15 +207,38 @@ export default function SettingsPage() {
             <p className="mt-0.5 truncate text-xs text-muted">
               {academicProfile.degreeName
                 ? [academicProfile.universityName, academicProfile.degreeName].filter(Boolean).join(' · ')
-                : 'Define o teu curso e visual do Uni nas preferências abaixo'}
+                : 'Define o teu curso e ritmo abaixo'}
             </p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" variant="secondary" onClick={() => navigate('/definicoes/estudo')}>
-            Editar perfil &amp; Uni
+            {isMinimal ? 'Editar perfil & paleta' : 'Editar perfil & Uni'}
           </Button>
-          {!user && (
+          {user ? (
+            <>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => void handleManualSync()}
+                disabled={syncing}
+                aria-label="Sincronizar agora"
+              >
+                <RefreshCw size={15} className={syncing ? 'animate-spin' : ''} />
+                <span className="hidden sm:inline">Sincronizar</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => void handleLogout()}
+                aria-label="Terminar sessão"
+                className="text-muted hover:text-coral-ink"
+              >
+                <LogOut size={15} />
+                <span className="hidden sm:inline">Sair</span>
+              </Button>
+            </>
+          ) : (
             <Button size="sm" variant="primary" onClick={() => navigate('/entrar')}>
               Entrar para sincronizar
             </Button>
@@ -175,32 +246,52 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      {user && <AuthStatus />}
-
-      {/* Aparência rápida */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[22px] bg-surface-2/75 px-4 py-3">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-fg">Aparência do caderno</p>
-          <p className="text-xs text-muted">Segue o sistema ou escolhe claro/escuro</p>
+      {/* Aparência rápida: Tema & Estilo (Expressivo vs Sério & Minimal) num só sítio */}
+      <section className="space-y-3 rounded-[22px] border border-line/70 bg-surface-2/65 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-fg">Aparência do caderno</p>
+            <p className="text-xs text-muted">Paleta atual: {activePaletteName}</p>
+          </div>
+          <SegmentedControl
+            layoutId="settings-theme-pill"
+            value={settings.theme}
+            onChange={(v) => updateSettings({ theme: v as SettingsType['theme'] })}
+            items={[
+              { id: 'system', label: 'Sistema' },
+              { id: 'light', label: 'Claro' },
+              { id: 'dark', label: 'Escuro' },
+            ]}
+          />
         </div>
-        <SegmentedControl
-          layoutId="settings-theme-pill"
-          value={settings.theme}
-          onChange={(v) => updateSettings({ theme: v as SettingsType['theme'] })}
-          items={[
-            { id: 'system', label: 'Sistema' },
-            { id: 'light', label: 'Claro' },
-            { id: 'dark', label: 'Escuro' },
-          ]}
-        />
-      </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line/80 pt-3">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-fg">Estilo visual da app</p>
+            <p className="text-xs text-muted">
+              {isMinimal
+                ? 'Sério & Minimal ativo: superfícies neutras, sem animações nem mascotes.'
+                : 'Expressivo ativo: pastéis quentes, animações táteis e Unis vivos.'}
+            </p>
+          </div>
+          <SegmentedControl
+            layoutId="settings-tone-pill"
+            value={appTone}
+            onChange={(v) => updateSettings({ appTone: v as AppTone })}
+            items={[
+              { id: 'vibrante', label: 'Expressivo' },
+              { id: 'serio', label: 'Sério & Minimal' },
+            ]}
+          />
+        </div>
+      </section>
 
       {/* Grupo 1: Caderno & Estudo */}
       <ListGroup title="Caderno & Estudo">
         <ListRow
           icon={<Sliders size={18} />}
-          title="Perfil, semestre e meta diária"
-          subtitle={`${settings.userName || 'Estudante'} · ${fmtMinutes(settings.dailyStudyMinutes)}/dia`}
+          title="Semestre, meta, paleta e Uni"
+          subtitle={`${settings.semesterName} · ${fmtMinutes(settings.dailyStudyMinutes)}/dia · ${activePaletteName}`}
           onClick={() => navigate('/definicoes/estudo')}
         />
         <ListRow
@@ -285,7 +376,12 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <OnboardingModal open={wizardOpen} onClose={() => setWizardOpen(false)} />
+      <OnboardingModal
+        open={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        initialStepId="curso"
+        title="Curso e histórico académico"
+      />
     </AnimatedPage>
   );
 }

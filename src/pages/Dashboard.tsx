@@ -307,6 +307,7 @@ export default function Dashboard() {
     patch('tasks', t.id, { done: !t.done });
   };
 
+  const isMinimal = (settings.appTone ?? 'vibrante') === 'serio';
   const firstName = settings.userName.trim().split(/\s+/)[0] ?? '';
   const dateLabel = capitalize(format(now, "EEEE, d 'de' MMM", { locale: pt }));
   const doneSessionsCount = todaySessions.filter((s) => s.done).length;
@@ -321,18 +322,20 @@ export default function Dashboard() {
       {/* Cabeçalho editorial com o Uni interativo ("Clippy") e máximo 2 ações circulares */}
       <header className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-pastel-sage/85 ring-1 ring-line/50 dark:bg-surface-2">
-            <UniBuddy
-              mood={streak >= 3 || progressToday >= 1 ? 'celebrate' : 'happy'}
-              accessory={uniAccessory}
-              size={38}
-              onClick={() => {
-                void hapticTap();
-                setUniBubbleOpen((v) => !v);
-              }}
-              ariaLabel="Falar com o Uni"
-            />
-          </div>
+          {!isMinimal && (
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-pastel-sage/85 ring-1 ring-line/50 dark:bg-surface-2">
+              <UniBuddy
+                mood={streak >= 3 || progressToday >= 1 ? 'celebrate' : 'happy'}
+                accessory={uniAccessory}
+                size={38}
+                onClick={() => {
+                  void hapticTap();
+                  setUniBubbleOpen((v) => !v);
+                }}
+                ariaLabel="Falar com o Uni"
+              />
+            </div>
+          )}
           <div className="min-w-0">
             <p className="truncate text-xs font-medium text-muted">
               {dateLabel} · {settings.semesterName}
@@ -341,11 +344,17 @@ export default function Dashboard() {
               {greeting(now.getHours())}
               {firstName ? (
                 <>
-                  , <span className="font-serif font-medium italic text-accent">{firstName}</span>
+                  ,{' '}
+                  <span className={cx(isMinimal ? 'text-accent-ink' : 'font-serif font-medium italic text-accent')}>
+                    {firstName}
+                  </span>
                 </>
               ) : (
                 <>
-                  , <span className="font-serif font-medium italic text-accent">bora estudar</span>
+                  ,{' '}
+                  <span className={cx(isMinimal ? 'text-accent-ink' : 'font-serif font-medium italic text-accent')}>
+                    bora estudar
+                  </span>
                 </>
               )}
             </h1>
@@ -381,7 +390,12 @@ export default function Dashboard() {
       {!settings.hubSetupDismissed && !hubProgress.allReady && (
         <section
           aria-label="Primeiros passos da tua configuração"
-          className="rounded-[24px] bg-pastel-sage/55 p-4 text-[#141312] shadow-card dark:bg-surface dark:text-fg dark:ring-1 dark:ring-white/10"
+          className={cx(
+            'p-4 shadow-card',
+            isMinimal
+              ? 'rounded-2xl border border-line bg-surface text-fg'
+              : 'rounded-[24px] bg-pastel-sage/55 text-[#141312] dark:bg-surface dark:text-fg dark:ring-1 dark:ring-white/10',
+          )}
         >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 flex-1 space-y-1">
@@ -503,17 +517,19 @@ export default function Dashboard() {
             {streak} {streak === 1 ? 'dia seguido' : 'dias seguidos'}
           </StickerBadge>
         )}
-        <button
-          type="button"
-          onClick={() => {
-            void hapticTap();
-            setCollectiblesOpen(true);
-          }}
-          className="inline-flex min-h-[38px] items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1 text-xs font-semibold text-fg transition hover:border-accent"
-        >
-          <Sparkles size={13} className="text-accent" />
-          <span>Coleção Uni · {unlockedCollectibles}/{collectibles.length}</span>
-        </button>
+        {!isMinimal && (
+          <button
+            type="button"
+            onClick={() => {
+              void hapticTap();
+              setCollectiblesOpen(true);
+            }}
+            className="inline-flex min-h-[38px] items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1 text-xs font-semibold text-fg transition hover:border-accent"
+          >
+            <Sparkles size={13} className="text-accent" />
+            <span>Coleção Uni · {unlockedCollectibles}/{collectibles.length}</span>
+          </button>
+        )}
       </div>
 
       <StaggerContainer className="space-y-5">
@@ -521,7 +537,12 @@ export default function Dashboard() {
       <StaggerItem>
       <section
         data-tour="bento-overview"
-        className="rounded-[26px] bg-pastel-butter/75 p-5 text-[#141312] shadow-card dark:bg-surface-2 dark:text-[#FAF6EC]"
+        className={cx(
+          'p-5 shadow-card',
+          isMinimal
+            ? 'rounded-2xl border border-line bg-surface text-fg'
+            : 'rounded-[26px] bg-pastel-butter/75 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]',
+        )}
       >
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -790,8 +811,8 @@ export default function Dashboard() {
       </div>
       </StaggerItem>
 
-      {/* Mosaico orgânico de formas pastel ("Daily highlights") */}
-      {(courses.length > 0 || todaySessions.length > 0 || pendingTasks.length > 0) && (
+      {/* Mosaico orgânico de formas pastel ("Daily highlights") apenas em Expressivo */}
+      {!isMinimal && (courses.length > 0 || todaySessions.length > 0 || pendingTasks.length > 0) && (
         <StaggerItem>
           <HighlightShapesGrid
             focusedLabel={fmtMinutes(weekMinutes)}
