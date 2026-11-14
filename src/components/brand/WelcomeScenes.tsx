@@ -7,15 +7,15 @@ import { UniBuddy } from './UnipediaMarks';
 export function UniClassroomScene() {
   return (
     <div
-      className="relative flex h-60 w-full max-w-[332px] flex-col items-center justify-between py-1 select-none"
+      className="relative flex h-44 w-full max-w-[316px] flex-col items-center justify-between py-0.5 select-none sm:h-56 sm:max-w-[332px]"
       aria-label="Ilustração animada de uma aula com o Professor Uni no quadro e alunos Uni sentados"
     >
       {/* Quadro negro escolar */}
       <motion.div
-        initial={{ opacity: 0, y: -10, scale: 0.96 }}
+        initial={{ opacity: 0, y: -8, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={UNIPEDIA_BOUNCE_SPRING}
-        className="relative flex h-[116px] w-full items-center justify-between rounded-[22px] border-[5px] border-[#9C6B3F] bg-[#157F58] px-4 py-2.5 text-[#FAF8F2] shadow-card dark:border-[#7B5230] dark:bg-[#115F42]"
+        className="relative flex h-[90px] w-full items-center justify-between rounded-[20px] border-[4px] border-[#9C6B3F] bg-[#157F58] px-3.5 py-2 text-[#FAF8F2] shadow-card dark:border-[#7B5230] dark:bg-[#115F42] sm:h-[112px] sm:rounded-[22px] sm:border-[5px] sm:px-4"
       >
         {/* Giz no quadro (visível desde o primeiro instante + traço suave) */}
         <svg
@@ -82,12 +82,12 @@ export function UniClassroomScene() {
           transition={{ repeat: Infinity, duration: 3.4, ease: 'easeInOut' }}
           className="relative flex shrink-0 flex-col items-center pr-1"
         >
-          <UniBuddy mood="happy" accessory="humanities" skin="butter" size={62} />
+          <UniBuddy mood="happy" accessory="humanities" skin="butter" size={50} />
           <motion.span
             aria-hidden="true"
             animate={{ rotate: [-14, -28, -14] }}
             transition={{ repeat: Infinity, duration: 2.8, ease: 'easeInOut' }}
-            className="absolute -left-3 bottom-4 h-1 w-7 origin-right rounded-full bg-[#FCE99F] shadow-sm"
+            className="absolute -left-2.5 bottom-3 h-1 w-6 origin-right rounded-full bg-[#FCE99F] shadow-sm"
           />
         </motion.div>
 
@@ -120,18 +120,18 @@ export function UniClassroomScene() {
                 delay: student.delay,
                 ease: 'easeInOut',
               }}
-              className="-mb-3 relative z-10"
+              className="-mb-2.5 relative z-10"
             >
               <UniBuddy
                 mood={student.mood}
                 accessory={student.accessory}
                 skin={student.skin}
-                size={52}
+                size={44}
               />
             </motion.div>
             {/* Carteira */}
-            <div className="flex h-10 w-full flex-col items-center justify-center rounded-xl border border-[#B88456]/45 bg-[#E7BE96] px-2 shadow-sm dark:border-[#6E4F32] dark:bg-[#5E4229]">
-              <div className="h-2.5 w-[72%] rounded-[4px] bg-[#FAF8F2] shadow-inner dark:bg-[#2E2922]" />
+            <div className="flex h-8 w-full flex-col items-center justify-center rounded-xl border border-[#B88456]/45 bg-[#E7BE96] px-2 shadow-sm dark:border-[#6E4F32] dark:bg-[#5E4229] sm:h-10">
+              <div className="h-2 w-[72%] rounded-[4px] bg-[#FAF8F2] shadow-inner dark:bg-[#2E2922]" />
             </div>
           </div>
         ))}
@@ -144,25 +144,25 @@ export function UniClassroomScene() {
 export function UniStudyGroupScene() {
   return (
     <div
-      className="relative flex h-60 w-full max-w-[332px] items-center justify-center select-none"
+      className="relative flex h-44 w-full max-w-[316px] items-center justify-center select-none sm:h-56 sm:max-w-[332px]"
       aria-label="Ilustração animada de um grupo de estudo com quatro companheiros Uni à volta de cadernos"
     >
       {/* Stickers discretos a flutuar com ritmo SRS */}
       <motion.div
-        animate={{ y: [0, -5, 0], rotate: [-4, -1, -4] }}
+        animate={{ y: [0, -4, 0], rotate: [-4, -1, -4] }}
         transition={{ repeat: Infinity, duration: 4.2, ease: 'easeInOut' }}
-        className="absolute left-3 top-2 flex items-center gap-1.5 rounded-full bg-[#FAF8F2] px-3 py-1.5 text-[11px] font-bold text-[#141312] shadow-card dark:bg-[#23201B] dark:text-[#FAF6EC]"
+        className="absolute left-2 top-0.5 flex items-center gap-1 rounded-full bg-[#FAF8F2] px-2.5 py-1 text-[10px] font-bold text-[#141312] shadow-card dark:bg-[#23201B] dark:text-[#FAF6EC] sm:left-3 sm:top-2 sm:text-[11px]"
       >
-        <Sparkles size={12} className="text-[#157F58] dark:text-[#4ADE80]" />
+        <Sparkles size={11} className="text-[#157F58] dark:text-[#4ADE80]" />
         <span>Revisão 1→3→7d</span>
       </motion.div>
 
       <motion.div
-        animate={{ y: [0, 5, 0], rotate: [3, 6, 3] }}
+        animate={{ y: [0, 4, 0], rotate: [3, 6, 3] }}
         transition={{ repeat: Infinity, duration: 4.6, ease: 'easeInOut' }}
-        className="absolute right-3 top-4 flex items-center gap-1.5 rounded-full bg-[#FCE99F] px-3 py-1.5 text-[11px] font-bold text-[#141312] shadow-card"
+        className="absolute right-2 top-1.5 flex items-center gap-1 rounded-full bg-[#FCE99F] px-2.5 py-1 text-[10px] font-bold text-[#141312] shadow-card sm:right-3 sm:top-3 sm:text-[11px]"
       >
-        <BookOpen size={12} className="text-[#157F58]" />
+        <BookOpen size={11} className="text-[#157F58]" />
         <span>Caderno em grupo</span>
       </motion.div>
 
@@ -171,19 +171,19 @@ export function UniStudyGroupScene() {
         initial={{ scale: 0.92, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={UNIPEDIA_BOUNCE_SPRING}
-        className="relative mt-6 flex h-32 w-[256px] items-center justify-center rounded-[42px] border-2 border-[#157F58]/15 bg-[#FAF8F2]/92 shadow-card dark:border-white/10 dark:bg-[#23201B]/95"
+        className="relative mt-4 flex h-24 w-[212px] items-center justify-center rounded-[34px] border-2 border-[#157F58]/15 bg-[#FAF8F2]/92 shadow-card dark:border-white/10 dark:bg-[#23201B]/95 sm:mt-6 sm:h-28 sm:w-[244px]"
       >
         {/* Folhas abertas no centro da mesa */}
         <div className="flex items-center gap-2">
-          <div className="h-12 w-14 -rotate-6 rounded-lg border border-black/10 bg-white p-1.5 shadow-sm dark:border-white/10 dark:bg-[#1A1815]">
-            <div className="h-1.5 w-8 rounded bg-[#157F58]/45" />
-            <div className="mt-1.5 h-1 w-10 rounded bg-black/15 dark:bg-white/15" />
-            <div className="mt-1 h-1 w-7 rounded bg-black/15 dark:bg-white/15" />
-          </div>
-          <div className="h-12 w-14 rotate-6 rounded-lg border border-black/10 bg-[#FCE99F]/75 p-1.5 shadow-sm dark:border-white/10 dark:bg-[#3A3114]">
-            <div className="h-1.5 w-7 rounded bg-[#141312]/45 dark:bg-[#FAF6EC]/50" />
-            <div className="mt-1.5 h-1 w-9 rounded bg-black/15 dark:bg-white/15" />
+          <div className="h-10 w-12 -rotate-6 rounded-lg border border-black/10 bg-white p-1.5 shadow-sm dark:border-white/10 dark:bg-[#1A1815]">
+            <div className="h-1.5 w-7 rounded bg-[#157F58]/45" />
+            <div className="mt-1.5 h-1 w-8 rounded bg-black/15 dark:bg-white/15" />
             <div className="mt-1 h-1 w-6 rounded bg-black/15 dark:bg-white/15" />
+          </div>
+          <div className="h-10 w-12 rotate-6 rounded-lg border border-black/10 bg-[#FCE99F]/75 p-1.5 shadow-sm dark:border-white/10 dark:bg-[#3A3114]">
+            <div className="h-1.5 w-6 rounded bg-[#141312]/45 dark:bg-[#FAF6EC]/50" />
+            <div className="mt-1.5 h-1 w-8 rounded bg-black/15 dark:bg-white/15" />
+            <div className="mt-1 h-1 w-5 rounded bg-black/15 dark:bg-white/15" />
           </div>
         </div>
 
@@ -191,36 +191,36 @@ export function UniStudyGroupScene() {
         <motion.div
           animate={{ y: [0, -3, 0], rotate: [-4, 2, -4] }}
           transition={{ repeat: Infinity, duration: 3.1, ease: 'easeInOut' }}
-          className="absolute -left-6 -top-8"
+          className="absolute -left-5 -top-6"
         >
-          <UniBuddy mood="curious" accessory="math" skin="classic" size={62} />
+          <UniBuddy mood="curious" accessory="math" skin="classic" size={50} />
         </motion.div>
 
         {/* Uni topo-direita */}
         <motion.div
           animate={{ y: [0, -4, 0], rotate: [3, -2, 3] }}
           transition={{ repeat: Infinity, duration: 3.5, delay: 0.4, ease: 'easeInOut' }}
-          className="absolute -right-6 -top-7"
+          className="absolute -right-5 -top-5"
         >
-          <UniBuddy mood="happy" accessory="tech" skin="sage" size={62} />
+          <UniBuddy mood="happy" accessory="tech" skin="sage" size={50} />
         </motion.div>
 
         {/* Uni baixo-esquerda */}
         <motion.div
           animate={{ y: [0, -2.5, 0], rotate: [-2, 3, -2] }}
           transition={{ repeat: Infinity, duration: 3.8, delay: 0.8, ease: 'easeInOut' }}
-          className="absolute -bottom-7 left-5"
+          className="absolute -bottom-5 left-4"
         >
-          <UniBuddy mood="celebrate" accessory="arts" skin="crimson" size={58} />
+          <UniBuddy mood="celebrate" accessory="arts" skin="crimson" size={48} />
         </motion.div>
 
         {/* Uni baixo-direita */}
         <motion.div
           animate={{ y: [0, -3, 0], rotate: [2, -3, 2] }}
           transition={{ repeat: Infinity, duration: 3.3, delay: 0.2, ease: 'easeInOut' }}
-          className="absolute -bottom-7 right-5"
+          className="absolute -bottom-5 right-4"
         >
-          <UniBuddy mood="thinking" accessory="science" skin="butter" size={58} />
+          <UniBuddy mood="thinking" accessory="science" skin="butter" size={48} />
         </motion.div>
       </motion.div>
     </div>

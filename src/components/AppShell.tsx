@@ -268,17 +268,23 @@ export default function AppShell() {
       {/* Conteúdo principal com Safe Area e espaço para a dock flutuante */}
       <main
         className={cx(
-          'min-w-0 flex-1 overflow-y-auto pt-[env(safe-area-inset-top)] md:pt-0 md:pb-6',
-          isBypassRoute
-            ? 'pb-[calc(1.5rem+env(safe-area-inset-bottom)+var(--keyboard-height,0px))]'
-            : 'pb-[calc(6.25rem+env(safe-area-inset-bottom)+var(--keyboard-height,0px))]',
+          'min-w-0 flex-1 overflow-y-auto md:pt-0 md:pb-6',
+          isFullBleedRoute
+            ? 'pt-0 pb-0'
+            : location.pathname.startsWith('/entrar')
+              ? 'pt-[max(0.5rem,env(safe-area-inset-top))] pb-[calc(0.5rem+env(safe-area-inset-bottom)+var(--keyboard-height,0px))]'
+              : isBypassRoute
+                ? 'pt-[env(safe-area-inset-top)] pb-[calc(1rem+env(safe-area-inset-bottom)+var(--keyboard-height,0px))]'
+                : 'pt-[env(safe-area-inset-top)] pb-[calc(6.25rem+env(safe-area-inset-bottom)+var(--keyboard-height,0px))]',
         )}
       >
         <div
           className={cx(
             isFullBleedRoute
               ? 'w-full'
-              : 'mx-auto w-full max-w-5xl px-4 py-4 md:px-8 md:py-8',
+              : location.pathname.startsWith('/entrar')
+                ? 'mx-auto w-full max-w-5xl px-3.5 py-2 md:px-8 md:py-6'
+                : 'mx-auto w-full max-w-5xl px-4 py-4 md:px-8 md:py-8',
           )}
         >
           <Outlet />

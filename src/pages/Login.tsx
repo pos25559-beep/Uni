@@ -22,7 +22,6 @@ import {
   AnimatedPage,
   StaggerContainer,
   StaggerItem,
-  StickerBadge,
   UNIPEDIA_BOUNCE_SPRING,
   UNIPEDIA_SPRING,
 } from '../components/motion/Primitives';
@@ -347,74 +346,68 @@ export default function LoginPage() {
   };
 
   return (
-    <AnimatedPage className="mx-auto max-w-md space-y-4 pb-8">
+    <AnimatedPage
+      className={`mx-auto max-w-md ${showBack ? 'space-y-4 pb-8' : 'space-y-2 pb-1.5 sm:space-y-2.5 sm:pb-2'}`}
+    >
       {showBack ? (
         <SubpageHeader title="A tua conta" subtitle="Inicia sessão ou gere o teu acesso" />
       ) : (
-        <div className="flex items-center justify-between pt-1">
-          <div className="flex items-center gap-2.5">
+        <header className="flex items-center justify-between gap-2 pt-0.5">
+          <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
             <motion.div whileHover={{ rotate: -6, scale: 1.05 }} transition={UNIPEDIA_BOUNCE_SPRING}>
-              <UnipediaLogoMark size={34} />
+              <UnipediaLogoMark size={30} />
             </motion.div>
-            <span className="font-display text-lg font-extrabold tracking-tight text-fg">
+            <span className="font-display text-base font-extrabold tracking-tight text-fg sm:text-lg">
               Unipedia
             </span>
           </div>
-          <div className="flex items-center gap-1.5">
+          <nav className="flex shrink-0 items-center gap-1.5">
             <Link
               to="/bem-vindo"
-              className="inline-flex min-h-[38px] items-center gap-1 rounded-full bg-surface-2 px-3 text-xs font-semibold text-muted transition hover:text-fg"
+              className="inline-flex min-h-[34px] shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-surface-2 px-2.5 text-[11px] font-semibold text-muted transition hover:text-fg sm:px-3 sm:text-xs"
             >
-              <Sparkles size={13} className="text-accent" />
-              Apresentação
+              <Sparkles size={12} className="shrink-0 text-accent" />
+              <span>Início</span>
             </Link>
             <Link
               to="/privacidade"
-              className="inline-flex min-h-[38px] items-center gap-1 rounded-full bg-surface-2 px-3 text-xs font-semibold text-muted transition hover:text-fg"
+              className="inline-flex min-h-[34px] shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-surface-2 px-2.5 text-[11px] font-semibold text-muted transition hover:text-fg sm:px-3 sm:text-xs"
             >
-              <ShieldCheck size={14} className="text-ok" />
-              Privacidade
+              <ShieldCheck size={12} className="shrink-0 text-ok" />
+              <span>Privacidade</span>
             </Link>
-          </div>
-        </div>
+          </nav>
+        </header>
       )}
 
-      <StaggerContainer className="space-y-4">
-        {/* Bloco Hero vivo com formas em movimento e o Uni interativo com balão sobreposto (sem cortar o rodapé) */}
+      <StaggerContainer className={showBack ? 'space-y-4' : 'space-y-2 sm:space-y-2.5'}>
+        {/* Faixa Hero compacta para o ecrã inteiro caber sem scroll em telemóvel */}
         <StaggerItem>
-          <div className="relative rounded-[28px] bg-[#FCE99F] p-5 text-[#141312] shadow-card dark:bg-[#352D14] dark:text-[#FAF6EC]">
-            <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[28px]" aria-hidden="true">
+          <div className="relative rounded-[20px] bg-[#FCE99F] px-3 py-2 text-[#141312] shadow-card dark:bg-[#352D14] dark:text-[#FAF6EC] sm:rounded-[26px] sm:p-4">
+            <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[20px] sm:rounded-[26px]" aria-hidden="true">
               <motion.div
-                className="absolute -top-6 -right-6 size-24 rounded-full bg-[#C9DC9F]/55 dark:bg-[#157F58]/25"
-                animate={{ y: [0, 10, 0], x: [0, -6, 0], scale: [1, 1.08, 1] }}
+                className="absolute -top-6 -right-6 size-20 rounded-full bg-[#C9DC9F]/55 dark:bg-[#157F58]/25"
+                animate={{ y: [0, 8, 0], x: [0, -5, 0], scale: [1, 1.06, 1] }}
                 transition={{ repeat: Infinity, duration: 6.5, ease: 'easeInOut' }}
-              />
-              <motion.div
-                className="absolute -bottom-5 left-12 size-16 rotate-12 rounded-2xl bg-[#FAD6BA]/60 dark:bg-[#E04F33]/20"
-                animate={{ y: [0, -8, 0], rotate: [12, 24, 12] }}
-                transition={{ repeat: Infinity, duration: 5.5, ease: 'easeInOut' }}
               />
             </div>
 
-            <div className="relative z-10 flex items-center justify-between gap-4">
-              <div className="min-w-0 space-y-1.5">
-                <StickerBadge tone="mint" tilt={-2}>
-                  Olá! Eu sou o Uni
-                </StickerBadge>
-                <h1 className="font-display text-[25px] font-extrabold leading-[1.12] tracking-tight">
+            <div className="relative z-10 flex items-center justify-between gap-2.5">
+              <div className="min-w-0 space-y-0.5">
+                <h1 className="font-display text-[18px] font-extrabold leading-tight tracking-tight sm:text-xl">
                   O teu semestre{' '}
                   <span className="font-serif font-normal italic">sempre em dia</span>
                 </h1>
-                <p className="text-xs leading-relaxed opacity-85">
-                  Organiza cadeiras, horários e sessões de estudo numa só conta ou começa já no teu telemóvel.
+                <p className="text-[11px] leading-snug opacity-80 sm:text-xs">
+                  Sincroniza a conta ou começa já offline.
                 </p>
               </div>
 
-              <div className="relative -mb-2 shrink-0 self-end">
+              <div className="relative shrink-0">
                 <UniBuddy
                   mood={uniMood}
                   accessory={uniPreference && uniPreference !== 'auto' ? uniPreference : 'default'}
-                  size={74}
+                  size={44}
                   onClick={handleUniTap}
                   ariaLabel="Interagir com o Uni, o companheiro de estudo"
                 />
@@ -480,7 +473,7 @@ export default function LoginPage() {
               </div>
             </Card>
           ) : (
-            <Card className="space-y-5">
+            <Card padded={false} className="space-y-2 p-3 sm:space-y-4 sm:p-5">
               <SegmentedControl
                 layoutId="login-mode-pill"
                 value={mode}
@@ -495,7 +488,7 @@ export default function LoginPage() {
                 ]}
               />
 
-              <form onSubmit={submitEmail} className="space-y-4">
+              <form onSubmit={submitEmail} className="space-y-2 sm:space-y-3.5">
                 <AnimatePresence initial={false}>
                   {mode === 'signup' && (
                     <motion.div
@@ -509,15 +502,15 @@ export default function LoginPage() {
                       <Field label="Como queres ser chamado?">
                         <div className="relative">
                           <UserIcon
-                            size={16}
-                            className="pointer-events-none absolute top-3.5 left-3.5 text-muted"
+                            size={15}
+                            className="pointer-events-none absolute top-3 left-3.5 text-muted sm:top-3.5"
                           />
                           <Input
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             placeholder="O teu primeiro nome"
                             autoComplete="name"
-                            className="pl-10"
+                            className="h-10 py-1.5 pl-10 sm:h-auto sm:py-2.5"
                           />
                         </div>
                       </Field>
@@ -527,7 +520,7 @@ export default function LoginPage() {
 
                 <Field label="Email">
                   <div className="relative">
-                    <Mail size={16} className="pointer-events-none absolute top-3.5 left-3.5 text-muted" />
+                    <Mail size={15} className="pointer-events-none absolute top-3 left-3.5 text-muted sm:top-3.5" />
                     <Input
                       type="email"
                       required
@@ -537,7 +530,7 @@ export default function LoginPage() {
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="nome@email.com"
                       autoComplete="email"
-                      className="pl-10"
+                      className="h-10 py-1.5 pl-10 sm:h-auto sm:py-2.5"
                     />
                   </div>
                 </Field>
@@ -564,7 +557,7 @@ export default function LoginPage() {
                 {authMethod === 'password' && (
                   <Field label="Palavra-passe">
                     <div className="relative">
-                      <Lock size={16} className="pointer-events-none absolute top-3.5 left-3.5 text-muted" />
+                      <Lock size={15} className="pointer-events-none absolute top-3 left-3.5 text-muted sm:top-3.5" />
                       <Input
                         type={showPass ? 'text' : 'password'}
                         required
@@ -575,15 +568,15 @@ export default function LoginPage() {
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="Mínimo 6 caracteres"
                         autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-                        className="pr-12 pl-10"
+                        className="h-10 py-1.5 pr-12 pl-10 sm:h-auto sm:py-2.5"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPass((v) => !v)}
                         aria-label={showPass ? 'Ocultar palavra-passe' : 'Mostrar palavra-passe'}
-                        className="absolute inset-y-0 right-1 flex w-11 items-center justify-center rounded-full text-muted hover:text-fg"
+                        className="absolute inset-y-0 right-1 flex w-10 items-center justify-center rounded-full text-muted hover:text-fg sm:w-11"
                       >
-                        {showPass ? <EyeOff size={17} /> : <Eye size={17} />}
+                        {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
                   </Field>
@@ -602,7 +595,7 @@ export default function LoginPage() {
                 )}
 
                 {mode === 'signup' && (
-                  <label className="flex cursor-pointer items-start gap-2.5 rounded-[16px] border border-line bg-bg px-3.5 py-2.5 text-xs leading-relaxed text-fg">
+                  <label className="flex cursor-pointer items-center gap-2 rounded-[14px] border border-line bg-bg px-3 py-1.5 text-[11px] leading-snug text-fg">
                     <input
                       type="checkbox"
                       checked={ageConfirmed}
@@ -611,14 +604,14 @@ export default function LoginPage() {
                         setError(null);
                         void hapticTap();
                       }}
-                      className="mt-0.5 h-4 w-4 shrink-0 rounded border-line accent-accent"
+                      className="h-4 w-4 shrink-0 rounded border-line accent-accent"
                     />
                     <span>
-                      Confirmo ter pelo menos <strong>{LEGAL_INFO.minimumAgePT} anos</strong> (ou autorização) e aceito a{' '}
+                      Tenho pelo menos <strong>{LEGAL_INFO.minimumAgePT} anos</strong> e aceito{' '}
                       <Link to="/privacidade" className="inline-link font-semibold text-accent underline">
                         Privacidade
                       </Link>{' '}
-                      e os{' '}
+                      e{' '}
                       <Link to="/termos" className="inline-link font-semibold text-accent underline">
                         Termos
                       </Link>
@@ -665,7 +658,7 @@ export default function LoginPage() {
               </form>
 
               {!isNative && (
-                <div className="space-y-3 border-t border-line pt-4">
+                <div className="border-t border-line pt-2 sm:pt-2.5">
                   <Button
                     variant="secondary"
                     loading={googleBusy}
@@ -682,35 +675,42 @@ export default function LoginPage() {
 
         {!user && (
           <StaggerItem>
-            <div className="flex flex-col items-center gap-1.5 pt-1 text-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthMethod((v) => (v === 'password' ? 'magic' : 'password'));
-                  setError(null);
-                  setInfo(null);
-                  void hapticTap();
-                }}
-                className="min-h-[44px] rounded-xl px-3 text-xs font-semibold text-accent hover:underline"
-              >
-                {authMethod === 'password'
-                  ? 'Preferes entrar só com email (link sem palavra-passe)?'
-                  : 'Entrar antes com email e palavra-passe'}
-              </button>
-              <Button variant="ghost" onClick={handleContinueOffline}>
-                Usar só neste telemóvel por agora
-              </Button>
-              <p className="text-xs text-muted">
-                Ao continuar, concordas com a nossa{' '}
-                <Link to="/privacidade" className="inline-link font-semibold text-accent underline">
-                  Política de Privacidade
-                </Link>{' '}
-                e os{' '}
-                <Link to="/termos" className="inline-link font-semibold text-accent underline">
-                  Termos
-                </Link>
-                .
-              </p>
+            <div className="flex flex-col items-center gap-0.5 text-center">
+              <div className="flex flex-wrap items-center justify-center gap-x-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMethod((v) => (v === 'password' ? 'magic' : 'password'));
+                    setError(null);
+                    setInfo(null);
+                    void hapticTap();
+                  }}
+                  className="min-h-[30px] rounded-xl px-2 text-xs font-semibold text-accent hover:underline"
+                >
+                  {authMethod === 'password' ? 'Link sem palavra-passe' : 'Usar palavra-passe'}
+                </button>
+                <span aria-hidden="true" className="text-xs text-muted">·</span>
+                <button
+                  type="button"
+                  onClick={handleContinueOffline}
+                  className="min-h-[30px] rounded-xl px-2 text-xs font-semibold text-fg hover:underline"
+                >
+                  Usar só neste telemóvel
+                </button>
+              </div>
+              {mode === 'signin' && (
+                <p className="text-[11px] text-muted">
+                  Ao continuar aceitas a{' '}
+                  <Link to="/privacidade" className="inline-link font-semibold text-accent underline">
+                    Privacidade
+                  </Link>{' '}
+                  e os{' '}
+                  <Link to="/termos" className="inline-link font-semibold text-accent underline">
+                    Termos
+                  </Link>
+                  .
+                </p>
+              )}
             </div>
           </StaggerItem>
         )}
