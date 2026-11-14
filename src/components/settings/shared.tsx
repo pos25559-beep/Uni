@@ -5,7 +5,8 @@ import { Check, ChevronDown, Copy } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import type { IntegrationStatus } from '../../types';
-import { Badge, Button, Card, cx } from '../ui';
+import { Badge, Button, cx } from '../ui';
+import { useStore } from '../../store/useStore';
 
 export function StatusBadge({ status }: { status: IntegrationStatus }) {
   if (status.error) return <Badge tone="danger">Erro</Badge>;
@@ -25,26 +26,41 @@ export function IntegrationCard({ icon, title, description, status, children }: 
   status: IntegrationStatus;
   children: ReactNode;
 }) {
+  const isMinimal = useStore((s) => (s.settings.appTone ?? 'vibrante') === 'serio');
   return (
-    <Card className="flex flex-col gap-4">
-      <div className="flex items-start justify-between gap-3">
+    <section
+      className={cx(
+        'rise flex flex-col gap-4 overflow-hidden shadow-card',
+        isMinimal
+          ? 'rounded-[22px] border border-line bg-surface p-5'
+          : 'rounded-[26px] border border-line/70 bg-surface p-5',
+      )}
+    >
+      <div
+        className={cx(
+          'flex items-start justify-between gap-3',
+          !isMinimal && '-mx-5 -mt-5 border-b border-line/60 bg-pastel-sky/35 px-5 py-4 dark:bg-surface-2',
+        )}
+      >
         <div className="flex min-w-0 items-start gap-3">
-          <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent">{icon}</div>
+          <div className="grid size-10 shrink-0 place-items-center rounded-2xl bg-surface text-accent-ink shadow-card dark:bg-black/25 dark:text-accent">
+            {icon}
+          </div>
           <div className="min-w-0">
-            <h3 className="text-sm font-semibold">{title}</h3>
+            <h3 className="font-display text-sm font-bold text-fg">{title}</h3>
             <p className="mt-0.5 text-xs text-muted">{description}</p>
           </div>
         </div>
         <StatusBadge status={status} />
       </div>
       {status.lastSync && (
-        <p className="-mt-2 text-xs text-muted">Última sincronização {relativeTime(status.lastSync)}</p>
+        <p className="-mt-1 text-xs text-muted">Última sincronização {relativeTime(status.lastSync)}</p>
       )}
       {status.error && (
-        <p className="break-words rounded-xl bg-danger/10 px-3 py-2 text-sm text-danger">{status.error}</p>
+        <p className="break-words rounded-2xl bg-coral-soft px-3.5 py-2.5 text-sm text-coral-ink">{status.error}</p>
       )}
       {children}
-    </Card>
+    </section>
   );
 }
 

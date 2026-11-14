@@ -15,7 +15,7 @@ import {
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { UniBuddy } from '../components/brand/UnipediaMarks';
-import { AnimatedPage } from '../components/motion/Primitives';
+import { AnimatedPage, StickerBadge } from '../components/motion/Primitives';
 import OnboardingModal from '../components/onboarding/OnboardingModal';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import { startUnipediaGuidedTour } from '../components/onboarding/TourManager';
@@ -187,8 +187,14 @@ export default function SettingsPage() {
 
       <TabGuideBanner tabKey="definicoes" />
 
-      {/* Hero unificado de Perfil & Cloud (sem duplicar cartão AuthStatus abaixo) */}
-      <section className="flex flex-col gap-4 rounded-[24px] border border-line bg-surface p-5 shadow-card sm:flex-row sm:items-center sm:justify-between">
+      {/* Hero unificado de Perfil & Cloud estilo Caderno Vivo */}
+      <section
+        className={
+          isMinimal
+            ? 'flex flex-col gap-4 rounded-[22px] border border-line bg-surface p-5 shadow-card sm:flex-row sm:items-center sm:justify-between'
+            : 'flex flex-col gap-4 rounded-[26px] bg-pastel-butter/75 p-5 text-[#141312] shadow-card dark:bg-surface-2 dark:text-[#FAF6EC] sm:flex-row sm:items-center sm:justify-between'
+        }
+      >
         <div className="flex min-w-0 items-center gap-3.5">
           {isMinimal && user?.photoURL ? (
             <img
@@ -201,26 +207,32 @@ export default function SettingsPage() {
               {(settings.userName || user?.displayName || 'E').slice(0, 1).toUpperCase()}
             </div>
           ) : (
-            <div className="grid size-14 shrink-0 place-items-center rounded-full bg-pastel-sage/75 dark:bg-surface-2">
+            <div className="grid size-15 shrink-0 place-items-center rounded-full bg-white/80 shadow-card dark:bg-black/25">
               <UniBuddy
                 mood="happy"
                 accessory={resolveUniAccessory(settings.uniAccessory, academicProfile.degreeName, courses[0]?.name)}
                 skin={settings.uniSkin}
-                size={44}
+                size={46}
                 interactive={false}
               />
             </div>
           )}
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="truncate font-display text-lg font-bold text-fg">
+              <h2 className="truncate font-display text-lg font-bold">
                 {settings.userName || user?.displayName || 'Estudante'}
               </h2>
-              <Badge tone={user ? 'ok' : 'neutral'}>
-                {user ? 'Cloud ativa' : 'Apenas neste dispositivo'}
-              </Badge>
+              {isMinimal ? (
+                <Badge tone={user ? 'ok' : 'neutral'}>
+                  {user ? 'Cloud ativa' : 'Apenas neste dispositivo'}
+                </Badge>
+              ) : (
+                <StickerBadge tone={user ? 'mint' : 'peach'} tilt={-2}>
+                  {user ? 'Cloud ativa' : 'Neste dispositivo'}
+                </StickerBadge>
+              )}
             </div>
-            <p className="mt-0.5 truncate text-xs text-muted">
+            <p className="mt-1 truncate text-xs opacity-75">
               {academicProfile.degreeName
                 ? [academicProfile.universityName, academicProfile.degreeName].filter(Boolean).join(' · ')
                 : 'Define o teu curso e ritmo abaixo'}
@@ -235,7 +247,7 @@ export default function SettingsPage() {
             <>
               <Button
                 size="sm"
-                variant="ghost"
+                variant="secondary"
                 onClick={() => void handleManualSync()}
                 disabled={syncing}
                 aria-label="Sincronizar agora"
@@ -248,7 +260,7 @@ export default function SettingsPage() {
                 variant="ghost"
                 onClick={() => void handleLogout()}
                 aria-label="Terminar sessão"
-                className="text-muted hover:text-coral-ink"
+                className="opacity-80 hover:text-coral-ink hover:opacity-100"
               >
                 <LogOut size={15} />
                 <span className="hidden sm:inline">Sair</span>
@@ -263,11 +275,17 @@ export default function SettingsPage() {
       </section>
 
       {/* Aparência rápida: Tema & Estilo (Expressivo vs Sério & Minimal) num só sítio */}
-      <section className="space-y-3 rounded-[22px] border border-line/70 bg-surface-2/65 p-4">
+      <section
+        className={
+          isMinimal
+            ? 'space-y-3 rounded-[22px] border border-line/70 bg-surface-2/65 p-4'
+            : 'space-y-3 rounded-[26px] bg-pastel-sky/50 p-5 text-[#141312] shadow-card dark:bg-surface-2 dark:text-[#FAF6EC]'
+        }
+      >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-fg">Aparência do caderno</p>
-            <p className="text-xs text-muted">Paleta atual: {activePaletteName}</p>
+            <p className="font-display text-sm font-bold">Aparência do caderno</p>
+            <p className="text-xs opacity-75">Paleta atual: {activePaletteName}</p>
           </div>
           <SegmentedControl
             layoutId="settings-theme-pill"
@@ -281,10 +299,10 @@ export default function SettingsPage() {
           />
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line/80 pt-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-3 dark:border-white/10">
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-fg">Estilo visual da app</p>
-            <p className="text-xs text-muted">
+            <p className="font-display text-sm font-bold">Estilo visual da app</p>
+            <p className="text-xs opacity-75">
               {isMinimal
                 ? 'Sério & Minimal ativo: superfícies neutras, sem animações nem mascotes.'
                 : 'Expressivo ativo: pastéis quentes, animações táteis e Unis vivos.'}

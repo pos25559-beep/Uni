@@ -14,6 +14,8 @@ import { useState } from 'react';
 import { formatAcademicYearShort } from '../../../lib/portugalCurriculum';
 import type { CompletedCourseRecord } from '../../../types';
 import type { SmartImportInitialMode } from '../../courses/SmartScheduleImportModal';
+import { useStore } from '../../../store/useStore';
+import { StickerBadge } from '../../motion/Primitives';
 import { Button, Field, Input, Select, cx } from '../../ui';
 
 interface Step3CoursesProps {
@@ -132,45 +134,67 @@ export default function Step3Courses({
   onCancelAiPrintConsent,
 }: Step3CoursesProps) {
   const [showManualAdd, setShowManualAdd] = useState(records.length === 0);
+  const isMinimal = useStore((s) => (s.settings.appTone ?? 'vibrante') === 'serio');
 
   return (
     <div className="space-y-5">
       {/* Resumo + ações de importação */}
-      <div className="rounded-[24px] border border-line bg-surface p-4 shadow-[var(--shadow-card)] sm:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <BookOpen size={18} className="text-accent-ink" />
-              <h2 className="font-display text-xl font-bold text-fg">As tuas cadeiras</h2>
+      <div
+        className={cx(
+          'overflow-hidden p-4 shadow-card sm:p-5',
+          isMinimal
+            ? 'rounded-[22px] border border-line bg-surface'
+            : 'rounded-[26px] border border-line/70 bg-surface',
+        )}
+      >
+        <div
+          className={cx(
+            !isMinimal &&
+              '-mx-4 -mt-4 mb-4 border-b border-black/5 bg-pastel-sage/65 px-4 py-4 text-[#141312] dark:border-white/10 dark:bg-surface-2 dark:text-[#FAF6EC] sm:-mx-5 sm:-mt-5 sm:px-5',
+          )}
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <BookOpen size={18} className="text-accent-ink dark:text-accent" />
+                <h2 className="font-display text-xl font-bold">As tuas cadeiras</h2>
+              </div>
+              <p className="mt-1 text-xs leading-relaxed opacity-80 sm:text-sm">
+                Marca o que estás a fazer agora, já concluíste ou fica para depois. Podes também importar o teu horário.
+              </p>
             </div>
-            <p className="mt-1 text-xs leading-relaxed text-muted sm:text-sm">
-              Marca o que estás a fazer agora, já concluíste ou fica para depois. Podes também importar o teu horário.
-            </p>
+            <div className="flex items-center gap-2">
+              {!isMinimal && (
+                <StickerBadge tone="butter" tilt={2}>
+                  Plano
+                </StickerBadge>
+              )}
+              {records.length > 0 && (
+                <Button size="sm" variant="secondary" onClick={onResetDefaults}>
+                  <RotateCcw size={14} /> Repor plano base
+                </Button>
+              )}
+            </div>
           </div>
-          {records.length > 0 && (
-            <Button size="sm" variant="ghost" onClick={onResetDefaults}>
-              <RotateCcw size={14} /> Repor plano base
-            </Button>
-          )}
-        </div>
 
-        {/* Métricas rápidas */}
-        <div className="mt-3 flex flex-wrap gap-2 text-xs">
-          <span className="rounded-full bg-accent-soft px-3 py-1 font-semibold text-accent-ink tabular">
-            {doingCount} ativas{isSecondarySchool ? '' : ` · ${activeEctsFromList} ECTS`}
-          </span>
-          <span className="rounded-full bg-surface-2 px-3 py-1 font-semibold text-fg tabular">
-            {approvedCount} concluídas{isSecondarySchool ? '' : ` · ${approvedEctsFromList} ECTS`}
-          </span>
-          {weightedAvg !== null && (
-            <span className="rounded-full bg-pastel-butter px-3 py-1 font-semibold text-[#141312] tabular">
-              Média {weightedAvg.toFixed(1)}
+          {/* Métricas rápidas */}
+          <div className="mt-3 flex flex-wrap gap-2 text-xs">
+            <span className="rounded-full bg-white/80 px-3 py-1 font-semibold text-[#141312] tabular dark:bg-black/25 dark:text-[#FAF6EC]">
+              {doingCount} ativas{isSecondarySchool ? '' : ` · ${activeEctsFromList} ECTS`}
             </span>
-          )}
+            <span className="rounded-full bg-white/65 px-3 py-1 font-semibold text-[#141312] tabular dark:bg-black/20 dark:text-[#FAF6EC]">
+              {approvedCount} concluídas{isSecondarySchool ? '' : ` · ${approvedEctsFromList} ECTS`}
+            </span>
+            {weightedAvg !== null && (
+              <span className="rounded-full bg-pastel-butter px-3 py-1 font-semibold text-[#141312] tabular">
+                Média {weightedAvg.toFixed(1)}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Atalhos de importação */}
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className={cx('flex flex-wrap gap-2', isMinimal && 'mt-4')}>
           <Button size="sm" variant="secondary" onClick={() => onOpenScheduleImport('photo')}>
             <CalendarDays size={14} /> Importar horário
           </Button>
@@ -213,18 +237,18 @@ export default function Step3Courses({
               importadas com sucesso.
             </p>
             {scheduleDoneInfo.courseLabels && scheduleDoneInfo.courseLabels.length > 0 && (
-              <p className="text-[11px] leading-relaxed text-fg/85">
+              <p className="text-xs leading-relaxed text-fg/85">
                 <span className="font-semibold text-fg">Cadeiras reconhecidas:</span>{' '}
                 {scheduleDoneInfo.courseLabels.join(' · ')}
               </p>
             )}
             {scheduleDoneInfo.slotSummaries && scheduleDoneInfo.slotSummaries.length > 0 && (
-              <ul className="space-y-0.5 text-[11px] text-muted">
+              <ul className="space-y-0.5 text-xs text-muted">
                 {scheduleDoneInfo.slotSummaries.slice(0, 6).map((line, i) => (
                   <li key={`${i}-${line}`}>• {line}</li>
                 ))}
                 {scheduleDoneInfo.slotSummaries.length > 6 && (
-                  <li className="text-[11px] font-medium text-fg/75">
+                  <li className="text-xs font-medium text-fg/75">
                     + {scheduleDoneInfo.slotSummaries.length - 6} outra(s) aula(s) no horário
                   </li>
                 )}

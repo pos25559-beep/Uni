@@ -40,7 +40,7 @@ export function QuickActions({ disabled, onSend }: Props) {
             type="button"
             disabled={disabled}
             onClick={() => onSend(a.prompt)}
-            className="inline-flex h-8 items-center gap-1.5 rounded-full border border-line bg-surface px-3 text-xs font-medium text-fg transition hover:border-accent/50 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 text-xs font-medium text-fg shadow-card transition hover:border-accent/50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <span className="text-accent">{a.icon}</span>
             {a.label}

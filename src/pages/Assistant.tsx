@@ -26,9 +26,10 @@ import WeeklyTutorModal from '../components/assistant/WeeklyTutorModal';
 import UniCollectiblesModal from '../components/brand/UniCollectiblesModal';
 import { UniBuddy } from '../components/brand/UnipediaMarks';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
+import { StickerBadge } from '../components/motion/Primitives';
 import GeminiKeyGuideModal from '../components/settings/GeminiKeyGuideModal';
 import { useNavigate } from 'react-router-dom';
-import { ActionSheet, Badge, Button, Modal, PillSelect, cx, showToast } from '../components/ui';
+import { ActionSheet, Badge, Button, Modal, PillSelect, SegmentedControl, cx, showToast } from '../components/ui';
 import {
   buildDocumentContext,
   buildStudyContext,
@@ -102,6 +103,8 @@ export default function Assistant() {
   const academicProfile = useStore((s) => s.academicProfile);
   const uniPreference = useStore((s) => s.settings.uniAccessory);
   const uniPersona = useStore((s) => s.settings.uniPersona ?? 'amigo');
+  const appTone = useStore((s) => s.settings.appTone ?? 'vibrante');
+  const isMinimal = appTone === 'serio';
   const aiConsent = useStore((s) => Boolean(s.settings.aiConsent));
   const hasCustomKey = useStore((s) => Boolean(s.settings.geminiApiKey?.trim()) || hasCustomGeminiKey());
   const updateSettings = useStore((s) => s.updateSettings);
@@ -590,52 +593,47 @@ export default function Assistant() {
         </div>
 
         {/* Barra compacta de tom, Caderno do Uni e quota */}
-        <div className="space-y-1.5 border-b border-line pb-2 text-xs md:space-y-2 md:pb-2.5">
+        <div className="space-y-2 border-b border-line/80 pb-2.5 text-xs">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setNotebookOpen(true)}
-                className="flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border border-[#141312]/10 bg-[#FCE99F]/85 px-3 py-1.5 text-xs font-semibold text-[#141312] transition hover:brightness-95 dark:border-white/10 dark:bg-surface-2 dark:text-[#FAF6EC] md:px-3.5"
+                className={cx(
+                  'flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition',
+                  isMinimal
+                    ? 'border border-line bg-surface text-fg hover:bg-surface-2'
+                    : 'bg-pastel-butter/85 text-[#141312] shadow-card hover:brightness-95 dark:bg-[#352D14] dark:text-[#FAF6EC]',
+                )}
               >
                 <Sparkles size={13} className="text-accent-ink dark:text-accent" />
                 <span>Caderno</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => setCollectiblesOpen(true)}
-                className="hidden min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 py-1.5 text-xs font-semibold text-fg transition hover:border-accent md:flex"
-              >
-                <span>Coleção Uni</span>
-              </button>
+              {!isMinimal && (
+                <button
+                  type="button"
+                  onClick={() => setCollectiblesOpen(true)}
+                  className="hidden min-h-[44px] shrink-0 items-center gap-1.5 rounded-full bg-pastel-sage/65 px-3.5 py-1.5 text-xs font-semibold text-[#141312] transition hover:brightness-95 dark:bg-[#23311B] dark:text-[#FAF6EC] md:flex"
+                >
+                  <Award size={13} className="text-accent-ink dark:text-accent" />
+                  <span>Coleção Uni</span>
+                </button>
+              )}
             </div>
 
             <div className="hidden items-center gap-2 md:flex">
-              <div className="inline-flex items-center gap-1 rounded-full bg-surface-2/85 p-1">
-                {UNI_PERSONAS.map((p) => {
-                  const active = uniPersona === p.id;
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => updateSettings({ uniPersona: p.id })}
-                      title={p.hint}
-                      className={cx(
-                        'min-h-[34px] rounded-full px-3 text-xs font-semibold transition',
-                        active ? 'bg-ink-cta text-ink-cta-fg' : 'text-muted hover:text-fg',
-                      )}
-                    >
-                      {p.label}
-                    </button>
-                  );
-                })}
-              </div>
+              <SegmentedControl
+                layoutId="tutor-persona-pill"
+                value={uniPersona}
+                onChange={(v) => updateSettings({ uniPersona: v as typeof uniPersona })}
+                items={UNI_PERSONAS.map((p) => ({ id: p.id, label: p.label }))}
+              />
               <button
                 type="button"
                 onClick={() => setKeyGuideOpen(true)}
                 title="Ver como passar das 15 mensagens diárias com chave gratuita"
-                className="min-h-[36px] rounded-full border border-line bg-surface-2/90 px-3 py-1 text-xs font-medium tabular text-muted transition hover:border-accent hover:text-fg"
+                className="min-h-[40px] rounded-full border border-line bg-surface px-3 py-1 text-xs font-medium tabular text-muted transition hover:border-accent hover:text-fg"
               >
                 {quota.bypassed
                   ? 'Chave própria · Ilimitado'
@@ -662,40 +660,29 @@ export default function Assistant() {
 
           {mobileFiltersOpen && (
             <div className="flex flex-wrap items-center justify-between gap-2 pt-1 md:hidden">
-              <div className="inline-flex items-center gap-1 rounded-full bg-surface-2/85 p-1">
-                {UNI_PERSONAS.map((p) => {
-                  const active = uniPersona === p.id;
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => updateSettings({ uniPersona: p.id })}
-                      title={p.hint}
-                      className={cx(
-                        'min-h-[36px] rounded-full px-2.5 text-xs font-semibold transition',
-                        active ? 'bg-ink-cta text-ink-cta-fg' : 'text-muted hover:text-fg',
-                      )}
-                    >
-                      {p.label}
-                    </button>
-                  );
-                })}
-              </div>
+              <SegmentedControl
+                layoutId="tutor-persona-pill-mobile"
+                value={uniPersona}
+                onChange={(v) => updateSettings({ uniPersona: v as typeof uniPersona })}
+                items={UNI_PERSONAS.map((p) => ({ id: p.id, label: p.label }))}
+              />
 
               <div className="flex flex-wrap items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setCollectiblesOpen(true)}
-                  className="flex min-h-[36px] items-center gap-1 rounded-full border border-line bg-surface px-2.5 text-xs font-semibold text-fg transition hover:border-accent"
-                >
-                  <Award size={13} className="text-accent-ink" />
-                  <span>Coleção</span>
-                </button>
+                {!isMinimal && (
+                  <button
+                    type="button"
+                    onClick={() => setCollectiblesOpen(true)}
+                    className="flex min-h-[40px] items-center gap-1 rounded-full bg-pastel-sage/65 px-3 text-xs font-semibold text-[#141312] dark:bg-[#23311B] dark:text-[#FAF6EC]"
+                  >
+                    <Award size={13} className="text-accent-ink dark:text-accent" />
+                    <span>Coleção</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setKeyGuideOpen(true)}
                   title="Ver como passar das 15 mensagens diárias com chave gratuita"
-                  className="min-h-[36px] rounded-full border border-line bg-surface-2/90 px-2.5 py-1 text-xs font-medium tabular text-muted transition hover:border-accent hover:text-fg"
+                  className="min-h-[40px] rounded-full border border-line bg-surface px-3 py-1 text-xs font-medium tabular text-muted transition hover:border-accent hover:text-fg"
                 >
                   {quota.bypassed
                     ? 'Chave própria · Ilimitado'
@@ -716,7 +703,7 @@ export default function Assistant() {
                     type="button"
                     onClick={() => setActiveSubject(subj.id)}
                     className={cx(
-                      'min-h-[36px] shrink-0 rounded-full border px-3 text-xs font-medium transition',
+                      'min-h-[40px] shrink-0 rounded-full border px-3.5 text-xs font-medium transition',
                       active
                         ? 'border-accent bg-accent-soft font-semibold text-accent-ink'
                         : 'border-line bg-surface text-muted hover:text-fg',
@@ -751,7 +738,7 @@ export default function Assistant() {
                     <button
                       type="button"
                       onClick={() => setActiveConvId(c.id)}
-                      className="flex min-h-[36px] max-w-[210px] items-center gap-1.5 px-3 text-xs font-medium"
+                      className="flex min-h-[40px] max-w-[210px] items-center gap-1.5 px-3 text-xs font-medium"
                     >
                       <span className="truncate">{c.title}</span>
                       <span
@@ -769,7 +756,7 @@ export default function Assistant() {
                         onClick={() => setConfirmDeleteConv(true)}
                         aria-label={`Apagar conversa ${c.title}`}
                         title="Apagar esta conversa"
-                        className="mr-1 grid size-8 place-items-center rounded-full text-ink-cta-fg/80 transition hover:bg-white/15 hover:text-ink-cta-fg"
+                        className="mr-1 grid size-9 place-items-center rounded-full text-ink-cta-fg/80 transition hover:bg-white/15 hover:text-ink-cta-fg"
                       >
                         <Trash2 size={13} />
                       </button>
@@ -795,28 +782,78 @@ export default function Assistant() {
           }
         />
         {messages.length === 0 && (
-          <div className="flex flex-col items-center px-3 py-2 text-center sm:px-4 sm:py-6">
-            <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-pastel-sage/85 shadow-card dark:bg-surface-2 sm:size-22">
-              <UniBuddy
-                mood={uniWelcomeMood}
-                accessory={uniAccessory}
-                size={52}
-                onClick={() => setCollectiblesOpen(true)}
-                ariaLabel="Uni — tocar para abrir a coleção de estilos"
-              />
-            </div>
-            <h2 className="mt-3 font-display text-lg font-bold sm:mt-4 sm:text-xl">
-              Olá{userName ? `, ${userName}` : ''}! O que vamos rever?
-            </h2>
-            <p className="mt-1.5 max-w-sm text-sm text-muted">
-              Sou o Uni! Posso explicar conceitos difíceis, criar perguntas de exame ou rever os teus apontamentos.
-            </p>
-            {attachedMaterials.length > 0 && (
-              <p className="mt-2 text-xs font-medium text-ok">
-                {attachedMaterials.length} documento(s) ativo(s) neste chat.
-              </p>
+          <section
+            className={cx(
+              'mx-auto my-2 max-w-xl overflow-hidden shadow-card',
+              isMinimal
+                ? 'rounded-2xl border border-line bg-surface'
+                : 'rounded-[26px] border border-line/70 bg-surface',
             )}
-          </div>
+          >
+            {!isMinimal && (
+              <div className="flex items-center justify-between gap-2 bg-pastel-sage/70 px-5 py-3 text-[#141312] dark:bg-[#23311B] dark:text-[#FAF6EC]">
+                <span className="flex items-center gap-1.5 font-display text-xs font-bold uppercase tracking-wider opacity-85">
+                  <Sparkles size={13} /> Caderno do Tutor
+                </span>
+                <StickerBadge tone="butter" tilt={-2}>
+                  {UNI_PERSONAS.find((p) => p.id === uniPersona)?.label ?? 'Amigo'}
+                </StickerBadge>
+              </div>
+            )}
+
+            <div
+              className={cx(
+                'flex flex-col items-center px-5 py-6 text-center sm:px-7 sm:py-7',
+                !isMinimal &&
+                  'bg-[repeating-linear-gradient(to_bottom,transparent_0,transparent_31px,rgba(20,19,18,0.045)_31px,rgba(20,19,18,0.045)_32px)] dark:bg-none',
+              )}
+            >
+              {!isMinimal && (
+                <div className="flex size-20 shrink-0 items-center justify-center rounded-full bg-pastel-butter/70 shadow-card dark:bg-surface-2">
+                  <UniBuddy
+                    mood={uniWelcomeMood}
+                    accessory={uniAccessory}
+                    size={54}
+                    onClick={() => setCollectiblesOpen(true)}
+                    ariaLabel="Uni — tocar para abrir a coleção de estilos"
+                  />
+                </div>
+              )}
+              <h2 className={cx('font-display text-lg font-bold sm:text-xl', !isMinimal && 'mt-3.5')}>
+                Olá{userName ? `, ${userName}` : ''}! O que vamos{' '}
+                <span className={cx(!isMinimal && 'font-serif font-medium italic text-accent-ink dark:text-accent')}>
+                  rever
+                </span>
+                ?
+              </h2>
+              <p className="mt-1.5 max-w-sm text-sm text-muted">
+                Posso explicar conceitos difíceis, criar perguntas de exame ou rever os teus apontamentos e horários.
+              </p>
+              {attachedMaterials.length > 0 && (
+                <p className="mt-2 rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent-ink">
+                  {attachedMaterials.length} documento(s) ativo(s) neste chat
+                </p>
+              )}
+
+              <div className="mt-4 flex flex-wrap justify-center gap-2">
+                {[
+                  'O que devo estudar hoje?',
+                  'Cria um plano até ao próximo teste',
+                  'Faz-me um quiz rápido',
+                ].map((starter) => (
+                  <button
+                    key={starter}
+                    type="button"
+                    disabled={loading}
+                    onClick={() => void send(starter)}
+                    className="min-h-10 rounded-full border border-line bg-bg/85 px-3.5 py-1.5 text-xs font-semibold text-fg transition hover:border-accent hover:bg-accent-soft/45 disabled:opacity-50"
+                  >
+                    {starter}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </section>
         )}
 
         {messages.map((m) =>
@@ -1152,7 +1189,7 @@ export default function Assistant() {
                 >
                   <div className="min-w-0 pr-3">
                     <div className="text-xs font-medium text-fg truncate">{mat.title}</div>
-                    <div className="text-[11px] text-muted uppercase tracking-wide">
+                    <div className="text-xs text-muted uppercase tracking-wide">
                       {mat.provider}
                     </div>
                   </div>
@@ -1255,6 +1292,7 @@ interface UniSyncCardProps {
 
 /** Cartão interativo dentro da resposta do Uni para aplicar aulas e avaliações no Calendário e Plano. */
 function UniSyncCard({ bundle, onChange, onApply, onOpenCalendar }: UniSyncCardProps) {
+  const isMinimal = useStore((s) => (s.settings.appTone ?? 'vibrante') === 'serio');
   const selectedCount =
     bundle.slots.filter((s) => s.selected).length +
     bundle.assessments.filter((a) => a.selected).length;
@@ -1262,7 +1300,12 @@ function UniSyncCard({ bundle, onChange, onApply, onOpenCalendar }: UniSyncCardP
   return (
     <div
       data-testid="uni-sync-card"
-      className="mt-3 rounded-2xl border border-accent/25 bg-surface-2/80 p-3.5"
+      className={cx(
+        'mt-3 rounded-[20px] p-4',
+        isMinimal
+          ? 'border border-accent/25 bg-surface-2/80'
+          : 'bg-pastel-mint/55 text-[#141312] dark:bg-[#17312B] dark:text-[#FAF6EC]',
+      )}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
@@ -1338,7 +1381,7 @@ function UniSyncCard({ bundle, onChange, onApply, onOpenCalendar }: UniSyncCardP
                     <p className="truncate text-xs font-medium text-fg">
                       {a.courseName} · {a.title || kindLabel[a.kind]}
                     </p>
-                    <p className="truncate text-[11px] text-muted">
+                    <p className="truncate text-xs text-muted">
                       {a.date}
                       {a.location ? ` · Sala ${a.location}` : ''}
                     </p>
@@ -1395,7 +1438,7 @@ function UniSyncCard({ bundle, onChange, onApply, onOpenCalendar }: UniSyncCardP
                     <p className="truncate text-xs font-medium text-fg">
                       {s.courseName} · {s.type}
                     </p>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted">
+                    <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
                       <select
                         aria-label={`Dia da semana para ${s.courseName}`}
                         value={s.weekday}
@@ -1407,7 +1450,7 @@ function UniSyncCard({ bundle, onChange, onApply, onOpenCalendar }: UniSyncCardP
                           );
                           onChange({ ...bundle, slots: next });
                         }}
-                        className="rounded-md border border-line bg-surface-2 px-1.5 py-0.5 text-[11px] text-fg outline-none focus:border-accent"
+                        className="rounded-md border border-line bg-surface-2 px-1.5 py-0.5 text-xs text-fg outline-none focus:border-accent"
                       >
                         {[1, 2, 3, 4, 5, 6, 0].map((wd) => (
                           <option key={wd} value={wd}>
@@ -1432,7 +1475,7 @@ function UniSyncCard({ bundle, onChange, onApply, onOpenCalendar }: UniSyncCardP
           </div>
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-            <span className="text-[11px] text-muted">
+            <span className="text-xs text-muted">
               Podes ajustar o dia da semana ou desmarcar itens antes de guardar.
             </span>
             <Button

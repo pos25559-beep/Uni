@@ -78,7 +78,7 @@ export function Composer({ disabled, loading, onSend, onStop }: Props) {
   };
 
   return (
-    <div className="space-y-2 rounded-2xl border border-line bg-surface p-2 focus-within:border-accent">
+    <div className="space-y-2 rounded-[24px] border border-line/80 bg-surface p-2 shadow-card focus-within:border-accent">
       {attachments.length > 0 && (
         <div className="flex flex-wrap gap-1.5 px-1 pt-0.5">
           {attachments.map((att) => (
@@ -154,7 +154,7 @@ export function Composer({ disabled, loading, onSend, onStop }: Props) {
             onClick={submit}
             disabled={!canSend}
             aria-label="Enviar mensagem"
-            className="grid size-11 shrink-0 place-items-center rounded-xl bg-accent text-accent-fg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+            className="grid size-11 shrink-0 place-items-center rounded-2xl bg-ink-cta text-ink-cta-fg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Send size={17} />
           </button>

@@ -238,7 +238,7 @@ export default function GoogleCard() {
             </div>
           )}
 
-          <p className="text-[11px] text-muted">
+          <p className="text-xs text-muted">
             Acesso só de leitura. Os tokens de acesso vivem apenas em memória e sessionStorage e nunca são gravados em bases de dados públicas.
           </p>
         </div>

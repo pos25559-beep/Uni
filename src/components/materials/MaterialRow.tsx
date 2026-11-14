@@ -1,6 +1,6 @@
 import { Download, ExternalLink, Pin, PinOff, Trash2 } from 'lucide-react';
 import { createElement, useState } from 'react';
-import { Badge, Button, Select, cx } from '../ui';
+import { Badge, Button, Select, cx, showToast } from '../ui';
 import { ConfirmModal } from '../courses/ConfirmModal';
 import { useStore } from '../../store/useStore';
 import { courseColors, providerLabel } from '../../lib/colors';
@@ -34,7 +34,7 @@ export default function MaterialRow({ material: m, courses, course, onView }: {
     if (m.provider === 'upload') {
       const blobUrl = await getFileUrl(m.id);
       if (blobUrl) window.open(blobUrl, '_blank');
-      else alert('Ficheiro não encontrado no armazenamento local.');
+      else showToast('Ficheiro não encontrado no armazenamento local.', 'danger');
     } else if (href) {
       window.open(href, '_blank');
     }

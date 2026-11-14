@@ -142,10 +142,10 @@ export default function CourseEmailsTab({ course }: Props) {
 
       {/* Banner de permissão de Gmail em falta */}
       {needsPermission && (
-        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5">
+        <div className="rounded-2xl border border-warn/30 bg-pastel-butter/45 p-5 dark:bg-surface-2">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="size-5 shrink-0 text-amber-500 mt-0.5" />
+              <AlertTriangle className="size-5 shrink-0 text-warn mt-0.5" />
               <div>
                 <h3 className="text-sm font-semibold text-fg">Permissão de Leitura do Gmail Necessária</h3>
                 <p className="mt-1 text-xs text-muted leading-relaxed">
@@ -214,7 +214,9 @@ export default function CourseEmailsTab({ course }: Props) {
                 <div
                   className={cx(
                     'mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg text-xs font-semibold',
-                    em.isClipNotice ? 'bg-amber-500/10 text-amber-500' : 'bg-surface-2 text-muted',
+                    em.isClipNotice
+                      ? 'bg-pastel-butter text-[#141312] dark:bg-warn/15 dark:text-warn'
+                      : 'bg-surface-2 text-muted',
                   )}
                 >
                   {em.isClipNotice ? <GraduationCap size={15} /> : <Mail size={15} />}

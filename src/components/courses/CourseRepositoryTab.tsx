@@ -265,7 +265,7 @@ export default function CourseRepositoryTab({
                     setViewingMaterial({
                       id: `drive-folder-${course.id}`,
                       courseId: course.id,
-                      title: `Google Drive LEMc — ${course.name}`,
+                      title: `Google Drive — ${course.name}`,
                       url: course.sharedDriveUrl!,
                       provider: 'gdrive',
                       category: 'outro',

@@ -204,7 +204,7 @@ export default function GeminiCard() {
               )}
               {result.suggestions.length > 0 && (
                 <div>
-                  <span className="text-[11px] text-muted">Modelos disponíveis (clica para usar):</span>
+                  <span className="text-xs text-muted">Modelos disponíveis (clica para usar):</span>
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
                     {result.suggestions.map((name) => (
                       <button
@@ -227,7 +227,7 @@ export default function GeminiCard() {
             </div>
           )}
 
-          <p className="text-[11px] text-muted">
+          <p className="text-xs text-muted">
             Qualquer chave pessoal fica guardada apenas neste dispositivo (localStorage) e nunca é partilhada.
           </p>
         </div>

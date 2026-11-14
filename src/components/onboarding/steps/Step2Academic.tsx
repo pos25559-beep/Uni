@@ -11,6 +11,8 @@ import {
   type UniversityCatalogEntry,
 } from '../../../lib/portugalCurriculum';
 import type { ExtraActivity } from '../../../types';
+import { useStore } from '../../../store/useStore';
+import { StickerBadge } from '../../motion/Primitives';
 import { Button, Field, Input, Select, cx } from '../../ui';
 
 export type AcademicCycleMode = 'licenciatura' | 'mestrado' | 'misto';
@@ -93,19 +95,41 @@ export default function Step2Academic({
   onAddCustomExtra,
 }: Step2AcademicProps) {
   const [showEctsAndExtras, setShowEctsAndExtras] = useState(false);
+  const isMinimal = useStore((s) => (s.settings.appTone ?? 'vibrante') === 'serio');
 
   return (
     <div className="space-y-5">
-      <div className="rounded-[24px] border border-line bg-surface p-5 shadow-[var(--shadow-card)]">
-        <div className="flex items-center gap-2">
-          <GraduationCap size={18} className="text-accent-ink" />
-          <h2 className="font-display text-xl font-bold text-fg">O teu curso e semestre</h2>
+      <div
+        className={cx(
+          'overflow-hidden p-5 shadow-card',
+          isMinimal
+            ? 'rounded-[22px] border border-line bg-surface'
+            : 'rounded-[26px] border border-line/70 bg-surface',
+        )}
+      >
+        <div
+          className={cx(
+            !isMinimal &&
+              '-mx-5 -mt-5 mb-5 border-b border-black/5 bg-pastel-sky/70 px-5 py-4 text-[#141312] dark:border-white/10 dark:bg-surface-2 dark:text-[#FAF6EC]',
+          )}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <GraduationCap size={18} className="text-accent-ink dark:text-accent" />
+              <h2 className="font-display text-xl font-bold">O teu curso e semestre</h2>
+            </div>
+            {!isMinimal && (
+              <StickerBadge tone="butter" tilt={-2}>
+                Percurso
+              </StickerBadge>
+            )}
+          </div>
+          <p className="mt-1 text-xs leading-relaxed opacity-80 sm:text-sm">
+            Escolhe a tua escola ou faculdade, curso, ano e semestre atual. Calculamos automaticamente o ponto de partida.
+          </p>
         </div>
-        <p className="mt-1 text-xs leading-relaxed text-muted sm:text-sm">
-          Escolhe a tua escola ou faculdade, curso, ano e semestre atual. Calculamos automaticamente o ponto de partida.
-        </p>
 
-        <div className="mt-4 space-y-4">
+        <div className={cx('space-y-4', isMinimal && 'mt-4')}>
           <Field label="Instituição / Nível de ensino">
             <Select
               value={universityId}
@@ -252,9 +276,16 @@ export default function Step2Academic({
               />
             </Field>
             {!isSecondarySchool && (
-              <div className="flex flex-col justify-end rounded-2xl border border-line bg-surface-2/60 px-3.5 py-2.5">
-                <span className="text-xs text-muted">ECTS deduzidos automaticamente</span>
-                <span className="font-mono text-sm font-bold text-fg tabular">
+              <div
+                className={cx(
+                  'flex flex-col justify-end rounded-2xl px-4 py-3',
+                  isMinimal
+                    ? 'border border-line bg-surface-2/60'
+                    : 'bg-pastel-butter/60 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]',
+                )}
+              >
+                <span className="text-xs opacity-75">ECTS deduzidos automaticamente</span>
+                <span className="font-mono text-sm font-bold tabular">
                   {completedEcts} / {targetTotalEcts} ECTS · {ectsStage.stageSummary}
                 </span>
               </div>
@@ -267,7 +298,12 @@ export default function Step2Academic({
       <details
         open={showEctsAndExtras}
         onToggle={(e) => setShowEctsAndExtras(e.currentTarget.open)}
-        className="rounded-[24px] border border-line bg-surface p-4 shadow-[var(--shadow-card)] sm:p-5"
+        className={cx(
+          'p-4 shadow-card sm:p-5',
+          isMinimal
+            ? 'rounded-[22px] border border-line bg-surface'
+            : 'rounded-[26px] border border-line/70 bg-pastel-peach/35 dark:bg-surface-2',
+        )}
       >
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-sm font-bold text-fg">
           <span className="flex items-center gap-2">

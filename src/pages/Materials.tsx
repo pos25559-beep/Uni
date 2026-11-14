@@ -25,6 +25,8 @@ const byTitle = (a: Material, b: Material) => a.title.localeCompare(b.title, 'pt
 export default function Materials() {
   const materials = useStore((s) => s.materials);
   const courses = useStore((s) => s.courses);
+  const appTone = useStore((s) => s.settings.appTone ?? 'vibrante');
+  const isMinimal = appTone === 'serio';
 
   const [query, setQuery] = useState('');
   const [courseFilter, setCourseFilter] = useState('all');
@@ -102,8 +104,16 @@ export default function Materials() {
     setProviderFilter('all');
   };
 
+  const exampleFolders = useMemo(() => {
+    if (courses.length === 0) return 'Calculo/, Fisica/, Economia/';
+    return courses
+      .slice(0, 3)
+      .map((c) => `${c.shortName || c.name}/`)
+      .join(', ');
+  }, [courses]);
+
   const renderRows = (list: Material[]) => (
-    <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
+    <ul className="divide-y divide-line/80">
       {list.map((m) => (
         <MaterialRow
           key={m.id}
@@ -137,21 +147,29 @@ export default function Materials() {
 
       <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-4">
-          {/* Barra direta de Varredura: HD Pessoal (pastas/CLIP) & Google Drive */}
-          <div className="rounded-[22px] border border-line bg-surface p-4 shadow-card space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex min-w-0 flex-1 items-center gap-3">
-                <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent">
-                  <Sparkles size={18} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-fg">
-                    Varredura automática (HD pessoal & Google Drive)
-                  </p>
-                  <p className="text-xs text-muted">
-                    Organiza os apontamentos ou ficheiros do CLIP em <strong className="text-fg">pastas com o nome/sigla da cadeira</strong> (ex.: <span className="font-mono">C3D/</span>, <span className="font-mono">MF/</span>, <span className="font-mono">TEP/</span>) — a varredura associa tudo o que estiver dentro, mesmo sem a sigla no nome do PDF.
-                  </p>
-                </div>
+          {/* Bloco Caderno Vivo: Varredura automática (HD pessoal & Google Drive) */}
+          <section
+            className={cx(
+              'space-y-3.5 p-5 shadow-card transition',
+              isMinimal
+                ? 'rounded-[22px] border border-line bg-surface text-fg'
+                : 'rounded-[26px] bg-pastel-mint/70 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]',
+            )}
+          >
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0 flex-1 space-y-1">
+                <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.12em] opacity-75">
+                  <Sparkles size={13} className="text-accent-ink dark:text-accent" />
+                  Varredura automática · Pastas locais & Drive
+                </p>
+                <p className="font-display text-base font-bold sm:text-lg">
+                  Organiza tudo num clique por cadeira
+                </p>
+                <p className="text-xs leading-relaxed opacity-85">
+                  Guarda apontamentos ou ficheiros do portal académico em{' '}
+                  <strong>pastas com o nome/sigla da cadeira</strong> (ex.:{' '}
+                  <span className="font-mono font-semibold">{exampleFolders}</span>) — a varredura associa tudo lá dentro, mesmo sem a sigla no nome do PDF.
+                </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Button variant="secondary" size="sm" onClick={() => setDeviceImportOpen(true)}>
@@ -165,19 +183,19 @@ export default function Materials() {
             </div>
 
             {scanFeedback && (
-              <div className="flex items-center justify-between gap-3 rounded-xl bg-pastel-sage/65 px-3 py-2 text-xs text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]">
+              <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/75 px-3.5 py-2.5 text-xs text-[#141312] dark:bg-black/25 dark:text-[#FAF6EC]">
                 <span className="min-w-0 truncate font-medium">{scanFeedback}</span>
                 <button
                   type="button"
                   onClick={clearFeedback}
                   aria-label="Fechar aviso"
-                  className="shrink-0 font-semibold opacity-70 hover:opacity-100"
+                  className="inline-flex size-8 shrink-0 items-center justify-center rounded-full font-semibold opacity-70 hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10"
                 >
                   ✕
                 </button>
               </div>
             )}
-          </div>
+          </section>
           {materials.length > 0 && (
             <>
               <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
@@ -248,21 +266,49 @@ export default function Materials() {
               action={filtersActive ? <Button onClick={resetFilters}>Limpar filtros</Button> : undefined}
             />
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-5">
               {pinned.length > 0 && (
-                <section>
-                  <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold">
-                    <Pin size={14} className="text-accent" /> Fixados
-                  </h2>
+                <section
+                  className={cx(
+                    'overflow-hidden shadow-card',
+                    isMinimal
+                      ? 'rounded-[22px] border border-line bg-surface'
+                      : 'rounded-[24px] border border-line/70 bg-surface',
+                  )}
+                >
+                  <header className="flex items-center justify-between gap-3 border-b border-line/70 bg-pastel-butter/45 px-4 py-2.5 dark:bg-surface-2">
+                    <h2 className="flex items-center gap-2 font-display text-sm font-bold text-fg">
+                      <Pin size={14} className="text-accent-ink dark:text-accent" /> Fixados
+                    </h2>
+                    <span className="font-mono text-xs tabular text-muted">
+                      {pinned.length} {pinned.length === 1 ? 'material' : 'materiais'}
+                    </span>
+                  </header>
                   {renderRows(pinned)}
                 </section>
               )}
 
               {groups.map((g) => (
-                <section key={g.key}>
-                  <header className="mb-2 flex items-center justify-between gap-3">
-                    {g.course ? <CourseChip course={g.course} /> : <span className="rounded-full bg-surface-2 px-2.5 py-0.5 text-xs font-medium text-muted">Sem cadeira</span>}
-                    <span className="text-xs tabular text-muted">{g.items.length} {g.items.length === 1 ? 'material' : 'materiais'}</span>
+                <section
+                  key={g.key}
+                  className={cx(
+                    'overflow-hidden shadow-card',
+                    isMinimal
+                      ? 'rounded-[22px] border border-line bg-surface'
+                      : 'rounded-[24px] border border-line/70 bg-surface',
+                  )}
+                >
+                  <header className="flex items-center justify-between gap-3 border-b border-line/70 bg-surface-2/60 px-4 py-2.5">
+                    {g.course ? (
+                      <CourseChip course={g.course} />
+                    ) : (
+                      <span className="rounded-full bg-surface px-2.5 py-0.5 text-xs font-semibold text-muted">
+                        Sem cadeira
+                      </span>
+                    )}
+                    <span className="font-mono text-xs tabular text-muted">
+                      {g.items.length} {g.items.length === 1 ? 'material' : 'materiais'}
+                    </span>
                   </header>
                   {renderRows(g.items)}
                 </section>

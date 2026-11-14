@@ -119,7 +119,7 @@ export default function AcademicGmailWidget() {
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex min-w-0 items-center gap-1.5">
                           {em.isClipNotice ? (
-                            <GraduationCap size={13} className="shrink-0 text-amber-600" />
+                            <GraduationCap size={13} className="shrink-0 text-warn" />
                           ) : (
                             <Mail size={13} className="shrink-0 text-muted" />
                           )}

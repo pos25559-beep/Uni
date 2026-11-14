@@ -1,6 +1,8 @@
 import { AlertCircle, Clock, Cloud, Loader2, Mail, ShieldCheck, Sparkles } from 'lucide-react';
 import { LEGAL_INFO } from '../../../lib/legal';
 import { hapticTap } from '../../../lib/nativeBridge';
+import { useStore } from '../../../store/useStore';
+import { StickerBadge } from '../../motion/Primitives';
 import { Button, Field, Input, Textarea, cx } from '../../ui';
 
 const DAY_LABELS = [
@@ -75,13 +77,39 @@ export default function Step4RhythmPrivacy({
   submitAttempted,
   onOpenLegal,
 }: Step4RhythmPrivacyProps) {
+  const isMinimal = useStore((s) => (s.settings.appTone ?? 'vibrante') === 'serio');
+
   return (
     <div className="space-y-5">
       {/* Ritmo diário e dias livres */}
-      <div className="space-y-4 rounded-[24px] border border-line bg-surface p-4 shadow-[var(--shadow-card)] sm:p-5">
-        <div className="flex items-center gap-2">
-          <Clock size={18} className="text-accent-ink" />
-          <h2 className="font-display text-xl font-bold text-fg">O teu ritmo semanal</h2>
+      <div
+        className={cx(
+          'space-y-4 overflow-hidden p-4 shadow-card sm:p-5',
+          isMinimal
+            ? 'rounded-[22px] border border-line bg-surface'
+            : 'rounded-[26px] border border-line/70 bg-surface',
+        )}
+      >
+        <div
+          className={cx(
+            !isMinimal &&
+              '-mx-4 -mt-4 border-b border-black/5 bg-pastel-mint/70 px-4 py-4 text-[#141312] dark:border-white/10 dark:bg-surface-2 dark:text-[#FAF6EC] sm:-mx-5 sm:-mt-5 sm:px-5',
+          )}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Clock size={18} className="text-accent-ink dark:text-accent" />
+              <h2 className="font-display text-xl font-bold">O teu ritmo semanal</h2>
+            </div>
+            {!isMinimal && (
+              <StickerBadge tone="butter" tilt={-2}>
+                Ritmo real
+              </StickerBadge>
+            )}
+          </div>
+          <p className="mt-1 text-xs opacity-80">
+            Escolhe quanto tempo queres dedicar nos teus dias disponíveis.
+          </p>
         </div>
 
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
@@ -207,10 +235,17 @@ export default function Step4RhythmPrivacy({
       </div>
 
       {/* Privacidade e RGPD (com opt-in explícito e linguagem acessível) */}
-      <div className="space-y-3 rounded-[24px] border border-line bg-surface p-4 shadow-[var(--shadow-card)] sm:p-5">
+      <div
+        className={cx(
+          'space-y-3 p-4 shadow-card sm:p-5',
+          isMinimal
+            ? 'rounded-[22px] border border-line bg-surface'
+            : 'rounded-[26px] bg-pastel-butter/45 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]',
+        )}
+      >
         <div className="flex items-center gap-2">
-          <ShieldCheck size={18} className="text-accent-ink" />
-          <h3 className="font-display text-base font-bold text-fg">Privacidade e controlo dos teus dados</h3>
+          <ShieldCheck size={18} className="text-accent-ink dark:text-accent" />
+          <h3 className="font-display text-base font-bold">Privacidade e controlo dos teus dados</h3>
         </div>
 
         {/* Idade mínima obrigatória (aviso apenas se tentar avançar sem confirmar) */}

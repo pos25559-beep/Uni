@@ -101,13 +101,24 @@ export default function NotificationsCard() {
     }
   };
 
+  const isMinimal = (settings.appTone ?? 'vibrante') === 'serio';
+
   return (
-    <Card title="Lembretes inteligentes do Uni">
+    <Card
+      title="Lembretes inteligentes do Uni"
+      className={isMinimal ? undefined : 'rounded-[26px] border-line/70'}
+    >
       <div className="space-y-4">
         <p className="text-xs text-muted">
           Protege a tua sequência, revisões SRS, provas e aulas — sem spam.
         </p>
-        <div className="flex items-center justify-between gap-4 rounded-2xl border border-line bg-surface-2/60 p-3.5">
+        <div
+          className={
+            isMinimal
+              ? 'flex items-center justify-between gap-4 rounded-2xl border border-line bg-surface-2/60 p-3.5'
+              : 'flex items-center justify-between gap-4 rounded-2xl bg-pastel-sage/55 p-4 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]'
+          }
+        >
           <div className="flex min-w-0 items-start gap-3">
             <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl bg-pastel-sage text-forest-ink dark:bg-forest/20 dark:text-forest">
               {prefs.enabled ? <Bell size={18} /> : <BellOff size={18} />}
@@ -263,8 +274,14 @@ export default function NotificationsCard() {
         </div>
 
         {/* Pré-visualização ao vivo do estilo Duolingo adaptado à personalidade */}
-        <div className="rounded-2xl border border-dashed border-line bg-surface px-3.5 py-3">
-          <div className="flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted">
+        <div
+          className={
+            isMinimal
+              ? 'rounded-2xl border border-dashed border-line bg-surface px-3.5 py-3'
+              : 'rounded-2xl border border-dashed border-black/15 bg-pastel-butter/45 px-4 py-3 text-[#141312] dark:border-white/15 dark:bg-surface-2 dark:text-[#FAF6EC]'
+          }
+        >
+          <div className="flex items-center justify-between gap-2 text-xs font-semibold uppercase tracking-wide opacity-75">
             <span>Pré-visualização ao vivo</span>
             <span>
               {prefs.enabled

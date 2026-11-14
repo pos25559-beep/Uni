@@ -285,10 +285,19 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
     >
       <div className="space-y-4 max-h-[80vh] flex flex-col">
         {/* Orientação de organização por pastas */}
-        <div className="rounded-2xl border border-accent/25 bg-accent-soft/45 px-3.5 py-2.5 text-xs leading-relaxed text-fg">
-          <p className="font-semibold">Dica para CLIP e HD pessoal: organiza em pastas por cadeira</p>
-          <p className="mt-0.5 text-muted">
-            Cria subpastas com a sigla ou nome da cadeira (ex.: <span className="font-mono text-fg">C3D/</span>, <span className="font-mono text-fg">MF/</span>, <span className="font-mono text-fg">TEP/</span>). A varredura associa tudo o que estiver lá dentro — mesmo ficheiros com nomes genéricos como <span className="italic">1- Introducao.pdf</span> ou <span className="italic">Corr T1.pdf</span>.
+        <div className="rounded-2xl bg-pastel-mint/65 px-4 py-3 text-xs leading-relaxed text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]">
+          <p className="font-semibold">Dica para portal académico e HD pessoal: organiza em pastas por cadeira</p>
+          <p className="mt-0.5 opacity-85">
+            Cria subpastas com a sigla ou nome da cadeira (ex.:{' '}
+            <span className="font-mono font-medium">
+              {courses.length > 0
+                ? courses
+                    .slice(0, 3)
+                    .map((c) => `${c.shortName || c.name}/`)
+                    .join(', ')
+                : 'Calculo/, Fisica/, Economia/'}
+            </span>
+            ). A varredura associa tudo o que estiver lá dentro — mesmo ficheiros com nomes genéricos como <span className="italic">1- Introducao.pdf</span> ou <span className="italic">Teste 1.pdf</span>.
           </p>
         </div>
 
@@ -420,9 +429,9 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
 
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium text-fg">{it.name}</p>
-                      <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted">
+                      <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
                         {it.relPath !== it.name && (
-                          <span className="max-w-[180px] truncate rounded bg-surface-2 px-1.5 py-0.5 font-mono text-[10px]">
+                          <span className="max-w-[180px] truncate rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs">
                             {it.relPath.slice(0, it.relPath.lastIndexOf('/'))}
                           </span>
                         )}

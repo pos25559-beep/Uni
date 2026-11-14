@@ -9,6 +9,7 @@ import {
 } from '../../../lib/uniAccessories';
 import type { AppTone, Settings, ThemePalette, UniLiveCompanionsMode } from '../../../types';
 import { UniBuddy } from '../../brand/UnipediaMarks';
+import { StickerBadge } from '../../motion/Primitives';
 import { Field, Input, cx } from '../../ui';
 
 interface Step1IdentityProps {
@@ -56,22 +57,42 @@ export default function Step1Identity({
   setUniLiveCompanions,
 }: Step1IdentityProps) {
   const previewAcc = uniAccessory === 'auto' ? 'default' : uniAccessory;
+  const isMinimal = appTone === 'serio';
 
   return (
     <div className="space-y-5">
       {/* Cartão de apresentação com o Uni ao vivo */}
-      <div className="flex flex-col items-center gap-4 rounded-[24px] border border-line bg-surface p-5 text-center shadow-[var(--shadow-card)] sm:flex-row sm:text-left">
-        <div className="flex size-24 shrink-0 items-center justify-center rounded-full bg-pastel-butter/60 dark:bg-accent-soft">
+      <div
+        className={cx(
+          'flex flex-col items-center gap-4 p-5 text-center shadow-card sm:flex-row sm:text-left',
+          isMinimal
+            ? 'rounded-[22px] border border-line bg-surface text-fg'
+            : 'rounded-[26px] bg-pastel-butter/75 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]',
+        )}
+      >
+        <div
+          className={cx(
+            'flex size-24 shrink-0 items-center justify-center rounded-full',
+            isMinimal ? 'border border-line bg-surface-2' : 'bg-white/80 shadow-card dark:bg-black/25',
+          )}
+        >
           <UniBuddy mood="happy" accessory={previewAcc} size={76} interactive={false} />
         </div>
-        <div className="min-w-0 flex-1 space-y-1">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent-ink">
-            <Sparkles size={13} /> Passo 1 · Em 2 minutos
-          </span>
-          <h2 className="font-display text-xl font-bold tracking-tight text-fg sm:text-2xl">
-            Olá! Como queres que o teu caderno te trate?
+        <div className="min-w-0 flex-1 space-y-1.5">
+          {isMinimal ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-3 py-1 text-xs font-semibold text-muted">
+              <Sparkles size={13} /> Passo 1 · Em 2 minutos
+            </span>
+          ) : (
+            <StickerBadge tone="sage" tilt={-2}>
+              <Sparkles size={12} /> Passo 1 · Em 2 minutos
+            </StickerBadge>
+          )}
+          <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl">
+            Olá! Como queres que o teu{' '}
+            <span className={cx(!isMinimal && 'font-serif font-medium italic')}>caderno</span> te trate?
           </h2>
-          <p className="text-xs leading-relaxed text-muted sm:text-sm">
+          <p className="text-xs leading-relaxed opacity-80 sm:text-sm">
             Escolhe o teu nome, as cores do caderno e o estilo do Uni. Podes mudar tudo mais tarde.
           </p>
         </div>
@@ -159,7 +180,7 @@ export default function Step1Identity({
           })}
         </div>
 
-        <div className="grid gap-2 sm:grid-cols-3">
+        <div className="grid gap-2 sm:grid-cols-2">
           {TONE_OPTIONS.map((t) => {
             const active = appTone === t.id;
             return (
@@ -190,7 +211,7 @@ export default function Step1Identity({
       {/* Personalidade do Uni */}
       <div className="space-y-3 rounded-[24px] border border-line bg-surface p-4 shadow-[var(--shadow-card)] sm:p-5">
         <h3 className="font-display text-base font-bold text-fg">Estilo e voz do Uni</h3>
-        <div className="grid gap-2 sm:grid-cols-3">
+        <div className="grid gap-2 sm:grid-cols-2">
           {UNI_PERSONAS.map((p) => {
             const active = uniPersona === p.id;
             return (

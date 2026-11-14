@@ -114,7 +114,7 @@ export default function MaterialViewerModal({ material, onClose }: Props) {
               <div className="max-w-md space-y-1.5">
                 <h4 className="text-base font-semibold text-fg">Pasta do Google Drive</h4>
                 <p className="text-xs text-muted leading-relaxed">
-                  Esta pasta contém provas e materiais do LEMc. Por políticas de segurança da Google, pastas completas abrem de forma direta e segura no Google Drive com a tua conta.
+                  Esta pasta contém provas e apontamentos partilhados. Por políticas de segurança da Google, pastas completas abrem de forma direta e segura no Google Drive com a tua conta.
                 </p>
               </div>
               {material.url && (
@@ -122,7 +122,7 @@ export default function MaterialViewerModal({ material, onClose }: Props) {
                   href={material.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-accent/90 transition"
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full bg-ink-cta px-5 py-2 text-xs font-semibold text-ink-cta-fg shadow-card transition hover:opacity-90"
                 >
                   Abrir Pasta no Google Drive
                   <ExternalLink size={13} />
@@ -131,22 +131,22 @@ export default function MaterialViewerModal({ material, onClose }: Props) {
             </div>
           ) : isSharepoint ? (
             <div className="flex flex-col items-center justify-center h-full p-6 text-center space-y-4">
-              <div className="grid size-14 place-items-center rounded-2xl bg-amber-500/10 text-amber-500">
+              <div className="grid size-14 place-items-center rounded-2xl bg-pastel-butter/70 text-[#141312] dark:bg-surface-2 dark:text-warn">
                 <FolderOpen size={28} />
               </div>
               <div className="max-w-md space-y-1.5">
-                <h4 className="text-base font-semibold text-fg">Pasta do OneDrive / SharePoint da FCT</h4>
+                <h4 className="text-base font-semibold text-fg">Pasta do OneDrive / SharePoint institucional</h4>
                 <p className="text-xs text-muted leading-relaxed">
-                  Esta pasta pertence ao repositório institucional de provas e exercícios de LEMc. Devido às políticas de segurança da Microsoft UNL, ela abre diretamente com a tua sessão académica.
+                  Esta pasta pertence a um repositório institucional de provas e exercícios. Devido às políticas de segurança da Microsoft, abre diretamente com a tua sessão académica.
                 </p>
               </div>
               <a
                 href={material.url}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-accent/90 transition"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-ink-cta px-5 py-2 text-xs font-semibold text-ink-cta-fg shadow-card transition hover:opacity-90"
               >
-                Abrir Repositório no SharePoint da Faculdade
+                Abrir Repositório no SharePoint
                 <ExternalLink size={13} />
               </a>
             </div>
