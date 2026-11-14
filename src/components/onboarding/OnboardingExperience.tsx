@@ -519,6 +519,18 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     );
   };
 
+  const removeRecord = (record: CompletedCourseRecord) => {
+    void hapticTap();
+    if (record.isOptional) {
+      // Cadeiras opcionais regressam à gaveta de escolha para continuar fácil adicioná-las depois
+      setRecords((prev) =>
+        prev.map((r) => (r.id === record.id ? { ...r, status: 'por_fazer', grade: undefined } : r)),
+      );
+      return;
+    }
+    setRecords((prev) => prev.filter((r) => r.id !== record.id));
+  };
+
   const updateRecordGrade = (id: string, raw: string) => {
     const val = raw.trim() === '' ? undefined : Math.min(20, Math.max(0, Number(raw)));
     setRecords((prev) =>
@@ -2274,8 +2286,8 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                           [
                             { value: 'a_fazer', label: 'Ativa agora' },
                             { value: 'aprovada', label: 'Aprovada' },
-                            { value: 'por_fazer', label: 'Depois' },
-                          ] as const
+                            ...(!r.isOptional ? [{ value: 'por_fazer', label: 'Depois' }] : []),
+                          ] as Array<{ value: CompletedCourseRecord['status']; label: string }>
                         ).map((opt) => (
                           <button
                             key={opt.value}
@@ -2309,6 +2321,16 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                             className="h-8 w-14 rounded-lg border border-line bg-surface px-1.5 text-center text-xs tabular text-fg"
                           />
                         )}
+                        <button
+                          type="button"
+                          onClick={() => removeRecord(r)}
+                          aria-label={`Retirar ${r.name}`}
+                          title={r.isOptional ? 'Retirar opcional (volta para a lista de opcionais)' : 'Retirar cadeira da lista'}
+                          className="inline-flex min-h-[34px] items-center gap-1 rounded-xl border border-danger/35 bg-surface px-2.5 text-[11px] font-semibold text-danger transition hover:bg-danger/10"
+                        >
+                          {r.isOptional ? <X size={13} /> : <Trash2 size={13} />}
+                          <span>Retirar</span>
+                        </button>
                       </div>
                     </div>
                   ))
