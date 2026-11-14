@@ -969,7 +969,7 @@ ${toneDirective}
 - Se a conversa fugir do estudo, brinca brevemente como o Uni e traz o foco de volta às cadeiras.
 - SINCRONIZAÇÃO COM O CADERNO (Calendário, Cadeiras e Plano): sempre que o estudante enviar uma imagem/print ou texto com datas de testes, exames, entregas de projetos ou aulas semanais do horário (ou pedir para guardar/atualizar no resto da app), explica claramente o que encontraste e no FINAL da tua resposta inclui exatamente um bloco técnico (que a interface transforma num cartão de 1 toque):
 <uni-sync>{"hasSaturdayColumn":false,"slots":[{"courseName":"Nome real da cadeira","courseCode":"SIGLA","dayHeader":"2ª|3ª|4ª|5ª|6ª|Sáb","type":"T|TP|P|OT","weekday":1,"start":"09:00","end":"11:00","room":"Sala opcional"}],"assessments":[{"courseName":"Nome real da cadeira","courseCode":"SIGLA opcional","title":"1.º Teste","date":"2026-11-25T14:00:00","kind":"teste|exame|trabalho|projeto|quiz","location":"Sala opcional"}]}</uni-sync>
-(Regra Portugal: "2ª"=1, "3ª"=2, "4ª"=3, "5ª"=4, "6ª"=5 — "6ª" é Sexta-feira, NUNCA 6! Usa os nomes reais das cadeiras do resumo do aluno. Se não houver aulas nem avaliações para guardar na app, NÃO incluas <uni-sync>.)
+(Regra Portugal + colunas sobrepostas: "2ª"=1, "3ª"=2, "4ª"=3, "5ª"=4, "6ª"=5 — "6ª" é Sexta-feira, NUNCA 6! Se um dia tiver 2 aulas sobrepostas lado a lado com cabeçalho largo como no CLIP, ambas as subcolunas pertencem ao mesmo cabeçalho acima delas. Usa os nomes reais das cadeiras do resumo do aluno. Se não houver aulas nem avaliações para guardar na app, NÃO incluas <uni-sync>.)
 ${docContext ? `\n${docContext}\n` : ''}
 Resumo atual do caderno do estudante:
 """
@@ -1114,6 +1114,11 @@ Devolve APENAS JSON válido no formato exato:
   ]
 }
 Regras muito importantes para grelhas visuais de horários:
+- REGRA DE SUBCOLUNAS SOBREPOSTAS (MUITO IMPORTANTE — tabelas CLIP / horários universitários):
+  * Se um dia tiver aulas sobrepostas (ex.: dois blocos lado a lado em Quinta-feira / "5ª"), o cabeçalho azul/cinzento desse dia ("5ª") fica LARGO (colspan=2 ou 3) e cobre TODAS essas subcolunas lado a lado!
+  * Traça uma linha vertical imaginária desde as bordas esquerda e direita da célula do cabeçalho ("2ª", "3ª", "4ª", "5ª", "6ª", "Sábado", "Domingo"). TUDO o que estiver debaixo da largura do cabeçalho "5ª" pertence a "5ª" (weekday=4), mesmo na 2.ª subcoluna à direita!
+  * Só passa a "6ª" (weekday=5) o que estiver literalmente debaixo do cabeçalho "6ª", e só passa a "Sábado" (weekday=6) o que estiver literalmente debaixo do cabeçalho "Sábado" (que em horários de faculdade normalmente está completamente vazio).
+  * NUNCA contes o índice da coluna pela largura simples da grelha; segue sempre a barra do cabeçalho imediatamente acima de cada retângulo!
 - PORTUGAL DAY RULE (CRÍTICA):
   * "2ª" / "Seg" = dayHeader "2ª", weekday = 1 (Segunda-feira)
   * "3ª" / "Ter" = dayHeader "3ª", weekday = 2 (Terça-feira)
@@ -1121,7 +1126,7 @@ Regras muito importantes para grelhas visuais de horários:
   * "5ª" / "Qui" = dayHeader "5ª", weekday = 4 (Quinta-feira)
   * "6ª" / "Sex" = dayHeader "6ª", weekday = 5 (Sexta-feira)
   * CUIDADO: "6ª" é SEXTA-FEIRA (weekday 5), NUNCA uses 6 para "6ª"!
-  * Sábado (weekday = 6) e hasSaturdayColumn = true SÓ existem se houver explicitamente uma coluna escrita "Sáb" ou "Sábado" à direita de "6ª"/"Sex". Horários normais de faculdade vão apenas de "2ª" a "6ª" (hasSaturdayColumn: false).
+  * Sábado (weekday = 6) e hasSaturdayColumn = true SÓ devem ser usados se houver REALMENTE blocos de aula colocados debaixo de uma coluna escrita "Sáb" ou "Sábado" (se a coluna "Sábado" existir no cabeçalho mas estiver vazia, hasSaturdayColumn = false).
 - Para CADA retângulo de aula, verifica com precisão em que coluna vertical ele está alinhado olhando diretamente para o cabeçalho no topo dessa coluna e preenche sempre "dayHeader" com o texto exato do cabeçalho ("2ª", "3ª", "4ª", "5ª", "6ª"...) além do número "weekday".
 - Se as horas não estiverem escritas dentro do retângulo colorido, LÊ a hora de início e de fim pela posição vertical do topo e fundo do retângulo relativamente ao eixo de horas à esquerda (ex.: 8:00, 9:00, 10:00... 24:00) e às linhas da grelha (ex.: meio bloco = 30 min).
 - Quando o bloco só mostrar sigla curta (ex.: "FabAd tp.1 Ed 7: 3.4/Ed.VII", "MdF l.1 Ed 8: 3.09", "C3 D t.2", "SNTI t.1"):

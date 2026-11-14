@@ -84,15 +84,18 @@ export default function SmartScheduleImportModal({
   onImported?: (summary: SmartScheduleImportSummary) => void;
 }) {
   const courses = useStore((s) => s.courses);
+  const existingClasses = useStore((s) => s.classes);
   const events = useStore((s) => s.events);
   const storeSemester = useStore((s) => s.academicProfile.currentSemester);
   const activeSemester: 1 | 2 = currentSemester ?? storeSemester ?? 1;
-  const googleConnected = useStore((s) => s.integrations.google.connected);
+  const googleConnected = Boolean(useStore((s) => s.integrations?.google?.connected));
   const appTone = useStore((s) => s.settings.appTone);
   const isExpressive = appTone !== 'serio';
   const aiConsent = Boolean(useStore((s) => s.settings.aiConsent));
   const updateSettings = useStore((s) => s.updateSettings);
   const upsertMany = useStore((s) => s.upsertMany);
+  const remove = useStore((s) => s.remove);
+  const reconcileFuturePlan = useStore((s) => s.reconcileFuturePlan);
 
   const [mode, setMode] = useState<SmartImportInitialMode>(initialMode);
   const [busy, setBusy] = useState(false);
@@ -106,6 +109,7 @@ export default function SmartScheduleImportModal({
     Array<{ code?: string; name: string; ects?: number; semester: 1 | 2 }>
   >([]);
   const [sourceLabel, setSourceLabel] = useState<'local' | 'google'>('local');
+  const [replaceExistingClasses, setReplaceExistingClasses] = useState(false);
   const [importedSummary, setImportedSummary] = useState<string | null>(null);
 
   const googleEventsCount = useMemo(
@@ -213,6 +217,7 @@ export default function SmartScheduleImportModal({
     );
 
     setSlots(enrichedSlots);
+    setReplaceExistingClasses(existingClasses.length > 0 && enrichedSlots.length >= 3);
     setAssessments(
       resolvedAssessments.map((a, idx) => ({
         id: `ass-${idx}-${a.courseName}-${a.date}`,
@@ -439,8 +444,18 @@ export default function SmartScheduleImportModal({
     });
 
     if (createdCourses.length > 0) upsertMany('courses', createdCourses);
-    if (newClasses.length > 0) upsertMany('classes', newClasses);
+    if (newClasses.length > 0) {
+      if (replaceExistingClasses && existingClasses.length > 0) {
+        for (const oldClass of existingClasses) {
+          remove('classes', oldClass.id);
+        }
+      }
+      upsertMany('classes', newClasses);
+    }
     if (newAssessments.length > 0) upsertMany('assessments', newAssessments);
+    if (createdCourses.length > 0 || newClasses.length > 0 || newAssessments.length > 0) {
+      reconcileFuturePlan(true);
+    }
 
     onImported?.({
       activeCourses: Array.from(importedCourseRefs.values()),
@@ -641,9 +656,22 @@ export default function SmartScheduleImportModal({
           <div className="max-h-72 space-y-3 overflow-y-auto pr-1">
             {slots.length > 0 && (
               <div className="space-y-1.5">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-                  Aulas detetadas ({slots.length})
-                </p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                    Aulas detetadas ({slots.length})
+                  </p>
+                  {existingClasses.length > 0 && (
+                    <label className="inline-flex cursor-pointer items-center gap-1.5 text-[11px] font-medium text-fg">
+                      <input
+                        type="checkbox"
+                        checked={replaceExistingClasses}
+                        onChange={(e) => setReplaceExistingClasses(e.target.checked)}
+                        className="size-3.5 accent-accent"
+                      />
+                      Substituir {existingClasses.length} aula(s) atuais
+                    </label>
+                  )}
+                </div>
                 {slots.map((s) => {
                   const matched = matchCourse(s.courseName, courses, s.courseCode);
                   const displayName = matched?.name || s.courseName;
