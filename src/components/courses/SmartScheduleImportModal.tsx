@@ -82,14 +82,23 @@ function makeCourseShortName(name: string, code?: string): string {
   return name.slice(0, 12);
 }
 
+export interface SmartScheduleImportSummary {
+  activeCourses: Array<{ code?: string; name: string; ects?: number }>;
+  classesCount: number;
+  assessmentsCount: number;
+  source: 'photo' | 'gcal';
+}
+
 export default function SmartScheduleImportModal({
   initialMode = 'photo',
   onClose,
   onOpenClipModal,
+  onImported,
 }: {
   initialMode?: SmartImportInitialMode;
   onClose: () => void;
   onOpenClipModal?: () => void;
+  onImported?: (summary: SmartScheduleImportSummary) => void;
 }) {
   const courses = useStore((s) => s.courses);
   const events = useStore((s) => s.events);
@@ -275,13 +284,23 @@ export default function SmartScheduleImportModal({
 
     const currentCourses = [...useStore.getState().courses];
     const createdCourses: Course[] = [];
+    const importedCourseRefs = new Map<string, { code?: string; name: string; ects?: number }>();
     let colorIdx = currentCourses.length;
 
     const ensureCourseId = (courseName: string, courseCode?: string, ects = 6): string => {
       const existing =
         matchCourse(courseName, [...currentCourses, ...createdCourses]) ||
         (courseCode ? matchCourse(courseCode, [...currentCourses, ...createdCourses]) : undefined);
-      if (existing) return existing.id;
+      if (existing) {
+        if (!importedCourseRefs.has(existing.id)) {
+          importedCourseRefs.set(existing.id, {
+            code: existing.code || courseCode,
+            name: existing.name || courseName,
+            ects: existing.ects || ects,
+          });
+        }
+        return existing.id;
+      }
 
       const palette = colorNames.length > 0 ? colorNames : (['emerald', 'sky', 'amber'] as CourseColor[]);
       const color = palette[colorIdx % palette.length] ?? 'emerald';
@@ -297,6 +316,11 @@ export default function SmartScheduleImportModal({
         topics: [],
       };
       createdCourses.push(created);
+      importedCourseRefs.set(created.id, {
+        code: created.code,
+        name: created.name,
+        ects: created.ects,
+      });
       return created.id;
     };
 
@@ -330,6 +354,13 @@ export default function SmartScheduleImportModal({
     if (createdCourses.length > 0) upsertMany('courses', createdCourses);
     if (newClasses.length > 0) upsertMany('classes', newClasses);
     if (newAssessments.length > 0) upsertMany('assessments', newAssessments);
+
+    onImported?.({
+      activeCourses: Array.from(importedCourseRefs.values()),
+      classesCount: newClasses.length,
+      assessmentsCount: newAssessments.length,
+      source: mode === 'gcal' ? 'gcal' : 'photo',
+    });
 
     setImportedSummary(
       `Importado: ${createdCourses.length} cadeira(s) nova(s), ${newClasses.length} aula(s) e ${newAssessments.length} avaliação(ões).`,

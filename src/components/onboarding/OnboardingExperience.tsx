@@ -52,6 +52,7 @@ import {
 import { LEGAL_INFO } from '../../lib/legal';
 import { hapticSuccess, hapticTap, syncNativeTheme } from '../../lib/nativeBridge';
 import {
+  applyImportedScheduleRecords,
   buildInitialCompletedRecords,
   computeWeightedAverage,
   formatAcademicYearLabel,
@@ -59,6 +60,7 @@ import {
   getUniversityById,
   mergeCurriculumCatalog,
   PORTUGAL_CURRICULA,
+  type ImportedRecordCourseInput,
 } from '../../lib/portugalCurriculum';
 import {
   UNI_ACCESSORIES,
@@ -83,6 +85,7 @@ import type {
 import { UniBuddy, UnipediaLogoMark } from '../brand/UnipediaMarks';
 import SmartScheduleImportModal, {
   type SmartImportInitialMode,
+  type SmartScheduleImportSummary,
 } from '../courses/SmartScheduleImportModal';
 import {
   celebrateStationery,
@@ -281,6 +284,10 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
   const [ocrBusy, setOcrBusy] = useState(false);
   const [ocrFeedback, setOcrFeedback] = useState<string | null>(null);
   const [ocrError, setOcrError] = useState<string | null>(null);
+  const [scheduleDoneInfo, setScheduleDoneInfo] = useState<{
+    classesCount: number;
+    source: 'photo' | 'gcal' | 'print';
+  } | null>(null);
   const [scheduleImportMode, setScheduleImportMode] = useState<SmartImportInitialMode | null>(null);
   const [scheduleImportBaseline, setScheduleImportBaseline] = useState<{
     courses: number;
@@ -316,7 +323,11 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
   }, []);
 
   const selectedUniversity = useMemo(() => getUniversityById(universityId, catalog), [universityId, catalog]);
-  const availableDegrees = selectedUniversity?.degrees ?? [];
+  const availableDegrees = useMemo(() => selectedUniversity?.degrees ?? [], [selectedUniversity]);
+  const currentDegreeTemplates = useMemo(
+    () => availableDegrees.find((d) => d.id === degreeId)?.courses ?? [],
+    [availableDegrees, degreeId],
+  );
   const isSecondarySchool = universityId === 'escola-secundario';
 
   const yearChoices = useMemo(() => {
@@ -332,6 +343,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     nextYears: number[],
     nextSem: 1 | 2,
   ) => {
+    setScheduleDoneInfo(null);
     if (nextUniId !== 'outra' && nextDegId !== 'outro') {
       const leadYear = (nextYears[nextYears.length - 1] ?? 1) as 1 | 2 | 3 | 4 | 5;
       setRecords(
@@ -340,6 +352,46 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     } else {
       setRecords([]);
     }
+  };
+
+  const resetRecordsToDegreeDefaults = () => {
+    void hapticTap();
+    rebuildRecords(universityId, degreeId, activeYears, currentSemester);
+    setOcrFeedback(null);
+    setOcrError(null);
+  };
+
+  const applyScheduleScopeToRecords = (
+    importedCourses: ImportedRecordCourseInput[],
+    meta: { classesCount: number; assessmentsCount: number; source: 'photo' | 'gcal' | 'print' },
+  ) => {
+    const hasActiveItems = importedCourses.some((item) => item.status === 'a_fazer');
+    setRecords((prev) =>
+      applyImportedScheduleRecords(prev, importedCourses, {
+        primaryAcademicYear,
+        currentSemester,
+        defaultEcts: isSecondarySchool ? 4 : 6,
+        templates: currentDegreeTemplates,
+        replaceActiveScope: hasActiveItems,
+      }),
+    );
+
+    if (hasActiveItems) {
+      setYearFilter('all');
+      setScheduleDoneInfo({ classesCount: meta.classesCount, source: meta.source });
+    }
+
+    const parts: string[] = [];
+    if (importedCourses.length > 0) parts.push(`${importedCourses.length} registo(s)`);
+    if (meta.classesCount > 0) parts.push(`${meta.classesCount} aula(s) no horário`);
+    if (meta.assessmentsCount > 0) parts.push(`${meta.assessmentsCount} avaliação(ões)`);
+    setOcrError(null);
+    setOcrFeedback(
+      hasActiveItems
+        ? `Etapa pronta pelo teu horário: ${parts.join(', ')}. As restantes ficaram arrumadas em «Depois».`
+        : `Importado com sucesso: ${parts.join(', ')}.`,
+    );
+    void hapticSuccess();
   };
 
   const handleUniversityChange = (nextUniId: string) => {
@@ -667,30 +719,25 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
         });
         const mimeType = inferScreenshotMime(file);
 
-        const [historyRes, scheduleRes] = await Promise.allSettled([
-          parseAcademicHistoryFromScreenshot(base64, mimeType),
-          parseTimetableFromScreenshot(base64, mimeType),
-        ]);
-
-        if (historyRes.status === 'fulfilled') {
+        try {
+          const scheduleRes = await parseTimetableFromScreenshot(base64, mimeType);
           anySucceeded = true;
-          historyItems.push(...historyRes.value);
-        } else if (!firstError) {
-          firstError =
-            historyRes.reason instanceof Error
-              ? historyRes.reason
-              : new Error(String(historyRes.reason));
+          scheduleSlots.push(...scheduleRes.slots);
+          scheduleAssessments.push(...scheduleRes.assessments);
+        } catch (err) {
+          if (!firstError) {
+            firstError = err instanceof Error ? err : new Error(String(err));
+          }
         }
 
-        if (scheduleRes.status === 'fulfilled') {
+        try {
+          const historyRes = await parseAcademicHistoryFromScreenshot(base64, mimeType);
           anySucceeded = true;
-          scheduleSlots.push(...scheduleRes.value.slots);
-          scheduleAssessments.push(...scheduleRes.value.assessments);
-        } else if (!firstError) {
-          firstError =
-            scheduleRes.reason instanceof Error
-              ? scheduleRes.reason
-              : new Error(String(scheduleRes.reason));
+          historyItems.push(...historyRes);
+        } catch (err) {
+          if (!firstError) {
+            firstError = err instanceof Error ? err : new Error(String(err));
+          }
         }
       }
 
@@ -709,53 +756,26 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
         return;
       }
 
-      setRecords((prev) => {
-        const next = [...prev];
-        const mergeCourseItem = (item: ExtractedHistoryItem) => {
-          const itemNameNorm = item.name.toLowerCase();
-          const itemCodeNorm = item.code?.toLowerCase();
-          const idx = next.findIndex(
-            (r) =>
-              (itemCodeNorm && r.code.toLowerCase() === itemCodeNorm) ||
-              r.name.toLowerCase().includes(itemNameNorm) ||
-              itemNameNorm.includes(r.name.toLowerCase()),
-          );
-
-          if (idx >= 0) {
-            next[idx] = {
-              ...next[idx],
-              status: item.status,
-              grade: item.grade ?? next[idx].grade,
-            };
-          } else {
-            next.unshift({
-              id: `hist-ocr-${Math.random().toString(36).slice(2, 8)}`,
-              code: (item.code ?? item.name.slice(0, 5)).toUpperCase(),
-              name: item.name,
-              year: primaryAcademicYear,
-              semester: currentSemester,
-              ects: item.ects ?? (isSecondarySchool ? 4 : 6),
-              grade: item.grade,
-              status: item.status,
-            });
-          }
-        };
-
-        for (const item of historyItems) {
-          mergeCourseItem(item);
-        }
-
-        for (const slot of scheduleSlots) {
-          mergeCourseItem({
-            code: slot.courseCode,
-            name: slot.courseName,
-            ects: isSecondarySchool ? 4 : 6,
-            status: 'a_fazer',
-          });
-        }
-
-        return next;
-      });
+      const importedCourses: ImportedRecordCourseInput[] = [
+        ...historyItems.map((item) => ({
+          code: item.code,
+          name: item.name,
+          ects: item.ects,
+          status: item.status,
+          grade: item.grade,
+        })),
+        ...scheduleSlots.map((slot) => ({
+          code: slot.courseCode,
+          name: slot.courseName,
+          ects: isSecondarySchool ? 4 : 6,
+          status: 'a_fazer' as const,
+        })),
+        ...scheduleAssessments.map((a) => ({
+          name: a.courseName,
+          ects: isSecondarySchool ? 4 : 6,
+          status: 'a_fazer' as const,
+        })),
+      ];
 
       if (scheduleSlots.length > 0 || scheduleAssessments.length > 0) {
         const state = useStore.getState();
@@ -813,12 +833,11 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
         if (importedAssessments.length > 0) state.upsertMany('assessments', importedAssessments);
       }
 
-      const parts: string[] = [];
-      if (historyItems.length > 0) parts.push(`${historyItems.length} cadeira(s)`);
-      if (scheduleSlots.length > 0) parts.push(`${scheduleSlots.length} aula(s) no horário`);
-      if (scheduleAssessments.length > 0) parts.push(`${scheduleAssessments.length} avaliação(ões)`);
-      setOcrFeedback(`Importado com sucesso: ${parts.join(', ')}.`);
-      void hapticSuccess();
+      applyScheduleScopeToRecords(importedCourses, {
+        classesCount: scheduleSlots.length,
+        assessmentsCount: scheduleAssessments.length,
+        source: 'print',
+      });
     } catch (err) {
       setOcrError(err instanceof Error ? err.message : 'Erro ao analisar o print com Gemini Vision.');
     } finally {
@@ -2222,7 +2241,10 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                         <span className="font-serif font-normal italic">deste semestre</span>
                       </h2>
                       <p className="text-xs opacity-85">
-                        A mostrar apenas os anos escolhidos no passo anterior e o {currentSemester}.º semestre atual.
+                        A mostrar apenas os anos escolhidos no passo anterior e o {currentSemester}.º semestre.{' '}
+                        <span className="font-semibold">
+                          Se partilhares o teu horário por foto ou Google Agenda, esta etapa fica logo feita!
+                        </span>
                       </p>
                     </div>
                     <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-3xl bg-white/65 p-1.5 shadow-sm backdrop-blur-sm dark:bg-black/25">
@@ -2261,26 +2283,28 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
               {/* Atalhos rápidos de importação */}
               <div
                 className={cx(
-                  'flex flex-col gap-2.5 rounded-[24px] px-4 py-3.5 shadow-card sm:flex-row sm:items-center sm:justify-between',
+                  'flex flex-col gap-3 rounded-[24px] px-4 py-3.5 shadow-card',
                   isExpressive
                     ? 'bg-[#FCE99F]/75 text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]'
                     : 'border border-line bg-surface text-fg',
                 )}
               >
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {isExpressive ? (
                     <StickerBadge tone="mint" tilt={-1}>
-                      Atalho rápido
+                      Atalho automático
                     </StickerBadge>
                   ) : (
-                    <span className="text-xs font-semibold text-muted">Importar em segundos:</span>
+                    <span className="text-xs font-semibold text-muted">Atalho automático:</span>
                   )}
-                  <span className="text-xs font-semibold opacity-80">Preencher por foto ou agenda</span>
+                  <span className="text-xs font-semibold opacity-90">
+                    Partilha o teu horário (foto ou Google Agenda) e deixamos só as tuas cadeiras ativas
+                  </span>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Button
                     size="sm"
-                    variant="secondary"
+                    variant="primary"
                     onClick={() => {
                       const s = useStore.getState();
                       setScheduleImportBaseline({
@@ -2308,17 +2332,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                   >
                     <CalendarDays size={14} /> Google Agenda
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => {
-                      setShowPastePlan((v) => !v);
-                      void hapticTap();
-                    }}
-                  >
-                    <ClipboardPaste size={14} /> Colar Plano / Guia
-                  </Button>
-                  <label className="inline-flex min-h-[38px] cursor-pointer items-center gap-1.5 rounded-full bg-ink-cta px-3.5 py-1.5 text-xs font-semibold text-ink-cta-fg shadow-card transition hover:opacity-90">
+                  <label className="inline-flex min-h-[38px] cursor-pointer items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 py-1.5 text-xs font-semibold text-fg shadow-sm transition hover:bg-surface-2">
                     {ocrBusy ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
                     {ocrBusy ? 'A ler prints…' : 'Print Horário / Pauta'}
                     <input
@@ -2334,6 +2348,16 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                       }}
                     />
                   </label>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      setShowPastePlan((v) => !v);
+                      void hapticTap();
+                    }}
+                  >
+                    <ClipboardPaste size={14} /> Colar Plano / Guia
+                  </Button>
                 </div>
               </div>
 
@@ -2389,7 +2413,58 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                 </div>
               )}
 
-              {ocrFeedback && (
+              {scheduleDoneInfo && (
+                <div
+                  className={cx(
+                    'flex flex-col gap-3 rounded-[24px] p-4 shadow-card sm:flex-row sm:items-center sm:justify-between',
+                    isExpressive
+                      ? 'bg-[#C9DC9F]/85 text-[#141312] dark:bg-[#192D21] dark:text-[#FAF6EC]'
+                      : 'border border-ok/35 bg-ok/10 text-fg',
+                  )}
+                >
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {isExpressive ? (
+                        <StickerBadge tone="butter" tilt={-1}>
+                          Etapa pronta!
+                        </StickerBadge>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-xs font-bold text-ok">
+                          <CheckCircle2 size={14} /> Etapa pronta!
+                        </span>
+                      )}
+                      <span className="text-xs font-bold">
+                        {doingCount === 1
+                          ? '1 cadeira ativa do teu horário'
+                          : `${doingCount} cadeiras ativas do teu horário`}
+                        {scheduleDoneInfo.classesCount > 0 && ` · ${scheduleDoneInfo.classesCount} aulas importadas`}
+                      </span>
+                    </div>
+                    <p className="text-xs opacity-85">
+                      As restantes cadeiras do plano ficaram arrumadas em «Depois». Podes ajustar abaixo ou avançar já para o último passo.
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void handleGoNext()}
+                      className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full bg-ink-cta px-4 text-xs font-bold text-ink-cta-fg shadow-card transition hover:opacity-90"
+                    >
+                      <span>Avançar para o último passo</span>
+                      <ArrowRight size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={resetRecordsToDegreeDefaults}
+                      className="inline-flex min-h-[44px] items-center rounded-full border border-line bg-surface/80 px-3 text-xs font-semibold text-fg transition hover:bg-surface"
+                    >
+                      Restaurar lista do curso
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {ocrFeedback && !scheduleDoneInfo && (
                 <p className="flex items-center gap-1.5 rounded-xl bg-ok/10 px-3 py-2 text-xs text-ok">
                   <CheckCircle2 size={14} /> {ocrFeedback}
                 </p>
@@ -3196,6 +3271,23 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
       {scheduleImportMode && (
         <SmartScheduleImportModal
           initialMode={scheduleImportMode}
+          onImported={(summary: SmartScheduleImportSummary) => {
+            applyScheduleScopeToRecords(
+              summary.activeCourses.map((c) => ({
+                code: c.code,
+                name: c.name,
+                ects: c.ects ?? (isSecondarySchool ? 4 : 6),
+                status: 'a_fazer' as const,
+              })),
+              {
+                classesCount: summary.classesCount,
+                assessmentsCount: summary.assessmentsCount,
+                source: summary.source,
+              },
+            );
+            setScheduleImportMode(null);
+            setScheduleImportBaseline(null);
+          }}
           onClose={() => {
             setScheduleImportMode(null);
             const state = useStore.getState();
@@ -3214,42 +3306,20 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
             );
             setScheduleImportBaseline(null);
 
-            if (storeCourses.length > 0) {
-              setRecords((prev) => {
-                const next = [...prev];
-                for (const c of storeCourses) {
-                  const idx = next.findIndex(
-                    (r) =>
-                      r.code.toLowerCase() === c.code.toLowerCase() ||
-                      r.name.toLowerCase() === c.name.toLowerCase(),
-                  );
-                  if (idx >= 0) {
-                    if (next[idx].status === 'por_fazer') {
-                      next[idx] = { ...next[idx], status: 'a_fazer' };
-                    }
-                  } else {
-                    next.unshift({
-                      id: c.id,
-                      code: c.code,
-                      name: c.name,
-                      year: primaryAcademicYear,
-                      semester: currentSemester,
-                      ects: c.ects,
-                      status: 'a_fazer',
-                    });
-                  }
-                }
-                return next;
-              });
-            }
-
             if (addedClasses > 0 || addedAssessments > 0 || addedCourses > 0) {
-              const parts: string[] = [];
-              if (addedCourses > 0) parts.push(`${addedCourses} cadeira(s)`);
-              if (addedClasses > 0) parts.push(`${addedClasses} aula(s) no horário`);
-              if (addedAssessments > 0) parts.push(`${addedAssessments} avaliação(ões)`);
-              setOcrError(null);
-              setOcrFeedback(`Importado do horário: ${parts.join(', ')}.`);
+              applyScheduleScopeToRecords(
+                storeCourses.map((c) => ({
+                  code: c.code,
+                  name: c.name,
+                  ects: c.ects,
+                  status: 'a_fazer' as const,
+                })),
+                {
+                  classesCount: addedClasses,
+                  assessmentsCount: addedAssessments,
+                  source: scheduleImportMode === 'gcal' ? 'gcal' : 'photo',
+                },
+              );
             }
           }}
         />

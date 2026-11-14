@@ -9,8 +9,11 @@ import { extractAcademicsFromGoogleCalendar } from '../src/integrations/gcal';
 import { groupConversations, subjectLabel } from '../src/lib/geminiConversations';
 import { generatePlan } from '../src/lib/planner';
 import {
+  applyImportedScheduleRecords,
   buildInitialCompletedRecords,
+  findMatchingCourseRecordIndex,
   formatAcademicYearLabel,
+  getUniversityById,
 } from '../src/lib/portugalCurriculum';
 import { defaultSettings } from '../src/lib/seed';
 import { computeNextSrsState, isTopicReviewDue } from '../src/lib/spacedRepetition';
@@ -425,4 +428,119 @@ test('uniPetEngine respeita modo serio, off e interacoes discretas', () => {
   assert.equal(peers.length, 2);
   assert.equal(pickNextShyBehavior({ hasPeer: true, stepCount: 3, isFocusActive: true }), 'shy_hide');
   assert.equal(pickNextShyBehavior({ hasPeer: true, stepCount: 3, isFocusActive: false }), 'quiet_meetup');
+});
+
+test('findMatchingCourseRecordIndex reconhece siglas com espacos/capitalizacao e protege algarismos romanos', () => {
+  const templates = [
+    {
+      code: 'C3D',
+      name: 'Cálculo III D',
+      shortName: 'C3D',
+      year: 2 as const,
+      semester: 1 as const,
+      ects: 6,
+      topics: [],
+    },
+    {
+      code: 'MDF',
+      name: 'Mecânica dos Fluidos',
+      shortName: 'MdF',
+      year: 4 as const,
+      semester: 1 as const,
+      ects: 6,
+      topics: [],
+    },
+    {
+      code: 'FISI',
+      name: 'Física I',
+      shortName: 'Fís I',
+      year: 1 as const,
+      semester: 1 as const,
+      ects: 6,
+      topics: [],
+    },
+    {
+      code: 'FISII',
+      name: 'Física II',
+      shortName: 'Fís II',
+      year: 1 as const,
+      semester: 2 as const,
+      ects: 6,
+      topics: [],
+    },
+  ];
+  const records = templates.map((t, i) => ({
+    id: `r-${i}`,
+    code: t.code,
+    name: t.name,
+    year: t.year,
+    semester: t.semester,
+    ects: t.ects,
+    status: 'por_fazer' as const,
+  }));
+
+  assert.equal(
+    findMatchingCourseRecordIndex(records, { code: 'C3 D', name: 'Cálculo III D' }, templates),
+    0,
+  );
+  assert.equal(
+    findMatchingCourseRecordIndex(records, { code: 'MdF', name: 'Mecanica de Fluidos' }, templates),
+    1,
+  );
+  assert.equal(
+    findMatchingCourseRecordIndex(records, { code: 'FIS II', name: 'Física II' }, templates),
+    3,
+  );
+  assert.equal(
+    findMatchingCourseRecordIndex(records, { name: 'Física I' }, templates),
+    0 + 2,
+  );
+});
+
+test('applyImportedScheduleRecords substitui sugestoes por apenas as cadeiras do horario partilhado e preserva aprovadas', () => {
+  const initial = buildInitialCompletedRecords('nova-fct', 'lemc-memec', 4, 1, undefined, [2, 3, 4]);
+  const initialActive = initial.filter((r) => r.status === 'a_fazer');
+  const initialApproved = initial.filter((r) => r.status === 'aprovada');
+  assert.ok(initialActive.length >= 10, 'Misto [2,3,4] arranca com várias cadeiras ativas sugeridas');
+
+  const templates = getUniversityById('nova-fct')?.degrees.find((d) => d.id === 'lemc-memec')?.courses ?? [];
+
+  const updated = applyImportedScheduleRecords(
+    initial,
+    [
+      { code: 'C3 D', name: 'Cálculo III D', status: 'a_fazer' },
+      { code: 'CMAT', name: 'Ciência dos Materiais', status: 'a_fazer' },
+      { code: 'MS2', name: 'Mecânica dos Sólidos II', status: 'a_fazer' },
+      { code: 'TFS', name: 'Tecnologias de Fundição e Soldadura', status: 'a_fazer' },
+      { code: 'MdF', name: 'Mecânica dos Fluidos', status: 'a_fazer' },
+      { code: 'FabAd', name: 'Fabrico Aditivo', status: 'a_fazer' },
+    ],
+    {
+      primaryAcademicYear: 4,
+      currentSemester: 1,
+      defaultEcts: 6,
+      templates,
+      replaceActiveScope: true,
+    },
+  );
+
+  const activeAfter = updated.filter((r) => r.status === 'a_fazer');
+  const approvedAfter = updated.filter((r) => r.status === 'aprovada');
+
+  assert.equal(activeAfter.length, 6, 'Deve manter estritamente as 6 cadeiras do horário');
+  assert.equal(approvedAfter.length, initialApproved.length, 'Cadeiras já aprovadas permanecem aprovadas');
+
+  // Upload exclusivo de pauta (só aprovadas) não deve apagar as cadeiras ativas atuais
+  const afterTranscript = applyImportedScheduleRecords(
+    updated,
+    [{ code: 'CAL1', name: 'Cálculo I D', status: 'aprovada', grade: 15 }],
+    {
+      primaryAcademicYear: 4,
+      currentSemester: 1,
+      defaultEcts: 6,
+      templates,
+      replaceActiveScope: false,
+    },
+  );
+  assert.equal(afterTranscript.filter((r) => r.status === 'a_fazer').length, 6);
 });

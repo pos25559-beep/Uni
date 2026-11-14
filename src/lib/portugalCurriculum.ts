@@ -417,6 +417,160 @@ export function buildInitialCompletedRecords(
 }
 
 /** Converte as cadeiras em curso (`a_fazer`) do currículo num array `Course[]` compatível com a Unipedia. */
+function compactCurriculumKey(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+function normalizedWordTokens(value: string): string[] {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+}
+
+/**
+ * Encontra o índice de uma cadeira no histórico do aluno usando sigla, shortName do catálogo,
+ * iniciais do nome e correspondência normalizada sem acentos/espaços (ex: "C3 D" ↔ "C3D", "MdF" ↔ "MDF").
+ */
+export function findMatchingCourseRecordIndex(
+  records: CompletedCourseRecord[],
+  candidate: { code?: string; name: string },
+  templates: CurriculumCourseTemplate[] = [],
+): number {
+  const codeKey = candidate.code ? compactCurriculumKey(candidate.code) : '';
+  const nameKey = compactCurriculumKey(candidate.name);
+  const nameTokens = normalizedWordTokens(candidate.name);
+
+  if (!codeKey && !nameKey) return -1;
+
+  const tplByCode = new Map<string, CurriculumCourseTemplate>();
+  for (const t of templates) {
+    tplByCode.set(compactCurriculumKey(t.code), t);
+  }
+
+  // 1. Correspondência exata por código, shortName ou nome normalizado
+  for (let i = 0; i < records.length; i++) {
+    const r = records[i]!;
+    const rCode = compactCurriculumKey(r.code);
+    const rName = compactCurriculumKey(r.name);
+    const tpl = tplByCode.get(rCode);
+    const rShort = tpl ? compactCurriculumKey(tpl.shortName) : '';
+
+    if (
+      (codeKey && (rCode === codeKey || rShort === codeKey || rName === codeKey)) ||
+      (nameKey && (rName === nameKey || rCode === nameKey || (rShort && rShort === nameKey)))
+    ) {
+      return i;
+    }
+  }
+
+  // 2. Correspondência parcial por inclusão de frase completa (>= 5 chars) sem confundir I/II/III
+  const romanOrNum = new Set(['1', '2', '3', '4', '5', 'i', 'ii', 'iii', 'iv', 'v']);
+  const candNumTokens = nameTokens.filter((t) => romanOrNum.has(t));
+
+  for (let i = 0; i < records.length; i++) {
+    const r = records[i]!;
+    const rName = compactCurriculumKey(r.name);
+    const rTokens = normalizedWordTokens(r.name);
+    const rNumTokens = rTokens.filter((t) => romanOrNum.has(t));
+
+    if (
+      candNumTokens.length > 0 &&
+      rNumTokens.length > 0 &&
+      candNumTokens.join(',') !== rNumTokens.join(',')
+    ) {
+      continue;
+    }
+
+    if (
+      nameKey.length >= 5 &&
+      rName.length >= 5 &&
+      (rName.includes(nameKey) || nameKey.includes(rName))
+    ) {
+      return i;
+    }
+  }
+
+  return -1;
+}
+
+export interface ImportedRecordCourseInput {
+  code?: string;
+  name: string;
+  ects?: number;
+  status: CompletedCourseRecord['status'];
+  grade?: number;
+}
+
+/**
+ * Aplica cadeiras vindas de horário/pauta partilhados ao histórico de onboarding.
+ * Quando `replaceActiveScope` é true (ex: foto do horário ou Google Agenda), apenas as
+ * cadeiras presentes no horário ficam «a_fazer»; sugestões anteriores não presentes passam para «por_fazer».
+ */
+export function applyImportedScheduleRecords(
+  prevRecords: CompletedCourseRecord[],
+  importedCourses: ImportedRecordCourseInput[],
+  options: {
+    primaryAcademicYear: number;
+    currentSemester: 1 | 2;
+    defaultEcts?: number;
+    templates?: CurriculumCourseTemplate[];
+    replaceActiveScope: boolean;
+  },
+): CompletedCourseRecord[] {
+  const next = [...prevRecords];
+  const matchedActiveIds = new Set<string>();
+  const templates = options.templates ?? [];
+
+  for (const item of importedCourses) {
+    const idx = findMatchingCourseRecordIndex(next, { code: item.code, name: item.name }, templates);
+    if (idx >= 0) {
+      const current = next[idx]!;
+      next[idx] = {
+        ...current,
+        status: item.status,
+        grade: item.grade ?? current.grade,
+      };
+      if (item.status === 'a_fazer') {
+        matchedActiveIds.add(current.id);
+      }
+    } else {
+      const code = (item.code ?? item.name.slice(0, 6)).trim().toUpperCase();
+      const newId = `hist-sched-${compactCurriculumKey(code || item.name) || Math.random().toString(36).slice(2, 8)}-${next.length}`;
+      next.unshift({
+        id: newId,
+        code,
+        name: item.name,
+        year: options.primaryAcademicYear,
+        semester: options.currentSemester,
+        ects: item.ects ?? options.defaultEcts ?? 6,
+        grade: item.grade,
+        status: item.status,
+      });
+      if (item.status === 'a_fazer') {
+        matchedActiveIds.add(newId);
+      }
+    }
+  }
+
+  if (!options.replaceActiveScope || matchedActiveIds.size === 0) {
+    return next;
+  }
+
+  return next.map((r) => {
+    if (r.status === 'a_fazer' && !matchedActiveIds.has(r.id)) {
+      return { ...r, status: 'por_fazer' };
+    }
+    return r;
+  });
+}
+
 export function buildActiveCoursesFromCurriculum(
   universityId: string,
   degreeId: string,
@@ -429,12 +583,15 @@ export function buildActiveCoursesFromCurriculum(
   const activeRecords = records.filter((r) => r.status === 'a_fazer');
 
   return activeRecords.map((rec, idx) => {
+    const recCodeKey = compactCurriculumKey(rec.code);
+    const recNameKey = compactCurriculumKey(rec.name);
     const existing = existingCourses.find(
       (ec) =>
-        ec.code.toLowerCase() === rec.code.toLowerCase() ||
-        ec.name.toLowerCase() === rec.name.toLowerCase(),
+        compactCurriculumKey(ec.code) === recCodeKey ||
+        compactCurriculumKey(ec.shortName) === recCodeKey ||
+        compactCurriculumKey(ec.name) === recNameKey,
     );
-    const tpl = templates.find((t) => t.code.toLowerCase() === rec.code.toLowerCase());
+    const tpl = templates.find((t) => compactCurriculumKey(t.code) === recCodeKey);
 
     if (existing) return existing;
 
