@@ -2,6 +2,7 @@
 // (ficheiro .ics) ou copia (texto do horário) e convertem-nos em rascunhos
 // que o utilizador revê antes de importar. Funções puras, sem efeitos.
 import { format } from 'date-fns';
+import { isCourseIdentityMatch } from '../lib/portugalCurriculum';
 import type {
   AssessmentKind, CalendarEvent, ClassType, Course,
 } from '../types';
@@ -78,7 +79,7 @@ export function normalize(s: string): string {
     .trim();
 }
 
-/** Encontra a cadeira pelo código, nome curto ou nome (exato primeiro, depois parcial). */
+/** Encontra a cadeira pelo código, nome curto, iniciais/sigla ou nome (exato primeiro, depois parcial). */
 export function matchCourse(name: string, courses: Course[]): Course | undefined {
   const n = normalize(name);
   if (!n) return undefined;
@@ -95,12 +96,14 @@ export function matchCourse(name: string, courses: Course[]): Course | undefined
   const exact = prepared.find((p) => p.short === n || p.full === n);
   if (exact) return exact.course;
 
-  const partial = prepared.find((p) =>
-    tokens.includes(p.code)
-    || (n.length >= 3 && (p.full.includes(n) || p.short.includes(n)))
-    || (p.short.length >= 3 && n.includes(p.short))
-    || (p.full.length >= 3 && n.includes(p.full)),
+  const smartMatch = courses.find(
+    (c) =>
+      isCourseIdentityMatch({ code: name, name }, { code: c.code, name: c.name }) ||
+      isCourseIdentityMatch({ code: name, name }, { code: c.shortName, name: c.name }),
   );
+  if (smartMatch) return smartMatch;
+
+  const partial = prepared.find((p) => tokens.includes(p.code));
   return partial?.course;
 }
 

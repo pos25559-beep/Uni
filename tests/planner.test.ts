@@ -5,6 +5,7 @@ import {
   inferAcademicStageFromEcts,
 } from '../src/lib/academicCredits';
 import { parseCurriculumFromText } from '../src/lib/curriculumParser';
+import { matchCourse } from '../src/integrations/clip';
 import { extractAcademicsFromGoogleCalendar } from '../src/integrations/gcal';
 import { groupConversations, subjectLabel } from '../src/lib/geminiConversations';
 import { generatePlan } from '../src/lib/planner';
@@ -543,4 +544,115 @@ test('applyImportedScheduleRecords substitui sugestoes por apenas as cadeiras do
     },
   );
   assert.equal(afterTranscript.filter((r) => r.status === 'a_fazer').length, 6);
+});
+
+test('applyImportedScheduleRecords separa 2.º Semestre do 1.º Semestre, dedup sem/com sigla (SNTI/FabAd) e suporta opcionais nos 2 anos de Mestrado', () => {
+  const rawClipJson = JSON.stringify([
+    { name: 'Cálculo III D', semester: '1º Semestre', status: 'a_fazer' },
+    { name: 'Fabrico Aditivo', semester: '1º Semestre', status: 'a_fazer' },
+    { name: 'Mecânica dos Fluidos', semester: '1º Semestre', status: 'a_fazer' },
+    { name: 'Mecânica dos Sólidos II', semester: '1º Semestre', status: 'a_fazer' },
+    { name: 'Sociologia das Novas Tecnologias de Informação', semester: '1º Semestre', status: 'a_fazer' },
+    { name: 'Tecnologias de Enformação Plástica', semester: '1º Semestre', status: 'a_fazer' },
+    { name: 'Energia na Sociedade Tecnológica', semester: '2º Semestre', status: 'a_fazer' },
+    { name: 'Materiais Compósitos Estruturais', semester: '2º Semestre', status: 'a_fazer' },
+    { name: 'Projeto de Fadiga de Ligações Mecânicas e Estruturas Aeroespaciais', semester: '2º Semestre', status: 'a_fazer' },
+    { name: 'Teoria e Metodologias de Projeto', semester: '2º Semestre', status: 'a_fazer' },
+    { name: 'Termofluidos Industrial', semester: '2º Semestre', status: 'a_fazer' },
+    { name: 'Empreendedorismo', semester: '2º Trimestre', status: 'a_fazer' },
+  ]);
+
+  const parsedItems = parseHistoryJsonText(rawClipJson);
+  assert.equal(parsedItems.filter((i) => i.semester === 1).length, 6);
+  assert.equal(parsedItems.filter((i) => i.semester === 2).length, 6);
+
+  const initial = buildInitialCompletedRecords('nova-fct', 'lemc-memec', 4, 1, undefined, [2, 3, 4]);
+  const templates = getUniversityById('nova-fct')?.degrees.find((d) => d.id === 'lemc-memec')?.courses ?? [];
+
+  // Passo 1: importa lista de Unidades Curriculares (sem siglas) + depois slots do horário (com siglas SNTI / FabAd)
+  const afterClipAndSlots = applyImportedScheduleRecords(
+    initial,
+    [
+      ...parsedItems.map((p) => ({
+        code: p.code,
+        name: p.name,
+        ects: p.ects,
+        semester: p.semester,
+        status: p.status,
+        grade: p.grade,
+      })),
+      { code: 'SNTI', name: 'SNTI', semester: 1 as const, status: 'a_fazer' as const },
+      { code: 'FabAd', name: 'FabAd', semester: 1 as const, status: 'a_fazer' as const },
+      { code: 'C3 D', name: 'C3 D', semester: 1 as const, status: 'a_fazer' as const },
+    ],
+    {
+      primaryAcademicYear: 4,
+      activeYears: [2, 3, 4],
+      currentSemester: 1,
+      defaultEcts: 6,
+      templates,
+      replaceActiveScope: true,
+    },
+  );
+
+  const active = afterClipAndSlots.filter((r) => r.status === 'a_fazer');
+  assert.equal(
+    active.length,
+    6,
+    `Apenas as 6 cadeiras do 1.º Semestre devem ficar ativas: ${JSON.stringify(active.map((r) => [r.code, r.name]))}`,
+  );
+
+  // SNTI não pode duplicar com/sem sigla e deve preservar nome completo + sigla SNTI
+  const sntiMatches = afterClipAndSlots.filter((r) => r.name.includes('Sociologia'));
+  assert.equal(sntiMatches.length, 1);
+  assert.equal(sntiMatches[0]!.code, 'SNTI');
+
+  // Fabrico Aditivo não pode duplicar entre nome completo e sigla FabAd
+  const fabMatches = afterClipAndSlots.filter((r) => /Fabrico Aditivo|FabAd/i.test(r.name));
+  assert.equal(fabMatches.length, 1);
+  assert.equal(fabMatches[0]!.code, 'FABAD');
+
+  // Nenhuma cadeira do 2.º Semestre pode estar ativa no 1.º Semestre
+  assert.equal(
+    active.some((r) => /Energia na Sociedade|Compósitos|Fadiga|Termofluidos/i.test(r.name)),
+    false,
+  );
+  // Mecânica dos Fluidos importada no 1.º Semestre deve mostrar 1.º Sem
+  const mdf = active.find((r) => r.code === 'MDF');
+  assert.equal(mdf?.semester, 1);
+
+  // Ordem inversa: slot com sigla primeiro, nome completo depois também não duplica em matchCourse nem em applyImportedScheduleRecords
+  const slotFirst = applyImportedScheduleRecords(
+    [],
+    [
+      { code: 'SNTI', name: 'SNTI', semester: 1, status: 'a_fazer' },
+      { name: 'Sociologia das Novas Tecnologias de Informação', semester: 1, status: 'a_fazer' },
+    ],
+    { primaryAcademicYear: 4, activeYears: [4], currentSemester: 1, templates, replaceActiveScope: true },
+  );
+  assert.equal(slotFirst.length, 1);
+  assert.equal(slotFirst[0]!.code, 'SNTI');
+  assert.equal(slotFirst[0]!.name, 'Sociologia das Novas Tecnologias de Informação');
+
+  assert.ok(
+    matchCourse('SNTI', [
+      { id: 'c1', code: 'SDN', shortName: 'SDN', name: 'Sociologia das Novas Tecnologias de Informação', ects: 6, color: 'sky', targetGrade: 14, topics: [] },
+    ]),
+    'matchCourse deve ligar sigla SNTI ao nome completo sem duplicar',
+  );
+
+  // Opcionais de Mestrado elegíveis em 4.º e 5.º Ano (2.º Mest.) não duplicam e alinham ano quando aluno está no 2.º Mest.
+  const fabRecs = initial.filter((r) => r.code === 'FABAD');
+  assert.equal(fabRecs.length, 1);
+  assert.deepEqual(fabRecs[0]!.eligibleYears, [4, 5]);
+
+  const master2Only = buildInitialCompletedRecords('nova-fct', 'lemc-memec', 5, 1, undefined, [5]);
+  const alignedMaster2 = applyImportedScheduleRecords(
+    master2Only,
+    [{ code: 'FabAd', name: 'Fabrico Aditivo', semester: 1, status: 'a_fazer' }],
+    { primaryAcademicYear: 5, activeYears: [5], currentSemester: 1, templates, replaceActiveScope: true },
+  );
+  const fabMaster2 = alignedMaster2.find((r) => r.code === 'FABAD');
+  assert.equal(fabMaster2?.status, 'a_fazer');
+  assert.equal(fabMaster2?.year, 5);
 });

@@ -24,7 +24,7 @@ import {
   X,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAcademicEmails } from '../../hooks/useGoogleData';
 import { matchCourse } from '../../integrations/clip';
 import {
@@ -55,6 +55,7 @@ import {
   applyImportedScheduleRecords,
   buildInitialCompletedRecords,
   computeWeightedAverage,
+  deriveCourseAcronym,
   formatAcademicYearLabel,
   formatAcademicYearShort,
   getUniversityById,
@@ -365,10 +366,15 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     importedCourses: ImportedRecordCourseInput[],
     meta: { classesCount: number; assessmentsCount: number; source: 'photo' | 'gcal' | 'print' },
   ) => {
-    const hasActiveItems = importedCourses.some((item) => item.status === 'a_fazer');
+    const hasActiveItems = importedCourses.some(
+      (item) =>
+        item.status === 'a_fazer' &&
+        (item.semester === undefined || item.semester === currentSemester),
+    );
     setRecords((prev) =>
       applyImportedScheduleRecords(prev, importedCourses, {
         primaryAcademicYear,
+        activeYears,
         currentSemester,
         defaultEcts: isSecondarySchool ? 4 : 6,
         templates: currentDegreeTemplates,
@@ -569,10 +575,44 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     rebuildRecords(universityId, degreeId, activeYears, semester);
   };
 
+  const templateEligibleYearsByCode = useMemo(() => {
+    const map = new Map<string, number[]>();
+    for (const tpl of currentDegreeTemplates) {
+      if (tpl.eligibleYears && tpl.eligibleYears.length > 0) {
+        map.set(tpl.code.toLowerCase(), tpl.eligibleYears);
+      }
+    }
+    return map;
+  }, [currentDegreeTemplates]);
+
+  const getRecordEligibleYears = useCallback(
+    (r: CompletedCourseRecord): number[] => {
+      if (r.eligibleYears && r.eligibleYears.length > 0) return r.eligibleYears;
+      const fromTpl = templateEligibleYearsByCode.get(r.code.toLowerCase());
+      if (fromTpl && fromTpl.length > 0) return fromTpl;
+      return [r.year];
+    },
+    [templateEligibleYearsByCode],
+  );
+
   const updateRecordStatus = (id: string, status: CompletedCourseRecord['status']) => {
     void hapticTap();
     setRecords((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, status, ...(status !== 'aprovada' ? { grade: undefined } : {}) } : r)),
+      prev.map((r) => {
+        if (r.id !== id) return r;
+        const targetYear = yearFilter !== 'all' ? yearFilter : primaryAcademicYear;
+        const eligible = getRecordEligibleYears(r);
+        const alignedYear =
+          status === 'a_fazer' && r.isOptional && eligible.includes(targetYear)
+            ? targetYear
+            : r.year;
+        return {
+          ...r,
+          year: alignedYear,
+          status,
+          ...(status !== 'aprovada' ? { grade: undefined } : {}),
+        };
+      }),
     );
   };
 
@@ -731,7 +771,9 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
         }
 
         try {
-          const historyRes = await parseAcademicHistoryFromScreenshot(base64, mimeType);
+          const historyRes = await parseAcademicHistoryFromScreenshot(base64, mimeType, {
+            currentSemester,
+          });
           anySucceeded = true;
           historyItems.push(...historyRes);
         } catch (err) {
@@ -761,6 +803,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
           code: item.code,
           name: item.name,
           ects: item.ects,
+          semester: item.semester,
           status: item.status,
           grade: item.grade,
         })),
@@ -768,11 +811,13 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
           code: slot.courseCode,
           name: slot.courseName,
           ects: isSecondarySchool ? 4 : 6,
+          semester: currentSemester,
           status: 'a_fazer' as const,
         })),
         ...scheduleAssessments.map((a) => ({
           name: a.courseName,
           ects: isSecondarySchool ? 4 : 6,
+          semester: currentSemester,
           status: 'a_fazer' as const,
         })),
       ];
@@ -791,7 +836,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
             (courseCode ? matchCourse(courseCode, [...currentCourses, ...createdCourses]) : undefined);
           if (matched) return matched.id;
 
-          const code = (courseCode || courseName.slice(0, 6)).trim();
+          const code = deriveCourseAcronym(courseName, courseCode);
           const created: Course = {
             id: newId(),
             code,
@@ -865,12 +910,13 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
    */
   const scopedRecords = useMemo(() => {
     if (showOtherTermsHistory) return records;
-    return records.filter(
-      (r) =>
-        (activeYears.includes(r.year) && r.semester === currentSemester) ||
-        r.status === 'a_fazer',
-    );
-  }, [records, showOtherTermsHistory, activeYears, currentSemester]);
+    return records.filter((r) => {
+      if (r.status === 'a_fazer') return true;
+      if (r.semester !== currentSemester) return false;
+      const eligibleYears = getRecordEligibleYears(r);
+      return activeYears.some((y) => eligibleYears.includes(y));
+    });
+  }, [records, showOtherTermsHistory, activeYears, currentSemester, getRecordEligibleYears]);
 
   const availableRecordYears = useMemo(() => {
     const set = new Set<number>(scopedRecords.map((r) => r.year));
@@ -882,8 +928,12 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
 
   const filteredRecords = useMemo(() => {
     if (effectiveYearFilter === 'all') return scopedRecords;
-    return scopedRecords.filter((r) => r.year === effectiveYearFilter);
-  }, [scopedRecords, effectiveYearFilter]);
+    return scopedRecords.filter((r) =>
+      r.isOptional && r.status === 'por_fazer'
+        ? getRecordEligibleYears(r).includes(effectiveYearFilter)
+        : r.year === effectiveYearFilter,
+    );
+  }, [scopedRecords, effectiveYearFilter, getRecordEligibleYears]);
 
   /** Oculta cadeiras opcionais não selecionadas para evitar listas gigantes nos Mestrados. */
   const mainFilteredRecords = useMemo(
@@ -3271,14 +3321,25 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
       {scheduleImportMode && (
         <SmartScheduleImportModal
           initialMode={scheduleImportMode}
+          currentSemester={currentSemester}
           onImported={(summary: SmartScheduleImportSummary) => {
             applyScheduleScopeToRecords(
-              summary.activeCourses.map((c) => ({
-                code: c.code,
-                name: c.name,
-                ects: c.ects ?? (isSecondarySchool ? 4 : 6),
-                status: 'a_fazer' as const,
-              })),
+              [
+                ...summary.activeCourses.map((c) => ({
+                  code: c.code,
+                  name: c.name,
+                  ects: c.ects ?? (isSecondarySchool ? 4 : 6),
+                  semester: currentSemester,
+                  status: 'a_fazer' as const,
+                })),
+                ...(summary.otherSemesterCourses ?? []).map((c) => ({
+                  code: c.code,
+                  name: c.name,
+                  ects: c.ects ?? (isSecondarySchool ? 4 : 6),
+                  semester: c.semester,
+                  status: 'por_fazer' as const,
+                })),
+              ],
               {
                 classesCount: summary.classesCount,
                 assessmentsCount: summary.assessmentsCount,

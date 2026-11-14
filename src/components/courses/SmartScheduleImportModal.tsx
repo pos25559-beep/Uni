@@ -9,6 +9,7 @@ import {
 } from '../../integrations/gemini';
 import { extractAcademicsFromGoogleCalendar, syncGoogleCalendar } from '../../integrations/gcal';
 import { colorNames, kindLabel, weekdayLong } from '../../lib/colors';
+import { deriveCourseAcronym, isCourseIdentityMatch } from '../../lib/portugalCurriculum';
 import { newId, useStore } from '../../store/useStore';
 import type { Assessment, ClassSlot, Course, CourseColor } from '../../types';
 import { StickerBadge } from '../motion/Primitives';
@@ -71,19 +72,12 @@ function readImageBase64(file: File): Promise<{ base64: string; mimeType: string
 }
 
 function makeCourseShortName(name: string, code?: string): string {
-  if (code && code.length <= 12) return code;
-  const words = name.split(/\s+/).filter((w) => w.length > 2);
-  if (words.length >= 2) {
-    return words
-      .slice(0, 3)
-      .map((w) => w[0]!.toUpperCase())
-      .join('');
-  }
-  return name.slice(0, 12);
+  return deriveCourseAcronym(name, code);
 }
 
 export interface SmartScheduleImportSummary {
   activeCourses: Array<{ code?: string; name: string; ects?: number }>;
+  otherSemesterCourses?: Array<{ code?: string; name: string; ects?: number; semester: 1 | 2 }>;
   classesCount: number;
   assessmentsCount: number;
   source: 'photo' | 'gcal';
@@ -91,17 +85,21 @@ export interface SmartScheduleImportSummary {
 
 export default function SmartScheduleImportModal({
   initialMode = 'photo',
+  currentSemester,
   onClose,
   onOpenClipModal,
   onImported,
 }: {
   initialMode?: SmartImportInitialMode;
+  currentSemester?: 1 | 2;
   onClose: () => void;
   onOpenClipModal?: () => void;
   onImported?: (summary: SmartScheduleImportSummary) => void;
 }) {
   const courses = useStore((s) => s.courses);
   const events = useStore((s) => s.events);
+  const storeSemester = useStore((s) => s.academicProfile.currentSemester);
+  const activeSemester: 1 | 2 = currentSemester ?? storeSemester ?? 1;
   const googleConnected = useStore((s) => s.integrations.google.connected);
   const appTone = useStore((s) => s.settings.appTone);
   const isExpressive = appTone !== 'serio';
@@ -117,6 +115,9 @@ export default function SmartScheduleImportModal({
   const [slots, setSlots] = useState<PreviewSlot[]>([]);
   const [assessments, setAssessments] = useState<PreviewAssessment[]>([]);
   const [detectedCourses, setDetectedCourses] = useState<PreviewCourse[]>([]);
+  const [otherSemCourses, setOtherSemCourses] = useState<
+    Array<{ code?: string; name: string; ects?: number; semester: 1 | 2 }>
+  >([]);
   const [sourceLabel, setSourceLabel] = useState<'local' | 'google'>('local');
   const [importedSummary, setImportedSummary] = useState<string | null>(null);
 
@@ -131,13 +132,68 @@ export default function SmartScheduleImportModal({
     extraCourses: ExtractedHistoryItem[] = [],
   ) => {
     setSourceLabel(src);
-    setSlots(
-      payload.slots.map((s, idx) => ({
+
+    // Coalesce cadeiras detetadas do mesmo semestre (evitando duplicados sem/com sigla)
+    const activeExtra: Array<{ name: string; code?: string; ects: number }> = [];
+    const deferredOtherSem: Array<{ code?: string; name: string; ects?: number; semester: 1 | 2 }> = [];
+
+    for (const item of extraCourses) {
+      if (item.status === 'aprovada') continue;
+      if (item.semester !== undefined && item.semester !== activeSemester) {
+        deferredOtherSem.push({
+          code: item.code,
+          name: item.name,
+          ects: item.ects ?? 6,
+          semester: item.semester,
+        });
+        continue;
+      }
+      if (item.status === 'por_fazer') continue;
+
+      const existingIdx = activeExtra.findIndex((c) =>
+        isCourseIdentityMatch({ code: c.code, name: c.name }, { code: item.code, name: item.name }),
+      );
+      if (existingIdx >= 0) {
+        const cur = activeExtra[existingIdx]!;
+        activeExtra[existingIdx] = {
+          name: item.name.length > cur.name.length ? item.name : cur.name,
+          code: cur.code || item.code,
+          ects: item.ects ?? cur.ects,
+        };
+      } else {
+        activeExtra.push({
+          name: item.name,
+          code: item.code,
+          ects: item.ects ?? 6,
+        });
+      }
+    }
+
+    // Enriquece slots com o nome completo quando vieram só com sigla, e evita duplicar em detectedCourses
+    const enrichedSlots: PreviewSlot[] = payload.slots.map((s, idx) => {
+      const matchedExtra = activeExtra.find((c) =>
+        isCourseIdentityMatch({ code: c.code, name: c.name }, { code: s.courseCode, name: s.courseName }),
+      );
+      return {
         id: `slot-${idx}-${s.courseName}-${s.weekday}-${s.start}`,
         ...s,
+        courseName:
+          matchedExtra && matchedExtra.name.length > s.courseName.length
+            ? matchedExtra.name
+            : s.courseName,
+        courseCode: s.courseCode || matchedExtra?.code,
         selected: true,
-      })),
+      };
+    });
+
+    const uniqueDetectedCourses = activeExtra.filter(
+      (c) =>
+        !enrichedSlots.some((s) =>
+          isCourseIdentityMatch({ code: c.code, name: c.name }, { code: s.courseCode, name: s.courseName }),
+        ),
     );
+
+    setSlots(enrichedSlots);
     setAssessments(
       payload.assessments.map((a, idx) => ({
         id: `ass-${idx}-${a.courseName}-${a.date}`,
@@ -145,20 +201,21 @@ export default function SmartScheduleImportModal({
         selected: true,
       })),
     );
-    const activeExtra = extraCourses.filter((c) => c.status !== 'aprovada');
     setDetectedCourses(
-      activeExtra.map((c, idx) => ({
+      uniqueDetectedCourses.map((c, idx) => ({
         id: `crs-${idx}-${c.name}`,
         name: c.name,
-        code: c.code,
-        ects: c.ects ?? 6,
+        code: c.code || deriveCourseAcronym(c.name),
+        ects: c.ects,
         selected: true,
       })),
     );
+    setOtherSemCourses(deferredOtherSem);
+
     if (
-      payload.slots.length === 0 &&
+      enrichedSlots.length === 0 &&
       payload.assessments.length === 0 &&
-      activeExtra.length === 0
+      uniqueDetectedCourses.length === 0
     ) {
       setError(
         'Não encontrei aulas, avaliações nem cadeiras reconhecíveis nestas imagens. Tenta prints mais nítidos da grelha de horário ou da lista de cadeiras.',
@@ -195,30 +252,28 @@ export default function SmartScheduleImportModal({
 
       for (const file of imageFiles) {
         const { base64, mimeType } = await readImageBase64(file);
-        const [scheduleRes, historyRes] = await Promise.allSettled([
-          parseTimetableFromScreenshot(base64, mimeType),
-          parseAcademicHistoryFromScreenshot(base64, mimeType),
-        ]);
 
-        if (scheduleRes.status === 'fulfilled') {
+        try {
+          const scheduleRes = await parseTimetableFromScreenshot(base64, mimeType);
           anySucceeded = true;
-          combinedSlots.push(...scheduleRes.value.slots);
-          combinedAssessments.push(...scheduleRes.value.assessments);
-        } else if (!firstError) {
-          firstError =
-            scheduleRes.reason instanceof Error
-              ? scheduleRes.reason
-              : new Error(String(scheduleRes.reason));
+          combinedSlots.push(...scheduleRes.slots);
+          combinedAssessments.push(...scheduleRes.assessments);
+        } catch (err) {
+          if (!firstError) {
+            firstError = err instanceof Error ? err : new Error(String(err));
+          }
         }
 
-        if (historyRes.status === 'fulfilled') {
+        try {
+          const historyRes = await parseAcademicHistoryFromScreenshot(base64, mimeType, {
+            currentSemester: activeSemester,
+          });
           anySucceeded = true;
-          combinedCourses.push(...historyRes.value);
-        } else if (!firstError) {
-          firstError =
-            historyRes.reason instanceof Error
-              ? historyRes.reason
-              : new Error(String(historyRes.reason));
+          combinedCourses.push(...historyRes);
+        } catch (err) {
+          if (!firstError) {
+            firstError = err instanceof Error ? err : new Error(String(err));
+          }
         }
       }
 
@@ -357,6 +412,7 @@ export default function SmartScheduleImportModal({
 
     onImported?.({
       activeCourses: Array.from(importedCourseRefs.values()),
+      otherSemesterCourses: otherSemCourses,
       classesCount: newClasses.length,
       assessmentsCount: newAssessments.length,
       source: mode === 'gcal' ? 'gcal' : 'photo',
@@ -368,6 +424,7 @@ export default function SmartScheduleImportModal({
     setSlots([]);
     setAssessments([]);
     setDetectedCourses([]);
+    setOtherSemCourses([]);
   };
 
   const hasPreview = slots.length > 0 || assessments.length > 0 || detectedCourses.length > 0;

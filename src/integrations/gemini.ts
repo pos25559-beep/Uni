@@ -393,19 +393,27 @@ async function withQuotaAndFallback<T>(
 export async function parseAcademicHistoryFromScreenshot(
   base64Data: string,
   mimeType: string,
+  options?: { currentSemester?: 1 | 2 },
 ): Promise<ExtractedHistoryItem[]> {
   const { customKey, model } = resolveGeminiConfig();
   const cleanBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
+  const activeSemHint =
+    options?.currentSemester === 2
+      ? 'O aluno está atualmente no 2.º Semestre: cadeiras sem nota em "1º Semestre" ou "1º Trimestre" devem vir com "semester": 1 e "status": "por_fazer" (não estão ativas agora).'
+      : options?.currentSemester === 1
+        ? 'O aluno está atualmente no 1.º Semestre: cadeiras sem nota em "2º Semestre" ou "2º Trimestre" devem vir com "semester": 2 e "status": "por_fazer" (ainda não começaram).'
+        : 'Usa "semester": 1 para cadeiras do 1.º Semestre/1.º Trimestre e "semester": 2 para 2.º Semestre/2.º Trimestre.';
 
   const prompt = `Extrai todas as unidades curriculares (cadeiras/disciplinas) visíveis nesta captura de ecrã de um portal académico ou lista de inscrições/pauta em português.
 Devolve APENAS um array JSON válido onde cada item segue exatamente o formato:
-{"code": "string opcional", "name": "nome completo da cadeira", "grade": número entre 0 e 20 ou null se ainda não tiver nota, "ects": número ou 6, "status": "aprovada" | "a_fazer" | "por_fazer"}
+{"code": "sigla curta ou null", "name": "nome completo da cadeira", "grade": número entre 0 e 20 ou null se ainda não tiver nota, "ects": número ou 6, "semester": 1 | 2 | null, "status": "aprovada" | "a_fazer" | "por_fazer"}
 Regras:
 - Se tiver nota >= 10 (ou "Aprovado"), status = "aprovada".
-- Se estiver inscrito/a no semestre/trimestre atual ou numa lista de cadeiras inscritas sem nota final, status = "a_fazer".
+- Se houver secções ou cabeçalhos como "1º Semestre", "2º Semestre", "1º Trimestre", "2º Trimestre", preenche sempre "semester": 1 (para 1.º Semestre/1.º Trimestre) ou "semester": 2 (para 2.º Semestre/2.º Trimestre).
+- ${activeSemHint}
+- Só marques status = "a_fazer" para cadeiras atualmente inscritas no semestre ativo sem nota final.
 - Se tiver reprovado ou indicado como falta realizar/em atraso, status = "por_fazer".
-- Mesmo que a imagem mostre só nomes de cadeiras agrupados por "1º Semestre", "2º Semestre" ou "Trimestre" sem notas nem siglas, extrai TODAS as cadeiras visíveis.
-- Não inventes cadeiras que não estejam na imagem.`;
+- Não dupliques a mesma cadeira com e sem sigla e não inventes cadeiras que não estejam na imagem.`;
 
   const contents: Content[] = [
     {

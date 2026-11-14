@@ -3,6 +3,7 @@ export interface ExtractedHistoryItem {
   name: string;
   grade?: number;
   ects?: number;
+  semester?: 1 | 2;
   status: 'aprovada' | 'a_fazer' | 'por_fazer';
 }
 
@@ -113,6 +114,24 @@ function normalizeClassType(raw: unknown): 'T' | 'TP' | 'P' | 'OT' {
   return 'TP';
 }
 
+function parseSemesterTag(raw: unknown): 1 | 2 | undefined {
+  if (raw === 1 || raw === '1') return 1;
+  if (raw === 2 || raw === '2') return 2;
+  const s = String(raw ?? '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  if (!s) return undefined;
+  if (/\b(2|2o|2a|s2)\b|2\s*[.°ºo]?\s*(sem|semestre|trim|trimestre)|\b(3|4)\s*[.°ºo]?\s*trim/.test(s)) {
+    return 2;
+  }
+  if (/\b(1|1o|1a|s1)\b|1\s*[.°ºo]?\s*(sem|semestre|trim|trimestre)/.test(s)) {
+    return 1;
+  }
+  return undefined;
+}
+
 export function parseHistoryJsonText(rawText: string): ExtractedHistoryItem[] {
   const parsed = parseJsonFlexible(rawText || '[]');
   const rawList: unknown[] = Array.isArray(parsed)
@@ -161,11 +180,13 @@ export function parseHistoryJsonText(rawText: string): ExtractedHistoryItem[] {
 
       const name = String(item.name ?? item.disciplina ?? item.courseName ?? '').trim();
       const rawCode = item.code ?? item.sigla ?? item.courseCode;
+      const semester = parseSemesterTag(item.semester ?? item.semestre ?? item.term ?? item.periodo);
       return {
         code: typeof rawCode === 'string' && rawCode.trim() ? rawCode.trim() : undefined,
         name,
         grade: gradeNum,
         ects: ectsNum,
+        ...(semester ? { semester } : {}),
         status,
       };
     })

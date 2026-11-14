@@ -261,6 +261,8 @@ export interface CompletedCourseRecord {
   grade?: number;
   status: 'aprovada' | 'a_fazer' | 'por_fazer';
   isOptional?: boolean;
+  /** Anos curriculares em que uma opcional pode ser frequentada (ex: [4, 5] nos 2 anos de Mestrado). */
+  eligibleYears?: number[];
 }
 
 export interface WeeklyCheckIn {

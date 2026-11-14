@@ -10,6 +10,7 @@ export interface CurriculumCourseTemplate {
   topics: string[];
   color?: CourseColor;
   optional?: boolean;
+  eligibleYears?: (1 | 2 | 3 | 4 | 5)[];
 }
 
 export function formatAcademicYearLabel(year: number, isSecondarySchool = false): string {
@@ -98,7 +99,7 @@ const NOVA_FCT_LEMC_COURSES: CurriculumCourseTemplate[] = [
   { code: 'MC', name: 'Mecânica Computacional', shortName: 'Mec. Comp.', year: 3, semester: 2, ects: 6, optional: true, topics: ['Método dos elementos finitos', 'Análise estrutural 2D/3D', 'Convergência de malha'] },
 ];
 
-const NOVA_FCT_MEMEC_COURSES: CurriculumCourseTemplate[] = [
+const NOVA_FCT_MEMEC_RAW: CurriculumCourseTemplate[] = [
   // 1.º Ano de Mestrado (4.º Ano Curricular — Plano oficial 2026/27 NOVA FCT MEMc · guia.unl.pt/pt/2026/fct/program/1299)
   { code: 'EME', name: 'Eletrotecnia e Máquinas Elétricas', shortName: 'Eletrotecnia', year: 4, semester: 1, ects: 6, topics: ['Circuitos AC monofásicos e trifásicos', 'Transformadores', 'Motores de indução', 'Acionamentos elétricos'] },
   { code: 'EMP', name: 'Empreendedorismo', shortName: 'Empreend.', year: 4, semester: 1, ects: 3, topics: ['Proposta de valor', 'Modelo de negócio', 'Propriedade intelectual', 'Plano financeiro'] },
@@ -146,6 +147,13 @@ const NOVA_FCT_MEMEC_COURSES: CurriculumCourseTemplate[] = [
   { code: 'OPTL', name: 'Opção(ões) Livre(s) / Seminários MEMc', shortName: 'Opções Livres', year: 5, semester: 1, ects: 6, optional: true, topics: ['Especialização escolhida nas listas de Opção I/II/III', 'Seminários avançados'] },
   { code: 'DISS', name: 'Dissertação em Engenharia Mecânica', shortName: 'Dissertação', year: 5, semester: 2, ects: 30, topics: ['Investigação ou projeto industrial', 'Validação experimental ou numérica', 'Tese e defesa pública'] },
 ];
+
+// Cadeiras opcionais de Mestrado podem ser frequentadas em qualquer dos 2 anos (1.º ou 2.º Mest.)
+const NOVA_FCT_MEMEC_COURSES: CurriculumCourseTemplate[] = NOVA_FCT_MEMEC_RAW.map((c) =>
+  c.optional && (c.year === 4 || c.year === 5) && !c.eligibleYears
+    ? { ...c, eligibleYears: [4, 5] }
+    : c,
+);
 
 export const PORTUGAL_CURRICULA: UniversityCatalogEntry[] = [
   {
@@ -405,6 +413,7 @@ export function buildInitialCompletedRecords(
       semester: c.semester,
       ects: c.ects,
       ...(c.optional ? { isOptional: true } : {}),
+      ...(c.eligibleYears ? { eligibleYears: c.eligibleYears } : {}),
       status: c.optional
         ? 'por_fazer'
         : isPastYear || isPastSameActiveYear
@@ -425,6 +434,14 @@ function compactCurriculumKey(value: string): string {
     .replace(/[^a-z0-9]/g, '');
 }
 
+const COURSE_STOP_WORDS = new Set([
+  'da', 'de', 'do', 'das', 'dos', 'e', 'em', 'na', 'no', 'nas', 'nos', 'para', 'por', 'com', 'a', 'o', 'as', 'os',
+]);
+
+const ROMAN_TO_DIGIT: Record<string, string> = {
+  i: '1', ii: '2', iii: '3', iv: '4', v: '5', '1': '1', '2': '2', '3': '3', '4': '4', '5': '5',
+};
+
 function normalizedWordTokens(value: string): string[] {
   return value
     .normalize('NFD')
@@ -432,6 +449,170 @@ function normalizedWordTokens(value: string): string[] {
     .toLowerCase()
     .split(/[^a-z0-9]+/)
     .filter(Boolean);
+}
+
+function significantCourseWords(value: string): string[] {
+  return normalizedWordTokens(value).filter((w) => !COURSE_STOP_WORDS.has(w) && !(w in ROMAN_TO_DIGIT));
+}
+
+function extractCourseLevelTokens(value: string): string[] {
+  const levels: string[] = [];
+  for (const token of normalizedWordTokens(value)) {
+    if (token in ROMAN_TO_DIGIT) {
+      levels.push(ROMAN_TO_DIGIT[token]!);
+      continue;
+    }
+    const embedded = token.match(/[a-z]([1-5])(?:[a-z]+)?$/);
+    if (embedded?.[1]) {
+      levels.push(embedded[1]);
+    }
+  }
+  return levels;
+}
+
+function courseLevelsCompatible(a: string, b: string): boolean {
+  const levelsA = extractCourseLevelTokens(a);
+  const levelsB = extractCourseLevelTokens(b);
+  if (levelsA.length === 0 || levelsB.length === 0) return true;
+  return levelsA.join(',') === levelsB.join(',');
+}
+
+function matchesConsecutiveWordPrefixes(
+  codeKey: string,
+  words: string[],
+  codePos: number,
+  wordIdx: number,
+): boolean {
+  if (codePos === codeKey.length) return wordIdx >= 2;
+  if (wordIdx >= words.length) return false;
+
+  const word = words[wordIdx]!;
+  const maxTake = Math.min(word.length, codeKey.length - codePos);
+  for (let len = 1; len <= maxTake; len++) {
+    if (codeKey.slice(codePos, codePos + len) !== word.slice(0, len)) break;
+    if (matchesConsecutiveWordPrefixes(codeKey, words, codePos + len, wordIdx + 1)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Verifica se `shortCode` corresponde a uma sigla/abreviatura válida do nome completo (ex.: "SNTI", "FabAd", "TEP"). */
+export function isAcronymMatchForFullName(shortCode: string, fullName: string): boolean {
+  const codeKey = compactCurriculumKey(shortCode);
+  if (codeKey.length < 2 || codeKey.length > 10) return false;
+
+  const fullWords = normalizedWordTokens(fullName);
+  const sigWords = significantCourseWords(fullName);
+  if (sigWords.length < 2 && fullWords.length < 2) return false;
+  if (!courseLevelsCompatible(shortCode, fullName)) return false;
+
+  const sigInitials = sigWords.map((w) => w[0]).join('');
+  const allInitials = fullWords.map((w) => (w in ROMAN_TO_DIGIT ? ROMAN_TO_DIGIT[w] : w[0])).join('');
+  const sigWithLevels = fullWords
+    .filter((w) => !COURSE_STOP_WORDS.has(w))
+    .map((w) => (w in ROMAN_TO_DIGIT ? ROMAN_TO_DIGIT[w] : w[0]))
+    .join('');
+
+  if (
+    codeKey.length >= 3 &&
+    (codeKey === sigInitials || codeKey === allInitials || codeKey === sigWithLevels)
+  ) {
+    return true;
+  }
+
+  if (codeKey.length >= 4 && sigWords.length >= 2) {
+    const codeAlphaOnly = codeKey.replace(/[0-9]/g, '');
+    if (codeAlphaOnly.length >= 4 && matchesConsecutiveWordPrefixes(codeAlphaOnly, sigWords, 0, 0)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Gera sigla legível para uma cadeira quando o portal não fornece sigla explícita (ex.: "Sociologia das Novas Tecnologias de Informação" → "SNTI"). */
+export function deriveCourseAcronym(name: string, explicitCode?: string): string {
+  const cleanedCode = explicitCode?.trim();
+  if (cleanedCode && cleanedCode.length <= 12) return cleanedCode.toUpperCase();
+
+  const words = normalizedWordTokens(name).filter((w) => !COURSE_STOP_WORDS.has(w));
+  if (words.length >= 2) {
+    return words
+      .slice(0, 5)
+      .map((w) => (w in ROMAN_TO_DIGIT ? ROMAN_TO_DIGIT[w] : w[0]!.toUpperCase()))
+      .join('');
+  }
+  return (words[0] ?? name).slice(0, 6).toUpperCase();
+}
+
+/**
+ * Compara dois identificadores de cadeira (`{ code?, name }`) com tolerância a espaços/acentos,
+ * shortName do catálogo, siglas de iniciais ("SNTI" ↔ "Sociologia das Novas Tecnologias..."),
+ * abreviações sílaba-a-sílaba ("FabAd" ↔ "Fabrico Aditivo") e pequenas variações OCR.
+ */
+export function isCourseIdentityMatch(
+  a: { code?: string; name: string },
+  b: { code?: string; name: string },
+  templates: CurriculumCourseTemplate[] = [],
+): boolean {
+  const codeA = a.code ? compactCurriculumKey(a.code) : '';
+  const nameA = compactCurriculumKey(a.name);
+  const codeB = b.code ? compactCurriculumKey(b.code) : '';
+  const nameB = compactCurriculumKey(b.name);
+
+  if ((!codeA && !nameA) || (!codeB && !nameB)) return false;
+
+  const tpl = templates.find(
+    (t) =>
+      compactCurriculumKey(t.code) === codeB ||
+      compactCurriculumKey(t.code) === codeA ||
+      compactCurriculumKey(t.name) === nameB ||
+      compactCurriculumKey(t.name) === nameA,
+  );
+  const shortB = tpl && b.code && compactCurriculumKey(tpl.code) === codeB ? compactCurriculumKey(tpl.shortName) : '';
+
+  if (
+    (codeA && (codeB === codeA || shortB === codeA || nameB === codeA)) ||
+    (nameA && (nameB === nameA || codeB === nameA || (shortB && shortB === nameA)))
+  ) {
+    return true;
+  }
+
+  const labelA = `${a.code ?? ''} ${a.name}`.trim();
+  const labelB = `${b.code ?? ''} ${b.name}`.trim();
+  if (!courseLevelsCompatible(labelA, labelB)) return false;
+
+  // Verifica sigla vs nome completo em ambas as direções
+  const shortCandidatesA = [a.code, normalizedWordTokens(a.name).length <= 1 ? a.name : undefined].filter(
+    (x): x is string => Boolean(x),
+  );
+  const shortCandidatesB = [b.code, normalizedWordTokens(b.name).length <= 1 ? b.name : undefined].filter(
+    (x): x is string => Boolean(x),
+  );
+  for (const s of shortCandidatesA) {
+    if (isAcronymMatchForFullName(s, b.name)) return true;
+  }
+  for (const s of shortCandidatesB) {
+    if (isAcronymMatchForFullName(s, a.name)) return true;
+  }
+
+  if (nameA.length >= 5 && nameB.length >= 5 && (nameB.includes(nameA) || nameA.includes(nameB))) {
+    return true;
+  }
+
+  // Tolerância a pequenas diferenças OCR (ex.: "Projecto" vs "Projeto", plural/singular)
+  const stemA = new Set(significantCourseWords(a.name).filter((w) => w.length >= 3).map((w) => w.replace(/s$/, '')));
+  const stemB = new Set(significantCourseWords(b.name).filter((w) => w.length >= 3).map((w) => w.replace(/s$/, '')));
+  if (stemA.size >= 3 && stemB.size >= 3) {
+    let intersection = 0;
+    for (const t of stemA) if (stemB.has(t)) intersection++;
+    const union = stemA.size + stemB.size - intersection;
+    if (union > 0 && intersection / union >= 0.78) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /**
@@ -443,60 +624,12 @@ export function findMatchingCourseRecordIndex(
   candidate: { code?: string; name: string },
   templates: CurriculumCourseTemplate[] = [],
 ): number {
-  const codeKey = candidate.code ? compactCurriculumKey(candidate.code) : '';
-  const nameKey = compactCurriculumKey(candidate.name);
-  const nameTokens = normalizedWordTokens(candidate.name);
-
-  if (!codeKey && !nameKey) return -1;
-
-  const tplByCode = new Map<string, CurriculumCourseTemplate>();
-  for (const t of templates) {
-    tplByCode.set(compactCurriculumKey(t.code), t);
-  }
-
-  // 1. Correspondência exata por código, shortName ou nome normalizado
   for (let i = 0; i < records.length; i++) {
     const r = records[i]!;
-    const rCode = compactCurriculumKey(r.code);
-    const rName = compactCurriculumKey(r.name);
-    const tpl = tplByCode.get(rCode);
-    const rShort = tpl ? compactCurriculumKey(tpl.shortName) : '';
-
-    if (
-      (codeKey && (rCode === codeKey || rShort === codeKey || rName === codeKey)) ||
-      (nameKey && (rName === nameKey || rCode === nameKey || (rShort && rShort === nameKey)))
-    ) {
+    if (isCourseIdentityMatch(candidate, { code: r.code, name: r.name }, templates)) {
       return i;
     }
   }
-
-  // 2. Correspondência parcial por inclusão de frase completa (>= 5 chars) sem confundir I/II/III
-  const romanOrNum = new Set(['1', '2', '3', '4', '5', 'i', 'ii', 'iii', 'iv', 'v']);
-  const candNumTokens = nameTokens.filter((t) => romanOrNum.has(t));
-
-  for (let i = 0; i < records.length; i++) {
-    const r = records[i]!;
-    const rName = compactCurriculumKey(r.name);
-    const rTokens = normalizedWordTokens(r.name);
-    const rNumTokens = rTokens.filter((t) => romanOrNum.has(t));
-
-    if (
-      candNumTokens.length > 0 &&
-      rNumTokens.length > 0 &&
-      candNumTokens.join(',') !== rNumTokens.join(',')
-    ) {
-      continue;
-    }
-
-    if (
-      nameKey.length >= 5 &&
-      rName.length >= 5 &&
-      (rName.includes(nameKey) || nameKey.includes(rName))
-    ) {
-      return i;
-    }
-  }
-
   return -1;
 }
 
@@ -504,6 +637,7 @@ export interface ImportedRecordCourseInput {
   code?: string;
   name: string;
   ects?: number;
+  semester?: 1 | 2;
   status: CompletedCourseRecord['status'];
   grade?: number;
 }
@@ -511,13 +645,14 @@ export interface ImportedRecordCourseInput {
 /**
  * Aplica cadeiras vindas de horário/pauta partilhados ao histórico de onboarding.
  * Quando `replaceActiveScope` é true (ex: foto do horário ou Google Agenda), apenas as
- * cadeiras presentes no horário ficam «a_fazer»; sugestões anteriores não presentes passam para «por_fazer».
+ * cadeiras do semestre ativo presentes no horário ficam «a_fazer»; sugestões anteriores não presentes passam para «por_fazer».
  */
 export function applyImportedScheduleRecords(
   prevRecords: CompletedCourseRecord[],
   importedCourses: ImportedRecordCourseInput[],
   options: {
     primaryAcademicYear: number;
+    activeYears?: number[];
     currentSemester: 1 | 2;
     defaultEcts?: number;
     templates?: CurriculumCourseTemplate[];
@@ -529,31 +664,67 @@ export function applyImportedScheduleRecords(
   const templates = options.templates ?? [];
 
   for (const item of importedCourses) {
+    const isOtherSemester =
+      item.semester !== undefined && item.semester !== options.currentSemester;
+    const effectiveStatus: CompletedCourseRecord['status'] =
+      item.status === 'a_fazer' && isOtherSemester ? 'por_fazer' : item.status;
+
     const idx = findMatchingCourseRecordIndex(next, { code: item.code, name: item.name }, templates);
     if (idx >= 0) {
       const current = next[idx]!;
+      const hasFullIncomingName =
+        significantCourseWords(item.name).length >= 2 &&
+        significantCourseWords(current.name).length <= 1;
+      const incomingCodeTrimmed = item.code?.trim().toUpperCase();
+      const shouldAdoptExplicitCode =
+        Boolean(incomingCodeTrimmed) &&
+        !templates.some((t) => compactCurriculumKey(t.code) === compactCurriculumKey(current.code));
+
+      const matchedTpl = templates.find(
+        (t) => compactCurriculumKey(t.code) === compactCurriculumKey(current.code),
+      );
+      const eligible = current.eligibleYears ?? matchedTpl?.eligibleYears;
+      const shouldAlignMasterYear =
+        effectiveStatus === 'a_fazer' &&
+        Boolean(current.isOptional) &&
+        Boolean(options.activeYears && !options.activeYears.includes(current.year)) &&
+        Boolean(eligible?.includes(options.primaryAcademicYear));
+
+      const resolvedStatus =
+        effectiveStatus === 'por_fazer' && current.status === 'aprovada'
+          ? 'aprovada'
+          : effectiveStatus;
+
       next[idx] = {
         ...current,
-        status: item.status,
+        ...(hasFullIncomingName ? { name: item.name.trim() } : {}),
+        ...(shouldAdoptExplicitCode && incomingCodeTrimmed ? { code: incomingCodeTrimmed } : {}),
+        ...(effectiveStatus === 'a_fazer' && item.semester === options.currentSemester
+          ? { semester: options.currentSemester }
+          : isOtherSemester && item.semester
+            ? { semester: item.semester }
+            : {}),
+        ...(shouldAlignMasterYear ? { year: options.primaryAcademicYear } : {}),
+        status: resolvedStatus,
         grade: item.grade ?? current.grade,
       };
-      if (item.status === 'a_fazer') {
+      if (resolvedStatus === 'a_fazer') {
         matchedActiveIds.add(current.id);
       }
     } else {
-      const code = (item.code ?? item.name.slice(0, 6)).trim().toUpperCase();
+      const code = deriveCourseAcronym(item.name, item.code);
       const newId = `hist-sched-${compactCurriculumKey(code || item.name) || Math.random().toString(36).slice(2, 8)}-${next.length}`;
       next.unshift({
         id: newId,
         code,
-        name: item.name,
+        name: item.name.trim(),
         year: options.primaryAcademicYear,
-        semester: options.currentSemester,
+        semester: item.semester ?? options.currentSemester,
         ects: item.ects ?? options.defaultEcts ?? 6,
         grade: item.grade,
-        status: item.status,
+        status: effectiveStatus,
       });
-      if (item.status === 'a_fazer') {
+      if (effectiveStatus === 'a_fazer') {
         matchedActiveIds.add(newId);
       }
     }
