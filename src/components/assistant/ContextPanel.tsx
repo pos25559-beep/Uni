@@ -7,16 +7,11 @@ import { cx } from '../ui';
 /** Mostra exatamente o texto que é enviado à Google em cada pergunta. */
 export function ContextPanel({ defaultOpen = false }: { defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
-  // Re-calcula quando os dados mudam, para o painel refletir o estado atual.
-  const courses = useStore((s) => s.courses);
-  const assessments = useStore((s) => s.assessments);
-  const sessions = useStore((s) => s.sessions);
-  const tasks = useStore((s) => s.tasks);
-  const settings = useStore((s) => s.settings);
+  const state = useStore();
 
   const context = useMemo(
-    () => (open ? buildStudyContext(useStore.getState()) : ''),
-    [open, courses, assessments, sessions, tasks, settings],
+    () => (open ? buildStudyContext(state) : ''),
+    [open, state],
   );
 
   return (

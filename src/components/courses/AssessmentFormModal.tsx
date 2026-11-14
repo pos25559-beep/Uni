@@ -20,7 +20,7 @@ export default function AssessmentFormModal({ course, assessment, onClose }: Pro
   const upsert = useStore((s) => s.upsert);
   const [kind, setKind] = useState<AssessmentKind>(assessment?.kind ?? 'teste');
   const [title, setTitle] = useState(assessment?.title ?? '');
-  const [date, setDate] = useState(
+  const [date, setDate] = useState(() =>
     assessment ? toDatetimeLocal(assessment.date) : format(addDays(new Date(), 7), "yyyy-MM-dd'T'HH:mm"),
   );
   const [weight, setWeight] = useState(String(assessment?.weight ?? 20));

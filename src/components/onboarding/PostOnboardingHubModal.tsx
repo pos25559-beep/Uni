@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   BookMarked,
   CalendarClock,
@@ -83,11 +83,13 @@ export default function PostOnboardingHubModal({
   const inference = useMemo(() => inferHubProfile(hubInput), [hubInput]);
 
   const [selectedFlow, setSelectedFlow] = useState<HubFlowId>(
-    settings.hubSetupFlow ?? inference.recommendedFlow,
+    () => settings.hubSetupFlow ?? inference.recommendedFlow,
   );
   const progress = useMemo(() => getHubProgress(hubInput, selectedFlow), [hubInput, selectedFlow]);
 
-  const [expandedStep, setExpandedStep] = useState<HubStepKey | null>(initialFocusStep);
+  const [expandedStep, setExpandedStep] = useState<HubStepKey | null>(
+    () => initialFocusStep ?? HUB_FLOWS[settings.hubSetupFlow ?? inference.recommendedFlow].stepOrder[0],
+  );
   const [subModal, setSubModal] = useState<ActiveSubModal>(null);
 
   // Avaliação rápida inline
@@ -105,36 +107,12 @@ export default function PostOnboardingHubModal({
     settings.personalNotebookUrl ?? '',
   );
   const [notebookCourseId, setNotebookCourseId] = useState(courses[0]?.id ?? '');
-  const [courseNotebookInput, setCourseNotebookInput] = useState('');
-  const [coursePortalInput, setCoursePortalInput] = useState('');
-
-  useEffect(() => {
-    if (open) {
-      const flowId = settings.hubSetupFlow ?? inference.recommendedFlow;
-      setSelectedFlow(flowId);
-      setExpandedStep(initialFocusStep ?? HUB_FLOWS[flowId].stepOrder[0]);
-      setPersonalNotebookInput(settings.personalNotebookUrl ?? '');
-      if (!examCourseId && courses[0]?.id) setExamCourseId(courses[0].id);
-      if (!notebookCourseId && courses[0]?.id) setNotebookCourseId(courses[0].id);
-    }
-  }, [
-    open,
-    initialFocusStep,
-    settings.hubSetupFlow,
-    settings.personalNotebookUrl,
-    inference.recommendedFlow,
-    courses,
-    examCourseId,
-    notebookCourseId,
-  ]);
-
-  useEffect(() => {
-    const selectedCourse = courses.find((c) => c.id === notebookCourseId);
-    if (selectedCourse) {
-      setCourseNotebookInput(selectedCourse.notebookUrl ?? '');
-      setCoursePortalInput(selectedCourse.clipUrl ?? '');
-    }
-  }, [notebookCourseId, courses]);
+  const [courseNotebookInput, setCourseNotebookInput] = useState(
+    () => courses[0]?.notebookUrl ?? '',
+  );
+  const [coursePortalInput, setCoursePortalInput] = useState(
+    () => courses[0]?.clipUrl ?? '',
+  );
 
   const uniAccessory = useMemo(
     () => resolveUniAccessory(settings.uniAccessory, academicProfile?.degreeName, courses[0]?.name),
@@ -550,7 +528,13 @@ export default function PostOnboardingHubModal({
                     <Field label="Cadeira a ligar">
                       <Select
                         value={notebookCourseId}
-                        onChange={(e) => setNotebookCourseId(e.target.value)}
+                        onChange={(e) => {
+                          const nextId = e.target.value;
+                          setNotebookCourseId(nextId);
+                          const selectedCourse = courses.find((c) => c.id === nextId);
+                          setCourseNotebookInput(selectedCourse?.notebookUrl ?? '');
+                          setCoursePortalInput(selectedCourse?.clipUrl ?? '');
+                        }}
                       >
                         {courses.map((c) => (
                           <option key={c.id} value={c.id}>

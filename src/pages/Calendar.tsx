@@ -3,8 +3,9 @@ import {
   addDays, addMonths, addWeeks, format, startOfDay, startOfMonth, startOfWeek,
 } from 'date-fns';
 import { pt } from 'date-fns/locale';
-import { CalendarPlus, ChevronLeft, ChevronRight, Upload, X } from 'lucide-react';
+import { CalendarPlus, ChevronLeft, ChevronRight, Download, Share2, Upload, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import AgendaView from '../components/calendar/AgendaView';
 import DayPanel from '../components/calendar/DayPanel';
 import MonthView from '../components/calendar/MonthView';
@@ -18,9 +19,16 @@ import { KIND_META, KIND_ORDER } from '../components/calendar/shared';
 import { AnimatedPage } from '../components/motion/Primitives';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import WeekView from '../components/calendar/WeekView';
-import { Button, PageHeader, SegmentedControl, cx, showToast } from '../components/ui';
+import { Button, Modal, PageHeader, SegmentedControl, cx, showToast } from '../components/ui';
+import { buildIcsCalendar, downloadIcsCalendar } from '../integrations/ics';
 import { capitalizeFirst, toDateStr } from '../lib/selectors';
-import { useStore } from '../store/useStore';
+import {
+  buildSemesterSharePayload,
+  buildSemesterShareUrl,
+  decodeSemesterSharePayload,
+  planSharedSemesterImport,
+} from '../lib/semesterShare';
+import { newId, useStore } from '../store/useStore';
 import type { ClassSlot, Course } from '../types';
 
 type View = 'mes' | 'semana' | 'agenda';
@@ -41,8 +49,10 @@ export default function Calendar() {
   const events = useStore((s) => s.events);
   const tasks = useStore((s) => s.tasks);
   const settings = useStore((s) => s.settings);
+  const academicProfile = useStore((s) => s.academicProfile);
   const upsertMany = useStore((s) => s.upsertMany);
   const remove = useStore((s) => s.remove);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [view, setView] = useState<View>('mes');
   const [cursor, setCursor] = useState(() => startOfDay(new Date()));
@@ -50,11 +60,13 @@ export default function Calendar() {
   const [kinds, setKinds] = useState<Record<CalKind, boolean>>(ALL_ON);
   const [newOpen, setNewOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [shareModalUrl, setShareModalUrl] = useState<string | null>(null);
+  const [sharedDismissedToken, setSharedDismissedToken] = useState<string | null>(null);
   const [satNoticeDismissed, setSatNoticeDismissed] = useState(false);
   const [editingClass, setEditingClass] = useState<{ slot: ClassSlot; course: Course } | null>(null);
   const [deletingClass, setDeletingClass] = useState<{ id: string; title: string } | null>(null);
 
-  const today = toDateStr(new Date());
+  const [today] = useState(() => toDateStr(new Date()));
 
   const range = useMemo(() => {
     if (view === 'mes') {
@@ -142,6 +154,73 @@ export default function Calendar() {
 
   const toggleKind = (k: CalKind) => setKinds((prev) => ({ ...prev, [k]: !prev[k] }));
 
+  const turmaToken = searchParams.get('turma');
+  const incomingShare = useMemo(
+    () => (turmaToken && turmaToken !== sharedDismissedToken ? decodeSemesterSharePayload(turmaToken) : null),
+    [turmaToken, sharedDismissedToken],
+  );
+
+  const handleExportIcs = () => {
+    const ics = buildIcsCalendar({ courses, classes, assessments, events, settings });
+    downloadIcsCalendar(`unipedia-${toDateStr(new Date())}.ics`, ics);
+    showToast('Calendário exportado (.ics) para Google/Apple/Outlook!');
+  };
+
+  const handleShareTurma = async () => {
+    const payload = buildSemesterSharePayload({
+      settings,
+      academicProfile,
+      courses,
+      classes,
+      assessments,
+    });
+    const url = buildSemesterShareUrl(payload);
+    setShareModalUrl(url);
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `Horário ${payload.semesterName} · Unipedia`,
+          text: 'Importa as cadeiras, aulas e avaliações da nossa turma no Unipedia:',
+          url,
+        });
+        return;
+      }
+    } catch {
+      // fallback para copiar link abaixo
+    }
+    try {
+      await navigator.clipboard?.writeText(url);
+      showToast('Link da turma copiado! Sem dados pessoais nem notas.');
+    } catch {
+      // modal já mostra o link para copiar manualmente
+    }
+  };
+
+  const dismissIncomingShare = () => {
+    if (turmaToken) setSharedDismissedToken(turmaToken);
+    if (searchParams.has('turma')) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('turma');
+      setSearchParams(next, { replace: true });
+    }
+  };
+
+  const confirmIncomingShare = () => {
+    if (!incomingShare) return;
+    const plan = planSharedSemesterImport(
+      incomingShare,
+      { courses, classes, assessments },
+      () => newId(),
+    );
+    if (plan.newCourses.length > 0) upsertMany('courses', plan.newCourses);
+    if (plan.newClasses.length > 0) upsertMany('classes', plan.newClasses);
+    if (plan.newAssessments.length > 0) upsertMany('assessments', plan.newAssessments);
+    dismissIncomingShare();
+    showToast(
+      `Importado: ${plan.newCourses.length} cadeira(s), ${plan.newClasses.length} aula(s), ${plan.newAssessments.length} avaliação(ões).`,
+    );
+  };
+
   return (
     <AnimatedPage className="space-y-4">
       <PageHeader
@@ -152,6 +231,12 @@ export default function Calendar() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <TabGuideHelpButton tabKey="calendario" />
+            <Button variant="secondary" size="sm" onClick={handleExportIcs}>
+              <Download size={15} /> Exportar .ics
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => void handleShareTurma()}>
+              <Share2 size={15} /> Partilhar turma
+            </Button>
             <Button variant="secondary" onClick={() => setImportOpen(true)}>
               <Upload size={16} /> Importar horário
             </Button>
@@ -314,6 +399,88 @@ export default function Calendar() {
       )}
 
       {importOpen && <SmartScheduleImportModal onClose={() => setImportOpen(false)} />}
+
+      <Modal
+        open={Boolean(shareModalUrl)}
+        onClose={() => setShareModalUrl(null)}
+        title="Partilhar horário da turma"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (shareModalUrl) {
+                  void navigator.clipboard?.writeText(shareModalUrl);
+                  showToast('Link copiado!');
+                }
+              }}
+            >
+              Copiar link
+            </Button>
+            <Button onClick={() => setShareModalUrl(null)}>Fechar</Button>
+          </div>
+        }
+      >
+        <div className="space-y-3 text-sm">
+          <p className="text-muted">
+            Envia este link aos colegas para importarem rapidamente {courses.length} cadeira(s),{' '}
+            {classes.length} aula(s) e datas de avaliação futuras. Nunca inclui o teu email, notas nem chaves API.
+          </p>
+          <input
+            type="text"
+            readOnly
+            value={shareModalUrl ?? ''}
+            onFocus={(e) => e.currentTarget.select()}
+            className="w-full rounded-xl border border-line bg-surface-2 px-3 py-2 font-mono text-xs text-fg"
+          />
+        </div>
+      </Modal>
+
+      <Modal
+        open={Boolean(incomingShare)}
+        onClose={dismissIncomingShare}
+        title={incomingShare ? `Importar turma · ${incomingShare.semesterName}` : 'Importar turma'}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={dismissIncomingShare}>
+              Cancelar
+            </Button>
+            <Button variant="primary" onClick={confirmIncomingShare}>
+              Importar para o meu calendário
+            </Button>
+          </div>
+        }
+      >
+        {incomingShare && (
+          <div className="space-y-3 text-sm">
+            <p className="text-muted">
+              Vais adicionar ao teu semestre (sem duplicar itens existentes):
+            </p>
+            <div className="grid grid-cols-3 gap-2 rounded-2xl border border-line bg-surface-2/60 p-3 text-center">
+              <div>
+                <p className="font-display text-lg font-bold text-fg">{incomingShare.courses.length}</p>
+                <p className="text-xs text-muted">Cadeiras</p>
+              </div>
+              <div>
+                <p className="font-display text-lg font-bold text-fg">{incomingShare.classes.length}</p>
+                <p className="text-xs text-muted">Aulas</p>
+              </div>
+              <div>
+                <p className="font-display text-lg font-bold text-fg">{incomingShare.assessments.length}</p>
+                <p className="text-xs text-muted">Provas</p>
+              </div>
+            </div>
+            <ul className="max-h-40 space-y-1 overflow-y-auto text-xs text-muted">
+              {incomingShare.courses.map((c) => (
+                <li key={c.code} className="flex items-center justify-between rounded-lg bg-surface px-2.5 py-1.5">
+                  <span className="font-medium text-fg">{c.name}</span>
+                  <span className="font-mono">{c.code}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </Modal>
     </AnimatedPage>
   );
 }

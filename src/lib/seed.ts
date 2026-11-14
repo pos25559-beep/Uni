@@ -19,6 +19,18 @@ export const defaultSettings: Settings = {
   uniSkin: 'classic',
   uniPersona: 'amigo',
   seenTabGuides: [],
+  notifications: {
+    enabled: false,
+    streakSaver: true,
+    srsDue: true,
+    assessments: true,
+    classReminders: true,
+    classBeforeMinutes: 15,
+    preferredHour: 19,
+    quietStart: '22:30',
+    quietEnd: '08:30',
+    maxDailyNudges: 2,
+  },
 };
 
 export const emptyCollections = (): Collections => ({

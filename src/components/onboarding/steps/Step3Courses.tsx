@@ -69,6 +69,9 @@ interface Step3CoursesProps {
   pastedPlanText: string;
   setPastedPlanText: (val: string) => void;
   onApplyPasted: (mode: 'replace' | 'merge') => void;
+  pendingAiConsentCount?: number;
+  onConfirmAiAndReadPrint?: () => void;
+  onCancelAiPrintConsent?: () => void;
 }
 
 const STATUS_OPTIONS: Array<{ id: CompletedCourseRecord['status']; label: string }> = [
@@ -124,6 +127,9 @@ export default function Step3Courses({
   pastedPlanText,
   setPastedPlanText,
   onApplyPasted,
+  pendingAiConsentCount = 0,
+  onConfirmAiAndReadPrint,
+  onCancelAiPrintConsent,
 }: Step3CoursesProps) {
   const [showManualAdd, setShowManualAdd] = useState(records.length === 0);
 
@@ -233,6 +239,26 @@ export default function Step3Courses({
           <p className="mt-2 flex items-center gap-1.5 rounded-xl bg-coral-soft px-3 py-2 text-xs text-coral-ink">
             <AlertCircle size={14} /> {ocrError}
           </p>
+        )}
+        {pendingAiConsentCount > 0 && onConfirmAiAndReadPrint && (
+          <div className="mt-3 space-y-2 rounded-2xl border border-accent/35 bg-accent-soft/60 p-3.5 text-xs">
+            <p className="font-semibold text-fg">
+              Autorizar o Uni a ler {pendingAiConsentCount === 1 ? 'este print' : `estes ${pendingAiConsentCount} prints`} agora?
+            </p>
+            <p className="leading-relaxed text-muted">
+              A leitura automática usa o Tutor Uni (Gemini) para reconhecer cadeiras, aulas e avaliações na imagem. Podes desligar a qualquer momento nas Definições.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="primary" onClick={onConfirmAiAndReadPrint}>
+                Autorizar IA & ler print agora
+              </Button>
+              {onCancelAiPrintConsent && (
+                <Button size="sm" variant="ghost" onClick={onCancelAiPrintConsent}>
+                  Cancelar
+                </Button>
+              )}
+            </div>
+          </div>
         )}
 
         {showPastePlan && (

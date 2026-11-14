@@ -78,12 +78,6 @@ export default function UniHubInviteOverlay() {
     return () => window.clearTimeout(timer);
   }, [eligible]);
 
-  useEffect(() => {
-    if ((focusTimerOpen || modalOpen || pathname !== '/') && visible) {
-      setVisible(false);
-    }
-  }, [focusTimerOpen, modalOpen, pathname, visible]);
-
   const dismissInvite = () => {
     void hapticTap();
     markInviteDismissedNow();
@@ -97,9 +91,11 @@ export default function UniHubInviteOverlay() {
     openModal(null);
   };
 
+  const shouldRender = visible && !focusTimerOpen && !modalOpen && pathname === '/';
+
   return (
     <AnimatePresence>
-      {visible && (
+      {shouldRender && (
         <motion.div
           key="uni-hub-invite"
           initial={{ opacity: 0 }}

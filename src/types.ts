@@ -258,6 +258,31 @@ export interface Settings {
   sharedHubDriveUrls?: string[];
   /** Lista de rotas/abas onde o cartão-guia do Uni de 1.ª visita já foi visto. */
   seenTabGuides?: string[];
+  /** Preferências do sistema de notificação inteligente do Uni (estilo Duolingo). */
+  notifications?: NotificationPreferences;
+}
+
+export interface NotificationPreferences {
+  /** Consentimento explícito do estudante para receber lembretes locais/push. */
+  enabled: boolean;
+  /** Proteção de sequência diária (cancela automaticamente se já estudou hoje). */
+  streakSaver: boolean;
+  /** Resumo de revisões espaçadas (SRS) em atraso ou para hoje. */
+  srsDue: boolean;
+  /** Contagem decrescente inteligente para testes e exames (72h, 24h, 2h). */
+  assessments: boolean;
+  /** Avisos antes das aulas com indicação de sala. */
+  classReminders: boolean;
+  /** Minutos de antecedência para avisos de aula. */
+  classBeforeMinutes: 15 | 30;
+  /** Hora preferida (0–23) para o empurrão diário de streak/SRS. */
+  preferredHour: number;
+  /** Início das horas de silêncio em "HH:MM" (ex.: "22:30"). */
+  quietStart: string;
+  /** Fim das horas de silêncio em "HH:MM" (ex.: "08:30"). */
+  quietEnd: string;
+  /** Limite máximo de notificações por dia para evitar fadiga. */
+  maxDailyNudges: 1 | 2 | 3;
 }
 
 export interface CompletedCourseRecord {

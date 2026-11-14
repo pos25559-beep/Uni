@@ -13,16 +13,19 @@ interface Props {
 
 export default function MaterialViewerModal({ material, onClose }: Props) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(() => material.provider === 'upload');
 
   useEffect(() => {
-    if (material.provider === 'upload') {
-      setLoading(true);
-      void getFileUrl(material.id).then((url) => {
-        setBlobUrl(url);
-        setLoading(false);
-      });
-    }
+    if (material.provider !== 'upload') return;
+    let cancelled = false;
+    void getFileUrl(material.id).then((url) => {
+      if (cancelled) return;
+      setBlobUrl(url);
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [material]);
 
   // Extrai o ID e tipo se for Google Drive

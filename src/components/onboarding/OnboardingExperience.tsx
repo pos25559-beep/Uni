@@ -227,6 +227,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
   const [ocrBusy, setOcrBusy] = useState(false);
   const [ocrFeedback, setOcrFeedback] = useState<string | null>(null);
   const [ocrError, setOcrError] = useState<string | null>(null);
+  const [pendingPrintFilesForConsent, setPendingPrintFilesForConsent] = useState<File[] | null>(null);
   const [scheduleDoneInfo, setScheduleDoneInfo] = useState<{
     classesCount: number;
     assessmentsCount?: number;
@@ -691,7 +692,10 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     void hapticSuccess();
   };
 
-  const handleScreenshotUpload = async (files: FileList | null) => {
+  const handleScreenshotUpload = async (
+    files: FileList | File[] | null,
+    bypassConsentCheck = false,
+  ) => {
     const pickedFiles = files ? Array.from(files) : [];
     if (pickedFiles.length === 0) return;
     const imageFiles = pickedFiles.filter((f) => {
@@ -703,10 +707,12 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
       return;
     }
 
-    if (!aiConsent) {
-      setOcrError('Ativa a opção do Tutor Uni no passo seguinte (ou nas Definições) para ler prints com IA, ou usa «Colar texto do portal».');
+    if (!aiConsent && !bypassConsentCheck) {
+      setOcrError(null);
+      setPendingPrintFilesForConsent(imageFiles);
       return;
     }
+    setPendingPrintFilesForConsent(null);
 
     setOcrBusy(true);
     setOcrError(null);
@@ -1301,6 +1307,17 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
               pastedPlanText={pastedPlanText}
               setPastedPlanText={setPastedPlanText}
               onApplyPasted={handleApplyPastedCurriculum}
+              pendingAiConsentCount={pendingPrintFilesForConsent?.length ?? 0}
+              onConfirmAiAndReadPrint={() => {
+                const queued = pendingPrintFilesForConsent;
+                setAiConsent(true);
+                updateSettings({ aiConsent: true });
+                setPendingPrintFilesForConsent(null);
+                if (queued && queued.length > 0) {
+                  void handleScreenshotUpload(queued, true);
+                }
+              }}
+              onCancelAiPrintConsent={() => setPendingPrintFilesForConsent(null)}
             />
           )}
 

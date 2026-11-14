@@ -148,3 +148,146 @@ function buildEvent(props: RawProp[], index: number): IcsEvent | null {
   if (rrule && /FREQ=WEEKLY/i.test(rrule.value)) event.weekly = true;
   return event;
 }
+
+import type { Assessment, CalendarEvent, ClassSlot, Course, Settings } from '../types';
+
+function escapeIcsText(value: string): string {
+  return value
+    .replaceAll('\\', '\\\\')
+    .replaceAll(';', '\\;')
+    .replaceAll(',', '\\,')
+    .replace(/\r?\n/g, '\\n');
+}
+
+function toIcsLocalStamp(ymd: string, hhmm: string): string {
+  const cleanDate = ymd.replaceAll('-', '').slice(0, 8);
+  const [h = '09', m = '00'] = hhmm.split(':');
+  return `${cleanDate}T${h.padStart(2, '0')}${m.padStart(2, '0')}00`;
+}
+
+function addDaysYmd(ymd: string, days: number): string {
+  const [y, m, d] = ymd.split('-').map(Number);
+  const dt = new Date(Date.UTC(y || 2026, (m || 1) - 1, d || 1));
+  dt.setUTCDate(dt.getUTCDate() + days);
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`;
+}
+
+function firstWeekdayOnOrAfter(startYmd: string, weekday: number): string {
+  const [y, m, d] = startYmd.split('-').map(Number);
+  const dt = new Date(Date.UTC(y || 2026, (m || 1) - 1, d || 1));
+  const diff = (weekday - dt.getUTCDay() + 7) % 7;
+  return addDaysYmd(startYmd, diff);
+}
+
+function plusMinutes(hhmm: string, deltaMinutes: number): string {
+  const [hStr, mStr] = hhmm.split(':');
+  const total = (Number(hStr) || 0) * 60 + (Number(mStr) || 0) + deltaMinutes;
+  const clamped = ((total % 1440) + 1440) % 1440;
+  return `${String(Math.floor(clamped / 60)).padStart(2, '0')}:${String(clamped % 60).padStart(2, '0')}`;
+}
+
+/**
+ * Gera um ficheiro `.ics` (RFC 5545) com aulas recorrentes (`RRULE:FREQ=WEEKLY`),
+ * avaliações e eventos pessoais para Google Calendar, Apple Calendar ou Outlook.
+ */
+export function buildIcsCalendar(input: {
+  courses: Course[];
+  classes: ClassSlot[];
+  assessments: Assessment[];
+  events?: CalendarEvent[];
+  settings?: Partial<Settings>;
+}): string {
+  const courseMap = new Map(input.courses.map((c) => [c.id, c]));
+  const semStart = input.settings?.semesterStart || new Date().toISOString().slice(0, 10);
+  const semEnd = (input.settings?.semesterEnd || addDaysYmd(semStart, 140)).replaceAll('-', '').slice(0, 8);
+  const dtStamp = `${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}Z`;
+
+  const lines: string[] = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Unipedia//Calendario Academico//PT',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    `X-WR-CALNAME:${escapeIcsText(input.settings?.semesterName || 'Unipedia')}`,
+  ];
+
+  for (const cl of input.classes) {
+    const c = courseMap.get(cl.courseId);
+    const label = c?.code || c?.shortName || c?.name || 'Aula';
+    const firstDate = firstWeekdayOnOrAfter(semStart, cl.weekday);
+    lines.push(
+      'BEGIN:VEVENT',
+      `UID:uni-class-${cl.id}@unipedia.app`,
+      `DTSTAMP:${dtStamp}`,
+      `DTSTART:${toIcsLocalStamp(firstDate, cl.start)}`,
+      `DTEND:${toIcsLocalStamp(firstDate, cl.end)}`,
+      `RRULE:FREQ=WEEKLY;UNTIL=${semEnd}T235959Z`,
+      `SUMMARY:${escapeIcsText(`${label} (${cl.type})`)}`,
+      ...(cl.room ? [`LOCATION:${escapeIcsText(cl.room)}`] : []),
+      ...(c?.name ? [`DESCRIPTION:${escapeIcsText(`${c.name} · ${cl.type}`)}`] : []),
+      'END:VEVENT',
+    );
+  }
+
+  for (const a of input.assessments) {
+    const c = courseMap.get(a.courseId);
+    const label = c?.code || c?.shortName || c?.name || 'Cadeira';
+    const datePart = a.date.slice(0, 10);
+    const timeMatch = /T(\d{1,2}:\d{2})/.exec(a.date);
+    const startHm = timeMatch ? timeMatch[1] : '09:00';
+    const endHm = plusMinutes(startHm, 120);
+    lines.push(
+      'BEGIN:VEVENT',
+      `UID:uni-assessment-${a.id}@unipedia.app`,
+      `DTSTAMP:${dtStamp}`,
+      `DTSTART:${toIcsLocalStamp(datePart, startHm)}`,
+      `DTEND:${toIcsLocalStamp(datePart, endHm)}`,
+      `SUMMARY:${escapeIcsText(`${label}: ${a.title}`)}`,
+      ...(a.location ? [`LOCATION:${escapeIcsText(a.location)}`] : []),
+      `DESCRIPTION:${escapeIcsText(`Tipo: ${a.kind}${a.weight ? ` · Peso: ${a.weight}%` : ''}`)}`,
+      'END:VEVENT',
+    );
+  }
+
+  for (const ev of input.events ?? []) {
+    const datePart = ev.start.slice(0, 10);
+    const timeMatch = /T(\d{1,2}:\d{2})/.exec(ev.start);
+    const startHm = timeMatch ? timeMatch[1] : '09:00';
+    const endMatch = ev.end ? /T(\d{1,2}:\d{2})/.exec(ev.end) : null;
+    const endHm = endMatch ? endMatch[1] : plusMinutes(startHm, 60);
+    lines.push(
+      'BEGIN:VEVENT',
+      `UID:uni-event-${ev.id}@unipedia.app`,
+      `DTSTAMP:${dtStamp}`,
+      ...(ev.allDay
+        ? [
+            `DTSTART;VALUE=DATE:${datePart.replaceAll('-', '')}`,
+            `DTEND;VALUE=DATE:${addDaysYmd(datePart, 1).replaceAll('-', '')}`,
+          ]
+        : [
+            `DTSTART:${toIcsLocalStamp(datePart, startHm)}`,
+            `DTEND:${toIcsLocalStamp(datePart, endHm)}`,
+          ]),
+      `SUMMARY:${escapeIcsText(ev.title)}`,
+      ...(ev.location ? [`LOCATION:${escapeIcsText(ev.location)}`] : []),
+      'END:VEVENT',
+    );
+  }
+
+  lines.push('END:VCALENDAR');
+  return `${lines.join('\r\n')}\r\n`;
+}
+
+/** Dispara o download de um ficheiro `.ics` no navegador. */
+export function downloadIcsCalendar(filename: string, icsContent: string): void {
+  const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename.endsWith('.ics') ? filename : `${filename}.ics`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+

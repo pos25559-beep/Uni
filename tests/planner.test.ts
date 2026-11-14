@@ -7,8 +7,10 @@ import {
 import { parseCurriculumFromText } from '../src/lib/curriculumParser';
 import { matchCourse } from '../src/integrations/clip';
 import { extractAcademicsFromGoogleCalendar } from '../src/integrations/gcal';
+import { buildIcsCalendar } from '../src/integrations/ics';
 import { groupConversations, subjectLabel } from '../src/lib/geminiConversations';
 import { CustomKeyError, HttpStatusError, friendlyCustomKeyError } from '../src/lib/geminiErrors';
+import { sanitizePdfWinAnsi } from '../src/lib/pdfExport';
 import { generatePlan, analyzeTestMode } from '../src/lib/planner';
 import { capitalizeFirst, parsePtGrade, sessionMinutes } from '../src/lib/selectors';
 import {
@@ -21,7 +23,19 @@ import {
   resolveKnownCourseIdentity,
 } from '../src/lib/portugalCurriculum';
 import { defaultSettings } from '../src/lib/seed';
+import {
+  buildSemesterSharePayload,
+  decodeSemesterSharePayload,
+  encodeSemesterSharePayload,
+  planSharedSemesterImport,
+} from '../src/lib/semesterShare';
 import { computeNextSrsState, isTopicReviewDue } from '../src/lib/spacedRepetition';
+import {
+  DEFAULT_NOTIFICATION_PREFS,
+  clampOutOfQuietHours,
+  isWithinQuietHours,
+  planSmartNotifications,
+} from '../src/lib/uniNotifications';
 import {
   getHubProgress,
   inferHubProfile,
@@ -1270,4 +1284,192 @@ test('friendlyCustomKeyError traduz créditos pré-pagos esgotados (402), chave 
   const quotaErr = friendlyCustomKeyError(new HttpStatusError(429, 'RESOURCE_EXHAUSTED: Quota exceeded'));
   assert.ok(quotaErr instanceof CustomKeyError);
   assert.equal(quotaErr.kind, 'quota');
+});
+
+test('planSmartNotifications respeita opt-in, cancela streak após estudo hoje, aplica silêncio e orçamento diário', () => {
+  const course: Course = {
+    id: 'c-tep',
+    code: 'TEP',
+    name: 'Tecnologias de Energias e Processos',
+    shortName: 'TEP',
+    ects: 6,
+    color: 'emerald',
+    targetGrade: 14,
+    topics: [
+      {
+        id: 't1',
+        title: 'Laminagem',
+        status: 'review',
+        confidence: 3,
+        nextReviewDate: '2026-11-10',
+      },
+    ],
+  };
+  const nowMorning = new Date(2026, 10, 14, 9, 0, 0); // 14 nov 2026 09:00
+  const classSlot = {
+    id: 'cl-1',
+    courseId: 'c-tep',
+    type: 'TP' as const,
+    weekday: 6, // Sábado (day 6 = Nov 14, 2026)
+    start: '11:00',
+    end: '13:00',
+    room: 'Ed 8 · 3.09',
+    source: 'local' as const,
+  };
+  const assessment: Assessment = {
+    id: 'a-1',
+    courseId: 'c-tep',
+    kind: 'teste',
+    title: '2.º Teste',
+    date: '2026-11-15T11:00:00',
+    weight: 40,
+    topicIds: ['t1'],
+    source: 'local',
+  };
+
+  // 1) Opt-in desligado -> 0 notificações
+  const disabledPlan = planSmartNotifications({
+    courses: [course],
+    assessments: [assessment],
+    classes: [classSlot],
+    sessions: [],
+    settings: { ...defaultSettings, notifications: { ...DEFAULT_NOTIFICATION_PREFS, enabled: false } },
+    now: nowMorning,
+  });
+  assert.equal(disabledPlan.length, 0);
+
+  // 2) Ativo, sem estudo hoje -> agenda aula 15m antes com sala, avaliação e streak de hoje
+  const activeNoStudy = planSmartNotifications({
+    courses: [course],
+    assessments: [assessment],
+    classes: [classSlot],
+    sessions: [
+      { id: 'prev', courseId: 'c-tep', date: '2026-11-13', minutes: 45, done: true, actualMinutes: 45, generated: false },
+    ],
+    settings: {
+      ...defaultSettings,
+      notifications: { ...DEFAULT_NOTIFICATION_PREFS, enabled: true, maxDailyNudges: 3 },
+    },
+    now: nowMorning,
+    horizonHours: 30,
+  });
+  assert.ok(activeNoStudy.some((n) => n.key === 'class-cl-1-2026-11-14' && n.body.includes('Ed 8 · 3.09')));
+  assert.ok(activeNoStudy.some((n) => n.key === 'streak-2026-11-14'));
+  assert.ok(activeNoStudy.some((n) => n.key === 'assessment-a-1-24h'));
+
+  // 3) Com sessão concluída hoje -> alerta streak-2026-11-14 desaparece automaticamente!
+  const afterStudyToday = planSmartNotifications({
+    courses: [course],
+    assessments: [assessment],
+    classes: [classSlot],
+    sessions: [
+      { id: 'prev', courseId: 'c-tep', date: '2026-11-13', minutes: 45, done: true, actualMinutes: 45, generated: false },
+      { id: 'today', courseId: 'c-tep', date: '2026-11-14', minutes: 30, done: true, actualMinutes: 30, generated: false },
+    ],
+    settings: {
+      ...defaultSettings,
+      appTone: 'serio',
+      notifications: { ...DEFAULT_NOTIFICATION_PREFS, enabled: true, maxDailyNudges: 3 },
+    },
+    now: nowMorning,
+    horizonHours: 30,
+  });
+  assert.equal(afterStudyToday.some((n) => n.key === 'streak-2026-11-14'), false);
+
+  // 4) Horas de silêncio 22:30–08:30
+  const quietMidnight = new Date(2026, 10, 14, 23, 45, 0);
+  assert.equal(isWithinQuietHours(quietMidnight, DEFAULT_NOTIFICATION_PREFS), true);
+  const clamped = clampOutOfQuietHours(quietMidnight, DEFAULT_NOTIFICATION_PREFS);
+  assert.equal(clamped.getDate(), 15);
+  assert.equal(clamped.getHours(), 8);
+  assert.equal(clamped.getMinutes(), 30);
+});
+
+test('buildIcsCalendar, semesterShare e sanitizePdfWinAnsi geram artefactos válidos sem PII', () => {
+  const courses: Course[] = [
+    {
+      id: 'c1',
+      code: 'C3D',
+      name: 'Cálculo III D',
+      shortName: 'C3D',
+      ects: 6,
+      color: 'amber',
+      targetGrade: 14,
+      topics: [],
+    },
+  ];
+  const classes = [
+    {
+      id: 'cl1',
+      courseId: 'c1',
+      type: 'TP' as const,
+      weekday: 2,
+      start: '10:00',
+      end: '12:00',
+      room: 'Ed 7 · 1.14',
+      source: 'local' as const,
+    },
+  ];
+  const assessments: Assessment[] = [
+    {
+      id: 'a1',
+      courseId: 'c1',
+      kind: 'teste',
+      title: '1.º Teste',
+      date: '2026-11-24T10:00:00',
+      weight: 50,
+      grade: 16.5, // não deve vazar no link da turma!
+      topicIds: [],
+      source: 'local',
+    },
+    {
+      id: 'a2',
+      courseId: 'c1',
+      kind: 'exame',
+      title: 'Exame Normal',
+      date: '2027-01-14T09:00:00',
+      weight: 50,
+      topicIds: [],
+      source: 'local',
+    },
+  ];
+
+  const ics = buildIcsCalendar({ courses, classes, assessments, settings: defaultSettings });
+  assert.match(ics, /^BEGIN:VCALENDAR/);
+  assert.match(ics, /RRULE:FREQ=WEEKLY/);
+  assert.match(ics, /LOCATION:Ed 7 · 1\.14/);
+  assert.match(ics, /END:VCALENDAR\r?\n$/);
+
+  const sharePayload = buildSemesterSharePayload({
+    settings: { ...defaultSettings, personalEmail: 'secret@uni.pt', userName: 'Pedro' },
+    courses,
+    classes,
+    assessments,
+  });
+  // Sem nota já lançada nem email pessoal
+  assert.equal(sharePayload.assessments.length, 1);
+  assert.equal(sharePayload.assessments[0]?.title, 'Exame Normal');
+  const encoded = encodeSemesterSharePayload(sharePayload);
+  assert.equal(encoded.includes('secret@uni.pt'), false);
+  const decoded = decodeSemesterSharePayload(encoded);
+  assert.ok(decoded);
+  assert.equal(decoded.courses[0]?.code, 'C3D');
+
+  let seq = 0;
+  const firstImport = planSharedSemesterImport(decoded, { courses: [], classes: [], assessments: [] }, () => `id-${++seq}`);
+  assert.equal(firstImport.newCourses.length, 1);
+  assert.equal(firstImport.newClasses.length, 1);
+  assert.equal(firstImport.newAssessments.length, 1);
+
+  const secondImport = planSharedSemesterImport(
+    decoded,
+    { courses: firstImport.newCourses, classes: firstImport.newClasses, assessments: firstImport.newAssessments },
+    () => `id-${++seq}`,
+  );
+  assert.equal(secondImport.newCourses.length, 0);
+  assert.equal(secondImport.newClasses.length, 0);
+  assert.equal(secondImport.newAssessments.length, 0);
+
+  const winAnsi = sanitizePdfWinAnsi('• Resumo → Cálculo III — Equação ✓🔥');
+  assert.equal(winAnsi, '* Resumo -> Cálculo III -- Equação [OK]');
 });

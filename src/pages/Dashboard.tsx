@@ -7,6 +7,7 @@ import { pt } from 'date-fns/locale';
 import {
   AlertTriangle,
   ArrowRight,
+  Bell,
   BookMarked,
   CalendarClock,
   CalendarDays,
@@ -25,6 +26,7 @@ import { UniBuddy } from '../components/brand/UnipediaMarks';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import AcademicGmailWidget from '../components/home/AcademicGmailWidget';
 import { getUniCollectibleStates, readCollectibleTelemetry } from '../lib/uniCollectibles';
+import { pickActiveInAppNudge } from '../lib/uniNotifications';
 import {
   AgendaRibbonCard,
   HighlightShapesGrid,
@@ -66,7 +68,6 @@ import {
   semesterAverage,
   sessionMinutes,
   studyStreak,
-  todayStr,
   upcomingAssessments,
   urgency,
 } from '../lib/selectors';
@@ -156,6 +157,13 @@ export default function Dashboard() {
   const [uniBubbleOpen, setUniBubbleOpen] = useState(false);
   const [collectiblesOpen, setCollectiblesOpen] = useState(false);
   const [undoSession, setUndoSession] = useState<StudySession | null>(null);
+  const [dismissedNudgeKey, setDismissedNudgeKey] = useState<string | null>(() => {
+    try {
+      return sessionStorage.getItem('unipedia_dismissed_inapp_nudge');
+    } catch {
+      return null;
+    }
+  });
   const openHubModal = useHubUiStore((s) => s.openModal);
 
   const hubProgress = useMemo(
@@ -172,10 +180,10 @@ export default function Dashboard() {
     [academicProfile, courses, classes, assessments, materials, sessions, settings],
   );
 
-  const now = new Date();
-  const today = todayStr();
+  const [now] = useState(() => new Date());
+  const today = useMemo(() => format(now, 'yyyy-MM-dd'), [now]);
   const weekday = now.getDay();
-  const nowTime = format(now, 'HH:mm');
+  const nowTime = useMemo(() => format(now, 'HH:mm'), [now]);
 
   const courseById = useMemo(() => new Map<string, Course>(courses.map((c) => [c.id, c])), [courses]);
 
@@ -225,6 +233,20 @@ export default function Dashboard() {
 
   const topicTitle = (s: StudySession) =>
     courseById.get(s.courseId)?.topics.find((t) => t.id === s.topicId)?.title ?? 'Estudo geral';
+
+  const inAppNudge = useMemo(
+    () =>
+      pickActiveInAppNudge({
+        courses,
+        assessments,
+        classes,
+        sessions,
+        settings,
+        now,
+      }),
+    [courses, assessments, classes, sessions, settings, now],
+  );
+  const visibleNudge = inAppNudge && inAppNudge.key !== dismissedNudgeKey ? inAppNudge : null;
 
   const applySessionToggle = (s: StudySession, becomingDone: boolean) => {
     void hapticTap();
@@ -385,6 +407,48 @@ export default function Dashboard() {
       </header>
 
       <TabGuideBanner tabKey="dashboard" />
+
+      {visibleNudge && (
+        <section
+          aria-label="Lembrete do Uni"
+          className={cx(
+            'flex flex-col gap-3 border px-4 py-3 shadow-card sm:flex-row sm:items-center sm:justify-between',
+            isMinimal
+              ? 'rounded-2xl border-line bg-surface text-fg'
+              : 'rounded-[22px] border-honey/45 bg-pastel-honey/45 text-fg dark:border-honey/30 dark:bg-surface',
+          )}
+        >
+          <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-honey/20 text-honey-ink dark:text-honey">
+              <Bell size={17} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-fg">{visibleNudge.title}</p>
+              <p className="text-xs text-muted line-clamp-2">{visibleNudge.body}</p>
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <Button size="sm" variant="primary" onClick={() => navigate(visibleNudge.route)}>
+              {visibleNudge.ctaLabel}
+            </Button>
+            <button
+              type="button"
+              onClick={() => {
+                setDismissedNudgeKey(visibleNudge.key);
+                try {
+                  sessionStorage.setItem('unipedia_dismissed_inapp_nudge', visibleNudge.key);
+                } catch {
+                  // noop
+                }
+              }}
+              className="grid size-8 place-items-center rounded-lg text-muted hover:bg-surface-2 hover:text-fg"
+              aria-label="Dispensar lembrete"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        </section>
+      )}
 
       {/* Cartão compacto de Primeiros passos */}
       {!settings.hubSetupDismissed && !hubProgress.allReady && (

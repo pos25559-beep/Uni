@@ -30,7 +30,7 @@ export default function ProgressPage() {
   const updateSettings = useStore((s) => s.updateSettings);
 
   const activeSkin = settings.uniSkin ?? 'classic';
-  const now = useMemo(() => new Date(), []);
+  const [now] = useState(() => new Date());
   const range = useMemo(() => periodRange(period, settings, now), [period, settings, now]);
 
   const collectibles = useMemo(

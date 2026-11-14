@@ -96,15 +96,21 @@ export default function LoginPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState(() => getPendingMagicLinkEmail());
   const [password, setPassword] = useState('');
-  const [authMethod, setAuthMethod] = useState<'password' | 'magic'>('password');
-  const [magicLinkNeedsEmail, setMagicLinkNeedsEmail] = useState(false);
+  const [authMethod, setAuthMethod] = useState<'password' | 'magic'>(() =>
+    isIncomingEmailSignInLink() && !getPendingMagicLinkEmail() ? 'magic' : 'password',
+  );
+  const [magicLinkNeedsEmail] = useState(
+    () => isIncomingEmailSignInLink() && !getPendingMagicLinkEmail(),
+  );
   const [ageConfirmed, setAgeConfirmed] = useState(ageAlreadyConfirmed);
   const [showPass, setShowPass] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const [passFocused, setPassFocused] = useState(false);
   const [uniTipIndex, setUniTipIndex] = useState(0);
   const [showUniBubble, setShowUniBubble] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(
+    () => isIncomingEmailSignInLink() && Boolean(getPendingMagicLinkEmail()),
+  );
   const [googleBusy, setGoogleBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -119,11 +125,7 @@ export default function LoginPage() {
     });
     if (isIncomingEmailSignInLink()) {
       const pendingEmail = getPendingMagicLinkEmail();
-      if (!pendingEmail) {
-        setMagicLinkNeedsEmail(true);
-        setAuthMethod('magic');
-      } else {
-        setBusy(true);
+      if (pendingEmail) {
         void completeMagicEmailLinkSignIn(pendingEmail)
           .then(async (u) => {
             if (!u) return;

@@ -1,4 +1,5 @@
 import {
+  Bell,
   Cloud,
   Compass,
   Database,
@@ -24,6 +25,7 @@ import DeviceStorageCard from '../components/settings/DeviceStorageCard';
 import GeminiCard from '../components/settings/GeminiCard';
 import GoogleCard from '../components/settings/GoogleCard';
 import NotebookCard from '../components/settings/NotebookCard';
+import NotificationsCard from '../components/settings/NotificationsCard';
 import ProfileCard from '../components/settings/ProfileCard';
 import {
   Badge,
@@ -87,10 +89,24 @@ export default function SettingsPage() {
       <AnimatedPage className="space-y-5">
         <SubpageHeader
           title="Perfil e estudo"
-          subtitle="Nome, datas do semestre, meta diária e aparência"
+          subtitle="Nome, datas do semestre, meta diária, lembretes e aparência"
           backTo="/definicoes"
         />
         <ProfileCard />
+        <NotificationsCard />
+      </AnimatedPage>
+    );
+  }
+
+  if (section === 'notificacoes') {
+    return (
+      <AnimatedPage className="space-y-5">
+        <SubpageHeader
+          title="Notificações do Uni"
+          subtitle="Sequência diária, revisões espaçadas, provas e aulas"
+          backTo="/definicoes"
+        />
+        <NotificationsCard />
       </AnimatedPage>
     );
   }
@@ -293,6 +309,21 @@ export default function SettingsPage() {
           title="Semestre, meta, paleta e Uni"
           subtitle={`${settings.semesterName} · ${fmtMinutes(settings.dailyStudyMinutes)}/dia · ${activePaletteName}`}
           onClick={() => navigate('/definicoes/estudo')}
+        />
+        <ListRow
+          icon={<Bell size={18} />}
+          title="Lembretes inteligentes do Uni"
+          subtitle={
+            settings.notifications?.enabled
+              ? `Ativos · máx ${settings.notifications.maxDailyNudges ?? 2}/dia · silêncio ${settings.notifications.quietStart ?? '22:30'}–${settings.notifications.quietEnd ?? '08:30'}`
+              : 'Desativados · sequência, SRS, provas e aulas'
+          }
+          trailing={
+            <Badge tone={settings.notifications?.enabled ? 'ok' : 'neutral'}>
+              {settings.notifications?.enabled ? 'Ativo' : 'Opt-in'}
+            </Badge>
+          }
+          onClick={() => navigate('/definicoes/notificacoes')}
         />
         <ListRow
           icon={<GraduationCap size={18} />}

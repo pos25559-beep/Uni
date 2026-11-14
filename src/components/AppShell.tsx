@@ -16,9 +16,10 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { useEffect, useMemo, useState } from 'react';
-import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { auth, onAuthStateChanged, type User } from '../lib/firebase';
 import { hapticTap, resolveIsDark, syncNativeTheme } from '../lib/nativeBridge';
+import { initNotificationListeners, syncScheduledUniNotifications } from '../lib/notificationBridge';
 import { getUniCollectibleStates, readCollectibleTelemetry } from '../lib/uniCollectibles';
 import { googleService } from '../services/googleService';
 import { useHubUiStore } from '../store/useHubUiStore';
@@ -74,14 +75,23 @@ export default function AppShell() {
   const hasSeenWelcome = Boolean(useStore((s) => s.settings.hasSeenWelcome));
   const updateSettings = useStore((s) => s.updateSettings);
   const academicProfile = useStore((s) => s.academicProfile);
+  const assessments = useStore((s) => s.assessments);
+  const classes = useStore((s) => s.classes);
   const sessions = useStore((s) => s.sessions);
   const courses = useStore((s) => s.courses);
+  const fullSettings = useStore((s) => s.settings);
   const weeklyCheckIns = useStore((s) => s.weeklyCheckIns);
 
   const location = useLocation();
+  const navigate = useNavigate();
   const [firebaseUser, setFirebaseUser] = useState<User | null>(() => auth.currentUser);
   const [authReady, setAuthReady] = useState<boolean>(() => Boolean(auth.currentUser));
-  const [moreOpen, setMoreOpen] = useState(false);
+  const [moreOpenPath, setMoreOpenPath] = useState<string | null>(null);
+  const moreOpen = moreOpenPath === location.pathname;
+  const setMoreOpen = (next: boolean | ((prev: boolean) => boolean)) => {
+    const resolved = typeof next === 'function' ? next(moreOpen) : next;
+    setMoreOpenPath(resolved ? location.pathname : null);
+  };
   const [collectiblesOpen, setCollectiblesOpen] = useState(false);
   const hubModalOpen = useHubUiStore((s) => s.modalOpen);
   const hubModalStep = useHubUiStore((s) => s.focusStep);
@@ -162,9 +172,20 @@ export default function AppShell() {
     void syncNativeTheme(theme, themePalette, appTone);
   }, [theme, themePalette, appTone]);
 
+  useEffect(() => initNotificationListeners((route) => navigate(route)), [navigate]);
+
   useEffect(() => {
-    setMoreOpen(false);
-  }, [location.pathname]);
+    const timer = window.setTimeout(() => {
+      void syncScheduledUniNotifications({
+        courses,
+        assessments,
+        classes,
+        sessions,
+        settings: fullSettings,
+      });
+    }, 450);
+    return () => window.clearTimeout(timer);
+  }, [courses, assessments, classes, sessions, fullSettings]);
 
   if (!isBypassRoute && !guestMode && !authReady) {
     return (
@@ -497,11 +518,13 @@ export default function AppShell() {
       {!isBypassRoute && (
         <>
           <UniHubInviteOverlay />
-          <PostOnboardingHubModal
-            open={hubModalOpen}
-            initialFocusStep={hubModalStep}
-            onClose={closeHubModal}
-          />
+          {hubModalOpen && (
+            <PostOnboardingHubModal
+              open={hubModalOpen}
+              initialFocusStep={hubModalStep}
+              onClose={closeHubModal}
+            />
+          )}
         </>
       )}
     </div>

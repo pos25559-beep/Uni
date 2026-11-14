@@ -88,10 +88,11 @@ export default function Planner() {
     [courses, assessments, today],
   );
 
+  const [anchorDate] = useState(() => new Date());
   const weekDays = useMemo(() => {
-    const start = addWeeks(startOfWeek(new Date(), { weekStartsOn: 1 }), weekOffset);
+    const start = addWeeks(startOfWeek(anchorDate, { weekStartsOn: 1 }), weekOffset);
     return Array.from({ length: 7 }, (_, i) => addDays(start, i));
-  }, [weekOffset]);
+  }, [anchorDate, weekOffset]);
 
   const weekKeys = useMemo(() => weekDays.map((d) => format(d, 'yyyy-MM-dd')), [weekDays]);
   const weekFrom = weekKeys[0];

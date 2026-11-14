@@ -69,32 +69,40 @@ export default function CloudPicker({ source, onClose }: { source: CloudSource; 
     else if (tab === 'shared' && !folderId) run = source.shared();
     else run = source.listFolder(folderId);
 
-    if (!run) {
-      setFiles([]);
-      setLoading(false);
-      setError(null);
-      return;
-    }
     let cancelled = false;
-    setLoading(true);
-    setError(null);
-    run.then(
-      (list) => {
+    void (async () => {
+      if (!run) {
+        if (!cancelled) {
+          setFiles([]);
+          setLoading(false);
+          setError(null);
+        }
+        return;
+      }
+      setLoading(true);
+      setError(null);
+      try {
+        const list = await run;
         if (cancelled) return;
         setFiles(list);
         setLoading(false);
-        setIntegration(source.integration, { connected: true, lastSync: new Date().toISOString(), error: undefined });
-      },
-      (e: unknown) => {
+        setIntegration(source.integration, {
+          connected: true,
+          lastSync: new Date().toISOString(),
+          error: undefined,
+        });
+      } catch (e: unknown) {
         if (cancelled) return;
         const msg = e instanceof Error ? e.message : 'Erro desconhecido ao contactar o serviço.';
         setFiles([]);
         setLoading(false);
         setError(msg);
         setIntegration(source.integration, { error: msg });
-      },
-    );
-    return () => { cancelled = true; };
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [configured, source, tab, submitted, folderId, reloadTick, setIntegration]);
 
   const toggle = (f: CloudFile) => setSelected((prev) => {

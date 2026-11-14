@@ -1,4 +1,4 @@
-import { BookOpen, ClipboardPaste, ExternalLink, FileText, Image as ImageIcon, Loader2, Paperclip, Sparkles, X } from 'lucide-react';
+import { BookOpen, ClipboardPaste, Copy, Download, ExternalLink, FileText, Image as ImageIcon, Loader2, Paperclip, Sparkles, X } from 'lucide-react';
 import { useRef, useState, type ChangeEvent } from 'react';
 import {
   fileToChatAttachment,
@@ -9,6 +9,7 @@ import {
 } from '../../integrations/gemini';
 import { getDailyQuotaSnapshot } from '../../lib/aiQuota';
 import { openInAppBrowser } from '../../lib/nativeBridge';
+import { buildNotebookPdfBytes, downloadPdfFile } from '../../lib/pdfExport';
 import type { UniAccessoryId, UniPersonaMode } from '../../lib/uniAccessories';
 import { useStore } from '../../store/useStore';
 import type { Material } from '../../types';
@@ -38,6 +39,7 @@ export default function UniNotebookDrawer({
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const [mode, setMode] = useState<'guide' | 'quiz' | 'summary'>('guide');
   const [busy, setBusy] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [output, setOutput] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -101,6 +103,38 @@ export default function UniNotebookDrawer({
     }
   };
 
+  const exportableMarkdown = output || notesSource.trim();
+
+  const handleCopyMarkdown = async () => {
+    if (!exportableMarkdown) return;
+    try {
+      await navigator.clipboard?.writeText(exportableMarkdown);
+      showToast('Markdown copiado para a área de transferência!');
+    } catch {
+      showToast('Não foi possível copiar agora.', 'danger');
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (!exportableMarkdown) return;
+    setExportingPdf(true);
+    try {
+      const modeTitle = mode === 'guide' ? 'Guia de Estudo' : mode === 'quiz' ? 'Quiz com Citações' : 'Resumo Rápido';
+      const bytes = await buildNotebookPdfBytes({
+        title: courseName ? `${modeTitle} · ${courseName}` : `Caderno do Uni · ${modeTitle}`,
+        subtitle: `Gerado na Unipedia · ${new Date().toLocaleDateString('pt-PT')}`,
+        markdown: exportableMarkdown,
+      });
+      const slug = (courseName || 'caderno-uni').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      downloadPdfFile(`unipedia-${slug || 'caderno'}.pdf`, bytes);
+      showToast('PDF exportado com sucesso!');
+    } catch {
+      showToast('Não foi possível gerar o PDF agora.', 'danger');
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
   return (
     <Modal
       open={open}
@@ -117,7 +151,22 @@ export default function UniNotebookDrawer({
           >
             <ExternalLink size={14} /> Abrir Gemini Notebook
           </Button>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {exportableMarkdown && (
+              <>
+                <Button size="sm" variant="secondary" onClick={() => void handleCopyMarkdown()}>
+                  <Copy size={14} /> Copiar .md
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => void handleExportPdf()}
+                  disabled={exportingPdf}
+                >
+                  <Download size={14} /> {exportingPdf ? 'A gerar PDF…' : 'Exportar PDF'}
+                </Button>
+              </>
+            )}
             {output && (
               <Button
                 size="sm"

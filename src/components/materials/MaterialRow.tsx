@@ -1,5 +1,5 @@
 import { Download, ExternalLink, Pin, PinOff, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { createElement, useState } from 'react';
 import { Badge, Button, Select, cx } from '../ui';
 import { ConfirmModal } from '../courses/ConfirmModal';
 import { useStore } from '../../store/useStore';
@@ -19,7 +19,6 @@ export default function MaterialRow({ material: m, courses, course, onView }: {
 
   const [confirming, setConfirming] = useState(false);
 
-  const Icon = materialIcon(m);
   const href = safeHref(m.url);
   const modified = relativeDate(m.modifiedAt);
 
@@ -55,7 +54,7 @@ export default function MaterialRow({ material: m, courses, course, onView }: {
         course ? courseColors[course.color].soft : 'bg-surface-2 text-muted',
       )}
       >
-        <Icon size={18} />
+        {createElement(materialIcon(m), { size: 18 })}
       </div>
 
       <div className="min-w-0 flex-1">

@@ -29,7 +29,11 @@ export default function UniLivingOverlay() {
   const [inputFocused, setInputFocused] = useState(false);
   const [scrolling, setScrolling] = useState(false);
   const [blushed, setBlushed] = useState(false);
-  const [reducedMotion, setReducedMotion] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(() =>
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      : false,
+  );
 
   const mode = settings.uniLiveCompanions ?? 'all';
   const appTone = settings.appTone ?? 'vibrante';
@@ -55,7 +59,6 @@ export default function UniLivingOverlay() {
   useEffect(() => {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setReducedMotion(mq.matches);
     const onChange = () => setReducedMotion(mq.matches);
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);

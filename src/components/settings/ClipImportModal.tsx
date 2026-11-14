@@ -16,6 +16,8 @@ import type { Assessment, CalendarEvent, ClassSlot, Course, CourseColor } from '
 import { Button, Modal, Select, Textarea, cx } from '../ui';
 import { errorMessage } from './shared';
 
+const currentIso = () => new Date().toISOString();
+
 interface Preview extends ClipImport {
   rejected: string[];
   source: 'clip' | 'ics' | 'texto';
@@ -204,7 +206,7 @@ export default function ClipImportModal({ onClose }: { onClose: () => void }) {
 
   const importAll = () => {
     if (!preview) return;
-    const now = new Date().toISOString();
+    const now = currentIso();
     const store = useStore.getState();
 
     // Cria as cadeiras em falta primeiro e guarda o id novo de cada unidade do CLIP.
