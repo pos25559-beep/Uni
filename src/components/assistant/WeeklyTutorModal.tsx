@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { askGemini, buildStudyContext, SYSTEM_PROMPT, type ChatMessage } from '../../integrations/gemini';
 import { generatePlan } from '../../lib/planner';
 import { todayStr } from '../../lib/selectors';
+import { resolveUniAccessory } from '../../lib/uniAccessories';
 import { newId, useStore } from '../../store/useStore';
 import type { WeeklyCheckIn } from '../../types';
 import { Badge, Button, Field, Input, Modal, Textarea, cx } from '../ui';
@@ -116,6 +117,7 @@ export default function WeeklyTutorModal({
       existing: sessions.filter((s) => !s.generated || s.done || s.date < today),
       difficultCourseIds: hardCourseIds,
       weeklyCheckIns: updatedCheckIns,
+      extraActivities: academicProfile.extraActivities,
     });
     replaceGeneratedSessions(today, plan);
     setSavedMsg(`Check-in guardado e ${plan.length} sessões adaptadas ao teu ritmo.`);
@@ -156,7 +158,16 @@ export default function WeeklyTutorModal({
       const context = buildStudyContext(state);
       const reply = await askGemini({
         messages: nextHistory.slice(-12),
-        system: SYSTEM_PROMPT(context),
+        system: SYSTEM_PROMPT(context, undefined, {
+          persona: state.settings.uniPersona,
+          accessory: resolveUniAccessory(
+            state.settings.uniAccessory,
+            state.academicProfile.degreeName,
+            state.courses[0]?.name,
+          ),
+          studentName: state.settings.userName,
+          appTone: state.settings.appTone,
+        }),
       });
       setChatMsgs((prev) => [
         ...prev,

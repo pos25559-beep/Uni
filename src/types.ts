@@ -184,9 +184,28 @@ export interface IntegrationStatus {
   error?: string;
 }
 
+export type ThemePalette = 'caderno' | 'botanico' | 'ardosia' | 'terracota' | 'oceano';
+export type AppTone = 'vibrante' | 'serio';
+export type UniLiveCompanionsMode = 'all' | 'solo' | 'off';
+
+export interface ExtraActivity {
+  id: ID;
+  label: string;
+  kind: 'trabalho' | 'desporto' | 'nucleo' | 'musica' | 'outro';
+  hoursPerWeek: number;
+  /** 0 = domingo … 6 = sábado */
+  weekdays: number[];
+}
+
 export interface Settings {
   userName: string;
   theme: 'system' | 'dark' | 'light';
+  /** Paleta de cores do caderno selecionada pelo estudante. */
+  themePalette?: ThemePalette;
+  /** Tom visual & textual da app: expressivo (padrão) ou sério/minimalista. */
+  appTone?: AppTone;
+  /** Presença tímida e autónoma dos Unis no ecrã em todas as abas. */
+  uniLiveCompanions?: UniLiveCompanionsMode;
   semesterName: string;
   /** yyyy-MM-dd */
   semesterStart: string;
@@ -268,6 +287,14 @@ export interface AcademicProfile {
   academicCycle?: 'licenciatura' | 'mestrado' | 'misto';
   activeYears?: number[];
   currentSemester: 1 | 2;
+  /** Meta total de ECTS do ciclo/percurso (ex.: 180 Licenciatura, 120 Mestrado, 300 Completo). */
+  targetTotalEcts?: number;
+  /** Créditos ECTS concluídos/aprovados até ao momento. */
+  completedEcts?: number;
+  /** Principais dificuldades declaradas na avaliação pessoal do onboarding. */
+  learningChallenges?: string[];
+  /** Atividades extracurriculares / trabalho com impacto na disponibilidade semanal. */
+  extraActivities?: ExtraActivity[];
   difficultCourseIds: ID[];
   difficultTopicsNotes?: string;
   completedCourses: CompletedCourseRecord[];

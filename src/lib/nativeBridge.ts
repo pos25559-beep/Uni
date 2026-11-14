@@ -5,8 +5,15 @@ import { Keyboard } from '@capacitor/keyboard';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { StatusBar, Style } from '@capacitor/status-bar';
 
-const DARK_BG = '#141311';
-const LIGHT_BG = '#FAF8F2';
+import type { AppTone, ThemePalette } from '../types';
+
+const PALETTE_BG: Record<ThemePalette, { light: string; dark: string }> = {
+  caderno: { light: '#FAF8F2', dark: '#141311' },
+  botanico: { light: '#F6F9F5', dark: '#101712' },
+  ardosia: { light: '#F6F7F9', dark: '#111318' },
+  terracota: { light: '#FBF7F2', dark: '#17120F' },
+  oceano: { light: '#F5F8FC', dark: '#0F141D' },
+};
 
 export type ThemePreference = 'system' | 'light' | 'dark';
 
@@ -26,14 +33,22 @@ export function resolveIsDark(pref: ThemePreference): boolean {
   return false;
 }
 
-/** Aplica a classe dark no DOM e sincroniza a barra de estado Android/iOS com o tema atual. */
-export async function syncNativeTheme(pref: ThemePreference): Promise<void> {
+/** Aplica a classe dark, paleta e tom no DOM e sincroniza a barra de estado Android/iOS. */
+export async function syncNativeTheme(
+  pref: ThemePreference,
+  palette: ThemePalette = 'caderno',
+  tone: AppTone = 'vibrante',
+): Promise<void> {
   const isDark = resolveIsDark(pref);
   if (typeof document !== 'undefined') {
-    document.documentElement.classList.toggle('dark', isDark);
+    const root = document.documentElement;
+    root.classList.toggle('dark', isDark);
+    root.dataset.palette = palette;
+    root.dataset.tone = tone;
   }
   if (!Capacitor.isNativePlatform()) return;
-  const color = isDark ? DARK_BG : LIGHT_BG;
+  const pair = PALETTE_BG[palette] ?? PALETTE_BG.caderno;
+  const color = isDark ? pair.dark : pair.light;
   try {
     await StatusBar.setOverlaysWebView({ overlay: false });
     await StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light });

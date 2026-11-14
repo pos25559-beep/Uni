@@ -2,6 +2,7 @@ import { Compass, Download, GraduationCap, Moon, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
+import { APP_PALETTES } from '../../lib/academicCredits';
 import { computeWeightedAverage } from '../../lib/portugalCurriculum';
 import { fmtMinutes } from '../../lib/selectors';
 import { weekdayShort } from '../../lib/colors';
@@ -158,6 +159,114 @@ export default function ProfileCard() {
             })}
           </div>
         </div>
+
+        {/* Paleta de cores, Tom da App & Companheiros discretos */}
+        <div className="space-y-3 border-t border-line pt-4">
+          <div>
+            <span className="text-xs font-medium text-muted">Paleta de cores</span>
+            <p className="text-[11px] text-muted">
+              Escolhe entre o caderno quente ou paletas mais minimalistas e sóbrias.
+            </p>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              {APP_PALETTES.map((pal) => {
+                const active = (settings.themePalette ?? 'caderno') === pal.id;
+                return (
+                  <button
+                    key={pal.id}
+                    type="button"
+                    onClick={() => updateSettings({ themePalette: pal.id })}
+                    className={cx(
+                      'flex min-h-[44px] items-center gap-2.5 rounded-2xl border px-3 py-2 text-left transition',
+                      active
+                        ? 'border-accent bg-accent-soft/60 text-fg'
+                        : 'border-line bg-surface-2/60 text-fg hover:bg-surface-2',
+                    )}
+                  >
+                    <span className="flex shrink-0 items-center gap-1" aria-hidden="true">
+                      <span
+                        className="size-4 rounded-full border border-black/15"
+                        style={{ backgroundColor: pal.bgHex }}
+                      />
+                      <span
+                        className="size-4 rounded-full border border-black/15"
+                        style={{ backgroundColor: pal.accentHex }}
+                      />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-xs font-semibold">{pal.name}</span>
+                      <span className="block truncate text-[11px] text-muted">{pal.tagline}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+            <div>
+              <span className="text-xs font-medium text-muted">Estilo &amp; Tom da app</span>
+              <p className="text-[11px] text-muted">
+                O modo Sério &amp; Minimalista reduz animações e oculta os Unis nos cantos.
+              </p>
+            </div>
+            <div className="inline-flex rounded-full bg-surface-2 p-1">
+              {(
+                [
+                  ['vibrante', 'Expressivo'],
+                  ['serio', 'Sério & Minimal'],
+                ] as const
+              ).map(([toneId, label]) => {
+                const active = (settings.appTone ?? 'vibrante') === toneId;
+                return (
+                  <button
+                    key={toneId}
+                    type="button"
+                    onClick={() => updateSettings({ appTone: toneId })}
+                    className={cx(
+                      'min-h-[34px] rounded-full px-3 text-xs font-semibold transition',
+                      active ? 'bg-ink-cta text-ink-cta-fg' : 'text-muted hover:text-fg',
+                    )}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+            <div>
+              <span className="text-xs font-medium text-muted">Unis discretos no ecrã</span>
+              <p className="text-[11px] text-muted">
+                Companheiros tímidos nos cantos que se escondem quando escreves ou fazes scroll.
+              </p>
+            </div>
+            <div className="inline-flex rounded-full bg-surface-2 p-1">
+              {(
+                [
+                  ['all', 'Até 2'],
+                  ['solo', 'Só 1'],
+                  ['off', 'Desligado'],
+                ] as const
+              ).map(([modeId, label]) => {
+                const active = (settings.uniLiveCompanions ?? 'all') === modeId;
+                return (
+                  <button
+                    key={modeId}
+                    type="button"
+                    onClick={() => updateSettings({ uniLiveCompanions: modeId })}
+                    className={cx(
+                      'min-h-[34px] rounded-full px-3 text-xs font-semibold transition',
+                      active ? 'bg-ink-cta text-ink-cta-fg' : 'text-muted hover:text-fg',
+                    )}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
@@ -294,6 +403,114 @@ export default function ProfileCard() {
                 </button>
               );
             })}
+          </div>
+        </div>
+
+        {/* Paleta de cores, Tom da App & Companheiros discretos */}
+        <div className="space-y-3 border-t border-line pt-4">
+          <div>
+            <span className="text-xs font-medium text-muted">Paleta de cores</span>
+            <p className="text-[11px] text-muted">
+              Escolhe entre o caderno quente ou paletas mais minimalistas e sóbrias.
+            </p>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              {APP_PALETTES.map((pal) => {
+                const active = (settings.themePalette ?? 'caderno') === pal.id;
+                return (
+                  <button
+                    key={pal.id}
+                    type="button"
+                    onClick={() => updateSettings({ themePalette: pal.id })}
+                    className={cx(
+                      'flex min-h-[44px] items-center gap-2.5 rounded-2xl border px-3 py-2 text-left transition',
+                      active
+                        ? 'border-accent bg-accent-soft/60 text-fg'
+                        : 'border-line bg-surface-2/60 text-fg hover:bg-surface-2',
+                    )}
+                  >
+                    <span className="flex shrink-0 items-center gap-1" aria-hidden="true">
+                      <span
+                        className="size-4 rounded-full border border-black/15"
+                        style={{ backgroundColor: pal.bgHex }}
+                      />
+                      <span
+                        className="size-4 rounded-full border border-black/15"
+                        style={{ backgroundColor: pal.accentHex }}
+                      />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-xs font-semibold">{pal.name}</span>
+                      <span className="block truncate text-[11px] text-muted">{pal.tagline}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+            <div>
+              <span className="text-xs font-medium text-muted">Estilo &amp; Tom da app</span>
+              <p className="text-[11px] text-muted">
+                O modo Sério &amp; Minimalista reduz animações e oculta os Unis nos cantos.
+              </p>
+            </div>
+            <div className="inline-flex rounded-full bg-surface-2 p-1">
+              {(
+                [
+                  ['vibrante', 'Expressivo'],
+                  ['serio', 'Sério & Minimal'],
+                ] as const
+              ).map(([toneId, label]) => {
+                const active = (settings.appTone ?? 'vibrante') === toneId;
+                return (
+                  <button
+                    key={toneId}
+                    type="button"
+                    onClick={() => updateSettings({ appTone: toneId })}
+                    className={cx(
+                      'min-h-[34px] rounded-full px-3 text-xs font-semibold transition',
+                      active ? 'bg-ink-cta text-ink-cta-fg' : 'text-muted hover:text-fg',
+                    )}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+            <div>
+              <span className="text-xs font-medium text-muted">Unis discretos no ecrã</span>
+              <p className="text-[11px] text-muted">
+                Companheiros tímidos nos cantos que se escondem quando escreves ou fazes scroll.
+              </p>
+            </div>
+            <div className="inline-flex rounded-full bg-surface-2 p-1">
+              {(
+                [
+                  ['all', 'Até 2'],
+                  ['solo', 'Só 1'],
+                  ['off', 'Desligado'],
+                ] as const
+              ).map(([modeId, label]) => {
+                const active = (settings.uniLiveCompanions ?? 'all') === modeId;
+                return (
+                  <button
+                    key={modeId}
+                    type="button"
+                    onClick={() => updateSettings({ uniLiveCompanions: modeId })}
+                    className={cx(
+                      'min-h-[34px] rounded-full px-3 text-xs font-semibold transition',
+                      active ? 'bg-ink-cta text-ink-cta-fg' : 'text-muted hover:text-fg',
+                    )}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>

@@ -57,6 +57,103 @@
   color-scheme: dark;
 }
 
+/* Paletas personalizáveis escolhidas no Onboarding / Definições */
+:root[data-palette="botanico"] {
+  --bg: #F6F9F5;
+  --surface: #FFFFFF;
+  --surface-2: #E8F1E7;
+  --line: #D4E3D2;
+  --accent: #2D6A4F;
+  --accent-soft: #D8F3DC;
+  --coral: #D97706;
+  --coral-soft: #FEF3C7;
+  --ok: #2D6A4F;
+}
+:root.dark[data-palette="botanico"] {
+  --bg: #101712;
+  --surface: #18221B;
+  --surface-2: #212F25;
+  --line: #2B3D30;
+  --accent: #52B788;
+  --accent-fg: #0F1711;
+  --accent-soft: #1B3B28;
+  --ok: #52B788;
+}
+
+:root[data-palette="ardosia"] {
+  --bg: #F6F7F9;
+  --surface: #FFFFFF;
+  --surface-2: #ECEFF4;
+  --line: #DCE1E9;
+  --fg: #111827;
+  --muted: #4B5563;
+  --accent: #334155;
+  --accent-soft: #E2E8F0;
+  --coral: #B45309;
+  --coral-soft: #FEF3C7;
+  --ink-cta: #111827;
+  --ink-cta-fg: #F8FAFC;
+  --ok: #047857;
+}
+:root.dark[data-palette="ardosia"] {
+  --bg: #111318;
+  --surface: #191C24;
+  --surface-2: #232732;
+  --line: #2E3442;
+  --fg: #F3F4F6;
+  --muted: #9CA3AF;
+  --accent: #94A3B8;
+  --accent-fg: #0F172A;
+  --accent-soft: #1E293B;
+  --ink-cta: #F3F4F6;
+  --ink-cta-fg: #111827;
+  --ok: #34D399;
+}
+
+:root[data-palette="terracota"] {
+  --bg: #FBF7F2;
+  --surface: #FFFFFF;
+  --surface-2: #F4EAE0;
+  --line: #E8D9CA;
+  --accent: #C2410C;
+  --accent-soft: #FFEDD5;
+  --coral: #B91C1C;
+  --coral-soft: #FEE2E2;
+  --ok: #15803D;
+}
+:root.dark[data-palette="terracota"] {
+  --bg: #17120F;
+  --surface: #221A16;
+  --surface-2: #2D221D;
+  --line: #3C2E27;
+  --accent: #FB923C;
+  --accent-fg: #17120F;
+  --accent-soft: #3F2212;
+  --ok: #4ADE80;
+}
+
+:root[data-palette="oceano"] {
+  --bg: #F5F8FC;
+  --surface: #FFFFFF;
+  --surface-2: #E6EEF8;
+  --line: #D2E0F0;
+  --accent: #1D4ED8;
+  --accent-soft: #DBEAFE;
+  --coral: #DC2626;
+  --coral-soft: #FEE2E2;
+  --ok: #0D9488;
+}
+:root.dark[data-palette="oceano"] {
+  --bg: #0F141D;
+  --surface: #161D2A;
+  --surface-2: #1E2738;
+  --line: #29354B;
+  --accent: #60A5FA;
+  --accent-fg: #0F141D;
+  --accent-soft: #172554;
+  --ok: #2DD4BF;
+}
+
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);

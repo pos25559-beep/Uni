@@ -17,6 +17,7 @@ export default function UniCollectiblesModal({ open, onClose }: Props) {
   const academicProfile = useStore((s) => s.academicProfile);
   const activeSkin = useStore((s) => s.settings.uniSkin ?? 'classic');
   const uniPreference = useStore((s) => s.settings.uniAccessory);
+  const liveCompanions = useStore((s) => s.settings.uniLiveCompanions ?? 'all');
   const updateSettings = useStore((s) => s.updateSettings);
 
   const accessory = resolveUniAccessory(
@@ -52,6 +53,39 @@ export default function UniCollectiblesModal({ open, onClose }: Props) {
           <p className="text-muted">
             Cada sessão concluída com recall ativo e cada dia seguido desbloqueia novos visuais do Uni para o teu caderno.
           </p>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line bg-surface px-3.5 py-2.5 text-xs">
+          <div className="min-w-0">
+            <p className="font-semibold text-fg">Unis discretos nos cantos</p>
+            <p className="text-[11px] text-muted">
+              Espreitam em silêncio e escondem-se quando escreves.
+            </p>
+          </div>
+          <div className="inline-flex rounded-full bg-surface-2 p-1">
+            {(
+              [
+                ['all', 'Até 2'],
+                ['solo', 'Só 1'],
+                ['off', 'Desligado'],
+              ] as const
+            ).map(([modeId, label]) => {
+              const modeActive = liveCompanions === modeId;
+              return (
+                <button
+                  key={modeId}
+                  type="button"
+                  onClick={() => updateSettings({ uniLiveCompanions: modeId })}
+                  className={cx(
+                    'min-h-[32px] rounded-full px-2.5 text-[11px] font-semibold transition',
+                    modeActive ? 'bg-ink-cta text-ink-cta-fg' : 'text-muted hover:text-fg',
+                  )}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">

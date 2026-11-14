@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import {
+  computeExtraActivityPenaltyByWeekday,
+  inferAcademicStageFromEcts,
+} from '../src/lib/academicCredits';
 import { parseCurriculumFromText } from '../src/lib/curriculumParser';
 import { extractAcademicsFromGoogleCalendar } from '../src/integrations/gcal';
 import { groupConversations, subjectLabel } from '../src/lib/geminiConversations';
@@ -11,6 +15,7 @@ import {
 import { defaultSettings } from '../src/lib/seed';
 import { computeNextSrsState, isTopicReviewDue } from '../src/lib/spacedRepetition';
 import { getUniCollectibleStates } from '../src/lib/uniCollectibles';
+import { pickNextShyBehavior, resolveVisibleUniPeers } from '../src/lib/uniPetEngine';
 import { parseHistoryJsonText, parseScheduleJsonText } from '../src/lib/visionParsers';
 import type { CalendarEvent, Course, Topic } from '../src/types';
 
@@ -303,4 +308,121 @@ test('parseScheduleJsonText suporta grelha portuguesa (2a..6a), arrays e chaves 
   assert.equal(courses[0]?.status, 'a_fazer');
   assert.equal(courses[1]?.grade, 14.5);
   assert.equal(courses[1]?.status, 'aprovada');
+});
+
+test('inferAcademicStageFromEcts interpreta metas 180, 120 e 300 ECTS corretamente', () => {
+  const lic = inferAcademicStageFromEcts(90, 180);
+  assert.equal(lic.estimatedYear, 2);
+  assert.equal(lic.recommendedCycle, 'licenciatura');
+  assert.equal(lic.progressPct, 50);
+
+  const misto = inferAcademicStageFromEcts(156, 300);
+  assert.equal(misto.estimatedYear, 3);
+  assert.equal(misto.recommendedCycle, 'misto');
+
+  const mest = inferAcademicStageFromEcts(195, 300);
+  assert.equal(mest.estimatedYear, 4);
+  assert.equal(mest.recommendedCycle, 'mestrado');
+
+  const isolatedMest = inferAcademicStageFromEcts(72, 120);
+  assert.equal(isolatedMest.estimatedYear, 5);
+  assert.equal(isolatedMest.recommendedCycle, 'mestrado');
+});
+
+test('computeExtraActivityPenaltyByWeekday e generatePlan reduzem carga em dias de atividade extra', () => {
+  const penalties = computeExtraActivityPenaltyByWeekday([
+    {
+      id: 'ext1',
+      label: 'Part-time',
+      kind: 'trabalho',
+      hoursPerWeek: 6,
+      weekdays: [1, 3], // Seg e Qua (~180 min/dia)
+    },
+  ]);
+  assert.equal(penalties.get(1), 180);
+  assert.equal(penalties.get(3), 180);
+  assert.equal(penalties.get(2) ?? 0, 0);
+
+  const course: Course = {
+    id: 'c1',
+    code: 'MEC',
+    name: 'Mecanica',
+    shortName: 'Mec',
+    ects: 6,
+    color: 'emerald',
+    targetGrade: 14,
+    topics: [
+      { id: 't1', title: 'Estatica', status: 'todo', confidence: 2 },
+      { id: 't2', title: 'Dinamica', status: 'todo', confidence: 2 },
+      { id: 't3', title: 'Energia', status: 'todo', confidence: 2 },
+    ],
+  };
+
+  // 2026-11-16 é Segunda-feira (weekday=1), 2026-11-17 é Terça-feira (weekday=2)
+  const sessions = generatePlan({
+    courses: [course],
+    assessments: [
+      {
+        id: 'a1',
+        courseId: 'c1',
+        kind: 'teste',
+        title: 'Teste 1',
+        date: '2026-11-28T10:00:00',
+        weight: 50,
+        topicIds: ['t1', 't2', 't3'],
+        source: 'local',
+      },
+    ],
+    classes: [],
+    events: [],
+    settings: { ...defaultSettings, dailyStudyMinutes: 180, studyDays: [1, 2] },
+    from: '2026-11-16',
+    days: 2,
+    extraActivities: [
+      { id: 'ext1', label: 'Part-time', kind: 'trabalho', hoursPerWeek: 6, weekdays: [1] },
+    ],
+  });
+
+  const monMinutes = sessions
+    .filter((s) => s.date === '2026-11-16')
+    .reduce((sum, s) => sum + s.minutes, 0);
+  const tueMinutes = sessions
+    .filter((s) => s.date === '2026-11-17')
+    .reduce((sum, s) => sum + s.minutes, 0);
+
+  assert.ok(monMinutes < tueMinutes, 'Segunda com atividade extra deve ter menos carga que Terca livre');
+});
+
+test('uniPetEngine respeita modo serio, off e interacoes discretas', () => {
+  const telemetry = {
+    completedSessions: 8,
+    totalRecalls: 6,
+    streakDays: 4,
+    checkInsCount: 2,
+    mastered21dCount: 1,
+  };
+
+  assert.deepEqual(
+    resolveVisibleUniPeers({ activeSkin: 'classic', telemetry, mode: 'all', appTone: 'serio' }),
+    [],
+  );
+  assert.deepEqual(
+    resolveVisibleUniPeers({ activeSkin: 'classic', telemetry, mode: 'off', appTone: 'vibrante' }),
+    [],
+  );
+  assert.deepEqual(
+    resolveVisibleUniPeers({ activeSkin: 'classic', telemetry, mode: 'solo', appTone: 'vibrante' }),
+    ['classic'],
+  );
+
+  const peers = resolveVisibleUniPeers({
+    activeSkin: 'classic',
+    telemetry,
+    mode: 'all',
+    appTone: 'vibrante',
+    tickSeed: 1,
+  });
+  assert.equal(peers.length, 2);
+  assert.equal(pickNextShyBehavior({ hasPeer: true, stepCount: 3, isFocusActive: true }), 'shy_hide');
+  assert.equal(pickNextShyBehavior({ hasPeer: true, stepCount: 3, isFocusActive: false }), 'quiet_meetup');
 });

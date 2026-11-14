@@ -3,6 +3,7 @@ import type { OnboardingStep } from '@onboardjs/core';
 import {
   AlertCircle,
   ArrowRight,
+  BookOpen,
   CalendarDays,
   Camera,
   Check,
@@ -16,9 +17,11 @@ import {
   KeyRound,
   Loader2,
   Mail,
+  Palette,
   Plus,
   ShieldCheck,
   Sparkles,
+  Trash2,
   X,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
@@ -32,6 +35,14 @@ import {
   type ExtractedScheduleAssessment,
   type ExtractedScheduleSlot,
 } from '../../integrations/gemini';
+import {
+  APP_PALETTES,
+  CHALLENGE_OPTIONS,
+  defaultTargetEctsForCycle,
+  ECTS_TARGETS,
+  EXTRA_ACTIVITY_PRESETS,
+  inferAcademicStageFromEcts,
+} from '../../lib/academicCredits';
 import { colorNames } from '../../lib/colors';
 import { parseCurriculumFromText } from '../../lib/curriculumParser';
 import { auth } from '../../lib/firebase';
@@ -40,7 +51,7 @@ import {
   publishSharedCurriculum,
 } from '../../lib/firestoreSync';
 import { LEGAL_INFO } from '../../lib/legal';
-import { hapticSuccess, hapticTap } from '../../lib/nativeBridge';
+import { hapticSuccess, hapticTap, syncNativeTheme } from '../../lib/nativeBridge';
 import {
   buildInitialCompletedRecords,
   computeWeightedAverage,
@@ -50,14 +61,25 @@ import {
   mergeCurriculumCatalog,
   PORTUGAL_CURRICULA,
 } from '../../lib/portugalCurriculum';
+import {
+  UNI_ACCESSORIES,
+  UNI_PERSONAS,
+  type UniAccessoryId,
+  type UniPersonaMode,
+} from '../../lib/uniAccessories';
 import { newId, useStore } from '../../store/useStore';
 import type {
   AcademicProfile,
+  AppTone,
   Assessment,
   ClassSlot,
   CompletedCourseRecord,
   Course,
   CourseColor,
+  ExtraActivity,
+  Settings,
+  ThemePalette,
+  UniLiveCompanionsMode,
 } from '../../types';
 import { UniBuddy, UnipediaLogoMark } from '../brand/UnipediaMarks';
 import SmartScheduleImportModal, {
@@ -68,7 +90,7 @@ import GeminiKeyGuideModal from '../settings/GeminiKeyGuideModal';
 import { Badge, Button, Field, Input, Select, Textarea, cx } from '../ui';
 import { startUnipediaGuidedTour } from './TourManager';
 
-type OnboardingStepId = 'percurso' | 'cadeiras' | 'ritmo';
+type OnboardingStepId = 'boas-vindas' | 'estilo-uni' | 'avaliacao' | 'cadeiras' | 'ritmo';
 type AcademicCycleMode = 'licenciatura' | 'mestrado' | 'misto';
 
 type OnboardingContextData = {
@@ -77,15 +99,19 @@ type OnboardingContextData = {
 };
 
 const ONBOARDING_STEPS: OnboardingStep<OnboardingContextData>[] = [
-  { id: 'percurso', type: 'INFORMATION', nextStep: 'cadeiras' },
-  { id: 'cadeiras', type: 'INFORMATION', previousStep: 'percurso', nextStep: 'ritmo' },
+  { id: 'boas-vindas', type: 'INFORMATION', nextStep: 'estilo-uni' },
+  { id: 'estilo-uni', type: 'INFORMATION', previousStep: 'boas-vindas', nextStep: 'avaliacao' },
+  { id: 'avaliacao', type: 'INFORMATION', previousStep: 'estilo-uni', nextStep: 'cadeiras' },
+  { id: 'cadeiras', type: 'INFORMATION', previousStep: 'avaliacao', nextStep: 'ritmo' },
   { id: 'ritmo', type: 'CONFIRMATION', previousStep: 'cadeiras', nextStep: null },
 ];
 
 const STEP_META: Array<{ id: OnboardingStepId; label: string }> = [
-  { id: 'percurso', label: 'Tu e o teu Percurso' },
+  { id: 'boas-vindas', label: 'Porquê a Unipedia' },
+  { id: 'estilo-uni', label: 'O Uni & Visual' },
+  { id: 'avaliacao', label: 'Créditos & Perfil' },
   { id: 'cadeiras', label: 'Cadeiras & Histórico' },
-  { id: 'ritmo', label: 'Contas, Uni & Ritmo' },
+  { id: 'ritmo', label: 'Contas & Ritmo' },
 ];
 
 const DAY_LABELS = [
@@ -125,10 +151,26 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
   } = useAcademicEmails('onboarding');
 
   const { currentStep, next, previous } = useOnboarding<OnboardingContextData>();
-  const activeStepId = (currentStep?.id as OnboardingStepId) ?? 'percurso';
+  const activeStepId = (currentStep?.id as OnboardingStepId) ?? 'boas-vindas';
   const stepIndex = Math.max(0, STEP_META.findIndex((s) => s.id === activeStepId));
   const [direction, setDirection] = useState(1);
   const [finishingWipe, setFinishingWipe] = useState(false);
+
+  // Passo 2: Personalidade do Uni, Tom & Paleta ao vivo
+  const [themePref, setThemePref] = useState<Settings['theme']>(settings.theme ?? 'system');
+  const [themePalette, setThemePalette] = useState<ThemePalette>(settings.themePalette ?? 'caderno');
+  const [appTone, setAppTone] = useState<AppTone>(settings.appTone ?? 'vibrante');
+  const [uniAccessory, setUniAccessory] = useState<'auto' | UniAccessoryId>(
+    settings.uniAccessory ?? 'auto',
+  );
+  const [uniPersona, setUniPersona] = useState<UniPersonaMode>(settings.uniPersona ?? 'amigo');
+  const [uniLiveCompanions, setUniLiveCompanions] = useState<UniLiveCompanionsMode>(
+    settings.uniLiveCompanions ?? 'all',
+  );
+
+  useEffect(() => {
+    void syncNativeTheme(themePref, themePalette, appTone);
+  }, [themePref, themePalette, appTone]);
 
   // Idade mínima PT + privacidade
   const [ageConfirmed, setAgeConfirmed] = useState<boolean>(
@@ -190,8 +232,41 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
         ),
   );
 
-  // Passo 2: Filtros por ano, adição manual e OCR
+  // Passo 3: Avaliação pessoal — ECTS, dificuldades & atividades extra
+  const [targetTotalEcts, setTargetTotalEcts] = useState<number>(() => {
+    if (typeof storedProfile.targetTotalEcts === 'number' && storedProfile.targetTotalEcts > 0) {
+      return storedProfile.targetTotalEcts;
+    }
+    return defaultTargetEctsForCycle(
+      storedProfile.academicCycle ?? 'licenciatura',
+      initialDegreeId,
+    );
+  });
+  const [completedEcts, setCompletedEcts] = useState<number>(() => {
+    if (typeof storedProfile.completedEcts === 'number') return storedProfile.completedEcts;
+    return storedProfile.completedCourses
+      .filter((c) => c.status === 'aprovada')
+      .reduce((sum, c) => sum + (c.ects || 6), 0);
+  });
+  const [learningChallenges, setLearningChallenges] = useState<string[]>(
+    storedProfile.learningChallenges ?? [],
+  );
+  const [extraActivities, setExtraActivities] = useState<ExtraActivity[]>(
+    storedProfile.extraActivities ?? [],
+  );
+  const [customExtraLabel, setCustomExtraLabel] = useState('');
+  const [customExtraHours, setCustomExtraHours] = useState(4);
+  const [customExtraDays, setCustomExtraDays] = useState<number[]>([2, 4]);
+
+  const ectsStage = useMemo(
+    () => inferAcademicStageFromEcts(completedEcts, targetTotalEcts),
+    [completedEcts, targetTotalEcts],
+  );
+
+  // Passo 4: Filtros por ano, opcionais colapsáveis, adição manual e OCR
   const [yearFilter, setYearFilter] = useState<number | 'all'>('all');
+  const [showOptionalCourses, setShowOptionalCourses] = useState(false);
+  const [optionalSearch, setOptionalSearch] = useState('');
   const [replaceCoursesWithCurriculum, setReplaceCoursesWithCurriculum] = useState(true);
   const [newCourseCode, setNewCourseCode] = useState('');
   const [newCourseName, setNewCourseName] = useState('');
@@ -261,27 +336,48 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     const uni = getUniversityById(nextUniId, catalog);
     const firstDegreeId = uni?.degrees[0]?.id ?? 'outro';
     setDegreeId(firstDegreeId);
+    let nextCycle = academicCycle;
+    let nextYears = activeYears;
     if (nextUniId === 'escola-secundario') {
-      setAcademicCycle('licenciatura');
-      const cleaned = [1];
-      setActiveYears(cleaned);
-      rebuildRecords(nextUniId, firstDegreeId, cleaned, currentSemester);
-      return;
+      nextCycle = 'licenciatura';
+      nextYears = [1];
+      setAcademicCycle(nextCycle);
+      setActiveYears(nextYears);
+    } else if (firstDegreeId === 'memec') {
+      nextCycle = 'mestrado';
+      nextYears = [4];
+      setAcademicCycle(nextCycle);
+      setActiveYears(nextYears);
+    } else if (firstDegreeId === 'lemc-memec') {
+      nextCycle = 'misto';
+      nextYears = [3, 4];
+      setAcademicCycle(nextCycle);
+      setActiveYears(nextYears);
     }
-    rebuildRecords(nextUniId, firstDegreeId, activeYears, currentSemester);
+    setTargetTotalEcts(defaultTargetEctsForCycle(nextCycle, firstDegreeId));
+    rebuildRecords(nextUniId, firstDegreeId, nextYears, currentSemester);
   };
 
   const handleDegreeChange = (nextDegId: string) => {
     setDegreeId(nextDegId);
+    let nextCycle = academicCycle;
     let nextYears = activeYears;
     if (nextDegId === 'memec') {
-      setAcademicCycle('mestrado');
+      nextCycle = 'mestrado';
+      setAcademicCycle(nextCycle);
       nextYears = activeYears.filter((y) => y >= 4);
       if (nextYears.length === 0) nextYears = [4];
       setActiveYears(nextYears);
     } else if (nextDegId === 'lemc-memec') {
-      setAcademicCycle('misto');
+      nextCycle = 'misto';
+      setAcademicCycle(nextCycle);
+    } else if (nextDegId === 'lemc' && academicCycle === 'mestrado') {
+      nextCycle = 'licenciatura';
+      nextYears = [1];
+      setAcademicCycle(nextCycle);
+      setActiveYears(nextYears);
     }
+    setTargetTotalEcts(defaultTargetEctsForCycle(nextCycle, nextDegId));
     rebuildRecords(universityId, nextDegId, nextYears, currentSemester);
   };
 
@@ -312,8 +408,77 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
 
     setDegreeId(nextDeg);
     setActiveYears(nextYears);
+    setTargetTotalEcts(defaultTargetEctsForCycle(nextCycle, nextDeg));
     setNewCourseYear(nextYears[nextYears.length - 1] ?? 1);
     rebuildRecords(universityId, nextDeg, nextYears, currentSemester);
+  };
+
+  const handleSelectEctsTarget = (total: number) => {
+    void hapticTap();
+    setTargetTotalEcts(total);
+    setCompletedEcts((prev) => Math.min(total, prev));
+    if (total === 300) {
+      if (academicCycle !== 'misto') handleCycleChange('misto');
+    } else if (total === 120) {
+      if (academicCycle !== 'mestrado') handleCycleChange('mestrado');
+    } else if (academicCycle === 'mestrado') {
+      handleCycleChange('licenciatura');
+    }
+  };
+
+  const handleApplyEctsStage = () => {
+    void hapticTap();
+    const inferred = inferAcademicStageFromEcts(completedEcts, targetTotalEcts);
+    const nextCycle = inferred.recommendedCycle;
+    const nextYears = nextCycle === 'misto' ? [3, 4] : [inferred.estimatedYear];
+    let nextDeg = degreeId;
+    if (universityId === 'nova-fct') {
+      if (nextCycle === 'mestrado') nextDeg = 'memec';
+      else if (nextCycle === 'misto') nextDeg = 'lemc-memec';
+      else nextDeg = 'lemc';
+    }
+    setAcademicCycle(nextCycle);
+    setDegreeId(nextDeg);
+    setActiveYears(nextYears);
+    setNewCourseYear(inferred.estimatedYear);
+    rebuildRecords(universityId, nextDeg, nextYears, currentSemester);
+  };
+
+  const toggleLearningChallenge = (id: string) => {
+    void hapticTap();
+    setLearningChallenges((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
+    );
+  };
+
+  const toggleExtraPreset = (preset: (typeof EXTRA_ACTIVITY_PRESETS)[number]) => {
+    void hapticTap();
+    const exists = extraActivities.find((a) => a.label === preset.label);
+    if (exists) {
+      setExtraActivities((prev) => prev.filter((a) => a.id !== exists.id));
+      return;
+    }
+    setExtraActivities((prev) => [
+      ...prev,
+      { id: newId(), ...preset },
+    ]);
+  };
+
+  const handleAddCustomExtra = () => {
+    const label = customExtraLabel.trim();
+    if (!label) return;
+    void hapticTap();
+    setExtraActivities((prev) => [
+      ...prev,
+      {
+        id: newId(),
+        label,
+        kind: 'outro',
+        hoursPerWeek: Math.max(1, Math.min(40, customExtraHours || 3)),
+        weekdays: customExtraDays.length > 0 ? customExtraDays : [2, 4],
+      },
+    ]);
+    setCustomExtraLabel('');
   };
 
   const toggleYearPill = (year: number) => {
@@ -642,6 +807,30 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     return records.filter((r) => r.year === yearFilter);
   }, [records, yearFilter]);
 
+  /** Oculta cadeiras opcionais não selecionadas para evitar listas gigantes nos Mestrados. */
+  const mainFilteredRecords = useMemo(
+    () => filteredRecords.filter((r) => !(r.isOptional && r.status === 'por_fazer')),
+    [filteredRecords],
+  );
+
+  const optionalAvailableRecords = useMemo(() => {
+    const q = optionalSearch.trim().toLowerCase();
+    return filteredRecords.filter((r) => {
+      if (!(r.isOptional && r.status === 'por_fazer')) return false;
+      if (!q) return true;
+      return r.name.toLowerCase().includes(q) || r.code.toLowerCase().includes(q);
+    });
+  }, [filteredRecords, optionalSearch]);
+
+  const approvedEctsFromList = useMemo(
+    () => records.filter((r) => r.status === 'aprovada').reduce((sum, r) => sum + (r.ects || 6), 0),
+    [records],
+  );
+  const activeEctsFromList = useMemo(
+    () => records.filter((r) => r.status === 'a_fazer').reduce((sum, r) => sum + (r.ects || 6), 0),
+    [records],
+  );
+
   const activeCandidates = useMemo(() => {
     const activeFromRecords = records.filter((r) => r.status === 'a_fazer');
     if (replaceCoursesWithCurriculum && activeFromRecords.length > 0) {
@@ -699,6 +888,10 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
       academicCycle,
       activeYears,
       currentSemester,
+      targetTotalEcts,
+      completedEcts,
+      learningChallenges,
+      extraActivities,
       difficultCourseIds: difficultKeys,
       difficultTopicsNotes: difficultNotes.trim(),
       completedCourses: records,
@@ -706,6 +899,12 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
 
     updateSettings({
       userName: userName.trim() || 'Estudante',
+      theme: themePref,
+      themePalette,
+      appTone,
+      uniAccessory,
+      uniPersona,
+      uniLiveCompanions,
       dailyStudyMinutes: Math.max(30, Math.min(900, dailyMinutes || 180)),
       studyDays: studyDays.length > 0 ? studyDays : [1, 2, 3, 4, 5, 6],
       ageConfirmed13Plus: ageConfirmed,
@@ -855,45 +1054,455 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
           transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
           className="space-y-5"
         >
-          {/* PASSO 1: IDENTIDADE, CICLO E MÚLTIPLOS ANOS */}
-          {activeStepId === 'percurso' && (
+          {/* PASSO 1: RAZÃO DE SER & CONVITE PESSOAL */}
+          {activeStepId === 'boas-vindas' && (
             <div className="space-y-5">
               <div className="flex flex-col gap-4 rounded-3xl border border-line bg-surface p-5 shadow-card sm:flex-row sm:items-center">
-                <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl bg-[#FCE99F]/45 ring-1 ring-line">
-                  <UniBuddy mood="happy" size={68} interactive={false} />
+                <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl bg-[#FCE99F]/50 ring-1 ring-line">
+                  <UniBuddy
+                    mood="happy"
+                    accessory={uniAccessory === 'auto' ? 'default' : uniAccessory}
+                    size={68}
+                    interactive={false}
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-0.5 text-[11px] font-bold text-accent">
                     <Sparkles size={11} /> Olá! Eu sou o Uni
                   </span>
                   <h2 className="font-display text-xl font-bold tracking-tight text-fg sm:text-2xl">
-                    Vamos preparar o teu <em className="font-editorial text-accent">semestre real</em>
+                    Um caderno que respeita o teu{' '}
+                    <em className="font-editorial text-accent">ritmo real</em>
                   </h2>
                   <p className="text-xs leading-relaxed text-muted sm:text-sm">
-                    Quer estejas num único ano, em Licenciatura + Mestrado em simultâneo ou com cadeiras misturadas, configuramos o plano exatamente como é o teu percurso.
+                    A Unipedia nasceu para substituir folhas soltas, calendários confusos e ansiedade de última hora por sessões curtas, mensuráveis e humanas.
                   </p>
                 </div>
               </div>
 
-              <div className="grid gap-3 rounded-3xl border border-line bg-surface p-4 shadow-sm sm:grid-cols-2 sm:p-5">
-                <Field label="Como te chamas?">
+              <div className="grid gap-3 sm:grid-cols-3">
+                {[
+                  {
+                    badge: 'Memória duradoura',
+                    title: 'Revisão 1 → 3 → 7 → 21 dias',
+                    body: 'Cada bloco concluído pergunta o teu nível de confiança e agenda a próxima revisão antes que a matéria se perca.',
+                  },
+                  {
+                    badge: 'Sem pânico de exames',
+                    title: 'Modo Teste automático',
+                    body: 'A 10 dias de uma prova importante, o plano muda de marcha para equilibrar revisão intensiva e exercícios.',
+                  },
+                  {
+                    badge: 'Ao teu ritmo',
+                    title: 'Planeamento realista',
+                    body: 'Aulas, horas de trabalho ou ginásio e cadeiras mais exigentes entram na conta — nada de listas impossíveis.',
+                  },
+                ].map((reason) => (
+                  <div
+                    key={reason.title}
+                    className="flex flex-col justify-between gap-2 rounded-3xl border border-line bg-surface p-4 shadow-sm"
+                  >
+                    <span className="w-fit rounded-full bg-accent-soft px-2.5 py-0.5 text-[10px] font-bold text-accent">
+                      {reason.badge}
+                    </span>
+                    <div>
+                      <h3 className="font-display text-sm font-bold text-fg">{reason.title}</h3>
+                      <p className="mt-1 text-xs leading-relaxed text-muted">{reason.body}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-3xl border border-line bg-surface p-4 shadow-sm sm:p-5">
+                <Field label="Antes de começarmos, como queres que o Uni te trate?">
                   <Input
                     value={userName}
                     onChange={(e) => setUserName(e.target.value)}
                     placeholder="Ex: Pedro Silva"
                   />
                 </Field>
-                <Field label={isSecondarySchool ? 'Ano de matrícula' : 'Ano de entrada'}>
-                  <Select
-                    value={String(entryYear)}
-                    onChange={(e) => setEntryYear(Number(e.target.value))}
-                  >
-                    {[2026, 2025, 2024, 2023, 2022, 2021, 2020].map((y) => (
-                      <option key={y} value={y}>{y}</option>
-                    ))}
-                  </Select>
-                </Field>
+              </div>
+            </div>
+          )}
 
+          {/* PASSO 2: O UNIVERSO UNI, PALETA & TOM DA APLICAÇÃO */}
+          {activeStepId === 'estilo-uni' && (
+            <div className="space-y-5">
+              <div className="flex flex-col gap-4 rounded-3xl border border-line bg-surface p-5 shadow-card sm:flex-row sm:items-center">
+                <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl bg-[#C9DC9F]/45 ring-1 ring-line">
+                  <UniBuddy
+                    mood="curious"
+                    accessory={uniAccessory === 'auto' ? 'math' : uniAccessory}
+                    size={68}
+                    interactive={false}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-0.5 text-[11px] font-bold text-accent">
+                    <Palette size={11} /> O teu companheiro de estudo
+                  </span>
+                  <h2 className="font-display text-xl font-bold tracking-tight text-fg sm:text-2xl">
+                    Escolhe a cara e o <em className="font-editorial text-accent">tom do teu caderno</em>
+                  </h2>
+                  <p className="text-xs leading-relaxed text-muted sm:text-sm">
+                    Os Unis são pequenas mascotes colecionáveis que te acompanham e podem espreitar discretamente nos cantos do ecrã — ou ficar completamente silenciosos se preferires um estilo mais sério.
+                  </p>
+                </div>
+              </div>
+
+              {/* Tom da aplicação: Expressivo vs Sério */}
+              <div className="space-y-3 rounded-3xl border border-line bg-surface p-4 shadow-sm sm:p-5">
+                <div>
+                  <h3 className="font-display text-sm font-bold text-fg">
+                    Qual o estilo de experiência que preferes?
+                  </h3>
+                  <p className="text-xs text-muted">
+                    Podes mudar quando quiseres nas Definições.
+                  </p>
+                </div>
+                <div className="grid gap-2.5 sm:grid-cols-2">
+                  {[
+                    {
+                      id: 'vibrante' as const,
+                      title: 'Expressivo & Vivo',
+                      desc: 'Caderno com ilustrações suaves, feedback caloroso e os Unis tímidos a espreitar nos cantos.',
+                    },
+                    {
+                      id: 'serio' as const,
+                      title: 'Sério & Minimalista',
+                      desc: 'Visual sóbrio, movimento reduzido, tutor direto ao assunto e ecrã 100% livre de mascotes nos cantos.',
+                    },
+                  ].map((option) => {
+                    const active = appTone === option.id;
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => {
+                          void hapticTap();
+                          setAppTone(option.id);
+                          if (option.id === 'serio') {
+                            setUniLiveCompanions('off');
+                            if (themePalette === 'caderno') setThemePalette('ardosia');
+                          } else {
+                            setUniLiveCompanions('all');
+                          }
+                        }}
+                        className={cx(
+                          'flex flex-col items-start gap-1 rounded-2xl border p-3.5 text-left transition',
+                          active
+                            ? 'border-accent bg-accent-soft/50 shadow-sm'
+                            : 'border-line bg-bg hover:bg-surface-2',
+                        )}
+                      >
+                        <span className="flex items-center gap-1.5 text-xs font-bold text-fg">
+                          {active && <CheckCircle2 size={14} className="text-accent" />}
+                          {option.title}
+                        </span>
+                        <span className="text-[11px] leading-relaxed text-muted">{option.desc}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Paleta de cores + Tema Claro/Escuro */}
+              <div className="space-y-4 rounded-3xl border border-line bg-surface p-4 shadow-sm sm:p-5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h3 className="font-display text-sm font-bold text-fg">Paleta de cores ao vivo</h3>
+                    <p className="text-xs text-muted">
+                      Toca para pré-visualizar imediatamente nesta janela.
+                    </p>
+                  </div>
+                  <div className="inline-flex rounded-full bg-surface-2 p-1">
+                    {(
+                      [
+                        ['system', 'Auto'],
+                        ['light', 'Claro'],
+                        ['dark', 'Escuro'],
+                      ] as const
+                    ).map(([pref, label]) => (
+                      <button
+                        key={pref}
+                        type="button"
+                        onClick={() => {
+                          void hapticTap();
+                          setThemePref(pref);
+                        }}
+                        className={cx(
+                          'min-h-[34px] rounded-full px-3 text-xs font-semibold transition',
+                          themePref === pref
+                            ? 'bg-ink-cta text-ink-cta-fg'
+                            : 'text-muted hover:text-fg',
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {APP_PALETTES.map((pal) => {
+                    const active = themePalette === pal.id;
+                    return (
+                      <button
+                        key={pal.id}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => {
+                          void hapticTap();
+                          setThemePalette(pal.id);
+                        }}
+                        className={cx(
+                          'flex min-h-[54px] items-center gap-2.5 rounded-2xl border px-3 py-2 text-left transition',
+                          active
+                            ? 'border-accent bg-accent-soft/60 shadow-sm'
+                            : 'border-line bg-bg hover:bg-surface-2',
+                        )}
+                      >
+                        <span className="flex shrink-0 items-center gap-1" aria-hidden="true">
+                          <span
+                            className="size-4 rounded-full border border-black/15"
+                            style={{ backgroundColor: pal.bgHex }}
+                          />
+                          <span
+                            className="size-4 rounded-full border border-black/15"
+                            style={{ backgroundColor: pal.accentHex }}
+                          />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-xs font-bold text-fg">{pal.name}</span>
+                          <span className="block truncate text-[10px] text-muted">{pal.tagline}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Adereço do Uni, Personalidade do Tutor e Companheiros Discretos */}
+              <div className="space-y-4 rounded-3xl border border-line bg-surface p-4 shadow-sm sm:p-5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h3 className="font-display text-sm font-bold text-fg">
+                      Adereço &amp; comportamento do Uni
+                    </h3>
+                    <p className="text-xs text-muted">
+                      Pode adaptar-se automaticamente a cada cadeira ou manter o teu estilo fixo.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void hapticTap();
+                      setUniAccessory('auto');
+                    }}
+                    className={cx(
+                      'min-h-[34px] rounded-full border px-3 text-xs font-semibold transition',
+                      uniAccessory === 'auto'
+                        ? 'border-accent bg-accent-soft text-accent'
+                        : 'border-line bg-surface-2 text-muted hover:text-fg',
+                    )}
+                  >
+                    Automático por cadeira
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {UNI_ACCESSORIES.map((acc) => {
+                    const active = uniAccessory === acc.id;
+                    return (
+                      <button
+                        key={acc.id}
+                        type="button"
+                        onClick={() => {
+                          void hapticTap();
+                          setUniAccessory(acc.id);
+                        }}
+                        className={cx(
+                          'flex min-h-[42px] items-center gap-1.5 rounded-2xl border px-2.5 py-1.5 text-xs font-medium transition',
+                          active
+                            ? 'border-accent bg-accent-soft text-accent'
+                            : 'border-line bg-bg text-fg hover:bg-surface-2',
+                        )}
+                      >
+                        <UniBuddy mood="happy" accessory={acc.id} size={26} interactive={false} />
+                        <span>{acc.shortLabel}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="grid gap-3 border-t border-line pt-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <span className="block text-xs font-medium text-muted">
+                      Personalidade do Tutor Uni
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {UNI_PERSONAS.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => {
+                            void hapticTap();
+                            setUniPersona(p.id);
+                          }}
+                          className={cx(
+                            'min-h-[36px] rounded-full border px-3 text-xs font-semibold transition',
+                            uniPersona === p.id
+                              ? 'border-accent bg-accent text-accent-fg'
+                              : 'border-line bg-bg text-muted hover:text-fg',
+                          )}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <span className="block text-xs font-medium text-muted">
+                      Unis discretos nos cantos («com vergonha»)
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(
+                        [
+                          ['all', 'Até 2 discretos'],
+                          ['solo', 'Só 1 Uni'],
+                          ['off', 'Desligado'],
+                        ] as const
+                      ).map(([modeId, label]) => (
+                        <button
+                          key={modeId}
+                          type="button"
+                          onClick={() => {
+                            void hapticTap();
+                            setUniLiveCompanions(modeId);
+                          }}
+                          className={cx(
+                            'min-h-[36px] rounded-full border px-3 text-xs font-semibold transition',
+                            uniLiveCompanions === modeId
+                              ? 'border-accent bg-ink-cta text-ink-cta-fg'
+                              : 'border-line bg-bg text-muted hover:text-fg',
+                          )}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* PASSO 3: AVALIAÇÃO PESSOAL, ECTS (180 / 120 / 300), DIFICULDADES & ATIVIDADES EXTRA */}
+          {activeStepId === 'avaliacao' && (
+            <div className="space-y-5">
+              <div className="flex flex-col gap-4 rounded-3xl border border-line bg-surface p-5 shadow-card sm:flex-row sm:items-center">
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-[#C4E0FD]/55 ring-1 ring-line">
+                  <UniBuddy mood="thinking" size={56} interactive={false} />
+                </div>
+                <div className="space-y-1">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2.5 py-0.5 text-[11px] font-bold text-accent">
+                    <BookOpen size={11} /> Avaliação pessoal
+                  </span>
+                  <h2 className="font-display text-xl font-bold tracking-tight text-fg sm:text-2xl">
+                    Onde estás nos <em className="font-editorial text-accent">ECTS</em> e na tua semana?
+                  </h2>
+                  <p className="text-xs leading-relaxed text-muted sm:text-sm">
+                    Com os teus créditos concluídos e compromissos fora das aulas, o Uni estima o teu ano letivo e evita planos irrealistas.
+                  </p>
+                </div>
+              </div>
+
+              {/* Meta ECTS + ECTS Concluídos */}
+              {!isSecondarySchool && (
+                <div className="space-y-4 rounded-3xl border border-line bg-surface p-4 shadow-sm sm:p-5">
+                  <div className="space-y-2">
+                    <span className="block text-xs font-semibold text-fg">
+                      Qual é a meta total do teu percurso (ECTS)?
+                    </span>
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      {ECTS_TARGETS.map((opt) => {
+                        const active = targetTotalEcts === opt.total;
+                        return (
+                          <button
+                            key={opt.total}
+                            type="button"
+                            aria-pressed={active}
+                            onClick={() => handleSelectEctsTarget(opt.total)}
+                            className={cx(
+                              'flex min-h-[52px] flex-col items-start justify-center rounded-2xl border px-3.5 py-2 text-left transition',
+                              active
+                                ? 'border-accent bg-accent-soft text-accent shadow-sm'
+                                : 'border-line bg-bg text-fg hover:bg-surface-2',
+                            )}
+                          >
+                            <span className="font-mono text-sm font-extrabold">{opt.shortLabel}</span>
+                            <span className="text-[11px] text-muted">{opt.label.split('·')[1]?.trim()}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 border-t border-line pt-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <label htmlFor="onboarding-ects-slider" className="text-xs font-semibold text-fg">
+                        Quantos ECTS já concluíste até agora?
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min={0}
+                          max={targetTotalEcts}
+                          step={3}
+                          value={completedEcts}
+                          onChange={(e) =>
+                            setCompletedEcts(
+                              Math.max(0, Math.min(targetTotalEcts, Number(e.target.value) || 0)),
+                            )
+                          }
+                          className="w-20 text-center font-mono font-bold tabular"
+                        />
+                        <span className="font-mono text-xs text-muted">/ {targetTotalEcts} ECTS</span>
+                      </div>
+                    </div>
+
+                    <input
+                      id="onboarding-ects-slider"
+                      type="range"
+                      min={0}
+                      max={targetTotalEcts}
+                      step={3}
+                      value={completedEcts}
+                      onChange={(e) => setCompletedEcts(Number(e.target.value))}
+                      className="w-full accent-[var(--accent)]"
+                    />
+
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-accent/25 bg-accent-soft/45 px-3.5 py-2.5 text-xs">
+                      <div>
+                        <p className="font-bold text-fg">
+                          Leitura do Uni: {ectsStage.stageSummary}
+                        </p>
+                        <p className="text-[11px] text-muted">
+                          {ectsStage.progressPct}% concluído · faltam {ectsStage.remainingEcts} ECTS para fechar a meta.
+                        </p>
+                      </div>
+                      <Button size="sm" variant="secondary" onClick={handleApplyEctsStage}>
+                        Alinhar {ectsStage.estimatedYear}.º ano
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Faculdade, Curso, Ano de entrada, Ciclo & Anos simultâneos */}
+              <div className="grid gap-3 rounded-3xl border border-line bg-surface p-4 shadow-sm sm:grid-cols-2 sm:p-5">
                 <Field label="Instituição / Ensino">
                   <Select
                     value={universityId}
@@ -929,6 +1538,23 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                     </Select>
                   )}
                 </Field>
+
+                <Field label={isSecondarySchool ? 'Ano de matrícula' : 'Ano de entrada'}>
+                  <Select
+                    value={String(entryYear)}
+                    onChange={(e) => setEntryYear(Number(e.target.value))}
+                  >
+                    {[2026, 2025, 2024, 2023, 2022, 2021, 2020].map((y) => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </Select>
+                </Field>
+
+                <div className="flex items-end">
+                  <p className="text-xs text-muted">
+                    Estudante: <strong className="text-fg">{userName.trim() || 'Por definir'}</strong> · podes voltar ao passo 1 ou ajustar depois.
+                  </p>
+                </div>
 
                 {(universityId === 'outra' || degreeId === 'outro') && (
                   <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
@@ -1062,6 +1688,148 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                   </div>
                 </div>
               </div>
+
+              {/* Dificuldades pessoais + Atividades extracurriculares */}
+              <div className="space-y-4 rounded-3xl border border-line bg-surface p-4 shadow-sm sm:p-5">
+                <div className="space-y-2">
+                  <span className="block text-xs font-semibold text-fg">
+                    Quais são os teus maiores desafios este semestre?
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {CHALLENGE_OPTIONS.map((ch) => {
+                      const active = learningChallenges.includes(ch.id);
+                      return (
+                        <button
+                          key={ch.id}
+                          type="button"
+                          onClick={() => toggleLearningChallenge(ch.id)}
+                          className={cx(
+                            'inline-flex min-h-[38px] items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition',
+                            active
+                              ? 'border-accent bg-accent-soft text-accent'
+                              : 'border-line bg-bg text-muted hover:text-fg',
+                          )}
+                        >
+                          {active && <Check size={12} />}
+                          {ch.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-2.5 border-t border-line pt-3">
+                  <div>
+                    <span className="block text-xs font-semibold text-fg">
+                      Tens trabalho, desporto, associação ou outras atividades extra?
+                    </span>
+                    <p className="text-[11px] text-muted">
+                      O criador do plano semanal reduz automaticamente a carga nos dias em que estás ocupado.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {EXTRA_ACTIVITY_PRESETS.map((preset) => {
+                      const active = extraActivities.some((a) => a.label === preset.label);
+                      return (
+                        <button
+                          key={preset.label}
+                          type="button"
+                          onClick={() => toggleExtraPreset(preset)}
+                          className={cx(
+                            'inline-flex min-h-[38px] items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition',
+                            active
+                              ? 'border-accent bg-accent text-accent-fg'
+                              : 'border-line bg-bg text-fg hover:bg-surface-2',
+                          )}
+                        >
+                          {active ? <Check size={12} /> : <Plus size={12} />}
+                          {preset.label} ({preset.hoursPerWeek}h)
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Adição rápida de atividade própria */}
+                  <div className="grid gap-2 sm:grid-cols-[1.5fr_88px_auto]">
+                    <Input
+                      value={customExtraLabel}
+                      onChange={(e) => setCustomExtraLabel(e.target.value)}
+                      placeholder="Outra atividade (ex: Estágio, Explicações)"
+                    />
+                    <Input
+                      type="number"
+                      min={1}
+                      max={40}
+                      value={customExtraHours}
+                      onChange={(e) => setCustomExtraHours(Math.max(1, Number(e.target.value) || 1))}
+                      aria-label="Horas por semana"
+                      className="text-center tabular"
+                    />
+                    <Button variant="secondary" size="sm" onClick={handleAddCustomExtra}>
+                      <Plus size={14} /> Juntar
+                    </Button>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted">
+                    <span>Dias da atividade personalizada:</span>
+                    {DAY_LABELS.map((d) => {
+                      const on = customExtraDays.includes(d.day);
+                      return (
+                        <button
+                          key={d.day}
+                          type="button"
+                          onClick={() =>
+                            setCustomExtraDays((prev) =>
+                              prev.includes(d.day)
+                                ? prev.filter((x) => x !== d.day)
+                                : [...prev, d.day],
+                            )
+                          }
+                          className={cx(
+                            'min-h-[28px] rounded-lg px-2 font-semibold transition',
+                            on
+                              ? 'bg-ink-cta text-ink-cta-fg'
+                              : 'border border-line bg-bg text-muted hover:text-fg',
+                          )}
+                        >
+                          {d.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {extraActivities.length > 0 && (
+                    <div className="space-y-1.5 pt-1">
+                      {extraActivities.map((act) => (
+                        <div
+                          key={act.id}
+                          className="flex items-center justify-between gap-2 rounded-xl border border-line bg-bg px-3 py-2 text-xs"
+                        >
+                          <span className="truncate font-medium text-fg">
+                            {act.label} · {act.hoursPerWeek}h/sem (
+                            {act.weekdays
+                              .map((w) => DAY_LABELS.find((d) => d.day === w)?.label ?? '')
+                              .filter(Boolean)
+                              .join(', ')}
+                            )
+                          </span>
+                          <button
+                            type="button"
+                            aria-label={`Remover ${act.label}`}
+                            onClick={() =>
+                              setExtraActivities((prev) => prev.filter((a) => a.id !== act.id))
+                            }
+                            className="inline-flex size-7 items-center justify-center rounded-lg text-muted hover:bg-surface-2 hover:text-coral"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
@@ -1090,6 +1858,11 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                   <span className="rounded-full bg-surface-2 px-3 py-1 font-medium text-muted tabular">
                     {approvedCount} aprovadas
                   </span>
+                  {!isSecondarySchool && (
+                    <span className="rounded-full bg-surface-2 px-3 py-1 font-mono font-semibold text-fg tabular">
+                      {approvedEctsFromList + activeEctsFromList}/{targetTotalEcts} ECTS
+                    </span>
+                  )}
                   {weightedAvg !== null && (
                     <span className="rounded-full bg-ok/15 px-3 py-1 font-semibold text-ok tabular">
                       Média {weightedAvg.toFixed(1)}
@@ -1263,7 +2036,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                         : 'border border-line bg-surface text-muted hover:text-fg',
                     )}
                   >
-                    Todos ({records.length})
+                    Todos ({records.filter((r) => !(r.isOptional && r.status === 'por_fazer')).length})
                   </button>
                   {availableRecordYears.map((y) => (
                     <button
@@ -1284,14 +2057,14 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                 </div>
               )}
 
-              {/* Lista editorial de cadeiras */}
+              {/* Lista editorial de cadeiras obrigatórias / escolhidas (sem poluir com opcionais soltas) */}
               <div className="max-h-72 space-y-2 overflow-y-auto rounded-3xl border border-line bg-surface p-3">
-                {filteredRecords.length === 0 ? (
+                {mainFilteredRecords.length === 0 ? (
                   <p className="p-6 text-center text-xs text-muted">
-                    Ainda sem cadeiras neste filtro. Usa «+ Adicionar» acima ou «Print Horário / Pauta».
+                    Ainda sem cadeiras obrigatórias neste filtro. Podes escolher opcionais abaixo ou usar «+ Adicionar» / «Print Horário / Pauta».
                   </p>
                 ) : (
-                  filteredRecords.map((r) => (
+                  mainFilteredRecords.map((r) => (
                     <div
                       key={r.id}
                       className={cx(
@@ -1311,7 +2084,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                           <span className="break-words font-semibold text-fg">{r.name}</span>
                           {r.isOptional && (
                             <span className="shrink-0 rounded-md bg-surface-2/80 px-1.5 py-0.5 text-[10px] font-medium text-muted">
-                              Opcional
+                              Opcional selecionada
                             </span>
                           )}
                         </div>
@@ -1366,6 +2139,80 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                 )}
               </div>
 
+              {/* Gaveta colapsável para escolher cadeiras opcionais de Mestrado/Licenciatura */}
+              {records.some((r) => r.isOptional && r.status === 'por_fazer') && (
+                <div className="rounded-3xl border border-dashed border-line bg-surface/70 p-3.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void hapticTap();
+                      setShowOptionalCourses((v) => !v);
+                    }}
+                    className="flex min-h-[40px] w-full items-center justify-between gap-2 text-left text-xs font-semibold text-fg"
+                  >
+                    <span>
+                      {showOptionalCourses ? '− Esconder cadeiras opcionais disponíveis' : '+ Ver / escolher cadeiras opcionais disponíveis'}{' '}
+                      <span className="font-mono text-muted">
+                        ({filteredRecords.filter((r) => r.isOptional && r.status === 'por_fazer').length})
+                      </span>
+                    </span>
+                    <span className="shrink-0 whitespace-nowrap rounded-full bg-surface-2 px-2.5 py-0.5 text-[11px] text-muted">
+                      {showOptionalCourses ? 'Fechar' : 'Abrir'}
+                    </span>
+                  </button>
+
+                  {showOptionalCourses && (
+                    <div className="mt-3 space-y-2.5">
+                      <Input
+                        value={optionalSearch}
+                        onChange={(e) => setOptionalSearch(e.target.value)}
+                        placeholder="Filtrar opcional por sigla ou nome…"
+                      />
+                      <div className="max-h-52 space-y-1.5 overflow-y-auto pr-1">
+                        {optionalAvailableRecords.length === 0 ? (
+                          <p className="py-3 text-center text-xs text-muted">
+                            Nenhuma opcional encontrada neste filtro.
+                          </p>
+                        ) : (
+                          optionalAvailableRecords.map((optCourse) => (
+                            <div
+                              key={optCourse.id}
+                              className="flex flex-col gap-2 rounded-2xl border border-line bg-bg px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between"
+                            >
+                              <div className="min-w-0">
+                                <span className="font-mono text-[10px] font-bold text-accent">
+                                  {optCourse.code}
+                                </span>{' '}
+                                <span className="font-semibold text-fg">{optCourse.name}</span>
+                                <span className="block text-[11px] text-muted">
+                                  {formatAcademicYearLabel(optCourse.year, isSecondarySchool)} · {optCourse.semester}.º Sem · {optCourse.ects} ECTS
+                                </span>
+                              </div>
+                              <div className="flex shrink-0 items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => updateRecordStatus(optCourse.id, 'a_fazer')}
+                                  className="min-h-[34px] rounded-xl bg-accent px-2.5 text-[11px] font-semibold text-accent-fg transition hover:opacity-90"
+                                >
+                                  + Ativa agora
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => updateRecordStatus(optCourse.id, 'aprovada')}
+                                  className="min-h-[34px] rounded-xl border border-line bg-surface px-2.5 text-[11px] font-semibold text-muted hover:text-fg"
+                                >
+                                  Já feita
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <label className="flex min-h-[44px] cursor-pointer items-center gap-2.5 rounded-2xl border border-line bg-surface px-4 py-2 text-xs text-fg">
                 <input
                   type="checkbox"
@@ -1395,6 +2242,11 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                   <p className="text-xs text-muted sm:text-sm">
                     Liga opcionalmente o teu email institucional da faculdade, configura a chave Gemini se quiseres mensagens ilimitadas e define o teu ritmo semanal.
                   </p>
+                  {extraActivities.length > 0 && (
+                    <p className="text-[11px] font-semibold text-accent">
+                      ✓ Atividades extra consideradas ({extraActivities.reduce((s, a) => s + a.hoursPerWeek, 0)}h/semana ajustadas no plano).
+                    </p>
+                  )}
                 </div>
               </div>
 

@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { UniBuddy, UnipediaLogoMark } from '../components/brand/UnipediaMarks';
+import { UniClassroomScene, UniStudyGroupScene } from '../components/brand/WelcomeScenes';
 import { StickerBadge, UNIPEDIA_BOUNCE_SPRING } from '../components/motion/Primitives';
 import { cx } from '../components/ui';
 import { hapticTap } from '../lib/nativeBridge';
@@ -29,6 +30,24 @@ const SLIDES: Slide[] = [
       'Junta cadeiras, datas de provas, apontamentos e ritmo diário num caderno leve pensado para estudar com calma.',
   },
   {
+    id: 'classroom',
+    bgClass: 'bg-[#C9DC9F] dark:bg-[#192D21]',
+    eyebrow: 'Universo Uni em sala de aula',
+    title: 'Aprende em ritmo',
+    accent: 'calmo e visual',
+    description:
+      'Na sala do Uni cada aula vira resumo claro, tópicos organizados e preparação passo a passo — sem stress antes dos testes.',
+  },
+  {
+    id: 'study-group',
+    bgClass: 'bg-[#FCE99F] dark:bg-[#302813]',
+    eyebrow: 'Companheiros discretos à tua volta',
+    title: 'Nunca estudas',
+    accent: 'sozinho no ecrã',
+    description:
+      'Os Unis têm vida própria no teu caderno: estudam juntos em silêncio e espreitam pelos cantos sem nunca te distrair.',
+  },
+  {
     id: 'planner',
     bgClass: 'bg-[#C4E0FD] dark:bg-[#192838]',
     eyebrow: 'Plano semanal inteligente',
@@ -48,12 +67,12 @@ const SLIDES: Slide[] = [
   },
   {
     id: 'uni',
-    bgClass: 'bg-[#FCE99F] dark:bg-[#332C14]',
-    eyebrow: 'Companheiro de estudo',
+    bgClass: 'bg-[#FAD6BA] dark:bg-[#2F2117]',
+    eyebrow: 'Personalizável ao teu curso',
     title: 'O Uni adapta-se',
     accent: 'à tua área',
     description:
-      'Toca abaixo para experimentar os visuais do Uni por disciplina. Ele ajuda-te a rever matéria, dúvidas e exercícios.',
+      'Toca abaixo para experimentar os visuais do Uni por disciplina. Depois personalizas paleta, tom da app e créditos no onboarding.',
   },
 ];
 
@@ -177,7 +196,11 @@ export default function WelcomePage() {
               </div>
             )}
 
-            {step === 1 && (
+            {step === 1 && <UniClassroomScene />}
+
+            {step === 2 && <UniStudyGroupScene />}
+
+            {step === 3 && (
               <div className="relative flex h-56 w-full flex-col items-center justify-center gap-2.5 px-3">
                 {[
                   { label: '09:30 · Rever capítulo 3', tone: 'bg-[#FAF8F2] dark:bg-[#23201B]', tilt: -1.5 },
@@ -204,7 +227,7 @@ export default function WelcomePage() {
               </div>
             )}
 
-            {step === 2 && (
+            {step === 4 && (
               <div className="relative flex w-full max-w-[330px] flex-col gap-2 text-left">
                 {[
                   {
@@ -261,7 +284,7 @@ export default function WelcomePage() {
               </div>
             )}
 
-            {step === 3 && (
+            {step === 5 && (
               <div className="flex w-full flex-col items-center space-y-4">
                 <div className="relative flex size-36 items-center justify-center rounded-full bg-white/55 shadow-card dark:bg-black/20">
                   <UniBuddy
@@ -305,7 +328,7 @@ export default function WelcomePage() {
             )}
 
             <div className="space-y-2.5 px-2">
-              <StickerBadge tone={step === 2 || step === 3 ? 'sage' : 'butter'} tilt={-1.5}>
+              <StickerBadge tone={step === 1 || step === 4 ? 'sage' : 'butter'} tilt={-1.5}>
                 {slide.eyebrow}
               </StickerBadge>
               <h1 className="font-display text-[30px] font-extrabold leading-[1.1] tracking-tight sm:text-4xl">

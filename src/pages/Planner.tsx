@@ -165,6 +165,7 @@ export default function Planner() {
       existing: sessions.filter((s) => !s.generated || s.done || s.date < today),
       difficultCourseIds: academicProfile.difficultCourseIds,
       weeklyCheckIns,
+      extraActivities: academicProfile.extraActivities,
     });
     replaceGeneratedSessions(today, plan);
     setConfirmOpen(false);

@@ -255,6 +255,7 @@ export default function Assistant() {
           persona: uniPersona,
           accessory: uniAccessory,
           studentName: userName,
+          appTone: useStore.getState().settings.appTone,
         });
 
         const reply = await streamGeminiChat({

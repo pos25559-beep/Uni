@@ -21,12 +21,22 @@ import { useStore } from './store/useStore'
 initFirestoreSync();
 
 // Ponte nativa (Tema Sistema/Claro/Escuro, StatusBar, Teclado virtual e Splash Screen)
-const initialTheme = useStore.getState().settings.theme;
-void syncNativeTheme(initialTheme);
+const initialSettings = useStore.getState().settings;
+void syncNativeTheme(
+  initialSettings.theme,
+  initialSettings.themePalette ?? 'caderno',
+  initialSettings.appTone ?? 'vibrante',
+);
 if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-    const current = useStore.getState().settings.theme;
-    if (current === 'system') void syncNativeTheme('system');
+    const current = useStore.getState().settings;
+    if (current.theme === 'system') {
+      void syncNativeTheme(
+        'system',
+        current.themePalette ?? 'caderno',
+        current.appTone ?? 'vibrante',
+      );
+    }
   });
 }
 void initNativeKeyboardBridge();

@@ -24,6 +24,7 @@ import { googleService } from '../services/googleService';
 import { useStore } from '../store/useStore';
 import AuthStatus from './auth/AuthStatus';
 import UniCollectiblesModal from './brand/UniCollectiblesModal';
+import UniLivingOverlay from './brand/UniLivingOverlay';
 import { UnipediaLogoMark } from './brand/UnipediaMarks';
 import { UNIPEDIA_BOUNCE_SPRING, UNIPEDIA_SPRING } from './motion/Primitives';
 import { ToastViewport, cx } from './ui';
@@ -144,9 +145,12 @@ export default function AppShell() {
     };
   }, []);
 
+  const themePalette = useStore((s) => s.settings.themePalette ?? 'caderno');
+  const appTone = useStore((s) => s.settings.appTone ?? 'vibrante');
+
   useEffect(() => {
-    void syncNativeTheme(theme);
-  }, [theme]);
+    void syncNativeTheme(theme, themePalette, appTone);
+  }, [theme, themePalette, appTone]);
 
   useEffect(() => {
     setMoreOpen(false);
@@ -460,6 +464,9 @@ export default function AppShell() {
         open={collectiblesOpen}
         onClose={() => setCollectiblesOpen(false)}
       />
+
+      {/* Companheiros discretos («Unis com vergonha») apenas nas abas principais */}
+      {!isBypassRoute && <UniLivingOverlay />}
     </div>
   );
 }

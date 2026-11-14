@@ -21,7 +21,7 @@ import {
 } from '../lib/visionParsers';
 import { useStore } from '../store/useStore';
 import type { AppState } from '../store/useStore';
-import type { Material } from '../types';
+import type { AppTone, Material } from '../types';
 
 export type {
   ExtractedHistoryItem,
@@ -520,6 +520,20 @@ export function buildStudyContext(state: AppState): string {
           ? `Ano atual: ${academicProfile.currentAcademicYear - 3}.º ano Mestrado`
           : `Ano atual: ${academicProfile.currentAcademicYear}.º ano`;
     lines.push(`- Ingresso: ${academicProfile.entryYear} · ${yearDesc}, ${academicProfile.currentSemester}.º semestre`);
+    if (typeof academicProfile.targetTotalEcts === 'number' && academicProfile.targetTotalEcts > 0) {
+      const doneEcts = academicProfile.completedEcts ?? 0;
+      const pct = Math.min(100, Math.round((doneEcts / academicProfile.targetTotalEcts) * 100));
+      lines.push(`- Créditos ECTS: ${doneEcts}/${academicProfile.targetTotalEcts} ECTS (${pct}% concluído)`);
+    }
+    if (academicProfile.learningChallenges && academicProfile.learningChallenges.length > 0) {
+      lines.push(`- Dificuldades declaradas de ritmo/estudo: ${academicProfile.learningChallenges.join(', ')}`);
+    }
+    if (academicProfile.extraActivities && academicProfile.extraActivities.length > 0) {
+      const extraDesc = academicProfile.extraActivities
+        .map((a) => `${a.label} (~${a.hoursPerWeek}h/sem)`)
+        .join(', ');
+      lines.push(`- Atividades extra-curriculares: ${extraDesc}`);
+    }
     if (academicProfile.difficultCourseIds.length > 0) {
       const hardNames = academicProfile.difficultCourseIds.map(
         (id) => courses.find((c) => c.id === id)?.shortName ?? id,
@@ -661,18 +675,24 @@ const AREA_VOICE_HINTS: Record<UniAccessoryId, string> = {
 export const SYSTEM_PROMPT = (
   context: string,
   docContext?: string,
-  opts?: { persona?: UniPersonaMode; accessory?: UniAccessoryId; studentName?: string },
+  opts?: { persona?: UniPersonaMode; accessory?: UniAccessoryId; studentName?: string; appTone?: AppTone },
 ): string => {
   const persona = opts?.persona ?? 'amigo';
   const accessory = opts?.accessory ?? 'default';
+  const appTone = opts?.appTone ?? 'vibrante';
   const firstName = opts?.studentName?.trim().split(/\s+/)[0] || '';
+
+  const toneDirective =
+    appTone === 'serio'
+      ? '- Tom selecionado (Sério & Minimalista): responde sempre em português europeu (pt-PT), de forma direta, estruturada, sóbria e profissional, sem exclamações excessivas nem brincadeiras.'
+      : '- Responde sempre em português europeu (pt-PT), de forma concisa, concreta e calorosa.';
 
   return `Tu és o Uni, o companheiro de estudo exclusivo da Unipedia${firstName ? ` a ajudar ${firstName}` : ''}.
 Identidade obrigatória:
 - Fala sempre como «o Uni» na primeira pessoa. Nunca digas "como modelo de IA", "como assistente virtual" nem "sou o Gemini".
 - ${PERSONA_INSTRUCTIONS[persona]}
 - Visual e área ativa: ${AREA_VOICE_HINTS[accessory]}
-- Responde sempre em português europeu (pt-PT), de forma concisa, concreta e calorosa.
+${toneDirective}
 - Baseia conselhos nos dados do resumo e nos documentos/fontes anexados abaixo. Se algo não estiver nos dados, assume com naturalidade em vez de inventar.
 - Usa Markdown: títulos curtos (###), listas e **negrito** para destacar o essencial.
 - Em quizzes: faz UMA pergunta de cada vez e espera pela resposta antes de corrigir e avançar.

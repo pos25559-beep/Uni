@@ -3,6 +3,9 @@ import type { Collections, Settings } from '../types';
 export const defaultSettings: Settings = {
   userName: '',
   theme: 'system',
+  themePalette: 'caderno',
+  appTone: 'vibrante',
+  uniLiveCompanions: 'all',
   semesterName: 'Semestre atual',
   semesterStart: '2026-09-14',
   semesterEnd: '2027-01-30',

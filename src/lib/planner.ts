@@ -1,12 +1,14 @@
 // Motor do plano de estudo. Funções puras (sem React): mesma entrada, mesma saída.
 import { differenceInCalendarDays, differenceInMinutes, format, parseISO } from 'date-fns';
 import { newId } from '../store/useStore';
+import { computeExtraActivityPenaltyByWeekday } from './academicCredits';
 import { isTopicReviewDue } from './spacedRepetition';
 import type {
   Assessment,
   CalendarEvent,
   ClassSlot,
   Course,
+  ExtraActivity,
   ID,
   Settings,
   StudySession,
@@ -35,6 +37,8 @@ export interface PlanInput {
   difficultCourseIds?: ID[];
   /** Check-ins semanais do tutor para reforçar tópicos difíceis recentes. */
   weeklyCheckIns?: WeeklyCheckIn[];
+  /** Atividades extracurriculares que reduzem a margem disponível em dias específicos. */
+  extraActivities?: ExtraActivity[];
 }
 
 interface Block {
@@ -131,7 +135,9 @@ export function generatePlan(input: PlanInput): StudySession[] {
     existing = [],
     difficultCourseIds = [],
     weeklyCheckIns = [],
+    extraActivities = [],
   } = input;
+  const extraPenaltyByWeekday = computeExtraActivityPenaltyByWeekday(extraActivities);
   const days = input.days ?? 14;
   const start = parseDay(from);
   const courseById = new Map(courses.map((c) => [c.id, c]));
@@ -197,6 +203,8 @@ export function generatePlan(input: PlanInput): StudySession[] {
     let budget = settings.dailyStudyMinutes;
     if (classMinutes >= LIGHT_CLASS_LOAD_MIN) budget *= 0.75;
     if (eventMinutes > EVENT_THRESHOLD_MIN) budget -= eventMinutes;
+    const extraPenalty = extraPenaltyByWeekday.get(weekday) ?? 0;
+    if (extraPenalty > 0) budget -= Math.min(120, Math.round(extraPenalty * 0.5));
     if (latestCheckIn?.mood === 'atrasado' || latestCheckIn?.mood === 'pressionado') {
       // Protege contra sobrecarga quando o aluno sinaliza atraso no check-in semanal.
       budget *= 0.85;
