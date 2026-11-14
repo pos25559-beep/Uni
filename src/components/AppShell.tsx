@@ -268,14 +268,14 @@ export default function AppShell() {
       {/* Conteúdo principal com Safe Area e espaço para a dock flutuante */}
       <main
         className={cx(
-          'min-w-0 flex-1 overflow-y-auto md:pt-0 md:pb-6',
+          'min-w-0 flex-1 overflow-y-auto md:pt-0',
           isFullBleedRoute
-            ? 'pt-0 pb-0'
+            ? 'pt-0 pb-0 md:pb-0'
             : location.pathname.startsWith('/entrar')
-              ? 'pt-[max(0.5rem,env(safe-area-inset-top))] pb-[calc(0.5rem+env(safe-area-inset-bottom)+var(--keyboard-height,0px))]'
+              ? 'pt-[max(0.75rem,env(safe-area-inset-top))] pb-[calc(0.75rem+env(safe-area-inset-bottom)+var(--keyboard-height,0px))] md:pb-6'
               : isBypassRoute
-                ? 'pt-[env(safe-area-inset-top)] pb-[calc(1rem+env(safe-area-inset-bottom)+var(--keyboard-height,0px))]'
-                : 'pt-[env(safe-area-inset-top)] pb-[calc(6.25rem+env(safe-area-inset-bottom)+var(--keyboard-height,0px))]',
+                ? 'pt-[env(safe-area-inset-top)] pb-[calc(1rem+env(safe-area-inset-bottom)+var(--keyboard-height,0px))] md:pb-6'
+                : 'pt-[env(safe-area-inset-top)] pb-[calc(6.25rem+env(safe-area-inset-bottom)+var(--keyboard-height,0px))] md:pb-6',
         )}
       >
         <div
