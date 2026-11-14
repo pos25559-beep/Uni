@@ -20,7 +20,6 @@ import {
   Palette,
   Plus,
   ShieldCheck,
-  Sparkles,
   Trash2,
   X,
 } from 'lucide-react';
@@ -85,7 +84,12 @@ import { UniBuddy, UnipediaLogoMark } from '../brand/UnipediaMarks';
 import SmartScheduleImportModal, {
   type SmartImportInitialMode,
 } from '../courses/SmartScheduleImportModal';
-import { celebrateStationery, UNIPEDIA_SPRING } from '../motion/Primitives';
+import {
+  celebrateStationery,
+  StickerBadge,
+  UNIPEDIA_BOUNCE_SPRING,
+  UNIPEDIA_SPRING,
+} from '../motion/Primitives';
 import GeminiKeyGuideModal from '../settings/GeminiKeyGuideModal';
 import { Badge, Button, Field, Input, Select, Textarea, cx } from '../ui';
 import { startUnipediaGuidedTour } from './TourManager';
@@ -263,8 +267,10 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     [completedEcts, targetTotalEcts],
   );
 
-  // Passo 4: Filtros por ano, opcionais colapsáveis, adição manual e OCR
+  // Passo 4: Filtros por ano, semestre, opcionais colapsáveis, adição manual e OCR
   const [yearFilter, setYearFilter] = useState<number | 'all'>('all');
+  const [showOtherTermsHistory, setShowOtherTermsHistory] = useState(false);
+  const [step1TipIdx, setStep1TipIdx] = useState<number | null>(null);
   const [showOptionalCourses, setShowOptionalCourses] = useState(false);
   const [optionalSearch, setOptionalSearch] = useState('');
   const [replaceCoursesWithCurriculum, setReplaceCoursesWithCurriculum] = useState(true);
@@ -797,15 +803,31 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     }
   };
 
+  /**
+   * Por defeito mostra apenas os anos escolhidos no Passo 3 e o semestre atual
+   * (mais eventuais cadeiras já marcadas como «Ativa agora»), escondendo cadeiras de anos/semestres irrelevantes.
+   */
+  const scopedRecords = useMemo(() => {
+    if (showOtherTermsHistory) return records;
+    return records.filter(
+      (r) =>
+        (activeYears.includes(r.year) && r.semester === currentSemester) ||
+        r.status === 'a_fazer',
+    );
+  }, [records, showOtherTermsHistory, activeYears, currentSemester]);
+
   const availableRecordYears = useMemo(() => {
-    const set = new Set<number>(records.map((r) => r.year));
+    const set = new Set<number>(scopedRecords.map((r) => r.year));
     return Array.from(set).sort((a, b) => a - b);
-  }, [records]);
+  }, [scopedRecords]);
+
+  const effectiveYearFilter: number | 'all' =
+    yearFilter === 'all' || availableRecordYears.includes(yearFilter) ? yearFilter : 'all';
 
   const filteredRecords = useMemo(() => {
-    if (yearFilter === 'all') return records;
-    return records.filter((r) => r.year === yearFilter);
-  }, [records, yearFilter]);
+    if (effectiveYearFilter === 'all') return scopedRecords;
+    return scopedRecords.filter((r) => r.year === effectiveYearFilter);
+  }, [scopedRecords, effectiveYearFilter]);
 
   /** Oculta cadeiras opcionais não selecionadas para evitar listas gigantes nos Mestrados. */
   const mainFilteredRecords = useMemo(
@@ -979,6 +1001,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
 
   const canSkipDirectly = storedProfile.onboardingCompleted && ageConfirmed;
   const activePersonalEmail = settings.personalEmail || auth.currentUser?.email || '';
+  const isExpressive = appTone !== 'serio';
 
   return (
     <div
@@ -1054,67 +1077,170 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
           transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
           className="space-y-5"
         >
-          {/* PASSO 1: RAZÃO DE SER & CONVITE PESSOAL */}
+          {/* PASSO 1: RAZÃO DE SER, COMO FUNCIONA E CONVITE PESSOAL */}
           {activeStepId === 'boas-vindas' && (
-            <div className="space-y-5">
-              <div className="flex flex-col gap-4 rounded-3xl border border-line bg-surface p-5 shadow-card sm:flex-row sm:items-center">
-                <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl bg-[#FCE99F]/50 ring-1 ring-line">
-                  <UniBuddy
-                    mood="happy"
-                    accessory={uniAccessory === 'auto' ? 'default' : uniAccessory}
-                    size={68}
-                    interactive={false}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-0.5 text-[11px] font-bold text-accent">
-                    <Sparkles size={11} /> Olá! Eu sou o Uni
-                  </span>
-                  <h2 className="font-display text-xl font-bold tracking-tight text-fg sm:text-2xl">
-                    Um caderno que respeita o teu{' '}
-                    <em className="font-editorial text-accent">ritmo real</em>
-                  </h2>
-                  <p className="text-xs leading-relaxed text-muted sm:text-sm">
-                    A Unipedia nasceu para substituir folhas soltas, calendários confusos e ansiedade de última hora por sessões curtas, mensuráveis e humanas.
+            <div className="space-y-4">
+              <div
+                className={cx(
+                  'relative overflow-hidden rounded-[28px] p-5 shadow-card',
+                  isExpressive
+                    ? 'bg-[#FCE99F] text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]'
+                    : 'border border-line bg-surface text-fg',
+                )}
+              >
+                {isExpressive && (
+                  <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+                    <motion.div
+                      className="absolute -top-8 -right-8 size-28 rounded-full bg-[#C9DC9F]/55 dark:bg-[#157F58]/25"
+                      animate={{ y: [0, 10, 0], x: [0, -6, 0], scale: [1, 1.06, 1] }}
+                      transition={{ repeat: Infinity, duration: 6.5, ease: 'easeInOut' }}
+                    />
+                    <motion.div
+                      className="absolute -bottom-6 left-10 size-20 rotate-12 rounded-2xl bg-[#FAD6BA]/60 dark:bg-[#E04F33]/20"
+                      animate={{ y: [0, -8, 0], rotate: [12, 22, 12] }}
+                      transition={{ repeat: Infinity, duration: 5.5, ease: 'easeInOut' }}
+                    />
+                  </div>
+                )}
+
+                <div className="relative z-10 space-y-2.5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 space-y-2">
+                      <StickerBadge tone="mint" tilt={-1.5}>
+                        Olá! Eu sou o Uni · Estúdio de Estudo
+                      </StickerBadge>
+                      <h2 className="font-display text-2xl font-extrabold leading-[1.08] tracking-tight sm:text-[28px]">
+                        Porque a Unipedia{' '}
+                        <span className="font-serif font-normal italic">funciona mesmo</span>
+                      </h2>
+                    </div>
+
+                    <div className="relative flex shrink-0 flex-col items-center gap-1">
+                      <motion.div
+                        whileTap={{ scale: 0.94 }}
+                        transition={UNIPEDIA_BOUNCE_SPRING}
+                        className="rounded-3xl bg-white/60 p-2 shadow-sm backdrop-blur-sm dark:bg-black/25"
+                      >
+                        <UniBuddy
+                          mood={step1TipIdx !== null ? 'celebrate' : 'happy'}
+                          accessory={uniAccessory === 'auto' ? 'default' : uniAccessory}
+                          size={66}
+                          onClick={() => {
+                            void hapticTap();
+                            setStep1TipIdx((prev) => (prev === null ? 0 : (prev + 1) % 3));
+                          }}
+                          ariaLabel="Tocar no Uni para ver uma dica"
+                        />
+                      </motion.div>
+                      <span className="max-w-[92px] text-center text-[10px] font-semibold leading-tight opacity-75">
+                        {step1TipIdx === null
+                          ? 'Toca no Uni'
+                          : [
+                              '«Menos pânico na véspera!»',
+                              '«Falhaste hoje? Recalculamos!»',
+                              '«Os teus dados ficam contigo.»',
+                            ][step1TipIdx]}
+                      </span>
+                    </div>
+                  </div>
+
+                  <p className="text-xs leading-relaxed opacity-85 sm:text-sm">
+                    Em vez de listas infinitas em folhas soltas que só dão culpa quando falhas um dia, a Unipedia junta <strong>cadeiras, calendário de provas, revisão espaçada</strong> e <strong>Tutor com fontes</strong> num caderno vivo feito para estudantes em Portugal.
                   </p>
                 </div>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-3">
-                {[
-                  {
-                    badge: 'Memória duradoura',
-                    title: 'Revisão 1 → 3 → 7 → 21 dias',
-                    body: 'Cada bloco concluído pergunta o teu nível de confiança e agenda a próxima revisão antes que a matéria se perca.',
-                  },
-                  {
-                    badge: 'Sem pânico de exames',
-                    title: 'Modo Teste automático',
-                    body: 'A 10 dias de uma prova importante, o plano muda de marcha para equilibrar revisão intensiva e exercícios.',
-                  },
-                  {
-                    badge: 'Ao teu ritmo',
-                    title: 'Planeamento realista',
-                    body: 'Aulas, horas de trabalho ou ginásio e cadeiras mais exigentes entram na conta — nada de listas impossíveis.',
-                  },
-                ].map((reason) => (
-                  <div
-                    key={reason.title}
-                    className="flex flex-col justify-between gap-2 rounded-3xl border border-line bg-surface p-4 shadow-sm"
-                  >
-                    <span className="w-fit rounded-full bg-accent-soft px-2.5 py-0.5 text-[10px] font-bold text-accent">
-                      {reason.badge}
-                    </span>
-                    <div>
-                      <h3 className="font-display text-sm font-bold text-fg">{reason.title}</h3>
-                      <p className="mt-1 text-xs leading-relaxed text-muted">{reason.body}</p>
+              {/* Como funciona passo a passo em linguagem de caderno */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="font-display text-sm font-bold text-fg">
+                    Como funciona na prática em 3 tempos
+                  </h3>
+                  <StickerBadge tone="butter" tilt={1}>
+                    Método comprovado
+                  </StickerBadge>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {[
+                    {
+                      step: '01 · Organiza',
+                      title: 'Plano adaptado à tua semana real',
+                      body: 'Marca as tuas cadeiras, dias livres, trabalho ou desporto. O plano distribui blocos curtos e recalcula sem acumular atrasos se um dia correr mal.',
+                      toneClass: isExpressive
+                        ? 'bg-[#C9DC9F] text-[#141312] dark:bg-[#192D21] dark:text-[#FAF6EC]'
+                        : 'border border-line bg-surface text-fg',
+                      pillClass: isExpressive
+                        ? 'bg-[#141312]/10 text-[#141312] dark:bg-white/10 dark:text-[#FAF6EC]'
+                        : 'bg-accent-soft text-accent',
+                    },
+                    {
+                      step: '02 · Memoriza',
+                      title: 'Recordação ativa 1→3→7→21d',
+                      body: 'Ao fechar cada tópico avalias o quanto te lembras. A revisão volta no dia exato antes de esqueceres — sem releituras passivas.',
+                      toneClass: isExpressive
+                        ? 'bg-[#C4E0FD] text-[#141312] dark:bg-[#192838] dark:text-[#FAF6EC]'
+                        : 'border border-line bg-surface text-fg',
+                      pillClass: isExpressive
+                        ? 'bg-[#141312]/10 text-[#141312] dark:bg-white/10 dark:text-[#FAF6EC]'
+                        : 'bg-accent-soft text-accent',
+                    },
+                    {
+                      step: '03 · Domina exames',
+                      title: 'Modo Teste + Tudo ligado',
+                      body: 'A 10 dias de uma prova, o foco vira para exercícios e revisão rápida. Drive (sebentas), Agenda, correio académico e Tutor Uni ficam à distância de 1 toque.',
+                      toneClass: isExpressive
+                        ? 'bg-[#FAD6BA] text-[#141312] dark:bg-[#332218] dark:text-[#FAF6EC]'
+                        : 'border border-line bg-surface text-fg',
+                      pillClass: isExpressive
+                        ? 'bg-[#141312]/10 text-[#141312] dark:bg-white/10 dark:text-[#FAF6EC]'
+                        : 'bg-accent-soft text-accent',
+                    },
+                  ].map((card) => (
+                    <div
+                      key={card.title}
+                      className={cx(
+                        'flex flex-col justify-between gap-2 rounded-[24px] p-4 shadow-card',
+                        card.toneClass,
+                      )}
+                    >
+                      <span
+                        className={cx(
+                          'w-fit rounded-full px-2.5 py-0.5 font-mono text-[10px] font-bold',
+                          card.pillClass,
+                        )}
+                      >
+                        {card.step}
+                      </span>
+                      <div>
+                        <h4 className="font-display text-sm font-bold leading-snug">{card.title}</h4>
+                        <p className="mt-1 text-xs leading-relaxed opacity-85">{card.body}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
 
-              <div className="rounded-3xl border border-line bg-surface p-4 shadow-sm sm:p-5">
-                <Field label="Antes de começarmos, como queres que o Uni te trate?">
+              {/* Porquê usar + Identificação pessoal */}
+              <div className="rounded-[24px] border border-line bg-surface p-4 shadow-sm sm:p-5 space-y-4">
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    'Funciona 100% offline',
+                    'Feito para ECTS & ensino PT',
+                    'Privado, sem anúncios',
+                    'Zero pressão — tu controlas o ritmo',
+                  ].map((reason) => (
+                    <span
+                      key={reason}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-3 py-1 text-[11px] font-semibold text-fg"
+                    >
+                      <CheckCircle2 size={12} className="text-ok" />
+                      {reason}
+                    </span>
+                  ))}
+                </div>
+
+                <Field label="Antes de afinarmos o teu perfil, como queres que o Uni te trate?">
                   <Input
                     value={userName}
                     onChange={(e) => setUserName(e.target.value)}
@@ -1128,25 +1254,40 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
           {/* PASSO 2: O UNIVERSO UNI, PALETA & TOM DA APLICAÇÃO */}
           {activeStepId === 'estilo-uni' && (
             <div className="space-y-5">
-              <div className="flex flex-col gap-4 rounded-3xl border border-line bg-surface p-5 shadow-card sm:flex-row sm:items-center">
-                <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl bg-[#C9DC9F]/45 ring-1 ring-line">
-                  <UniBuddy
-                    mood="curious"
-                    accessory={uniAccessory === 'auto' ? 'math' : uniAccessory}
-                    size={68}
-                    interactive={false}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-0.5 text-[11px] font-bold text-accent">
-                    <Palette size={11} /> O teu companheiro de estudo
-                  </span>
-                  <h2 className="font-display text-xl font-bold tracking-tight text-fg sm:text-2xl">
-                    Escolhe a cara e o <em className="font-editorial text-accent">tom do teu caderno</em>
-                  </h2>
-                  <p className="text-xs leading-relaxed text-muted sm:text-sm">
-                    Os Unis são pequenas mascotes colecionáveis que te acompanham e podem espreitar discretamente nos cantos do ecrã — ou ficar completamente silenciosos se preferires um estilo mais sério.
-                  </p>
+              <div
+                className={cx(
+                  'relative overflow-hidden rounded-[28px] p-5 shadow-card',
+                  isExpressive
+                    ? 'bg-[#C9DC9F] text-[#141312] dark:bg-[#192D21] dark:text-[#FAF6EC]'
+                    : 'border border-line bg-surface text-fg',
+                )}
+              >
+                {isExpressive && (
+                  <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+                    <div className="absolute -top-8 -right-8 size-28 rounded-full bg-[#FCE99F]/60 dark:bg-[#FCE99F]/10" />
+                  </div>
+                )}
+                <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-white/65 shadow-sm dark:bg-black/25">
+                    <UniBuddy
+                      mood="curious"
+                      accessory={uniAccessory === 'auto' ? 'math' : uniAccessory}
+                      size={64}
+                      interactive={false}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <StickerBadge tone="butter" tilt={-1.5}>
+                      <Palette size={11} /> O teu companheiro de estudo
+                    </StickerBadge>
+                    <h2 className="font-display text-xl font-extrabold tracking-tight sm:text-2xl">
+                      Escolhe a cara e o{' '}
+                      <span className="font-serif font-normal italic">tom do teu caderno</span>
+                    </h2>
+                    <p className="text-xs leading-relaxed opacity-85 sm:text-sm">
+                      Os Unis são pequenas mascotes colecionáveis que te acompanham e podem espreitar discretamente nos cantos do ecrã — ou ficar completamente silenciosos se preferires um estilo mais sério.
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -1402,20 +1543,35 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
           {/* PASSO 3: AVALIAÇÃO PESSOAL, ECTS (180 / 120 / 300), DIFICULDADES & ATIVIDADES EXTRA */}
           {activeStepId === 'avaliacao' && (
             <div className="space-y-5">
-              <div className="flex flex-col gap-4 rounded-3xl border border-line bg-surface p-5 shadow-card sm:flex-row sm:items-center">
-                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-[#C4E0FD]/55 ring-1 ring-line">
-                  <UniBuddy mood="thinking" size={56} interactive={false} />
-                </div>
-                <div className="space-y-1">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2.5 py-0.5 text-[11px] font-bold text-accent">
-                    <BookOpen size={11} /> Avaliação pessoal
-                  </span>
-                  <h2 className="font-display text-xl font-bold tracking-tight text-fg sm:text-2xl">
-                    Onde estás nos <em className="font-editorial text-accent">ECTS</em> e na tua semana?
-                  </h2>
-                  <p className="text-xs leading-relaxed text-muted sm:text-sm">
-                    Com os teus créditos concluídos e compromissos fora das aulas, o Uni estima o teu ano letivo e evita planos irrealistas.
-                  </p>
+              <div
+                className={cx(
+                  'relative overflow-hidden rounded-[28px] p-5 shadow-card',
+                  isExpressive
+                    ? 'bg-[#C4E0FD] text-[#141312] dark:bg-[#192838] dark:text-[#FAF6EC]'
+                    : 'border border-line bg-surface text-fg',
+                )}
+              >
+                {isExpressive && (
+                  <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+                    <div className="absolute -bottom-6 -right-6 size-24 rounded-full bg-[#FCE99F]/60 dark:bg-[#FCE99F]/10" />
+                  </div>
+                )}
+                <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-white/65 shadow-sm dark:bg-black/25">
+                    <UniBuddy mood="thinking" size={58} interactive={false} />
+                  </div>
+                  <div className="space-y-1">
+                    <StickerBadge tone="sage" tilt={-1.5}>
+                      <BookOpen size={11} /> Avaliação pessoal
+                    </StickerBadge>
+                    <h2 className="font-display text-xl font-extrabold tracking-tight sm:text-2xl">
+                      Onde estás nos{' '}
+                      <span className="font-serif font-normal italic">ECTS</span> e na tua semana?
+                    </h2>
+                    <p className="text-xs leading-relaxed opacity-85 sm:text-sm">
+                      Com os teus créditos concluídos e compromissos fora das aulas, o Uni estima o teu ano letivo e evita planos irrealistas.
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -1833,41 +1989,61 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
             </div>
           )}
 
-          {/* PASSO 2: CADEIRAS REAIS, MESTRADOS, IMPORTS E ADIÇÃO MANUAL */}
+          {/* PASSO 4: CADEIRAS REAIS, MESTRADOS, IMPORTS E ADIÇÃO MANUAL */}
           {activeStepId === 'cadeiras' && (
             <div className="space-y-4">
-              <div className="flex flex-col justify-between gap-4 rounded-3xl border border-line bg-surface p-5 shadow-card sm:flex-row sm:items-center">
-                <div className="flex items-center gap-3.5">
-                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#9EE5C9]/45 ring-1 ring-line">
-                    <UniBuddy mood="curious" size={48} interactive={false} />
+              <div
+                className={cx(
+                  'relative overflow-hidden rounded-[28px] p-5 shadow-card',
+                  isExpressive
+                    ? 'bg-[#FAD6BA] text-[#141312] dark:bg-[#332218] dark:text-[#FAF6EC]'
+                    : 'border border-line bg-surface text-fg',
+                )}
+              >
+                <div className="relative z-10 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+                  <div className="flex items-center gap-3.5">
+                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white/65 shadow-sm dark:bg-black/25">
+                      <UniBuddy mood="curious" size={48} interactive={false} />
+                    </div>
+                    <div>
+                      <StickerBadge tone="butter" tilt={-1.5}>
+                        {currentSemester}.º Semestre · Anos selecionados
+                      </StickerBadge>
+                      <h2 className="mt-1 font-display text-lg font-extrabold sm:text-xl">
+                        As tuas cadeiras{' '}
+                        <span className="font-serif font-normal italic">deste semestre</span>
+                      </h2>
+                      <p className="text-xs opacity-85">
+                        A mostrar apenas os anos escolhidos no passo anterior e o {currentSemester}.º semestre atual.
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="font-display text-lg font-bold text-fg sm:text-xl">
-                      As tuas cadeiras <em className="font-editorial text-accent">deste semestre</em>
-                    </h2>
-                    <p className="text-xs text-muted">
-                      Marca o que estás a fazer agora, o que já despachaste ou adiciona manualmente cadeiras de outros anos/mestrados.
-                    </p>
-                  </div>
-                </div>
 
-                <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className="rounded-full bg-accent-soft px-3 py-1 font-bold text-accent tabular">
-                    {doingCount} ativas
-                  </span>
-                  <span className="rounded-full bg-surface-2 px-3 py-1 font-medium text-muted tabular">
-                    {approvedCount} aprovadas
-                  </span>
-                  {!isSecondarySchool && (
-                    <span className="rounded-full bg-surface-2 px-3 py-1 font-mono font-semibold text-fg tabular">
-                      {approvedEctsFromList + activeEctsFromList}/{targetTotalEcts} ECTS
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <span
+                      className={cx(
+                        'rounded-full px-3 py-1 font-bold tabular',
+                        isExpressive
+                          ? 'bg-[#141312] text-[#FAF8F2] dark:bg-[#FAF6EC] dark:text-[#141312]'
+                          : 'bg-accent-soft text-accent',
+                      )}
+                    >
+                      {doingCount} ativas
                     </span>
-                  )}
-                  {weightedAvg !== null && (
-                    <span className="rounded-full bg-ok/15 px-3 py-1 font-semibold text-ok tabular">
-                      Média {weightedAvg.toFixed(1)}
+                    <span className="rounded-full bg-white/65 px-3 py-1 font-medium text-[#141312] tabular dark:bg-black/25 dark:text-[#FAF6EC]">
+                      {approvedCount} aprovadas
                     </span>
-                  )}
+                    {!isSecondarySchool && (
+                      <span className="rounded-full bg-white/65 px-3 py-1 font-mono font-semibold text-[#141312] tabular dark:bg-black/25 dark:text-[#FAF6EC]">
+                        {approvedEctsFromList + activeEctsFromList}/{targetTotalEcts} ECTS
+                      </span>
+                    )}
+                    {weightedAvg !== null && (
+                      <span className="rounded-full bg-[#C9DC9F] px-3 py-1 font-semibold text-[#141312] tabular">
+                        Média {weightedAvg.toFixed(1)}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -2023,7 +2199,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                 </div>
               </div>
 
-              {/* Tabs por ano */}
+              {/* Tabs por ano (mostra apenas os anos presentes no filtro atual) */}
               {availableRecordYears.length > 1 && (
                 <div className="flex flex-wrap gap-1.5">
                   <button
@@ -2031,12 +2207,12 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                     onClick={() => setYearFilter('all')}
                     className={cx(
                       'min-h-[36px] rounded-full px-3 text-xs font-semibold transition',
-                      yearFilter === 'all'
+                      effectiveYearFilter === 'all'
                         ? 'bg-ink-cta text-ink-cta-fg'
                         : 'border border-line bg-surface text-muted hover:text-fg',
                     )}
                   >
-                    Todos ({records.filter((r) => !(r.isOptional && r.status === 'por_fazer')).length})
+                    Todos ({scopedRecords.filter((r) => !(r.isOptional && r.status === 'por_fazer')).length})
                   </button>
                   {availableRecordYears.map((y) => (
                     <button
@@ -2045,13 +2221,13 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                       onClick={() => setYearFilter(y)}
                       className={cx(
                         'min-h-[36px] rounded-full px-3 text-xs font-semibold transition',
-                        yearFilter === y
+                        effectiveYearFilter === y
                           ? 'bg-ink-cta text-ink-cta-fg'
                           : 'border border-line bg-surface text-muted hover:text-fg',
                       )}
                     >
                       {formatAcademicYearShort(y, isSecondarySchool)} (
-                      {records.filter((r) => r.year === y && r.status === 'a_fazer').length})
+                      {scopedRecords.filter((r) => r.year === y && r.status === 'a_fazer').length})
                     </button>
                   ))}
                 </div>
@@ -2140,7 +2316,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
               </div>
 
               {/* Gaveta colapsável para escolher cadeiras opcionais de Mestrado/Licenciatura */}
-              {records.some((r) => r.isOptional && r.status === 'por_fazer') && (
+              {filteredRecords.some((r) => r.isOptional && r.status === 'por_fazer') && (
                 <div className="rounded-3xl border border-dashed border-line bg-surface/70 p-3.5">
                   <button
                     type="button"
@@ -2222,31 +2398,58 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                 />
                 Aplicar estas <strong>{doingCount} cadeiras ativas</strong> ao meu painel
               </label>
+
+              {(records.length > scopedRecords.length || showOtherTermsHistory) && (
+                <div className="flex justify-center pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void hapticTap();
+                      setShowOtherTermsHistory((v) => !v);
+                    }}
+                    className="min-h-[34px] text-xs font-semibold text-muted underline-offset-2 hover:text-fg hover:underline"
+                  >
+                    {showOtherTermsHistory
+                      ? `Mostrar apenas anos selecionados e ${currentSemester}.º semestre`
+                      : `Ver também anos anteriores e ${currentSemester === 1 ? '2.º' : '1.º'} semestre (+${records.length - scopedRecords.length} cadeiras)`}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
-          {/* PASSO 3: CONTAS SEPARADAS, CHAVE GEMINI, PRIVACIDADE & RITMO */}
+          {/* PASSO 5: CONTAS SEPARADAS, CHAVE GEMINI, PRIVACIDADE & RITMO */}
           {activeStepId === 'ritmo' && (
             <div className="space-y-5">
-              <div className="flex flex-col gap-4 rounded-3xl border border-line bg-surface p-5 shadow-card sm:flex-row sm:items-center">
-                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-[#FCE99F]/55 ring-1 ring-line">
-                  <UniBuddy mood="celebrate" size={58} interactive={false} />
-                </div>
-                <div className="space-y-1">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-ok/15 px-2.5 py-0.5 text-[11px] font-bold text-ok">
-                    Último passo
-                  </span>
-                  <h2 className="font-display text-xl font-bold text-fg sm:text-2xl">
-                    Contas separadas, <em className="font-editorial text-accent">Uni e ritmo</em>
-                  </h2>
-                  <p className="text-xs text-muted sm:text-sm">
-                    Liga opcionalmente o teu email institucional da faculdade, configura a chave Gemini se quiseres mensagens ilimitadas e define o teu ritmo semanal.
-                  </p>
-                  {extraActivities.length > 0 && (
-                    <p className="text-[11px] font-semibold text-accent">
-                      ✓ Atividades extra consideradas ({extraActivities.reduce((s, a) => s + a.hoursPerWeek, 0)}h/semana ajustadas no plano).
+              <div
+                className={cx(
+                  'relative overflow-hidden rounded-[28px] p-5 shadow-card',
+                  isExpressive
+                    ? 'bg-[#FCE99F] text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]'
+                    : 'border border-line bg-surface text-fg',
+                )}
+              >
+                <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-white/65 shadow-sm dark:bg-black/25">
+                    <UniBuddy mood="celebrate" size={58} interactive={false} />
+                  </div>
+                  <div className="space-y-1">
+                    <StickerBadge tone="mint" tilt={-1.5}>
+                      Último passo
+                    </StickerBadge>
+                    <h2 className="font-display text-xl font-extrabold sm:text-2xl">
+                      Contas separadas,{' '}
+                      <span className="font-serif font-normal italic">Uni e ritmo</span>
+                    </h2>
+                    <p className="text-xs opacity-85 sm:text-sm">
+                      Liga opcionalmente o teu email institucional da faculdade, configura a chave Gemini se quiseres mensagens ilimitadas e define o teu ritmo semanal.
                     </p>
-                  )}
+                    {extraActivities.length > 0 && (
+                      <p className="text-[11px] font-bold">
+                        ✓ Atividades extra consideradas ({extraActivities.reduce((s, a) => s + a.hoursPerWeek, 0)}h/semana ajustadas no plano).
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
 
