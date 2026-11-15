@@ -48,7 +48,11 @@ export function PageHeader({
         </h1>
         {subtitle && <p className="pt-0.5 text-sm leading-relaxed text-muted">{subtitle}</p>}
       </div>
-      {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+      {actions && (
+        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2 sm:shrink-0">
+          {actions}
+        </div>
+      )}
     </header>
   );
 }
@@ -127,10 +131,10 @@ export function Card({
         : 'bg-surface border border-line shadow-card';
 
   return (
-    <section className={cx('rise rounded-[20px]', surfaceClass, padded && 'p-5', className)}>
+    <section className={cx('rise min-w-0 rounded-[20px]', surfaceClass, padded && 'p-5', className)}>
       {(title || action) && (
-        <div className={cx('mb-3.5 flex items-center justify-between gap-3', !padded && 'px-5 pt-5')}>
-          <h2 className="font-display text-base font-bold tracking-tight text-fg">{title}</h2>
+        <div className={cx('mb-3.5 flex flex-wrap items-center justify-between gap-2 sm:gap-3', !padded && 'px-5 pt-5')}>
+          <h2 className="min-w-0 font-display text-base font-bold tracking-tight text-fg">{title}</h2>
           {action}
         </div>
       )}
@@ -525,7 +529,7 @@ export function SegmentedControl<T extends string>({
     <div
       role="tablist"
       className={cx(
-        'inline-flex w-full items-center gap-1 rounded-full bg-surface-2 p-1.5 sm:w-auto',
+        'inline-flex w-full max-w-full items-center gap-1 overflow-x-auto rounded-full bg-surface-2 p-1 sm:w-auto sm:p-1.5',
         className,
       )}
     >
@@ -542,7 +546,7 @@ export function SegmentedControl<T extends string>({
               onChange(item.id);
             }}
             className={cx(
-              'relative flex-1 rounded-full px-4 py-2 text-xs font-semibold transition-colors sm:flex-initial',
+              'relative min-w-0 flex-1 rounded-full px-3 py-2 text-xs font-semibold transition-colors sm:flex-initial sm:px-4',
               active ? 'text-fg' : 'text-muted hover:text-fg',
             )}
           >

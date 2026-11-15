@@ -339,6 +339,7 @@
 html, body, #root {
   min-block-size: 100dvh;
   height: 100%;
+  overflow-x: clip;
 }
 
 body {
@@ -391,21 +392,32 @@ dialog::backdrop {
 /* Garante alvos táteis >= 44px em dispositivos táteis, excetuando links inline no meio de frases. */
 @media (pointer: coarse) {
   :where(
-    button:not(.inline-link),
+    button:not(.inline-link):not(.day-pill),
     select,
     textarea,
     input:not([type="checkbox"], [type="radio"]),
-    [role="button"]:not(.inline-link),
+    [role="button"]:not(.inline-link):not(.day-pill),
     nav a
   ) {
     min-block-size: 44px;
     min-inline-size: 44px;
   }
+
+  .day-pill {
+    min-block-size: 44px;
+    min-inline-size: 0;
+  }
 }
 
 * {
-  scrollbar-width: thin;
-  scrollbar-color: var(--line) transparent;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 :focus-visible {

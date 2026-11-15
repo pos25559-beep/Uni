@@ -387,7 +387,7 @@ export default function AppShell() {
       {/* Conteúdo principal com Safe Area e espaço para a dock flutuante */}
       <main
         className={cx(
-          'min-w-0 flex-1 overflow-y-auto md:pt-0',
+          'min-w-0 flex-1 overflow-x-hidden overflow-y-auto md:pt-0',
           isFullBleedRoute
             ? 'pt-0 pb-0 md:pb-0'
             : location.pathname.startsWith('/entrar')

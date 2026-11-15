@@ -103,7 +103,7 @@ export default function ProgressPage() {
         accentTitle="progresso"
         subtitle={settings.semesterName.trim() || undefined}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex max-w-full flex-wrap items-center gap-2">
             <TabGuideHelpButton tabKey="progresso" />
             <SegmentedControl
               layoutId="progress-period-pill"
@@ -279,7 +279,7 @@ export default function ProgressPage() {
           </div>
         </section>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {(hasSessions || showEmptyCharts) && (
             <>
               <StudyByDayChart courses={courses} sessions={sessions} settings={settings} range={range} />

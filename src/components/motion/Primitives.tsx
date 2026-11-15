@@ -276,7 +276,7 @@ export function WeekDayPills({
   return (
     <div
       className={cx(
-        'grid grid-cols-7 gap-1.5 rounded-[22px] bg-surface-2/75 p-1.5',
+        'grid w-full min-w-0 grid-cols-7 gap-1 rounded-[22px] bg-surface-2/75 p-1 sm:gap-1.5 sm:p-1.5',
         className,
       )}
       role="tablist"
@@ -295,7 +295,7 @@ export function WeekDayPills({
               onSelect(d.key);
             }}
             className={cx(
-              'relative flex min-h-[54px] flex-col items-center justify-center gap-0.5 rounded-[16px] px-1 py-1.5 transition-colors',
+              'day-pill relative flex min-h-[54px] min-w-0 flex-col items-center justify-center gap-0.5 rounded-[16px] px-0.5 py-1.5 transition-colors sm:px-1',
               active
                 ? 'bg-ink-cta text-ink-cta-fg shadow-card'
                 : 'text-muted hover:bg-surface/70 hover:text-fg',
