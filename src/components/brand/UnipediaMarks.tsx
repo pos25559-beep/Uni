@@ -1,6 +1,6 @@
 import { motion } from 'motion/react';
 import type { UniAccessoryId } from '../../lib/uniAccessories';
-import type { UniSkinId } from '../../lib/uniCollectibles';
+import type { UniPetId, UniSkinId } from '../../lib/uniCollectibles';
 import { useStore } from '../../store/useStore';
 
 /**
@@ -64,6 +64,24 @@ export type BuddyMood = 'happy' | 'curious' | 'celebrate' | 'calm' | 'thinking' 
  * Criado originalmente em SVG vetorial com respiração contínua, piscar natural,
  * estados reativos (a pensar, a esconder os olhos na palavra-passe, a celebrar) e toque tátil.
  */
+const SKIN_PALETTE_MAP: Record<
+  UniSkinId,
+  { fill: string; celebrateFill?: string; darkInk?: boolean; bookmark: string; cheek: string; cheekOpacity: number }
+> = {
+  classic: { fill: '#C9DC9F', celebrateFill: '#FCE99F', bookmark: '#E04F33', cheek: '#E04F33', cheekOpacity: 0.35 },
+  sky: { fill: '#C4E0FD', celebrateFill: '#FCE99F', bookmark: '#1D4ED8', cheek: '#E04F33', cheekOpacity: 0.32 },
+  peach: { fill: '#FAD6BA', celebrateFill: '#FCE99F', bookmark: '#E04F33', cheek: '#D97757', cheekOpacity: 0.42 },
+  blush: { fill: '#F9C5BE', celebrateFill: '#FCE99F', bookmark: '#B83A22', cheek: '#E04F33', cheekOpacity: 0.45 },
+  mint: { fill: '#BCEEE0', celebrateFill: '#FCE99F', bookmark: '#0F766E', cheek: '#E04F33', cheekOpacity: 0.34 },
+  cream: { fill: '#EFE6D5', celebrateFill: '#FCE99F', bookmark: '#157F58', cheek: '#E04F33', cheekOpacity: 0.35 },
+  crimson: { fill: '#EF6249', celebrateFill: '#F67E66', bookmark: '#FAF8F2', cheek: '#B93822', cheekOpacity: 0.5 },
+  butter: { fill: '#FCE99F', bookmark: '#157F58', cheek: '#E04F33', cheekOpacity: 0.38 },
+  sage: { fill: '#74C69D', bookmark: '#157F58', cheek: '#E04F33', cheekOpacity: 0.35 },
+  terracotta: { fill: '#D97757', celebrateFill: '#E68A6B', bookmark: '#FAF8F2', cheek: '#A33F24', cheekOpacity: 0.45 },
+  espresso: { fill: '#8D6E63', darkInk: true, bookmark: '#FCE99F', cheek: '#E04F33', cheekOpacity: 0.42 },
+  ink: { fill: '#24221F', darkInk: true, bookmark: '#FCE99F', cheek: '#E04F33', cheekOpacity: 0.4 },
+};
+
 export function UniBuddy({
   mood = 'happy',
   accessory = 'default',
@@ -85,35 +103,26 @@ export function UniBuddy({
 }) {
   const savedSkin = useStore((s) => s.settings.uniSkin ?? 'classic');
   const activeSkin: UniSkinId = skin ?? savedSkin;
-  const ink = activeSkin === 'ink' ? '#FAF8F2' : '#141312';
-  const pupilHighlight = activeSkin === 'ink' ? '#FCE99F' : '#FFFFFF';
-  const bookmarkFill =
-    activeSkin === 'crimson'
-      ? '#FAF8F2'
-      : activeSkin === 'butter' || activeSkin === 'sage'
-        ? '#157F58'
-        : '#E04F33';
+  const palette = SKIN_PALETTE_MAP[activeSkin] ?? SKIN_PALETTE_MAP.classic;
+  const isDarkSkin = Boolean(palette.darkInk);
+  const ink = isDarkSkin ? '#FAF8F2' : '#141312';
+  const pupilHighlight = isDarkSkin ? '#FCE99F' : '#FFFFFF';
+  const bookmarkFill = palette.bookmark;
 
+  const classicMoodFill: Partial<Record<BuddyMood, string>> = {
+    celebrate: '#FCE99F',
+    calm: '#BCEEE0',
+    curious: '#FAD6BA',
+    thinking: '#FAD6BA',
+    shy: '#C4E0FD',
+    peek: '#C4E0FD',
+  };
   const bg =
-    activeSkin === 'crimson'
-      ? mood === 'celebrate'
-        ? '#F67E66'
-        : '#EF6249'
-      : activeSkin === 'butter'
-        ? '#FCE99F'
-        : activeSkin === 'sage'
-          ? '#9EE5C9'
-          : activeSkin === 'ink'
-            ? '#24221F'
-            : mood === 'celebrate'
-              ? '#FCE99F'
-              : mood === 'calm'
-                ? '#BCEEE0'
-                : mood === 'curious' || mood === 'thinking'
-                  ? '#FAD6BA'
-                  : mood === 'shy' || mood === 'peek'
-                    ? '#C4E0FD'
-                    : '#C9DC9F';
+    activeSkin === 'classic'
+      ? classicMoodFill[mood] ?? palette.fill
+      : mood === 'celebrate' && palette.celebrateFill
+        ? palette.celebrateFill
+        : palette.fill;
 
   const floatAnimate =
     mood === 'celebrate'
@@ -162,7 +171,7 @@ export function UniBuddy({
       <path
         d="M40 8C46.5 8 51.2 12.2 54.8 14.2C59.2 16.6 64.5 17.5 67.2 22.2C69.8 26.8 68 32.3 69.2 37.5C70.4 42.6 74 47.4 71.8 52.8C69.7 58 63.8 59.8 59.3 63.1C54.9 66.3 51.2 71.8 45.4 72C39.6 72.2 35.4 67.5 30.1 66.2C24.8 64.9 18.2 66.8 14.3 62.6C10.4 58.3 12.1 51.7 10.6 46.2C9.1 40.8 5.2 35.8 7.4 30.2C9.5 24.7 15.8 23.8 19.8 19.6C23.8 15.3 25.4 9.5 31.1 8.4C34.2 7.8 37.2 8 40 8Z"
         fill={bg}
-        stroke={activeSkin === 'ink' ? '#FCE99F' : '#141312'}
+        stroke={isDarkSkin ? '#FCE99F' : '#141312'}
         strokeWidth="2.2"
       />
 
@@ -175,8 +184,8 @@ export function UniBuddy({
       )}
 
       {/* Bochechas */}
-      <circle cx="26.5" cy="43.5" r="3.5" fill={activeSkin === 'crimson' ? '#B93822' : '#E04F33'} fillOpacity={activeSkin === 'crimson' ? 0.5 : 0.35} />
-      <circle cx="53.5" cy="43.5" r="3.5" fill={activeSkin === 'crimson' ? '#B93822' : '#E04F33'} fillOpacity={activeSkin === 'crimson' ? 0.5 : 0.35} />
+      <circle cx="26.5" cy="43.5" r="3.5" fill={palette.cheek} fillOpacity={palette.cheekOpacity} />
+      <circle cx="53.5" cy="43.5" r="3.5" fill={palette.cheek} fillOpacity={palette.cheekOpacity} />
 
       {/* Olhos reativos com piscar natural */}
       {mood === 'celebrate' ? (
@@ -348,6 +357,102 @@ export function UniBuddy({
 
 /** Alias mantido para compatibilidade com importações existentes. */
 export const NotebookBuddy = UniBuddy;
+
+/**
+ * Micropets originais de papelaria/origami ao estilo Finch que caminham ao lado do Uni.
+ */
+export function UniPetBuddy({
+  pet,
+  size = 24,
+  className,
+}: {
+  pet: Exclude<UniPetId, 'none'>;
+  size?: number;
+  className?: string;
+}) {
+  return (
+    <motion.svg
+      width={size}
+      height={size}
+      viewBox="0 0 48 48"
+      fill="none"
+      className={className}
+      animate={{ y: [0, -2.5, 0], rotate: [-1.5, 1.5, -1.5] }}
+      transition={{ repeat: Infinity, duration: 2.8, ease: 'easeInOut' }}
+      aria-hidden="true"
+    >
+      {pet === 'cat' && (
+        <g>
+          <path
+            d="M11 24L13 11L21 17H27L35 11L37 24C39 33 34 40 24 40C14 40 9 33 11 24Z"
+            fill="#FAD6BA"
+            stroke="#141312"
+            strokeWidth="2.2"
+            strokeLinejoin="round"
+          />
+          <path d="M15 17L14.5 13L18 16M33 17L33.5 13L30 16" stroke="#E04F33" strokeWidth="1.6" strokeLinecap="round" />
+          <circle cx="19" cy="26" r="2.1" fill="#141312" />
+          <circle cx="29" cy="26" r="2.1" fill="#141312" />
+          <path d="M22.5 30L24 31.5L25.5 30" stroke="#E04F33" strokeWidth="2" strokeLinecap="round" />
+          <path d="M10 27H15M33 27H38" stroke="#141312" strokeWidth="1.5" strokeLinecap="round" opacity="0.6" />
+        </g>
+      )}
+      {pet === 'owl' && (
+        <g>
+          <ellipse cx="24" cy="26" rx="14" ry="15" fill="#D97757" stroke="#141312" strokeWidth="2.2" />
+          <ellipse cx="24" cy="31" rx="8" ry="8" fill="#FAF8F2" />
+          <circle cx="19" cy="22" r="5" fill="#FAF8F2" stroke="#141312" strokeWidth="1.8" />
+          <circle cx="29" cy="22" r="5" fill="#FAF8F2" stroke="#141312" strokeWidth="1.8" />
+          <circle cx="19.5" cy="22" r="2" fill="#141312" />
+          <circle cx="28.5" cy="22" r="2" fill="#141312" />
+          <path d="M22 26L24 29L26 26Z" fill="#FCE99F" stroke="#141312" strokeWidth="1.4" strokeLinejoin="round" />
+        </g>
+      )}
+      {pet === 'fox' && (
+        <g>
+          <path
+            d="M10 13L19 19H29L38 13L39 27C39 34 32 40 24 40C16 40 9 34 9 27L10 13Z"
+            fill="#E04F33"
+            stroke="#141312"
+            strokeWidth="2.2"
+            strokeLinejoin="round"
+          />
+          <path d="M10 28C15 31 19 36 24 40C29 36 33 31 38 28C35 36 30 40 24 40C18 40 13 36 10 28Z" fill="#FAF8F2" />
+          <circle cx="19" cy="25" r="2.1" fill="#141312" />
+          <circle cx="29" cy="25" r="2.1" fill="#141312" />
+          <circle cx="24" cy="31" r="2.3" fill="#141312" />
+        </g>
+      )}
+      {pet === 'turtle' && (
+        <g>
+          <ellipse cx="22" cy="34" rx="13" ry="5" fill="#C9DC9F" stroke="#141312" strokeWidth="2" />
+          <path
+            d="M10 31C10 21 15 16 22 16C29 16 34 21 34 31Z"
+            fill="#157F58"
+            stroke="#141312"
+            strokeWidth="2.2"
+            strokeLinejoin="round"
+          />
+          <circle cx="38" cy="28" r="5" fill="#C9DC9F" stroke="#141312" strokeWidth="2" />
+          <circle cx="39.5" cy="27" r="1.4" fill="#141312" />
+          <path d="M17 22H27M22 18V29" stroke="#FCE99F" strokeWidth="1.6" strokeLinecap="round" />
+        </g>
+      )}
+      {pet === 'rabbit' && (
+        <g>
+          <ellipse cx="18" cy="14" rx="3.8" ry="9" fill="#FCE99F" stroke="#141312" strokeWidth="2" />
+          <ellipse cx="30" cy="14" rx="3.8" ry="9" fill="#FCE99F" stroke="#141312" strokeWidth="2" />
+          <ellipse cx="24" cy="29" rx="12.5" ry="11.5" fill="#FCE99F" stroke="#141312" strokeWidth="2.2" />
+          <circle cx="19.5" cy="27" r="2" fill="#141312" />
+          <circle cx="28.5" cy="27" r="2" fill="#141312" />
+          <circle cx="24" cy="30.5" r="1.8" fill="#E04F33" />
+          <circle cx="16.5" cy="31" r="2" fill="#E04F33" fillOpacity="0.35" />
+          <circle cx="31.5" cy="31" r="2" fill="#E04F33" fillOpacity="0.35" />
+        </g>
+      )}
+    </motion.svg>
+  );
+}
 
 export type OnboardingSceneKey = 'welcome' | 'privacy' | 'curriculum' | 'rhythm';
 

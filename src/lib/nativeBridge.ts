@@ -13,6 +13,8 @@ const PALETTE_BG: Record<ThemePalette, { light: string; dark: string }> = {
   ardosia: { light: '#F6F7F9', dark: '#111318' },
   terracota: { light: '#FBF7F2', dark: '#17120F' },
   oceano: { light: '#F5F8FC', dark: '#0F141D' },
+  cafe: { light: '#FAF5EE', dark: '#17120F' },
+  menta: { light: '#F4FAF7', dark: '#0D1714' },
 };
 
 export type ThemePreference = 'system' | 'light' | 'dark';

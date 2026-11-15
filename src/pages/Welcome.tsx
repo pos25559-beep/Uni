@@ -220,7 +220,7 @@ export default function WelcomePage() {
 
                   {/* Cores colecionáveis do Uni + critério de mérito */}
                   <div className="flex flex-col items-center gap-1.5">
-                    <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
+                    <div className="flex flex-wrap items-center justify-center gap-1.5">
                       {UNI_SKINS.map((sk) => {
                         const active = previewSkin === sk.id;
                         return (
@@ -232,18 +232,18 @@ export default function WelcomePage() {
                               setPreviewSkin(sk.id);
                             }}
                             aria-label={`Pré-visualizar ${sk.name}`}
+                            title={sk.name}
                             className={cx(
-                              'flex min-h-11 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition',
+                              'flex size-10 items-center justify-center rounded-full border-2 transition sm:size-11',
                               active
-                                ? 'border-fg bg-ink-cta text-ink-cta-fg shadow-card'
-                                : 'border-black/10 bg-white/75 text-[#141312] hover:bg-white dark:border-white/15 dark:bg-black/30 dark:text-[#FAF6EC]',
+                                ? 'scale-105 border-fg bg-surface shadow-card'
+                                : 'border-transparent bg-white/75 hover:bg-white dark:bg-black/30',
                             )}
                           >
                             <span
-                              className="size-3.5 shrink-0 rounded-full border border-black/15"
+                              className="size-6 rounded-full border border-black/15"
                               style={{ backgroundColor: sk.swatchHex }}
                             />
-                            <span>{sk.name.replace('Uni ', '')}</span>
                           </button>
                         );
                       })}
@@ -253,7 +253,7 @@ export default function WelcomePage() {
                       <Trophy size={13} className="text-[#0F6344] dark:text-[#4ADE80]" />
                       <span>
                         <strong>{activeSkinMeta.name}:</strong>{' '}
-                        {activeSkinMeta.id === 'classic'
+                        {activeSkinMeta.starter
                           ? 'Disponível desde o início'
                           : `Mérito · ${activeSkinMeta.unlockHint}`}
                       </span>

@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import WeeklyTutorModal from '../components/assistant/WeeklyTutorModal';
 import UniCollectiblesModal from '../components/brand/UniCollectiblesModal';
-import { UniBuddy } from '../components/brand/UnipediaMarks';
+import { UniBuddy, UniPetBuddy } from '../components/brand/UnipediaMarks';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import AcademicGmailWidget from '../components/home/AcademicGmailWidget';
 import { getUniCollectibleStates, readCollectibleTelemetry } from '../lib/uniCollectibles';
@@ -150,6 +150,8 @@ export default function Dashboard() {
     [sessions, courses, weeklyCheckIns],
   );
   const unlockedCollectibles = collectibles.filter((c) => c.unlocked).length;
+
+  const activePet = settings.uniPet ?? 'cat';
 
   const [scope, setScope] = useState<'today' | 'week'>('today');
   const [draft, setDraft] = useState('');
@@ -609,7 +611,10 @@ export default function Dashboard() {
               className="inline-flex min-h-[38px] items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 py-1 text-xs font-semibold text-fg transition hover:border-accent sm:px-3"
             >
               <Sparkles size={13} className="text-accent" />
-              <span className="hidden sm:inline">Coleção Uni · </span>
+              {activePet !== 'none' && (
+                <UniPetBuddy pet={activePet} size={18} />
+              )}
+              <span className="hidden sm:inline">Ninho &amp; Coleção · </span>
               <span className="tabular">{unlockedCollectibles}/{collectibles.length}</span>
             </button>
           )}

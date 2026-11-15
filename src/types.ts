@@ -184,10 +184,39 @@ export interface IntegrationStatus {
   error?: string;
 }
 
-export type ThemePalette = 'caderno' | 'botanico' | 'ardosia' | 'terracota' | 'oceano';
+export type ThemePalette = 'caderno' | 'botanico' | 'ardosia' | 'terracota' | 'oceano' | 'cafe' | 'menta';
 export type AppTone = 'vibrante' | 'serio';
 export type UniLiveCompanionsMode = 'all' | 'solo' | 'off';
 export type HubFlowId = 'caloiro_inicio' | 'caloiro_meio' | 'veterano_inicio' | 'veterano_meio';
+
+export type UniSkinId =
+  | 'classic'
+  | 'sky'
+  | 'peach'
+  | 'blush'
+  | 'mint'
+  | 'cream'
+  | 'crimson'
+  | 'butter'
+  | 'sage'
+  | 'terracotta'
+  | 'espresso'
+  | 'ink';
+
+export type UniPetId = 'none' | 'cat' | 'owl' | 'fox' | 'turtle' | 'rabbit';
+
+export type PlannerStrategy = 'balanced' | 'exams_first' | 'srs_focus' | 'catch_up';
+export type PlannerDayPeriod = 'auto' | 'morning' | 'afternoon' | 'evening';
+
+export interface PlannerPreferences {
+  horizonDays: 7 | 14 | 21;
+  preferredPeriod: PlannerDayPeriod;
+  blockMinutes: 25 | 35 | 50 | 75;
+  strategy: PlannerStrategy;
+  boostCourseIds?: ID[];
+  pausedCourseIds?: ID[];
+  includeOverdue?: boolean;
+}
 
 export interface ExtraActivity {
   id: ID;
@@ -242,8 +271,14 @@ export interface Settings {
   hasSeenWelcome?: boolean;
   /** Visual/acessório escolhido para o mascote Uni ('auto' adapta-se ao curso/cadeira). */
   uniAccessory?: 'auto' | 'default' | 'math' | 'tech' | 'health' | 'arts' | 'science' | 'humanities';
-  /** Edição/tema de cor do mascote Uni desbloqueado por estudo. */
-  uniSkin?: 'classic' | 'crimson' | 'butter' | 'sage' | 'ink';
+  /** Edição/tema de cor do mascote Uni (cores iniciais e colecionáveis de estudo). */
+  uniSkin?: UniSkinId;
+  /** Varia automaticamente a cor entre desbloqueadas nos companheiros discretos / a cada dia. */
+  uniSkinAutoRotate?: boolean;
+  /** Micropet de papelaria que acompanha o Uni (estilo Finch). */
+  uniPet?: UniPetId;
+  /** Preferências guardadas do Criador de Planos em /plano. */
+  plannerPrefs?: PlannerPreferences;
   /** Personalidade do Uni nas respostas do Tutor. */
   uniPersona?: 'amigo' | 'exigente' | 'calmo';
   /** Indica se o tour guiado pós-onboarding já foi concluído. */

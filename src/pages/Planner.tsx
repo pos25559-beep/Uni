@@ -24,6 +24,7 @@ import {
 import CourseDistribution from '../components/planner/CourseDistribution';
 import DayColumn from '../components/planner/DayColumn';
 import FocusTimer from '../components/planner/FocusTimer';
+import PlanBuilderModal from '../components/planner/PlanBuilderModal';
 import SessionModal from '../components/planner/SessionModal';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import {
@@ -33,17 +34,16 @@ import {
   Card,
   CourseChip,
   EmptyState,
-  Modal,
   PageHeader,
   SegmentedControl,
   showToast,
 } from '../components/ui';
 import { weekdayShort } from '../lib/colors';
 import { hapticTap } from '../lib/nativeBridge';
-import { analyzeTestMode, generatePlan, planSummary } from '../lib/planner';
+import { analyzeTestMode, generatePlan, planSummary, rescheduleOverdueSessions } from '../lib/planner';
 import { capitalizeFirst, fmtMinutes, sessionMinutes, todayStr } from '../lib/selectors';
 import { useStore } from '../store/useStore';
-import type { StudySession } from '../types';
+import type { PlannerPreferences, StudySession } from '../types';
 
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
@@ -71,6 +71,7 @@ export default function Planner() {
   const upsertMany = useStore((s) => s.upsertMany);
   const patch = useStore((s) => s.patch);
   const remove = useStore((s) => s.remove);
+  const updateSettings = useStore((s) => s.updateSettings);
   const navigate = useNavigate();
 
   const today = useMemo(() => todayStr(), []);
@@ -78,7 +79,7 @@ export default function Planner() {
   const [selectedDayKey, setSelectedDayKey] = useState(today);
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
   const [actionsOpen, setActionsOpen] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [builderOpen, setBuilderOpen] = useState(false);
   const [tutorOpen, setTutorOpen] = useState(false);
   const [modal, setModal] = useState<{ session?: StudySession; date: string } | null>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
@@ -154,6 +155,8 @@ export default function Planner() {
   const starterOnlyMode = courses.length > 0 && !assessments.some((a) => a.grade === undefined);
   const focusSession = focusId ? sessions.find((s) => s.id === focusId) : undefined;
 
+  const plannerPrefs = settings.plannerPrefs;
+
   const generate = () => {
     void hapticTap();
     const now = new Date();
@@ -165,24 +168,97 @@ export default function Planner() {
       settings,
       from: today,
       nowMinutes: now.getHours() * 60 + now.getMinutes(),
-      days: 14,
+      days: plannerPrefs?.horizonDays ?? 14,
       existing: sessions.filter((s) => !s.generated || s.done || s.date < today),
       difficultCourseIds: academicProfile.difficultCourseIds,
       weeklyCheckIns,
       extraActivities: academicProfile.extraActivities,
+      preferredPeriod: plannerPrefs?.preferredPeriod,
+      blockMinutes: plannerPrefs?.blockMinutes,
+      strategy: plannerPrefs?.strategy,
+      boostCourseIds: plannerPrefs?.boostCourseIds,
+      pausedCourseIds: plannerPrefs?.pausedCourseIds,
     });
     replaceGeneratedSessions(today, plan);
-    setConfirmOpen(false);
+    setBuilderOpen(false);
     celebrateStationery();
     showToast(`Plano gerado com ${plan.length} sessões`, 'ok');
   };
 
-  const onGenerate = () => (hasPendingGenerated ? setConfirmOpen(true) : generate());
+  const applyCustomPlan = ({
+    prefs,
+    dailyStudyMinutes,
+    studyDays,
+    plan,
+  }: {
+    prefs: PlannerPreferences;
+    dailyStudyMinutes: number;
+    studyDays: number[];
+    plan: StudySession[];
+  }) => {
+    void hapticTap();
+    updateSettings({
+      plannerPrefs: prefs,
+      dailyStudyMinutes,
+      studyDays,
+    });
+    replaceGeneratedSessions(today, plan);
+    if (prefs.includeOverdue && overdue.length > 0) {
+      const now = new Date();
+      const { updated } = rescheduleOverdueSessions({
+        overdue,
+        existing: [
+          ...sessions.filter((s) => !s.generated || s.done || s.date < today).filter((s) => s.date >= today),
+          ...plan,
+        ],
+        classes,
+        events,
+        settings: { ...settings, dailyStudyMinutes, studyDays },
+        from: today,
+        nowMinutes: now.getHours() * 60 + now.getMinutes(),
+        days: prefs.horizonDays,
+        preferredPeriod: prefs.preferredPeriod,
+      });
+      if (updated.length > 0) upsertMany('sessions', updated);
+    }
+    setBuilderOpen(false);
+    celebrateStationery();
+    showToast(`Plano aplicado · ${plan.length} sessões criadas`, 'ok');
+  };
+
+  const onGenerate = () => setBuilderOpen(true);
 
   const moveAllToToday = () => {
     void hapticTap();
     upsertMany('sessions', overdue.map((s) => ({ ...s, date: today })));
     showToast('Sessões movidas para hoje', 'ok');
+  };
+
+  const rescheduleOverdueSmart = () => {
+    void hapticTap();
+    const now = new Date();
+    const { updated, unscheduledCount } = rescheduleOverdueSessions({
+      overdue,
+      existing: sessions.filter((s) => s.date >= today),
+      classes,
+      events,
+      settings,
+      from: today,
+      nowMinutes: now.getHours() * 60 + now.getMinutes(),
+      days: plannerPrefs?.horizonDays ?? 14,
+      preferredPeriod: plannerPrefs?.preferredPeriod ?? 'auto',
+    });
+    if (updated.length > 0) {
+      upsertMany('sessions', updated);
+      showToast(
+        unscheduledCount > 0
+          ? `${updated.length} sessões reagendadas · ${unscheduledCount} mantêm-se em atraso`
+          : `${updated.length} sessões distribuídas pelos próximos dias livres`,
+        'ok',
+      );
+    } else {
+      showToast('Sem margem livre nos próximos dias — podes mover para hoje ou aumentar a meta.', 'neutral');
+    }
   };
 
   const weekLabel = `${format(weekDays[0], 'd MMM', { locale: pt })} – ${format(weekDays[6], 'd MMM yyyy', { locale: pt })}`;
@@ -215,7 +291,7 @@ export default function Planner() {
         eyebrow="Planeador"
         title="Plano de"
         accentTitle="estudo"
-        subtitle={`${fmtMinutes(settings.dailyStudyMinutes)} por dia · ${studyDaysLabel(settings.studyDays)}`}
+        subtitle={`${fmtMinutes(settings.dailyStudyMinutes)} por dia · ${studyDaysLabel(settings.studyDays)}${plannerPrefs ? ` · blocos ${plannerPrefs.blockMinutes}m (${plannerPrefs.horizonDays}d)` : ''}`}
         actions={
           <div className="flex items-center gap-2">
             <TabGuideHelpButton tabKey="plano" />
@@ -346,9 +422,14 @@ export default function Planner() {
               className="border-warn/40"
               title={`Em atraso (${overdue.length})`}
               action={
-                <Button size="sm" variant="secondary" onClick={moveAllToToday}>
-                  Mover todas para hoje
-                </Button>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Button size="sm" variant="primary" onClick={rescheduleOverdueSmart}>
+                    <Sparkles size={13} /> Reagendar inteligentes
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={moveAllToToday}>
+                    Mover para hoje
+                  </Button>
+                </div>
               }
             >
               <ul className="divide-y divide-line">
@@ -531,26 +612,23 @@ export default function Planner() {
 
       <WeeklyTutorModal open={tutorOpen} onClose={() => setTutorOpen(false)} />
 
-      <Modal
-        open={confirmOpen}
-        onClose={() => setConfirmOpen(false)}
-        title="Substituir o plano?"
-        footer={
-          <>
-            <Button onClick={() => setConfirmOpen(false)}>Cancelar</Button>
-            <Button variant="primary" onClick={generate}>
-              Gerar plano
-            </Button>
-          </>
-        }
-      >
-        <p className="text-sm text-muted">
-          As sessões geradas que ainda não fizeste, a partir de hoje, são substituídas por um plano novo.
-        </p>
-        <p className="text-sm text-muted">
-          Mantêm-se as sessões concluídas, as que criaste manualmente e as que estão em atraso.
-        </p>
-      </Modal>
+      <PlanBuilderModal
+        open={builderOpen}
+        onClose={() => setBuilderOpen(false)}
+        courses={courses}
+        assessments={assessments}
+        classes={classes}
+        events={events}
+        sessions={sessions}
+        settings={settings}
+        difficultCourseIds={academicProfile.difficultCourseIds}
+        weeklyCheckIns={weeklyCheckIns}
+        extraActivities={academicProfile.extraActivities}
+        today={today}
+        overdueCount={overdue.length}
+        hasPendingGenerated={hasPendingGenerated}
+        onApply={applyCustomPlan}
+      />
     </AnimatedPage>
   );
 }

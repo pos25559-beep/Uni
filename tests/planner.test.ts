@@ -32,7 +32,7 @@ import { groupConversations, subjectLabel } from '../src/lib/geminiConversations
 import { flattenMarkdownMathForText, formatInlineLatexToText } from '../src/lib/latexText';
 import { CustomKeyError, HttpStatusError, friendlyCustomKeyError } from '../src/lib/geminiErrors';
 import { sanitizePdfWinAnsi } from '../src/lib/pdfExport';
-import { generatePlan, analyzeTestMode } from '../src/lib/planner';
+import { generatePlan, analyzeTestMode, rescheduleOverdueSessions } from '../src/lib/planner';
 import { capitalizeFirst, parsePtGrade, sessionMinutes } from '../src/lib/selectors';
 import {
   applyImportedScheduleRecords,
@@ -63,8 +63,18 @@ import {
   normalizeSafeHubUrl,
   normalizeSharedDriveUrl,
 } from '../src/lib/studyHub';
-import { getUniCollectibleStates } from '../src/lib/uniCollectibles';
-import { pickNextShyBehavior, resolveVisibleUniPeers } from '../src/lib/uniPetEngine';
+import {
+  UNI_PETS,
+  UNI_SKINS,
+  computeUniCompanionState,
+  getUniCollectibleStates,
+  getUniPetStates,
+} from '../src/lib/uniCollectibles';
+import {
+  pickNextNomadPlacement,
+  pickNextShyBehavior,
+  resolveVisibleUniPeers,
+} from '../src/lib/uniPetEngine';
 import {
   extractUniSyncBlock,
   looksSyncableReply,
@@ -1865,4 +1875,138 @@ test('persistAcademicEmails e loadPersistedAcademicEmails persistem avisos entre
     });
     clearAcademicEmailsCache(true);
   }
+});
+
+test('generatePlan suporta turno preferido, blocos 25m, boost e pausa de cadeira + reagendamento inteligente', () => {
+  const c1: Course = {
+    id: 'c-math',
+    code: 'AM1',
+    name: 'Análise Matemática I',
+    shortName: 'AM1',
+    ects: 6,
+    color: 'emerald',
+    targetGrade: 14,
+    topics: [{ id: 'tm1', title: 'Limites', status: 'todo', confidence: 3 }],
+  };
+  const c2: Course = {
+    id: 'c-phys',
+    code: 'FIS',
+    name: 'Física',
+    shortName: 'FIS',
+    ects: 6,
+    color: 'sky',
+    targetGrade: 14,
+    topics: [{ id: 'tp1', title: 'Cinemática', status: 'todo', confidence: 3 }],
+  };
+
+  const plan = generatePlan({
+    courses: [c1, c2],
+    assessments: [],
+    classes: [{ id: 'cls1', courseId: 'c-math', type: 'T', weekday: 1, start: '09:00', end: '10:30' }],
+    events: [],
+    settings: { ...defaultSettings, dailyStudyMinutes: 100, studyDays: [1, 2, 3, 4, 5] },
+    from: '2026-11-16',
+    days: 3,
+    preferredPeriod: 'morning',
+    blockMinutes: 25,
+    boostCourseIds: ['c-math'],
+    pausedCourseIds: ['c-phys'],
+  });
+
+  assert.ok(plan.length > 0, 'Deve gerar blocos no período da manhã');
+  assert.equal(plan.some((s) => s.courseId === 'c-phys'), false, 'Cadeira pausada deve ser excluída');
+  assert.ok(plan.every((s) => s.minutes <= 25), 'Blocos devem respeitar teto Pomodoro 25m');
+  // Na segunda-feira (aula 09:00-10:30), bloco da manhã arranca às 08:30 (25m) e salta para depois da aula (10:40)
+  const monSessions = plan.filter((s) => s.date === '2026-11-16');
+  assert.equal(monSessions[0]?.start, '08:30');
+  assert.equal(monSessions[1]?.start, '10:40');
+
+  const overdue: StudySession[] = [
+    {
+      id: 'ov1',
+      courseId: 'c-phys',
+      date: '2026-11-12',
+      minutes: 40,
+      done: false,
+      generated: true,
+    },
+  ];
+  const rescheduled = rescheduleOverdueSessions({
+    overdue,
+    existing: plan,
+    classes: [{ id: 'cls1', courseId: 'c-math', type: 'T', weekday: 1, start: '09:00', end: '10:30' }],
+    events: [],
+    settings: { ...defaultSettings, dailyStudyMinutes: 120, studyDays: [1, 2, 3, 4, 5] },
+    from: '2026-11-16',
+    days: 5,
+    preferredPeriod: 'morning',
+  });
+  assert.equal(rescheduled.updated.length, 1);
+  assert.equal(rescheduled.unscheduledCount, 0);
+  assert.ok(rescheduled.updated[0]!.date >= '2026-11-16');
+});
+
+test('12 cores do Uni, 5 Micropets e energia diaria estilo Finch funcionam de forma deterministica', () => {
+  assert.equal(UNI_SKINS.length, 12);
+  assert.equal(UNI_PETS.length, 5);
+
+  const zeroTelemetry = {
+    completedSessions: 0,
+    totalRecalls: 0,
+    streakDays: 0,
+    checkInsCount: 0,
+    mastered21dCount: 0,
+    totalStudyMinutes: 0,
+  };
+  const initialSkins = getUniCollectibleStates(zeroTelemetry);
+  const initialPets = getUniPetStates(zeroTelemetry);
+  assert.equal(initialSkins.filter((s) => s.unlocked).length, 6);
+  assert.equal(initialPets.filter((p) => p.unlocked).length, 1);
+  assert.equal(initialPets.find((p) => p.pet.id === 'cat')?.unlocked, true);
+
+  const companion = computeUniCompanionState({
+    sessions: [
+      { id: 's1', courseId: 'c1', date: '2026-11-15', minutes: 50, done: true },
+      { id: 's2', courseId: 'c1', date: '2026-11-15', minutes: 50, done: true },
+      { id: 's3', courseId: 'c1', date: '2026-11-14', minutes: 40, done: true },
+    ],
+    tasks: [],
+    weeklyCheckIns: [],
+    today: '2026-11-15',
+    dailyHugs: 2,
+  });
+  assert.equal(companion.totalStudyMinutes, 140);
+  assert.equal(companion.stage.id, 'explorador');
+  assert.equal(companion.dailyEnergy, 40);
+  assert.equal(companion.adventureDone, true);
+  assert.ok(companion.discoveryNote);
+});
+
+test('UniLivingOverlay nómada alterna ancoras e varia cores entre visitantes', () => {
+  const seenZones = new Set<string>();
+  for (let step = 0; step < 6; step++) {
+    seenZones.add(pickNextNomadPlacement({ pathname: '/', stepCount: step }).zone);
+  }
+  assert.ok(seenZones.size >= 4, 'Deve passear por varias bordas/cantos sem ficar preso num unico canto');
+
+  const tutorAnchor = pickNextNomadPlacement({ pathname: '/assistente', stepCount: 0 }).zone;
+  assert.equal(tutorAnchor.startsWith('bottom_'), false, 'No Tutor deve evitar ancoragem inferior sobre o compositor');
+
+  const peers = resolveVisibleUniPeers({
+    activeSkin: 'classic',
+    telemetry: {
+      completedSessions: 0,
+      totalRecalls: 0,
+      streakDays: 0,
+      checkInsCount: 0,
+      mastered21dCount: 0,
+    },
+    mode: 'all',
+    appTone: 'vibrante',
+    tickSeed: 1,
+    autoRotate: true,
+    pathname: '/materiais',
+  });
+  assert.equal(peers.length, 2);
+  assert.notEqual(peers[0], peers[1], 'Visitante secundario deve ter cor distinta da principal');
 });

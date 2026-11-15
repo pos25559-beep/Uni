@@ -17,6 +17,8 @@ export const defaultSettings: Settings = {
   msClientId: '',
   uniAccessory: 'auto',
   uniSkin: 'classic',
+  uniSkinAutoRotate: true,
+  uniPet: 'cat',
   uniPersona: 'amigo',
   seenTabGuides: [],
   notifications: {

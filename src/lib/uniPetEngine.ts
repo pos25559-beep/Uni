@@ -3,18 +3,41 @@ import { getUniCollectibleStates, type CollectibleTelemetry, type UniSkinId } fr
 
 export type PetBehavior = 'idle_peek' | 'edge_walk' | 'shy_hide' | 'quiet_meetup' | 'tiny_slip';
 
-export interface ActiveUniActor {
-  skin: UniSkinId;
-  isPrimary: boolean;
-  /** Posição horizontal percentual segura ao longo da margem inferior (6..92). */
-  xPct: number;
-  facing: 1 | -1;
-  behavior: PetBehavior;
+export type PetAnchorZone =
+  | 'bottom_right'
+  | 'bottom_left'
+  | 'right_edge_peek'
+  | 'left_edge_peek'
+  | 'top_right_corner'
+  | 'top_left_corner';
+
+export interface NomadPlacement {
+  zone: PetAnchorZone;
+  tiltDeg: number;
+  offsetPx: number;
+}
+
+const ANCHOR_ORDER: PetAnchorZone[] = [
+  'bottom_right',
+  'left_edge_peek',
+  'bottom_left',
+  'right_edge_peek',
+  'top_right_corner',
+  'top_left_corner',
+];
+
+function hashString(input: string): number {
+  let h = 0;
+  for (let i = 0; i < input.length; i++) {
+    h = (h * 31 + input.charCodeAt(i)) >>> 0;
+  }
+  return h;
 }
 
 /**
  * Resolve até 2 Unis desbloqueados para aparecerem de forma discreta nas bordas.
- * Em modo sério ou desligado devolve lista vazia para garantir foco total.
+ * Com `autoRotate` ativo, a cor principal varia suavemente entre as cores desbloqueadas;
+ * o companheiro visitante escolhe sempre uma cor distinta da principal.
  */
 export function resolveVisibleUniPeers(args: {
   activeSkin: UniSkinId;
@@ -22,19 +45,60 @@ export function resolveVisibleUniPeers(args: {
   mode?: UniLiveCompanionsMode;
   appTone?: AppTone;
   tickSeed?: number;
+  autoRotate?: boolean;
+  pathname?: string;
 }): UniSkinId[] {
   if (args.appTone === 'serio' || args.mode === 'off') return [];
-  if (args.mode === 'solo') return [args.activeSkin];
 
   const unlocked = getUniCollectibleStates(args.telemetry)
     .filter((item) => item.unlocked)
     .map((item) => item.skin.id);
 
-  const peers = unlocked.filter((id) => id !== args.activeSkin);
-  if (peers.length === 0) return [args.activeSkin];
+  const pool = unlocked.length > 0 ? unlocked : [args.activeSkin];
+  const seed = Math.abs(args.tickSeed ?? 0) + (args.pathname ? hashString(args.pathname) : 0);
+  const primarySkin =
+    args.autoRotate && pool.length > 1
+      ? pool[seed % pool.length]!
+      : args.activeSkin;
 
-  const chosenVisitor = peers[Math.abs(args.tickSeed ?? 0) % peers.length]!;
-  return [args.activeSkin, chosenVisitor];
+  if (args.mode === 'solo') return [primarySkin];
+
+  const peers = pool.filter((id) => id !== primarySkin);
+  if (peers.length === 0) return [primarySkin];
+
+  const chosenVisitor = peers[seed % peers.length]!;
+  return [primarySkin, chosenVisitor];
+}
+
+const TUTOR_SAFE_ANCHORS: PetAnchorZone[] = ['right_edge_peek', 'left_edge_peek', 'top_right_corner'];
+
+/**
+ * Escolhe de forma determinística onde o Uni discreto aparece no ecrã
+ * (alternando entre canto inferior direito/esquerdo, bordas laterais a espreitar e cantos superiores).
+ * No Tutor (/assistente) evita a zona inferior do compositor de mensagens.
+ */
+export function pickNextNomadPlacement(args: {
+  pathname: string;
+  stepCount: number;
+}): NomadPlacement {
+  const path = args.pathname || '/';
+  const pool = path.startsWith('/assistente') ? TUTOR_SAFE_ANCHORS : ANCHOR_ORDER;
+  const routeOffset = hashString(path);
+  const index = (routeOffset + args.stepCount) % pool.length;
+  const zone = pool[index]!;
+  const stepParity = args.stepCount % 2 === 0 ? 1 : -1;
+
+  if (zone === 'right_edge_peek') {
+    return { zone, tiltDeg: -16, offsetPx: stepParity * 12 };
+  }
+  if (zone === 'left_edge_peek') {
+    return { zone, tiltDeg: 16, offsetPx: stepParity * 12 };
+  }
+  return {
+    zone,
+    tiltDeg: 0,
+    offsetPx: stepParity * 8,
+  };
 }
 
 /**
@@ -57,13 +121,15 @@ export function pickNextShyBehavior(args: {
 }
 
 /**
- * Devolve micro-frases curtas e discretas para a folhinha dobrada (estilo singelo, sem urgência agressiva).
+ * Devolve micro-frases curtas e discretas para a folhinha dobrada (estilo Finch / caderno gentil).
  */
 export function pickQuietRouteNote(args: {
   pathname: string;
   pendingTodayCount: number;
   streakDays: number;
+  adventureDone?: boolean;
 }): string {
+  if (args.adventureDone) return 'Energia do dia cheia — ótimo ritmo!';
   const path = args.pathname || '/';
   if (path === '/' || path === '') {
     if (args.pendingTodayCount > 0) {
@@ -75,8 +141,8 @@ export function pickQuietRouteNote(args: {
   }
   if (path.startsWith('/cadeiras')) return 'Tira print ou cola o plano se faltar algo.';
   if (path.startsWith('/plano')) return 'Blocos ajustam-se ao teu ritmo.';
-  if (path.startsWith('/progresso')) return 'Cada recall acorda um Uni novo.';
+  if (path.startsWith('/progresso')) return 'Cada recall acorda um Uni ou pet novo.';
   if (path.startsWith('/assistente')) return 'Podes anexar a sebenta por cadeira.';
-  if (path.startsWith('/materiais')) return 'Liga Drive ou OneDrive nas cadeiras.';
-  return 'Aqui ao canto caso precises.';
+  if (path.startsWith('/materiais')) return 'Organiza por pastas nas cadeiras.';
+  return 'Aqui contigo neste canto.';
 }

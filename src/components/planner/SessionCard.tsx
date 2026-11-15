@@ -4,7 +4,7 @@ import { courseColors } from '../../lib/colors';
 import { daysUntil, sessionMinutes } from '../../lib/selectors';
 import { useStore } from '../../store/useStore';
 import type { Assessment, Course, StudySession, Topic } from '../../types';
-import { Button, CourseChip, cx } from '../ui';
+import { Badge, Button, CourseChip, cx } from '../ui';
 
 interface SessionCardProps {
   session: StudySession;
@@ -51,11 +51,18 @@ export default function SessionCard({ session, course, topic, assessment, onFocu
 
       <p className={cx('mt-2 text-sm font-medium leading-snug', session.done && 'line-through')}>{title}</p>
 
-      <p className="mt-1 text-xs text-muted tabular">
-        {session.done
-          ? `${sessionMinutes(session)} min estudados`
-          : `${session.minutes} min`}
-      </p>
+      <div className="mt-1 flex flex-wrap items-center gap-1.5">
+        <span className="text-xs text-muted tabular">
+          {session.done
+            ? `${sessionMinutes(session)} min estudados`
+            : `${session.minutes} min`}
+        </span>
+        {topic && session.notes && (
+          <Badge tone={session.notes.includes('Teste') ? 'warn' : session.notes.includes('SRS') ? 'ok' : 'accent'}>
+            {session.notes}
+          </Badge>
+        )}
+      </div>
 
       {assessment && (
         <p className="mt-1.5 truncate text-xs text-muted">

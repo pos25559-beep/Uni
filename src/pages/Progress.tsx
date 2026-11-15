@@ -2,7 +2,7 @@ import { ArrowRight, BarChart3, Lock, Sparkles } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import UniCollectiblesModal from '../components/brand/UniCollectiblesModal';
-import { UniBuddy } from '../components/brand/UnipediaMarks';
+import { UniBuddy, UniPetBuddy } from '../components/brand/UnipediaMarks';
 import { AnimatedPage } from '../components/motion/Primitives';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import { CourseTimeChart } from '../components/progress/CourseTimeChart';
@@ -13,9 +13,13 @@ import { ReadinessChart } from '../components/progress/ReadinessChart';
 import { StreakHeatmap } from '../components/progress/StreakHeatmap';
 import { StudyByDayChart } from '../components/progress/StudyByDayChart';
 import { WeaknessChart } from '../components/progress/WeaknessChart';
-import { Button, PageHeader, Progress, Ring, SegmentedControl, cx, showToast } from '../components/ui';
-import { getUniCollectibleStates, readCollectibleTelemetry } from '../lib/uniCollectibles';
-import { fmtGrade, fmtMinutes, semesterAverage, sessionMinutes, studyStreak } from '../lib/selectors';
+import { Badge, Button, PageHeader, Progress, Ring, SegmentedControl, cx, showToast } from '../components/ui';
+import {
+  computeUniCompanionState,
+  getUniCollectibleStates,
+  readCollectibleTelemetry,
+} from '../lib/uniCollectibles';
+import { fmtGrade, fmtMinutes, semesterAverage, sessionMinutes, studyStreak, todayStr } from '../lib/selectors';
 import { useStore } from '../store/useStore';
 
 export default function ProgressPage() {
@@ -27,10 +31,23 @@ export default function ProgressPage() {
   const sessions = useStore((s) => s.sessions);
   const settings = useStore((s) => s.settings);
   const weeklyCheckIns = useStore((s) => s.weeklyCheckIns);
+  const tasks = useStore((s) => s.tasks);
   const updateSettings = useStore((s) => s.updateSettings);
 
   const activeSkin = settings.uniSkin ?? 'classic';
+  const activePet = settings.uniPet ?? 'cat';
   const [now] = useState(() => new Date());
+  const today = useMemo(() => todayStr(), []);
+  const companion = useMemo(
+    () =>
+      computeUniCompanionState({
+        sessions,
+        tasks,
+        weeklyCheckIns,
+        today,
+      }),
+    [sessions, tasks, weeklyCheckIns, today],
+  );
   const range = useMemo(() => periodRange(period, settings, now), [period, settings, now]);
 
   const collectibles = useMemo(
@@ -110,18 +127,28 @@ export default function ProgressPage() {
       <section className="space-y-4 rounded-[26px] bg-pastel-butter/70 p-5 text-[#141312] shadow-card dark:bg-surface-2 dark:text-[#FAF6EC]">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.12em] opacity-70">
-              Coleção do Uni · {unlockedCount}/{collectibles.length} desbloqueados
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-xs font-bold uppercase tracking-[0.12em] opacity-70">
+                Coleção do Uni · {unlockedCount}/{collectibles.length} cores
+              </p>
+              <Badge tone="ok">{companion.stage.label} · ⚡ {companion.dailyEnergy}/{companion.dailyEnergyGoal}</Badge>
+            </div>
             <h2 className="mt-0.5 font-display text-lg font-bold">
               {nextLocked
                 ? `Próximo: ${nextLocked.skin.name} (${nextLocked.progressLabel})`
                 : 'Coleção completa desbloqueada!'}
             </h2>
           </div>
-          <Button size="sm" variant="secondary" onClick={() => setCollectiblesOpen(true)}>
-            <Sparkles size={14} /> Abrir vitrina
-          </Button>
+          <div className="flex items-center gap-2">
+            {activePet !== 'none' && (
+              <div className="hidden items-center gap-1 rounded-full bg-white/75 px-2.5 py-1 dark:bg-black/25 sm:flex">
+                <UniPetBuddy pet={activePet} size={22} />
+              </div>
+            )}
+            <Button size="sm" variant="secondary" onClick={() => setCollectiblesOpen(true)}>
+              <Sparkles size={14} /> Abrir ninho &amp; pets
+            </Button>
+          </div>
         </div>
 
         {nextLocked && (
@@ -134,7 +161,7 @@ export default function ProgressPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
           {collectibles.map((item) => {
             const isEquipped = activeSkin === item.skin.id;
             return (
@@ -150,7 +177,7 @@ export default function ProgressPage() {
                   }
                 }}
                 className={cx(
-                  'flex flex-col items-center gap-1.5 rounded-[18px] border px-2 py-2.5 text-center transition',
+                  'flex min-h-[76px] flex-col items-center justify-center gap-1.5 rounded-[18px] border px-1.5 py-2 text-center transition',
                   isEquipped
                     ? 'border-[#157F58] bg-white/95 shadow-card dark:border-accent dark:bg-surface'
                     : item.unlocked
@@ -159,14 +186,14 @@ export default function ProgressPage() {
                 )}
               >
                 <div className="relative">
-                  <UniBuddy size={38} skin={item.skin.id} mood={item.unlocked ? 'happy' : 'calm'} interactive={false} />
+                  <UniBuddy size={36} skin={item.skin.id} mood={item.unlocked ? 'happy' : 'calm'} interactive={false} />
                   {!item.unlocked && (
                     <span className="absolute -right-1 -bottom-1 grid size-4 place-items-center rounded-full bg-[#141312] text-white">
                       <Lock size={9} />
                     </span>
                   )}
                 </div>
-                <span className="line-clamp-1 text-[11px] font-semibold">
+                <span className="line-clamp-1 text-xs font-semibold">
                   {item.skin.name.replace(/^Uni\s+/, '')}
                 </span>
               </button>

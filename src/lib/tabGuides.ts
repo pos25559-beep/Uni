@@ -70,8 +70,9 @@ export const TAB_GUIDES: Record<AppTabKey, TabGuideSpec> = {
     summary:
       'O gerador combina blocos curtos adaptativos, Modo Teste (<10 dias) e Repetição Espaçada contínua (1 → 3 → 7 → 21 dias). No fim de cada sessão, fazes um mini-check de recall ativo.',
     highlights: [
+      'Escolhe turno preferido (manhã, tarde ou noite), duração (25m Pomodoro até 75m) e cadeiras a reforçar em «Gerar plano».',
       'Matéria com confiança 1–2 recebe blocos mais curtos (≤35 min) para não cansar em falso.',
-      'Marca cada bloco concluído no temporizador para agendar automaticamente a próxima revisão.',
+      'Marca cada bloco concluído no temporizador para agendar automaticamente a próxima revisão e dar energia ao Uni.',
     ],
     mood: 'thinking',
     tintClass: 'border-[#D97706]/25 bg-[#FFFBEF] dark:bg-[#2B2311]',

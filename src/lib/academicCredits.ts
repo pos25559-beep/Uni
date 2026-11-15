@@ -53,6 +53,22 @@ export const APP_PALETTES: PaletteOption[] = [
     secondaryHex: '#DBEAFE',
     seriousFriendly: true,
   },
+  {
+    id: 'cafe',
+    name: 'Café & Creme',
+    tagline: 'Aconchego quente de biblioteca em sépia e caramelo',
+    bgHex: '#FAF5EE',
+    accentHex: '#7C4D34',
+    secondaryHex: '#EFE0D4',
+  },
+  {
+    id: 'menta',
+    name: 'Menta Botânica',
+    tagline: 'Frescura leve de papel reciclado e turquesa suave',
+    bgHex: '#F4FAF7',
+    accentHex: '#0F766E',
+    secondaryHex: '#CCFBF1',
+  },
 ];
 
 export const CHALLENGE_OPTIONS = [
