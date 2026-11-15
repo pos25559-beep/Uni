@@ -915,15 +915,69 @@ export function buildStudyContext(state: AppState): string {
   return text.length > MAX_CONTEXT_CHARS ? `${text.slice(0, MAX_CONTEXT_CHARS - 20)}\n[…resumo truncado]` : text;
 }
 
-/** Resumo dos documentos/materiais associados para fornecer contexto de estudo detalhado ao Gemini. */
-export function buildDocumentContext(materials: Material[]): string {
-  if (!materials || materials.length === 0) return '';
-  const lines: string[] = ['DOCUMENTOS E MATERIAIS DE ESTUDO DISPONÍVEIS:'];
-  for (const m of materials) {
-    const prov = m.provider.toUpperCase();
-    lines.push(`- [${prov}] ${m.title}: ${m.url}`);
+export interface DocumentContextOptions {
+  activeCourseName?: string;
+  courseMaterials?: Material[];
+  resolvedExcerpts?: Array<{ title: string; provider: string; content: string }>;
+  notebookNotes?: string;
+}
+
+/** Resumo dos documentos/materiais associados e excertos extraídos para personalizar o ensino do Uni. */
+export function buildDocumentContext(
+  materials: Material[],
+  options?: DocumentContextOptions,
+): string {
+  const sections: string[] = [];
+
+  if (options?.resolvedExcerpts && options.resolvedExcerpts.length > 0) {
+    sections.push('CONTEÚDO REAL EXTRAÍDO DOS DOCUMENTOS E APONTAMENTOS:');
+    for (const ex of options.resolvedExcerpts) {
+      sections.push(`### [Fonte: ${ex.title}] (${ex.provider.toUpperCase()})\n${ex.content.slice(0, 8000)}`);
+    }
   }
-  return lines.join('\n');
+
+  if (options?.notebookNotes?.trim()) {
+    sections.push(
+      'NOTAS / RESUMO DO GEMINI NOTEBOOK FORNECIDO PELO ESTUDANTE:',
+      options.notebookNotes.trim().slice(0, 8000),
+    );
+  }
+
+  if (materials && materials.length > 0) {
+    sections.push('DOCUMENTOS E REFERÊNCIAS SELECIONADOS NESTA CONVERSA:');
+    for (const m of materials) {
+      const flags = [
+        m.provider.toUpperCase(),
+        m.category,
+        m.hasSolution ? 'com resolução' : '',
+        m.pinned ? 'fixado' : '',
+      ]
+        .filter(Boolean)
+        .join(' · ');
+      sections.push(`- [${flags}] ${m.title}${m.url ? ` (${m.url})` : ''}`);
+    }
+  }
+
+  if (options?.courseMaterials && options.courseMaterials.length > 0) {
+    const selectedIds = new Set(materials.map((m) => m.id));
+    const libraryPreview = [...options.courseMaterials]
+      .filter((m) => !selectedIds.has(m.id))
+      .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)))
+      .slice(0, 15);
+    if (libraryPreview.length > 0) {
+      sections.push(
+        `BIBLIOTECA DISPONÍVEL EM ${options.activeCourseName?.toUpperCase() ?? 'CADEIRA'} (${options.courseMaterials.length} itens no total — podes sugerir ao estudante selecionar até 3 PDFs em «Apontamentos» caso queira que os analises em detalhe):`,
+      );
+      for (const m of libraryPreview) {
+        const meta = [m.category, m.year, m.hasSolution ? 'c/ resolução' : '', m.pinned ? 'fixado' : '']
+          .filter(Boolean)
+          .join(', ');
+        sections.push(`- ${m.title}${meta ? ` [${meta}]` : ''}`);
+      }
+    }
+  }
+
+  return sections.join('\n\n');
 }
 
 const PERSONA_INSTRUCTIONS: Record<UniPersonaMode, string> = {
@@ -966,7 +1020,7 @@ Identidade obrigatória:
 - ${PERSONA_INSTRUCTIONS[persona]}
 - Visual e área ativa: ${AREA_VOICE_HINTS[accessory]}
 ${toneDirective}
-- Baseia conselhos nos dados do resumo e nos documentos/fontes anexados abaixo. Se algo não estiver nos dados, assume com naturalidade em vez de inventar.
+- Baseia o ensino e as explicações nos dados do resumo e no **conteúdo real dos PDFs, excertos e notas** anexados abaixo. Quando usares informação ou exercícios de um material/anexo, cita a origem explicitamente (ex.: \`[Fonte: nome do ficheiro]\`). Se algo não estiver nos dados nem nos anexos, assume com naturalidade em vez de inventar.
 - Usa Markdown: títulos curtos (###), listas e **negrito** para destacar o essencial.
 - Matemática e símbolos: no texto normal usa Unicode direto (π, ², ³, √, ≈, →, ≥, ∫, ∑) em vez de embrulhar símbolos isolados em $...$; reserva blocos ou expressões matemáticas apenas quando houver fórmulas reais.
 - Em quizzes: faz UMA pergunta de cada vez e espera pela resposta antes de corrigir e avançar.

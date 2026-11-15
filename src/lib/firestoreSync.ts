@@ -258,8 +258,31 @@ export function initFirestoreSync() {
     // 4. Escuta de cada coleção principal do aluno
     for (const colKey of COLLECTIONS) {
       const colRef = collection(db, 'users', uid, colKey);
+      let firstServerSyncDone = false;
       const unsub = onSnapshot(colRef, (snapshot) => {
         const items = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+        // Salvaguarda única na 1.ª sincronização de sessões: se a nuvem estiver vazia
+        // mas existirem sessões geradas localmente pendentes, sobe-as em vez de apagar o plano.
+        if (
+          colKey === 'sessions' &&
+          !firstServerSyncDone &&
+          !snapshot.metadata.fromCache &&
+          snapshot.empty
+        ) {
+          firstServerSyncDone = true;
+          const localSessions = useStore.getState().sessions;
+          if (localSessions.length > 0) {
+            void syncCollectionDiff('sessions', [], localSessions).catch((err) => {
+              if (import.meta.env.DEV) console.warn('[CloudSync] initial sessions upload failed:', err);
+            });
+            return;
+          }
+        }
+        if (!snapshot.metadata.fromCache) {
+          firstServerSyncDone = true;
+        }
+
         isApplyingRemote = true;
         try {
           useStore.setState({
@@ -272,6 +295,73 @@ export function initFirestoreSync() {
       activeUnsubscribers.push(unsub);
     }
   });
+}
+
+type BatchOp =
+  | { type: 'set'; ref: ReturnType<typeof doc>; data: Record<string, unknown> }
+  | { type: 'delete'; ref: ReturnType<typeof doc> };
+
+async function commitChunkedOps(ops: BatchOp[]): Promise<void> {
+  const CHUNK_SIZE = 400;
+  for (let i = 0; i < ops.length; i += CHUNK_SIZE) {
+    const chunk = ops.slice(i, i + CHUNK_SIZE);
+    const batch = writeBatch(db);
+    for (const op of chunk) {
+      if (op.type === 'delete') {
+        batch.delete(op.ref);
+      } else {
+        batch.set(op.ref, op.data, { merge: true });
+      }
+    }
+    await batch.commit();
+  }
+}
+
+/**
+ * Sincroniza em lote a diferença entre uma coleção anterior e a nova no Firestore
+ * (ex.: sessões geradas substituídas em `replaceGeneratedSessions` ou fontes `replaceSource`).
+ */
+export async function syncCollectionDiff<K extends CollectionKey>(
+  key: K,
+  prevItems: ReadonlyArray<{ id: ID }>,
+  nextItems: ReadonlyArray<Collections[K][number]>,
+): Promise<void> {
+  const user = auth.currentUser;
+  if (!user || isApplyingRemote) return;
+
+  const nextIds = new Set(nextItems.map((it) => it.id));
+  const prevById = new Map(prevItems.map((it) => [it.id, it]));
+  const ops: BatchOp[] = [];
+
+  for (const prev of prevItems) {
+    if (!nextIds.has(prev.id)) {
+      ops.push({ type: 'delete', ref: doc(db, 'users', user.uid, key, prev.id) });
+    }
+  }
+
+  for (const item of nextItems) {
+    const prev = prevById.get(item.id);
+    if (!prev || JSON.stringify(prev) !== JSON.stringify(item)) {
+      ops.push({
+        type: 'set',
+        ref: doc(db, 'users', user.uid, key, item.id),
+        data: stripUndefined(item) as unknown as Record<string, unknown>,
+      });
+    }
+  }
+
+  if (ops.length > 0) {
+    await commitChunkedOps(ops);
+  }
+}
+
+/** Sincroniza em lote substituições/reconciliações do plano de estudo no Firestore. */
+export async function syncSessionsDiff(
+  prevSessions: Collections['sessions'],
+  nextSessions: Collections['sessions'],
+): Promise<void> {
+  if (prevSessions === nextSessions) return;
+  await syncCollectionDiff('sessions', prevSessions, nextSessions);
 }
 
 /** Guarda um item numa coleção do utilizador atual. */

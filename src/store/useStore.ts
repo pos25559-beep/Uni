@@ -3,9 +3,11 @@ import { persist } from 'zustand/middleware';
 import { defaultSettings, emptyCollections } from '../lib/seed';
 import {
   syncAcademicProfile,
+  syncCollectionDiff,
   syncCourseBatch,
   syncPatch,
   syncRemove,
+  syncSessionsDiff,
   syncSettings,
   syncUpsert,
   syncWeeklyCheckIn,
@@ -124,7 +126,9 @@ export const useStore = create<AppState>()(
 
       upsert: (key, item) => {
         syncUpsert(key as any, item).catch(() => {});
-        return set((s) => {
+        let prevSessions: Collections['sessions'] = [];
+        let nextSessions: Collections['sessions'] = [];
+        set((s) => {
           const list = s[key] as { id: ID }[];
           const exists = list.some((x) => x.id === item.id);
           const updated = {
@@ -132,13 +136,18 @@ export const useStore = create<AppState>()(
             [key]: exists ? list.map((x) => (x.id === item.id ? item : x)) : [...list, item],
           };
           if (key === 'assessments') {
+            prevSessions = s.sessions;
+            nextSessions = maybeReconcileSessions(updated);
             return {
               [key]: updated[key],
-              sessions: maybeReconcileSessions(updated),
+              sessions: nextSessions,
             } as Partial<AppState>;
           }
           return { [key]: updated[key] } as Partial<AppState>;
         });
+        if (key === 'assessments' && prevSessions !== nextSessions) {
+          syncSessionsDiff(prevSessions, nextSessions).catch(() => {});
+        }
       },
       upsertMany: (key, items) => {
         items.forEach((item) => syncUpsert(key as any, item).catch(() => {}));
@@ -150,21 +159,30 @@ export const useStore = create<AppState>()(
       },
       patch: (key, id, changes) => {
         syncPatch(key as any, id, changes).catch(() => {});
-        return set((s) => {
+        let prevSessions: Collections['sessions'] = [];
+        let nextSessions: Collections['sessions'] = [];
+        set((s) => {
           const nextList = (s[key] as { id: ID }[]).map((x) => (x.id === id ? { ...x, ...changes } : x));
           if (key === 'assessments') {
             const updated = { ...s, assessments: nextList as AppState['assessments'] };
+            prevSessions = s.sessions;
+            nextSessions = maybeReconcileSessions(updated);
             return {
               [key]: nextList,
-              sessions: maybeReconcileSessions(updated),
+              sessions: nextSessions,
             } as Partial<AppState>;
           }
           return { [key]: nextList } as Partial<AppState>;
         });
+        if (key === 'assessments' && prevSessions !== nextSessions) {
+          syncSessionsDiff(prevSessions, nextSessions).catch(() => {});
+        }
       },
       remove: (key, id) => {
         syncRemove(key as any, id).catch(() => {});
-        return set((s) => {
+        let prevSessions: Collections['sessions'] = [];
+        let nextSessions: Collections['sessions'] = [];
+        set((s) => {
           const next: Partial<Collections> = {
             [key]: (s[key] as { id: ID }[]).filter((x) => x.id !== id),
           };
@@ -176,27 +194,57 @@ export const useStore = create<AppState>()(
             next.materials = s.materials.filter((x) => x.courseId !== id);
           } else if (key === 'assessments') {
             const updated = { ...s, assessments: next.assessments! };
-            next.sessions = maybeReconcileSessions(updated);
+            prevSessions = s.sessions;
+            nextSessions = maybeReconcileSessions(updated);
+            next.sessions = nextSessions;
           }
           return next as Partial<AppState>;
         });
+        if (key === 'assessments' && prevSessions !== nextSessions) {
+          syncSessionsDiff(prevSessions, nextSessions).catch(() => {});
+        }
       },
-      replaceSource: (key, source, items) =>
-        set((s) => ({
-          [key]: [...(s[key] as { source: Source }[]).filter((x) => x.source !== source), ...items],
-        }) as Partial<AppState>),
-      replaceGeneratedSessions: (fromDate, sessions) =>
-        set((s) => ({
-          sessions: [
+      replaceSource: (key, source, items) => {
+        let prevItems: Collections[typeof key] = [];
+        let nextItems: Collections[typeof key] = [];
+        set((s) => {
+          prevItems = s[key];
+          nextItems = [
+            ...(s[key] as { source: Source }[]).filter((x) => x.source !== source),
+            ...items,
+          ] as Collections[typeof key];
+          return { [key]: nextItems } as Partial<AppState>;
+        });
+        syncCollectionDiff(key, prevItems, nextItems).catch(() => {});
+      },
+      replaceGeneratedSessions: (fromDate, sessions) => {
+        let prevSessions: Collections['sessions'] = [];
+        let nextSessions: Collections['sessions'] = [];
+        set((s) => {
+          prevSessions = s.sessions;
+          nextSessions = [
             ...s.sessions.filter((x) => !x.generated || x.done || x.date < fromDate),
             ...sessions,
-          ],
-        })),
-      reconcileFuturePlan: (force = false) =>
-        set((s) => ({
-          sessions: maybeReconcileSessions(s, force),
-        })),
-      updateTopic: (courseId, topicId, changes) =>
+          ];
+          return { sessions: nextSessions };
+        });
+        syncSessionsDiff(prevSessions, nextSessions).catch(() => {});
+      },
+      reconcileFuturePlan: (force = false) => {
+        let prevSessions: Collections['sessions'] = [];
+        let nextSessions: Collections['sessions'] = [];
+        set((s) => {
+          prevSessions = s.sessions;
+          nextSessions = maybeReconcileSessions(s, force);
+          return { sessions: nextSessions };
+        });
+        if (prevSessions !== nextSessions) {
+          syncSessionsDiff(prevSessions, nextSessions).catch(() => {});
+        }
+      },
+      updateTopic: (courseId, topicId, changes) => {
+        let prevSessions: Collections['sessions'] = [];
+        let nextSessions: Collections['sessions'] = [];
         set((s) => {
           const nextCourses = s.courses.map((c) =>
             c.id !== courseId
@@ -209,13 +257,19 @@ export const useStore = create<AppState>()(
             changes.nextReviewDate !== undefined ||
             changes.confidence !== undefined ||
             changes.status !== undefined;
+          if (shouldReconcile) {
+            prevSessions = s.sessions;
+            nextSessions = maybeReconcileSessions({ ...s, courses: nextCourses });
+          }
           return {
             courses: nextCourses,
-            ...(shouldReconcile
-              ? { sessions: maybeReconcileSessions({ ...s, courses: nextCourses }) }
-              : {}),
+            ...(shouldReconcile ? { sessions: nextSessions } : {}),
           };
-        }),
+        });
+        if (prevSessions !== nextSessions) {
+          syncSessionsDiff(prevSessions, nextSessions).catch(() => {});
+        }
+      },
       updateSettings: (changes) => {
         syncSettings(changes).catch(() => {});
         return set((s) => ({ settings: { ...s.settings, ...changes } }));
@@ -226,11 +280,18 @@ export const useStore = create<AppState>()(
         })),
       cleanupMismatchedMaterials: () => {
         let removedCount = 0;
+        let prevMaterials: Collections['materials'] = [];
+        let nextMaterials: Collections['materials'] = [];
         set((s) => {
-          const result = sanitizeMaterials(s.materials, s.courses);
+          prevMaterials = s.materials;
+          const result = sanitizeMaterials(s.materials, s.courses, s.academicProfile?.entryYear);
           removedCount = result.removedCount;
+          nextMaterials = result.clean;
           return { materials: result.clean } as Partial<AppState>;
         });
+        if (removedCount > 0) {
+          syncCollectionDiff('materials', prevMaterials, nextMaterials).catch(() => {});
+        }
         return removedCount;
       },
       saveAcademicProfile: (changes) =>

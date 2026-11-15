@@ -115,6 +115,7 @@ export const COURSE_ALIASES_MAP: Record<string, string[]> = {
     'sociologia da sociedade de informacao',
     'sociologia',
     'snti',
+    'sdn',
     'sociedade da informacao',
     'castells',
     'shoshana zuboff',
@@ -174,11 +175,34 @@ export function getAliasesForCourse(course: Course): string[] {
   if (normName.includes('enformacao') || normName.includes('plastica') || codeKey.includes('tep') || shortKey.includes('tep')) {
     COURSE_ALIASES_MAP.tep?.forEach((a) => result.add(a));
   }
-  if (normName.includes('sociologia') || normName.includes('tecnologia') || codeKey.includes('snti') || shortKey.includes('snti')) {
+  if (normName.includes('sociologia') || normName.includes('tecnologia') || codeKey.includes('snti') || shortKey.includes('snti') || codeKey === 'sdn' || shortKey === 'sdn') {
     COURSE_ALIASES_MAP.snti?.forEach((a) => result.add(a));
   }
 
   return Array.from(result);
+}
+
+/**
+ * Data mínima (1 de julho do ano de ingresso) para considerar um documento do Drive
+ * como pertencente ao percurso universitário atual do estudante.
+ */
+export function getAcademicEntryCutoffMs(entryYear?: number): number | null {
+  if (typeof entryYear !== 'number' || !Number.isFinite(entryYear)) return null;
+  if (entryYear < 2005 || entryYear > 2100) return null;
+  return Date.UTC(entryYear, 6, 1, 0, 0, 0, 0);
+}
+
+/**
+ * Devolve `true` quando a data de modificação do ficheiro no Drive é estritamente anterior
+ * à entrada do estudante na faculdade (ex.: ficheiros escolares antigos com 5–7+ anos).
+ */
+export function isPreEntryDriveFile(modifiedAt: string | undefined, entryYear?: number): boolean {
+  if (!modifiedAt) return false;
+  const cutoff = getAcademicEntryCutoffMs(entryYear);
+  if (cutoff === null) return false;
+  const ts = Date.parse(modifiedAt);
+  if (!Number.isFinite(ts)) return false;
+  return ts < cutoff;
 }
 
 /**

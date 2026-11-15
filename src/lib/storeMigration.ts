@@ -1,4 +1,4 @@
-import { isNonAcademicDocument, matchesCourse } from './courseAliases';
+import { isNonAcademicDocument, isPreEntryDriveFile, matchesCourse } from './courseAliases';
 import { defaultSettings, emptyCollections } from './seed';
 import type { AcademicProfile, Collections, Course, Material, WeeklyCheckIn } from '../types';
 
@@ -24,6 +24,7 @@ function containsLegacyPersonalSeed(text?: string): boolean {
 export function sanitizeMaterials(
   materials: Material[],
   courses: Course[] = [],
+  entryYear?: number,
 ): { clean: Material[]; removedCount: number } {
   const c3d = courses.find((c) => c.id === 'c3d');
   let removedCount = 0;
@@ -47,6 +48,10 @@ export function sanitizeMaterials(
       continue;
     }
     if (isNonAcademicDocument(m.title) || (m.fileName && isNonAcademicDocument(m.fileName))) {
+      removedCount++;
+      continue;
+    }
+    if (m.provider === 'gdrive' && !m.pinned && isPreEntryDriveFile(m.modifiedAt, entryYear)) {
       removedCount++;
       continue;
     }
@@ -109,7 +114,10 @@ export function rehydrateStoreState(
   }
 
   if (Array.isArray(state.materials)) {
-    const { clean } = sanitizeMaterials(state.materials, courses);
+    const entryYear = state.academicProfile?.onboardingCompleted
+      ? state.academicProfile.entryYear
+      : undefined;
+    const { clean } = sanitizeMaterials(state.materials, courses, entryYear);
     state.materials = clean;
   } else {
     state.materials = [];
@@ -143,8 +151,19 @@ export function migrateStoreState(persistedState: unknown, version: number) {
     return next;
   });
 
+  let nextProfile = base.academicProfile;
+  if (
+    nextProfile &&
+    !nextProfile.onboardingCompleted &&
+    nextProfile.universityId === 'nova-fct' &&
+    nextProfile.degreeId === 'lemc'
+  ) {
+    nextProfile = emptyAcademicProfile();
+  }
+
   const rawMaterials: Material[] = Array.isArray(base.materials) ? base.materials : [];
-  const { clean } = sanitizeMaterials(rawMaterials, cleanedCourses);
+  const migrateEntryYear = nextProfile?.onboardingCompleted ? nextProfile.entryYear : undefined;
+  const { clean } = sanitizeMaterials(rawMaterials, cleanedCourses, migrateEntryYear);
 
   const nextSettings = base.settings ? { ...base.settings } : undefined;
   if (nextSettings) {
@@ -154,16 +173,6 @@ export function migrateStoreState(persistedState: unknown, version: number) {
     if (version < 7 && nextSettings.guestMode === undefined) {
       nextSettings.guestMode = false;
     }
-  }
-
-  let nextProfile = base.academicProfile;
-  if (
-    nextProfile &&
-    !nextProfile.onboardingCompleted &&
-    nextProfile.universityId === 'nova-fct' &&
-    nextProfile.degreeId === 'lemc'
-  ) {
-    nextProfile = emptyAcademicProfile();
   }
 
   const rest = { ...base };

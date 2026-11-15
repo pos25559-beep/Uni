@@ -64,6 +64,8 @@ import {
 } from '../lib/geminiConversations';
 import { auth, onAuthStateChanged, type User } from '../lib/firebase';
 import { resolveUniAccessory, UNI_PERSONAS } from '../lib/uniAccessories';
+import { MAX_AI_MATERIAL_FILES, resolveMaterialsForAI } from '../lib/materialContent';
+import { googleService } from '../services/googleService';
 import { newId, useStore } from '../store/useStore';
 
 const MAX_SENT = 20;
@@ -120,6 +122,10 @@ export default function Assistant() {
   const [activeCourseId, setActiveCourseId] = useState<string>('all');
   const [activeSubject, setActiveSubject] = useState<string>('all');
   const [selectedMaterialIds, setSelectedMaterialIds] = useState<string[]>([]);
+  const [dismissedAutoMaterialIds, setDismissedAutoMaterialIds] = useState<string[]>([]);
+  const autoPinnedIdsRef = useRef<string[]>([]);
+  const [driveAuthNeeded, setDriveAuthNeeded] = useState(false);
+  const [authorizingDrive, setAuthorizingDrive] = useState(false);
   const [showDocPicker, setShowDocPicker] = useState(false);
   const [notebookOpen, setNotebookOpen] = useState(false);
   const [convsModalMode, setConvsModalMode] = useState<'list' | 'new' | null>(null);
@@ -224,10 +230,48 @@ export default function Assistant() {
     return materials.filter((m) => selectedMaterialIds.includes(m.id));
   }, [materials, selectedMaterialIds]);
 
+  // Pré-anexa até 3 materiais fixados da cadeira ativa (sem sobrescrever dispensas do utilizador)
+  useEffect(() => {
+    const prevAuto = new Set(autoPinnedIdsRef.current);
+    const nextPinnedIds =
+      activeCourseId === 'all'
+        ? []
+        : materials
+            .filter(
+              (m) =>
+                m.courseId === activeCourseId &&
+                m.pinned &&
+                !dismissedAutoMaterialIds.includes(m.id),
+            )
+            .slice(0, MAX_AI_MATERIAL_FILES)
+            .map((m) => m.id);
+
+    autoPinnedIdsRef.current = nextPinnedIds;
+    setSelectedMaterialIds((prev) => {
+      const preserved = prev.filter((id) => !prevAuto.has(id) || nextPinnedIds.includes(id));
+      const merged = [...preserved];
+      for (const id of nextPinnedIds) {
+        if (!merged.includes(id)) merged.push(id);
+      }
+      if (merged.length === prev.length && merged.every((id, i) => id === prev[i])) {
+        return prev;
+      }
+      return merged;
+    });
+  }, [activeCourseId, materials, dismissedAutoMaterialIds]);
+
   const toggleMaterial = (id: string) => {
-    setSelectedMaterialIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+    setSelectedMaterialIds((prev) => {
+      const removing = prev.includes(id);
+      setDismissedAutoMaterialIds((dismissed) =>
+        removing
+          ? dismissed.includes(id)
+            ? dismissed
+            : [...dismissed, id]
+          : dismissed.filter((x) => x !== id),
+      );
+      return removing ? prev.filter((x) => x !== id) : [...prev, id];
+    });
   };
 
   const handleCreateConversation = async (opts?: {
@@ -306,9 +350,34 @@ export default function Assistant() {
         const firstUser = recent.findIndex((m) => m.role === 'user');
         const payload = firstUser > 0 ? recent.slice(firstUser) : recent;
 
-        // Contexto com resumo do semestre + personalidade e área do Uni
+        // Contexto com resumo do semestre + leitura real dos materiais anexados + personalidade do Uni
+        const resolvedMaterials =
+          attachedMaterials.length > 0
+            ? await resolveMaterialsForAI(attachedMaterials, {
+                maxFiles: MAX_AI_MATERIAL_FILES,
+                signal: controller.signal,
+              })
+            : {
+                attachments: [] as ChatAttachment[],
+                textExcerpts: [],
+                readTitles: [],
+                skipped: [],
+                needsDriveAuth: false,
+              };
+        setDriveAuthNeeded(resolvedMaterials.needsDriveAuth);
+
+        const mergedAttachments: ChatAttachment[] = [
+          ...resolvedMaterials.attachments,
+          ...(attachments ?? []),
+        ].slice(0, 4);
+
         const studyContext = buildStudyContext(useStore.getState());
-        const docContext = buildDocumentContext(attachedMaterials);
+        const activeCourseName = activeCourse?.shortName || activeCourse?.name;
+        const docContext = buildDocumentContext(attachedMaterials, {
+          activeCourseName,
+          courseMaterials: availableMaterials,
+          resolvedExcerpts: resolvedMaterials.textExcerpts,
+        });
         const system = SYSTEM_PROMPT(studyContext, docContext, {
           persona: uniPersona,
           accessory: uniAccessory,
@@ -319,7 +388,7 @@ export default function Assistant() {
         const reply = await streamGeminiChat({
           messages: payload,
           system,
-          attachments,
+          attachments: mergedAttachments.length > 0 ? mergedAttachments : undefined,
           signal: controller.signal,
           onToken: (partial) => setStreamingText(extractUniSyncBlock(partial).displayText),
         });
@@ -373,9 +442,17 @@ export default function Assistant() {
           text: displayText,
           at: now,
           sourceDocTitles: [
-            ...attachedMaterials.map((m) => m.title),
+            ...resolvedMaterials.readTitles,
+            ...attachedMaterials
+              .filter(
+                (m) =>
+                  !resolvedMaterials.readTitles.includes(m.title) &&
+                  m.provider !== 'notebooklm',
+              )
+              .slice(0, MAX_AI_MATERIAL_FILES)
+              .map((m) => m.title),
             ...(attachments?.map((a) => a.name) ?? []),
-          ],
+          ].filter((title, i, arr) => Boolean(title) && arr.indexOf(title) === i),
         };
 
         if (syncPayload && (syncPayload.slots.length > 0 || syncPayload.assessments.length > 0)) {
@@ -414,7 +491,15 @@ export default function Assistant() {
         }
       }
     },
-    [attachedMaterials, setIntegration, uniAccessory, uniPersona, userName],
+    [
+      activeCourse,
+      attachedMaterials,
+      availableMaterials,
+      setIntegration,
+      uniAccessory,
+      uniPersona,
+      userName,
+    ],
   );
 
   const send = async (text: string, attachments?: ChatAttachment[]) => {
@@ -1102,6 +1187,47 @@ export default function Assistant() {
         </div>
       )}
 
+      {/* Aviso de reautorização silenciosa do Google Drive para leitura real de PDFs */}
+      {driveAuthNeeded && (
+        <div className="mt-2 flex shrink-0 flex-wrap items-center justify-between gap-2.5 rounded-[20px] border border-line bg-surface-2/90 px-3.5 py-2.5 text-xs text-fg">
+          <div className="min-w-0 flex-1 space-y-0.5">
+            <div className="font-semibold">Autoriza o Google Drive para o Uni ler os PDFs anexados</div>
+            <p className="text-[11px] text-muted">
+              A sessão do Google Drive expirou neste dispositivo — liga em 1 toque para extrair texto e fórmulas reais dos teus apontamentos.
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <Button
+              size="sm"
+              variant="primary"
+              disabled={authorizingDrive}
+              onClick={async () => {
+                setAuthorizingDrive(true);
+                try {
+                  await googleService.connectPersonalAccount(false);
+                  setDriveAuthNeeded(false);
+                  showToast('Google Drive autorizado. Envia ou repete a pergunta para ler o PDF.');
+                } catch (e) {
+                  showToast((e as Error)?.message || 'Não foi possível autorizar o Google Drive.');
+                } finally {
+                  setAuthorizingDrive(false);
+                }
+              }}
+            >
+              {authorizingDrive ? 'A ligar…' : 'Autorizar Drive'}
+            </Button>
+            <button
+              type="button"
+              onClick={() => setDriveAuthNeeded(false)}
+              aria-label="Dispensar aviso do Google Drive"
+              className="grid size-7 place-items-center rounded-full text-muted hover:bg-surface hover:text-fg"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Contexto do compositor + sugestões + entrada de mensagem (compacto estilo Gemini no mobile) */}
       <div className="shrink-0 space-y-2 pt-1.5 md:space-y-2.5 md:pt-3">
         {/* Desktop (md+): faixa fixa de cadeira / anexos / sugestões */}
@@ -1345,8 +1471,9 @@ export default function Assistant() {
         }
       >
         <p className="text-xs text-muted mb-3">
-          Seleciona os documentos e resumos (do Google Drive, PDFs ou links) que o Gemini deve
-          consultar nesta conversa.
+          Seleciona os materiais que o Uni deve consultar. Até {MAX_AI_MATERIAL_FILES} PDFs, Google Docs
+          ou ficheiros locais têm o seu conteúdo real lido em cada pergunta; materiais{' '}
+          <span className="font-medium text-fg">Fixados</span> da cadeira entram automaticamente.
         </p>
         {availableMaterials.length === 0 ? (
           <p className="text-xs text-muted py-4 text-center">
@@ -1356,6 +1483,7 @@ export default function Assistant() {
           <ul className="divide-y divide-line max-h-60 overflow-y-auto">
             {availableMaterials.map((mat) => {
               const checked = selectedMaterialIds.includes(mat.id);
+              const isNotebookLink = mat.provider === 'notebooklm';
               return (
                 <li
                   key={mat.id}
@@ -1363,9 +1491,22 @@ export default function Assistant() {
                   className="flex items-center justify-between p-2 hover:bg-surface-2 rounded-xl cursor-pointer"
                 >
                   <div className="min-w-0 pr-3">
-                    <div className="text-xs font-medium text-fg truncate">{mat.title}</div>
-                    <div className="text-xs text-muted uppercase tracking-wide">
-                      {mat.provider}
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-fg">
+                      <span className="truncate">{mat.title}</span>
+                      {mat.pinned && (
+                        <Badge tone="accent" className="shrink-0 text-[10px]">
+                          Fixado
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-muted">
+                      {isNotebookLink
+                        ? 'LINK NOTEBOOK · cola resumos no Caderno do Uni'
+                        : mat.provider === 'gdrive'
+                          ? 'GOOGLE DRIVE · leitura direta de PDF/Doc'
+                          : mat.provider === 'upload'
+                            ? 'FICHEIRO LOCAL · leitura direta'
+                            : mat.provider.toUpperCase()}
                     </div>
                   </div>
                   <input

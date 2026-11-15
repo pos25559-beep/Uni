@@ -2,9 +2,10 @@ import { useCallback, useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, FileUp, FolderOpen, HardDrive, Link2, Loader2, Pin, Plus, Search, Sparkles, X } from 'lucide-react';
 import { AnimatedPage } from '../components/motion/Primitives';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
-import { ActionSheet, Button, CourseChip, EmptyState, Input, PageHeader, Select, cx } from '../components/ui';
+import { ActionSheet, Button, CourseChip, EmptyState, Input, PageHeader, Select, cx, showToast } from '../components/ui';
 import { useStore } from '../store/useStore';
 import { providerLabel } from '../lib/colors';
+import { driveFolderIdFromUrl } from '../integrations/drive';
 import type { Material, MaterialProvider } from '../types';
 import AddLinkModal from '../components/materials/AddLinkModal';
 import FileUploadModal from '../components/materials/FileUploadModal';
@@ -20,11 +21,14 @@ type ProviderFilter = MaterialProvider | 'all';
 const providerFilters: ProviderFilter[] = ['all', 'upload', 'gdrive', 'notebooklm', 'clip', 'link'];
 const chipLabel: Record<ProviderFilter, string> = { ...providerLabel, all: 'Todos' };
 
+const EMPTY_URLS: string[] = [];
 const byTitle = (a: Material, b: Material) => a.title.localeCompare(b.title, 'pt');
 
 export default function Materials() {
   const materials = useStore((s) => s.materials);
   const courses = useStore((s) => s.courses);
+  const sharedHubDriveUrls = useStore((s) => s.settings.sharedHubDriveUrls ?? EMPTY_URLS);
+  const updateSettings = useStore((s) => s.updateSettings);
   const appTone = useStore((s) => s.settings.appTone ?? 'vibrante');
   const isMinimal = appTone === 'serio';
 
@@ -39,6 +43,8 @@ export default function Materials() {
   const [viewingMaterial, setViewingMaterial] = useState<Material | null>(null);
   const [groupOpenOverrides, setGroupOpenOverrides] = useState<Record<string, boolean>>({});
   const [expandedAllRows, setExpandedAllRows] = useState<Record<string, boolean>>({});
+  const [rootFolderOpen, setRootFolderOpen] = useState(false);
+  const [rootFolderInput, setRootFolderInput] = useState('');
 
   const {
     scanning: scanningDrive,
@@ -100,12 +106,42 @@ export default function Materials() {
       }));
   }, [visible, courses, courseById]);
 
-  const filtersActive = query.trim() !== '' || courseFilter !== 'all' || providerFilter !== 'all';
+  const hasSearchQuery = query.trim() !== '' || courseFilter !== 'all';
+  const filtersActive = hasSearchQuery || providerFilter !== 'all';
+
+  const isGroupOpenFor = useCallback(
+    (g: { key: string; items: Material[] }, idx: number) => {
+      if (g.key in groupOpenOverrides) return groupOpenOverrides[g.key];
+      if (hasSearchQuery || groups.length === 1) return true;
+      return idx === 0 && g.items.length <= 20;
+    },
+    [groupOpenOverrides, hasSearchQuery, groups.length],
+  );
+
+  const allGroupsExpanded = useMemo(
+    () => groups.length > 0 && groups.every((g, idx) => isGroupOpenFor(g, idx)),
+    [groups, isGroupOpenFor],
+  );
 
   const resetFilters = () => {
     setQuery('');
     setCourseFilter('all');
     setProviderFilter('all');
+    setGroupOpenOverrides({});
+  };
+
+  const handleSaveRootFolder = () => {
+    const trimmed = rootFolderInput.trim();
+    if (!driveFolderIdFromUrl(trimmed)) {
+      showToast('Cola um link ou ID válido de uma pasta do Google Drive.', 'danger');
+      return;
+    }
+    if (!sharedHubDriveUrls.includes(trimmed)) {
+      updateSettings({ sharedHubDriveUrls: [...sharedHubDriveUrls, trimmed] });
+    }
+    setRootFolderInput('');
+    setRootFolderOpen(false);
+    showToast('Pasta raiz associada à varredura!', 'ok');
   };
 
   const exampleFolders = useMemo(() => {
@@ -187,6 +223,17 @@ export default function Materials() {
                       ? 'Revarrer Google Drive'
                       : 'Ligar e varrer Drive'}
                 </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setRootFolderOpen((v) => !v)}
+                  aria-expanded={rootFolderOpen}
+                >
+                  <Link2 size={14} />
+                  {sharedHubDriveUrls.length > 0
+                    ? `Pasta raiz (${sharedHubDriveUrls.length})`
+                    : 'Associar pasta raiz'}
+                </Button>
                 {scanningDrive && (
                   <Button variant="ghost" size="sm" onClick={cancelScan}>
                     <X size={14} /> Cancelar
@@ -194,6 +241,50 @@ export default function Materials() {
                 )}
               </div>
             </div>
+
+            {rootFolderOpen && (
+              <div className="space-y-2.5 rounded-2xl bg-white/75 p-3 text-xs text-[#141312] dark:bg-black/25 dark:text-[#FAF6EC]">
+                <p className="font-medium leading-relaxed">
+                  Cola o link da pasta mãe no Google Drive (ex.: <span className="font-mono font-semibold">FCT2627</span>) para ir diretamente a todas as subpastas das tuas cadeiras:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Input
+                    value={rootFolderInput}
+                    onChange={(e) => setRootFolderInput(e.target.value)}
+                    placeholder="https://drive.google.com/drive/folders/…"
+                    aria-label="Link da pasta raiz no Google Drive"
+                    className="min-w-[220px] flex-1 bg-surface text-fg"
+                  />
+                  <Button size="sm" variant="primary" onClick={handleSaveRootFolder}>
+                    Guardar pasta
+                  </Button>
+                </div>
+                {sharedHubDriveUrls.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-0.5">
+                    {sharedHubDriveUrls.map((url, idx) => (
+                      <span
+                        key={url}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 text-[11px] font-medium text-fg"
+                      >
+                        <span className="max-w-[180px] truncate">{url}</span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            updateSettings({
+                              sharedHubDriveUrls: sharedHubDriveUrls.filter((_, i) => i !== idx),
+                            })
+                          }
+                          aria-label="Remover pasta raiz"
+                          className="text-muted hover:text-danger"
+                        >
+                          <X size={12} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {scanningDrive && scanProgress && (
               <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/75 px-3.5 py-2.5 text-xs text-[#141312] dark:bg-black/25 dark:text-[#FAF6EC]">
@@ -299,24 +390,14 @@ export default function Materials() {
                     <button
                       type="button"
                       onClick={() => {
-                        const allExpanded = groups.every((g, idx) =>
-                          g.key in groupOpenOverrides
-                            ? groupOpenOverrides[g.key]
-                            : idx === 0 && g.items.length <= 20,
-                        );
+                        const targetOpen = !allGroupsExpanded;
                         const next: Record<string, boolean> = {};
-                        for (const g of groups) next[g.key] = !allExpanded;
+                        for (const g of groups) next[g.key] = targetOpen;
                         setGroupOpenOverrides(next);
                       }}
                       className="min-h-[36px] font-semibold text-accent-ink hover:underline dark:text-accent"
                     >
-                      {groups.every((g, idx) =>
-                        g.key in groupOpenOverrides
-                          ? groupOpenOverrides[g.key]
-                          : idx === 0 && g.items.length <= 20,
-                      )
-                        ? 'Recolher tudo'
-                        : 'Expandir tudo'}
+                      {allGroupsExpanded ? 'Recolher tudo' : 'Expandir tudo'}
                     </button>
                   </div>
                 </div>
@@ -344,11 +425,8 @@ export default function Materials() {
               )}
 
               {groups.map((g, index) => {
-                const defaultOpen = filtersActive || groups.length === 1 || (index === 0 && g.items.length <= 20);
-                const isGroupOpen =
-                  filtersActive ||
-                  (g.key in groupOpenOverrides ? groupOpenOverrides[g.key] : defaultOpen);
-                const showAllRows = filtersActive || Boolean(expandedAllRows[g.key]);
+                const isGroupOpen = isGroupOpenFor(g, index);
+                const showAllRows = hasSearchQuery || Boolean(expandedAllRows[g.key]);
                 const PREVIEW_LIMIT = 6;
                 const slicedItems = showAllRows ? g.items : g.items.slice(0, PREVIEW_LIMIT);
                 const hiddenCount = g.items.length - slicedItems.length;
@@ -399,7 +477,7 @@ export default function Materials() {
                     {isGroupOpen && (
                       <>
                         {renderRows(slicedItems)}
-                        {(hiddenCount > 0 || (showAllRows && !filtersActive && g.items.length > PREVIEW_LIMIT)) && (
+                        {(hiddenCount > 0 || (showAllRows && !hasSearchQuery && g.items.length > PREVIEW_LIMIT)) && (
                           <div className="flex items-center justify-center border-t border-line/70 bg-surface-2/35 px-4 py-2">
                             <button
                               type="button"

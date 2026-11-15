@@ -8,8 +8,14 @@ import { parseCurriculumFromText } from '../src/lib/curriculumParser';
 import { matchCourse } from '../src/integrations/clip';
 import { extractAcademicsFromGoogleCalendar } from '../src/integrations/gcal';
 import { buildIcsCalendar } from '../src/integrations/ics';
-import { isLikelyAcademicDriveFolderName } from '../src/integrations/drive';
-import { parseFilenameToParsedItem } from '../src/lib/courseAliases';
+import { isLikelyAcademicDriveFolderName, traverseDriveFoldersBfs, type CloudFile } from '../src/integrations/drive';
+import {
+  getAcademicEntryCutoffMs,
+  isPreEntryDriveFile,
+  parseFilenameToParsedItem,
+} from '../src/lib/courseAliases';
+import { extractGoogleDriveFileId } from '../src/lib/materialContent';
+import { sanitizeMaterials } from '../src/lib/storeMigration';
 import { groupConversations, subjectLabel } from '../src/lib/geminiConversations';
 import { formatInlineLatexToText } from '../src/components/assistant/Markdown';
 import { CustomKeyError, HttpStatusError, friendlyCustomKeyError } from '../src/lib/geminiErrors';
@@ -1544,4 +1550,125 @@ test('formatInlineLatexToText converts common LaTeX commands and keeps readable 
   assert.equal(formatInlineLatexToText('\\frac{a}{b}'), '(a)/(b)');
   assert.equal(formatInlineLatexToText('\\sqrt{x^2 + 1}'), '√(x^2 + 1)');
   assert.equal(formatInlineLatexToText('\\alpha \\to \\infty'), 'α → ∞');
+});
+
+test('getAcademicEntryCutoffMs & isPreEntryDriveFile filter pre-university files accurately', () => {
+  const cutoff2026 = getAcademicEntryCutoffMs(2026);
+  assert.equal(cutoff2026, Date.UTC(2026, 6, 1));
+  assert.equal(getAcademicEntryCutoffMs(undefined), null);
+  assert.equal(getAcademicEntryCutoffMs(1980), null);
+
+  // Arquivo antigo (2019) é filtrado quando o ingresso é 2026
+  assert.equal(isPreEntryDriveFile('2019-04-12T10:00:00.000Z', 2026), true);
+  assert.equal(isPreEntryDriveFile('2026-06-30T23:59:59.000Z', 2026), true);
+
+  // Arquivo no ou após 1 de julho de 2026 é mantido
+  assert.equal(isPreEntryDriveFile('2026-07-01T00:00:00.000Z', 2026), false);
+  assert.equal(isPreEntryDriveFile('2026-09-17T14:20:00.000Z', 2026), false);
+  assert.equal(isPreEntryDriveFile(undefined, 2026), false);
+});
+
+test('sanitizeMaterials prunes unpinned pre-entry gdrive files and keeps pinned or folder-matched items', () => {
+  const courses = [
+    { id: 'c3d', code: 'C3D', name: 'Cálculo III D', shortName: 'C3D', ects: 6, color: 'amber', targetGrade: 14, topics: [] },
+    { id: 'c-sdn', code: 'SDN', name: 'Sociologia das Novas Tecnologias', shortName: 'SDN', ects: 3, color: 'sky', targetGrade: 14, topics: [] },
+  ] as any;
+
+  const { clean, removedCount } = sanitizeMaterials(
+    [
+      {
+        id: 'old-sdn',
+        courseId: 'c-sdn',
+        title: 'CONSTITUICOES BRASILEIRAS',
+        provider: 'gdrive',
+        addedAt: '2026-10-01T10:00:00Z',
+        modifiedAt: '2019-03-01T10:00:00Z',
+      },
+      {
+        id: 'old-pinned',
+        courseId: 'c-sdn',
+        title: 'Resumo antigo fixado pelo aluno',
+        provider: 'gdrive',
+        pinned: true,
+        addedAt: '2026-10-01T10:00:00Z',
+        modifiedAt: '2019-03-01T10:00:00Z',
+      },
+      {
+        id: 'new-c3d',
+        courseId: 'c3d',
+        title: 'Prep T1.pdf',
+        fileName: 'FCT2627 / C3D / Prep T1.pdf',
+        provider: 'gdrive',
+        addedAt: '2026-10-01T10:00:00Z',
+        modifiedAt: '2026-09-17T10:00:00Z',
+      },
+    ],
+    courses,
+    2026,
+  );
+
+  assert.equal(removedCount, 1);
+  assert.deepEqual(
+    clean.map((m) => m.id),
+    ['old-pinned', 'new-c3d'],
+  );
+  // Pasta FCT2627 / C3D em fileName protege material c3d sem sigla no título
+  assert.equal(clean[1]?.courseId, 'c3d');
+});
+
+test('traverseDriveFoldersBfs visits all level-1 folders before diving deeper', async () => {
+  const tree: Record<string, CloudFile[]> = {
+    fct2627: [
+      { id: 'c3d', name: 'C3D', mimeType: 'application/vnd.google-apps.folder', isFolder: true, modifiedAt: '2026-09-10T00:00:00Z' },
+      { id: 'ms2', name: 'MS2', mimeType: 'application/vnd.google-apps.folder', isFolder: true, modifiedAt: '2026-09-10T00:00:00Z' },
+      { id: 'snti', name: 'SNTI', mimeType: 'application/vnd.google-apps.folder', isFolder: true, modifiedAt: '2026-09-10T00:00:00Z' },
+      { id: 'tep', name: 'TEP', mimeType: 'application/vnd.google-apps.folder', isFolder: true, modifiedAt: '2026-09-10T00:00:00Z' },
+    ],
+    c3d: [
+      { id: 'c3d-sub', name: 'Aulas Antigas', mimeType: 'application/vnd.google-apps.folder', isFolder: true, modifiedAt: '2026-09-10T00:00:00Z' },
+      { id: 'c3d-f1', name: 'Sebenta C3D.pdf', mimeType: 'application/pdf', isFolder: false, modifiedAt: '2026-09-12T00:00:00Z' },
+    ],
+    'c3d-sub': [
+      { id: 'c3d-sub2', name: 'Arquivo Profundo', mimeType: 'application/vnd.google-apps.folder', isFolder: true, modifiedAt: '2026-09-10T00:00:00Z' },
+    ],
+    ms2: [
+      { id: 'ms2-f1', name: 'Slides MS2.pdf', mimeType: 'application/pdf', isFolder: false, modifiedAt: '2026-09-15T00:00:00Z' },
+    ],
+    snti: [
+      { id: 'snti-f1', name: 'Texto SNTI.pdf', mimeType: 'application/pdf', isFolder: false, modifiedAt: '2026-09-16T00:00:00Z' },
+    ],
+    tep: [
+      { id: 'tep-f1', name: 'Aula T01.pdf', mimeType: 'application/pdf', isFolder: false, modifiedAt: '2026-09-17T00:00:00Z' },
+    ],
+  };
+
+  const visited: string[] = [];
+  const results = await traverseDriveFoldersBfs('fct2627', async (id) => {
+    visited.push(id);
+    return tree[id] ?? [];
+  }, { maxDepth: 4, maxFolders: 5, initialPrefix: 'FCT2627' });
+
+  // Com limite maxFolders=5: raiz + todas as 4 cadeiras de nível 1 são visitadas antes da subpasta c3d-sub
+  assert.deepEqual(visited, ['fct2627', 'c3d', 'ms2', 'snti', 'tep']);
+  assert.equal(results.length, 4);
+  assert.ok(results.some((f) => f.name.includes('FCT2627 / TEP / Aula T01.pdf')));
+  assert.ok(results.some((f) => f.name.includes('FCT2627 / MS2 / Slides MS2.pdf')));
+  assert.ok(results.some((f) => f.name.includes('FCT2627 / SNTI / Texto SNTI.pdf')));
+});
+
+test('extractGoogleDriveFileId extracts IDs from Drive URLs, Docs URLs and gdrive refs', () => {
+  assert.equal(
+    extractGoogleDriveFileId('https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz/view?usp=sharing'),
+    '1AbCdEfGhIjKlMnOpQrStUvWxYz',
+  );
+  assert.equal(
+    extractGoogleDriveFileId('https://docs.google.com/document/d/1DocId_Example-123/edit'),
+    '1DocId_Example-123',
+  );
+  assert.equal(
+    extractGoogleDriveFileId('https://drive.google.com/open?id=1OpenId_9876543210'),
+    '1OpenId_9876543210',
+  );
+  assert.equal(extractGoogleDriveFileId(undefined, 'gdrive:1PrefixedId_ABCDEF12345'), '1PrefixedId_ABCDEF12345');
+  assert.equal(extractGoogleDriveFileId('https://notebooklm.google.com/notebook/abc'), null);
 });

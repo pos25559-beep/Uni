@@ -8,6 +8,7 @@ import {
   type NotebookSourceInput,
 } from '../../integrations/gemini';
 import { getDailyQuotaSnapshot } from '../../lib/aiQuota';
+import { MAX_AI_MATERIAL_FILES, resolveMaterialsForAI } from '../../lib/materialContent';
 import { openInAppBrowser } from '../../lib/nativeBridge';
 import { buildNotebookPdfBytes, downloadPdfFile } from '../../lib/pdfExport';
 import type { UniAccessoryId, UniPersonaMode } from '../../lib/uniAccessories';
@@ -71,8 +72,30 @@ export default function UniNotebookDrawer({
     setBusy(true);
     setError(null);
     try {
+      const resolved =
+        attachedMaterials.length > 0
+          ? await resolveMaterialsForAI(attachedMaterials, { maxFiles: MAX_AI_MATERIAL_FILES })
+          : {
+              attachments: [] as ChatAttachment[],
+              textExcerpts: [],
+              readTitles: [],
+              skipped: [],
+              needsDriveAuth: false,
+            };
+
+      if (resolved.needsDriveAuth) {
+        showToast('Autoriza o Google Drive no Tutor/Materiais para o Caderno ler PDFs do Drive diretamente.');
+      }
+
       const sources: NotebookSourceInput[] = [];
+      for (const excerpt of resolved.textExcerpts) {
+        sources.push({
+          title: excerpt.title,
+          content: excerpt.content,
+        });
+      }
       for (const m of attachedMaterials) {
+        if (resolved.readTitles.includes(m.title)) continue;
         sources.push({
           title: m.title,
           content: m.url
@@ -82,15 +105,17 @@ export default function UniNotebookDrawer({
       }
       if (notesSource.trim()) {
         sources.push({
-          title: courseName ? `Apontamentos de ${courseName}` : 'As minhas notas da aula',
+          title: courseName ? `Notas NotebookLM / Aula (${courseName})` : 'As minhas notas / NotebookLM',
           content: notesSource.trim(),
         });
       }
 
+      const mergedAttachments = [...resolved.attachments, ...attachments].slice(0, 4);
+
       const result = await generateNotebookBrief({
         mode,
         sources,
-        attachments,
+        attachments: mergedAttachments,
         courseName,
         persona,
         accessory,
@@ -217,7 +242,7 @@ export default function UniNotebookDrawer({
         <div>
           <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
             <label className="min-w-0 text-xs font-semibold text-muted">
-              Cola notas/conversas Gemini ou anexa PDF
+              Cola resumo do Gemini Notebook / NotebookLM ou anexa PDF
             </label>
             <input
               ref={fileInputRef}
@@ -261,7 +286,7 @@ export default function UniNotebookDrawer({
           <Textarea
             value={notesSource}
             onChange={(e) => setNotesSource(e.target.value)}
-            placeholder="Ex: conversa copiada do Gemini, Teorema de Rolle, apontamentos da aula..."
+            placeholder="Ex: notas copiadas do NotebookLM, conversa do Gemini, Teorema de Rolle, apontamentos da aula..."
             className="min-h-28"
           />
           {attachments.length > 0 && (
