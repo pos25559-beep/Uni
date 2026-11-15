@@ -46,6 +46,7 @@ export default function AccountDeletionModal({ open, onClose }: AccountDeletionM
     });
     localStorage.removeItem('uni-erp-v5');
     localStorage.removeItem('unipedia-onboarding-v1');
+    localStorage.removeItem('uni-checkin-drafts-v1');
     sessionStorage.clear();
   };
 

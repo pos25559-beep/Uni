@@ -179,6 +179,18 @@ function sanitizeStudyLog(log: StudyLogEntry): Record<string, unknown> {
       : {}),
     ...(log.difficulties?.trim() ? { difficulties: log.difficulties.trim().slice(0, 1000) } : {}),
     ...(log.notes?.trim() ? { notes: log.notes.trim().slice(0, 4000) } : {}),
+    ...(Array.isArray(log.messages) && log.messages.length > 0
+      ? {
+          messages: log.messages
+            .filter((m) => m && typeof m.text === 'string' && m.text.trim().length > 0)
+            .slice(-30)
+            .map((m) => ({
+              id: String(m.id || 'msg').slice(0, 64),
+              role: (m.role === 'user' ? 'user' : 'model') as 'user' | 'model',
+              text: m.text.trim().slice(0, 2000),
+            })),
+        }
+      : {}),
   });
 }
 
@@ -283,10 +295,31 @@ export function initFirestoreSync() {
 
     // 3b. Escuta do Diário / Logs do Uni (`/users/{uid}/studyLogs`)
     const studyLogsRef = collection(db, 'users', uid, 'studyLogs');
+    let firstStudyLogsSyncDone = false;
     const unsubStudyLogs = onSnapshot(studyLogsRef, (snapshot) => {
       const items = snapshot.docs
         .map((d) => ({ id: d.id, ...(d.data() as Omit<StudyLogEntry, 'id'>) }))
         .sort((a, b) => (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''));
+
+      if (
+        !firstStudyLogsSyncDone &&
+        !snapshot.metadata.fromCache &&
+        snapshot.empty
+      ) {
+        firstStudyLogsSyncDone = true;
+        const localLogs = useStore.getState().studyLogs;
+        if (localLogs.length > 0) {
+          for (const log of localLogs.slice(0, 40)) {
+            void syncStudyLog(log).catch((err) => {
+              if (import.meta.env.DEV) console.warn('[CloudSync] initial studyLog upload failed:', err);
+            });
+          }
+          return;
+        }
+      }
+      if (!snapshot.metadata.fromCache) {
+        firstStudyLogsSyncDone = true;
+      }
 
       isApplyingRemote = true;
       try {
@@ -536,6 +569,7 @@ export async function deleteCurrentAccountAndCloudData(): Promise<void> {
   useStore.getState().clearAll();
   localStorage.removeItem('uni-erp-v5');
   localStorage.removeItem('unipedia-onboarding-v1');
+  localStorage.removeItem('uni-checkin-drafts-v1');
   sessionStorage.clear();
 }
 

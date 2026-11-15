@@ -94,6 +94,7 @@ service cloud.firestore {
     //   - studiedSummary: string (optional, 0 - 1000 chars)
     //   - difficulties: string (optional, 0 - 1000 chars)
     //   - notes: string (optional, 0 - 4000 chars)
+    //   - messages: list of maps (optional, max 40 items, each with id/role/text)
     //
     // Collection: users/{userId}/courses/{courseId}
     // Document ID: courseId (string, max 100 chars)
@@ -746,12 +747,31 @@ service cloud.firestore {
         isValidOptionalDateOrTimestamp(data, 'updatedAt');
     }
 
+    // Validates a single study log check-in message map ({ id, role, text })
+    function isValidStudyLogMessage(msg) {
+      return msg is map &&
+        msg.keys().hasOnly(['id', 'role', 'text']) &&
+        msg.keys().hasAll(['id', 'role', 'text']) &&
+        msg.id is string && msg.id.size() > 0 && msg.id.size() <= 100 &&
+        msg.role in ['user', 'model', 'assistant', 'system'] &&
+        msg.text is string && msg.text.size() > 0 && msg.text.size() <= 4000;
+    }
+
+    // Validates optional study log check-in transcript list (max 40 items)
+    function isValidStudyLogMessages(messages) {
+      return messages is list &&
+        messages.size() <= 40 &&
+        (messages.size() == 0 || isValidStudyLogMessage(messages[0])) &&
+        (messages.size() <= 1 || isValidStudyLogMessage(messages[messages.size() - 1]));
+    }
+
     // Validates study log entry document (/users/{userId}/studyLogs/{logId})
     function isValidStudyLog(data, userId) {
       return data.keys().hasOnly([
           'id', 'kind', 'date', 'createdAt', 'updatedAt', 'userId',
           'courseId', 'classSlotId', 'assessmentId', 'feeling', 'rating',
-          'topicTitle', 'topicIds', 'studiedSummary', 'difficulties', 'notes'
+          'topicTitle', 'topicIds', 'studiedSummary', 'difficulties', 'notes',
+          'messages'
         ]) &&
         data.keys().hasAll(['kind', 'date', 'feeling', 'createdAt']) &&
         isValidOptionalString(data, 'id', 1, 100) &&
@@ -767,6 +787,7 @@ service cloud.firestore {
         isValidOptionalString(data, 'studiedSummary', 0, 1000) &&
         isValidOptionalString(data, 'difficulties', 0, 1000) &&
         isValidOptionalString(data, 'notes', 0, 4000) &&
+        (!('messages' in data) || isValidStudyLogMessages(data.messages)) &&
         (!('userId' in data) || data.userId == userId) &&
         isValidDateOrTimestamp(data.createdAt) &&
         isValidOptionalDateOrTimestamp(data, 'updatedAt');

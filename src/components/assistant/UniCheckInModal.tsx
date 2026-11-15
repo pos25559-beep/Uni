@@ -5,11 +5,12 @@ import {
   Check,
   Flame,
   Moon,
+  RotateCcw,
   Sparkles,
   Sun,
   X,
 } from 'lucide-react';
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
@@ -17,6 +18,15 @@ import { converseCheckInWithGemini } from '../../integrations/gemini';
 import { daysUntil, fmtMinutes, sessionMinutes, todayStr, upcomingAssessments } from '../../lib/selectors';
 import { cx, showToast } from '../../lib/uiHelpers';
 import { resolveUniAccessory } from '../../lib/uniAccessories';
+import {
+  buildCheckInContextKey,
+  buildTurnsFromSavedEntry,
+  buildUnderstandingFromSavedEntry,
+  clearCheckInDraft,
+  findSavedCheckInEntry,
+  loadCheckInDraft,
+  saveCheckInDraft,
+} from '../../lib/uniCheckInDrafts';
 import {
   buildLocalUniCheckInReply,
   parseConversationalCheckIn,
@@ -177,6 +187,7 @@ function UniCheckInModalInner({
   const classes = useStore((s) => s.classes);
   const materials = useStore((s) => s.materials);
   const sessions = useStore((s) => s.sessions);
+  const studyLogs = useStore((s) => s.studyLogs);
   const settings = useStore((s) => s.settings);
   const academicProfile = useStore((s) => s.academicProfile);
 
@@ -235,12 +246,85 @@ function UniCheckInModalInner({
     return { doneCount: doneToday.length, minutes, todayClasses };
   }, [sessions, classes, today, todayWeekday]);
 
-  const [kind, setKind] = useState<StudyLogKind>(initialKind);
-  const [courseId, setCourseId] = useState<string>(
-    () => initialCourseId ?? initialMatchedSlot?.courseId ?? courses[0]?.id ?? '',
+  const resolveSnapshot = useCallback(
+    (nextKind: StudyLogKind, nextCourseId: string, nextAssessmentId: string) => {
+      const nextAssess = assessments.find((a) => a.id === nextAssessmentId) ?? futureAssessments[0];
+      const nextCourse =
+        nextKind === 'exam_prep' && nextAssess
+          ? courses.find((c) => c.id === nextAssess.courseId) ?? courses[0]
+          : courses.find((c) => c.id === nextCourseId) ?? courses[0];
+      const slot =
+        classes.find((c) => c.courseId === nextCourse?.id && c.weekday === todayWeekday) ??
+        classes.find((c) => c.courseId === nextCourse?.id);
+      const greeting = buildOpeningGreeting({
+        kind: nextKind,
+        course: nextCourse,
+        assessment: nextAssess,
+        minutesToday: dayStats.minutes,
+        classesCountToday: dayStats.todayClasses,
+        classSlotLabel: slot ? `${slot.type} ${slot.start}` : undefined,
+      });
+      const contextKey = buildCheckInContextKey({
+        kind: nextKind,
+        today,
+        weekKey: currentWeekKey,
+        courseId: nextCourse?.id,
+        classSlotId: slot?.id,
+        assessmentId: nextAssess?.id,
+      });
+      const draft = loadCheckInDraft(contextKey);
+      if (draft && (draft.turns.some((t) => t.role === 'user') || draft.inputText.trim())) {
+        return {
+          contextKey,
+          source: 'draft' as const,
+          savedEntry: undefined,
+          turns: draft.turns.length > 0 ? draft.turns : [{ id: `greet-${Date.now()}`, role: 'model' as const, text: greeting }],
+          inputText: draft.inputText,
+          understanding: draft.understanding,
+        };
+      }
+      const saved = findSavedCheckInEntry({
+        studyLogs,
+        kind: nextKind,
+        today,
+        weekKey: currentWeekKey,
+        courseId: nextCourse?.id,
+        assessmentId: nextAssess?.id,
+      });
+      if (saved) {
+        return {
+          contextKey,
+          source: 'saved' as const,
+          savedEntry: saved,
+          turns: buildTurnsFromSavedEntry(saved, greeting, nextCourse),
+          inputText: '',
+          understanding: buildUnderstandingFromSavedEntry(saved),
+        };
+      }
+      return {
+        contextKey,
+        source: 'fresh' as const,
+        savedEntry: undefined,
+        turns: [{ id: `greet-${Date.now()}`, role: 'model' as const, text: greeting }],
+        inputText: '',
+        understanding: null,
+      };
+    },
+    [assessments, futureAssessments, courses, classes, todayWeekday, dayStats.minutes, dayStats.todayClasses, today, currentWeekKey, studyLogs],
   );
-  const [assessmentId, setAssessmentId] = useState<string>(() => initialTargetAssessment?.id ?? '');
-  const [inputText, setInputText] = useState('');
+
+  const initialCourseResolved = initialCourseId ?? initialMatchedSlot?.courseId ?? courses[0]?.id ?? '';
+  const initialAssessResolved = initialTargetAssessment?.id ?? '';
+  const initialSnapshot = useMemo(
+    () => resolveSnapshot(initialKind, initialCourseResolved, initialAssessResolved),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- inicialização única por abertura/chave
+    [],
+  );
+
+  const [kind, setKind] = useState<StudyLogKind>(initialKind);
+  const [courseId, setCourseId] = useState<string>(initialCourseResolved);
+  const [assessmentId, setAssessmentId] = useState<string>(initialAssessResolved);
+  const [inputText, setInputText] = useState<string>(initialSnapshot.inputText);
   const [sending, setSending] = useState(false);
 
   const activeCourse = useMemo(
@@ -258,30 +342,77 @@ function UniCheckInModalInner({
         : activeCourse,
     [kind, selectedAssessment, courses, activeCourse],
   );
-
-  const [turns, setTurns] = useState<MiniChatTurn[]>(() => [
-    {
-      id: 'greet-0',
-      role: 'model',
-      text: buildOpeningGreeting({
-        kind: initialKind,
-        course:
-          initialKind === 'exam_prep' && initialTargetAssessment
-            ? courses.find((c) => c.id === initialTargetAssessment.courseId) ?? courses[0]
-            : courses.find((c) => c.id === (initialCourseId ?? initialMatchedSlot?.courseId)) ?? courses[0],
-        assessment: initialTargetAssessment,
-        minutesToday: dayStats.minutes,
-        classesCountToday: dayStats.todayClasses,
-        classSlotLabel: initialMatchedSlot
-          ? `${initialMatchedSlot.type} ${initialMatchedSlot.start}`
-          : undefined,
+  const activeSlot = useMemo(
+    () =>
+      classes.find((c) => c.courseId === effectiveCourse?.id && c.weekday === todayWeekday) ??
+      classes.find((c) => c.courseId === effectiveCourse?.id),
+    [classes, effectiveCourse?.id, todayWeekday],
+  );
+  const activeContextKey = useMemo(
+    () =>
+      buildCheckInContextKey({
+        kind,
+        today,
+        weekKey: currentWeekKey,
+        courseId: effectiveCourse?.id,
+        classSlotId: activeSlot?.id,
+        assessmentId: selectedAssessment?.id,
       }),
-    },
-  ]);
+    [kind, today, currentWeekKey, effectiveCourse?.id, activeSlot?.id, selectedAssessment?.id],
+  );
+  const savedEntryForContext = useMemo(
+    () =>
+      findSavedCheckInEntry({
+        studyLogs,
+        kind,
+        today,
+        weekKey: currentWeekKey,
+        courseId: effectiveCourse?.id,
+        assessmentId: selectedAssessment?.id,
+      }),
+    [studyLogs, kind, today, currentWeekKey, effectiveCourse?.id, selectedAssessment?.id],
+  );
 
-  const [understanding, setUnderstanding] = useState<ParsedCheckInUnderstanding | null>(null);
+  const [turns, setTurns] = useState<MiniChatTurn[]>(() => initialSnapshot.turns);
+  const [understanding, setUnderstanding] = useState<ParsedCheckInUnderstanding | null>(
+    () => initialSnapshot.understanding,
+  );
+  const [conversationSource, setConversationSource] = useState<'fresh' | 'draft' | 'saved'>(
+    () => initialSnapshot.source,
+  );
+  const manuallyClearedRef = useRef(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (conversationSource === 'fresh' && !manuallyClearedRef.current && savedEntryForContext) {
+      const greeting = buildOpeningGreeting({
+        kind,
+        course: effectiveCourse,
+        assessment: selectedAssessment,
+        minutesToday: dayStats.minutes,
+        classesCountToday: dayStats.todayClasses,
+        classSlotLabel: activeSlot ? `${activeSlot.type} ${activeSlot.start}` : undefined,
+      });
+      setTurns(buildTurnsFromSavedEntry(savedEntryForContext, greeting, effectiveCourse));
+      setUnderstanding(buildUnderstandingFromSavedEntry(savedEntryForContext));
+      setConversationSource('saved');
+    }
+  }, [
+    conversationSource,
+    savedEntryForContext,
+    kind,
+    effectiveCourse,
+    selectedAssessment,
+    dayStats.minutes,
+    dayStats.todayClasses,
+    activeSlot,
+  ]);
+
+  useEffect(() => {
+    if (conversationSource === 'saved') return;
+    saveCheckInDraft(activeContextKey, { turns, inputText, understanding });
+  }, [activeContextKey, conversationSource, turns, inputText, understanding]);
 
   useLayoutEffect(() => {
     const el = inputRef.current;
@@ -302,52 +433,54 @@ function UniCheckInModalInner({
     }, 35);
   };
 
-  const resetChatForContext = (nextKind: StudyLogKind, nextCourseId: string, nextAssessmentId: string) => {
-    const nextAssess = assessments.find((a) => a.id === nextAssessmentId) ?? futureAssessments[0];
-    const nextCourse =
-      nextKind === 'exam_prep' && nextAssess
-        ? courses.find((c) => c.id === nextAssess.courseId) ?? courses[0]
-        : courses.find((c) => c.id === nextCourseId) ?? courses[0];
-    const slot = classes.find((c) => c.courseId === nextCourse?.id && c.weekday === todayWeekday) ??
-      classes.find((c) => c.courseId === nextCourse?.id);
+  const applyContextSnapshot = (nextKind: StudyLogKind, nextCourseId: string, nextAssessmentId: string) => {
+    manuallyClearedRef.current = false;
+    const snap = resolveSnapshot(nextKind, nextCourseId, nextAssessmentId);
+    setTurns(snap.turns);
+    setUnderstanding(snap.understanding);
+    setInputText(snap.inputText);
+    setConversationSource(snap.source);
+  };
 
-    setTurns([
-      {
-        id: `greet-${Date.now()}`,
-        role: 'model',
-        text: buildOpeningGreeting({
-          kind: nextKind,
-          course: nextCourse,
-          assessment: nextAssess,
-          minutesToday: dayStats.minutes,
-          classesCountToday: dayStats.todayClasses,
-          classSlotLabel: slot ? `${slot.type} ${slot.start}` : undefined,
-        }),
-      },
-    ]);
+  const handleStartFresh = () => {
+    manuallyClearedRef.current = true;
+    clearCheckInDraft(activeContextKey);
+    const greeting = buildOpeningGreeting({
+      kind,
+      course: effectiveCourse,
+      assessment: selectedAssessment,
+      minutesToday: dayStats.minutes,
+      classesCountToday: dayStats.todayClasses,
+      classSlotLabel: activeSlot ? `${activeSlot.type} ${activeSlot.start}` : undefined,
+    });
+    setTurns([{ id: `greet-${Date.now()}`, role: 'model', text: greeting }]);
     setUnderstanding(null);
     setInputText('');
+    setConversationSource('fresh');
+    inputRef.current?.focus();
   };
 
   const handleKindChange = (nextKind: StudyLogKind) => {
     setKind(nextKind);
-    resetChatForContext(nextKind, courseId, assessmentId);
+    applyContextSnapshot(nextKind, courseId, assessmentId);
   };
 
   const handleCourseSelect = (nextCid: string) => {
     setCourseId(nextCid);
-    resetChatForContext(kind, nextCid, assessmentId);
+    applyContextSnapshot(kind, nextCid, assessmentId);
   };
 
   const handleAssessmentSelect = (nextAid: string) => {
     setAssessmentId(nextAid);
-    resetChatForContext(kind, courseId, nextAid);
+    applyContextSnapshot(kind, courseId, nextAid);
   };
 
   const handleSendMessage = async (rawOverride?: string) => {
     const text = (rawOverride ?? inputText).trim();
     if (!text || sending) return;
 
+    manuallyClearedRef.current = false;
+    setConversationSource('draft');
     const userTurn: MiniChatTurn = { id: `u-${Date.now()}`, role: 'user', text };
     const nextTurns = [...turns, userTurn];
     setTurns(nextTurns);
@@ -486,6 +619,11 @@ function UniCheckInModalInner({
       addWeeklyCheckIn(checkIn);
     }
 
+    const cleanedMessages = turns
+      .filter((t) => t.text.trim().length > 0)
+      .slice(-30)
+      .map((t) => ({ id: t.id, role: t.role, text: t.text.trim().slice(0, 2000) }));
+
     const entry: StudyLogEntry = {
       id: newId(),
       kind,
@@ -503,12 +641,20 @@ function UniCheckInModalInner({
       notes: finalUnderstanding.scopeLabel
         ? `${finalUnderstanding.scopeLabel} — ${finalUnderstanding.notes}`
         : finalUnderstanding.notes,
+      ...(cleanedMessages.length > 0 ? { messages: cleanedMessages } : {}),
     };
 
+    const wasAlreadySaved = Boolean(savedEntryForContext);
     addStudyLog(entry);
+    clearCheckInDraft(activeContextKey);
     reconcileFuturePlan(true);
 
-    showToast('Conversa registada no Diário do Uni (+4 ⚡) e plano alinhado!', 'ok');
+    showToast(
+      wasAlreadySaved
+        ? 'Conversa atualizada no Diário do Uni e plano alinhado!'
+        : 'Conversa registada no Diário do Uni (+4 ⚡) e plano alinhado!',
+      'ok',
+    );
     onClose();
 
     if (openTutorAfter) {
@@ -697,6 +843,25 @@ function UniCheckInModalInner({
         ref={scrollRef}
         className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 py-4"
       >
+        {(conversationSource === 'saved' ||
+          (conversationSource === 'draft' &&
+            (turns.some((t) => t.role === 'user') || inputText.trim().length > 0))) && (
+          <div className="flex items-center justify-between gap-2 rounded-2xl border border-line/75 bg-surface px-3 py-2 text-xs">
+            <span className="min-w-0 truncate text-muted">
+              {conversationSource === 'saved'
+                ? `Conversa guardada${savedEntryForContext?.date ? ` · ${savedEntryForContext.date}` : ''}`
+                : 'Rascunho guardado automaticamente'}
+            </span>
+            <button
+              type="button"
+              onClick={handleStartFresh}
+              className="inline-flex min-h-[30px] shrink-0 items-center gap-1 rounded-full border border-line bg-bg px-2.5 py-1 text-xs font-semibold text-fg transition hover:border-accent"
+            >
+              <RotateCcw size={12} /> {conversationSource === 'saved' ? 'Nova conversa' : 'Limpar'}
+            </button>
+          </div>
+        )}
+
         {turns.map((turn) =>
           turn.role === 'user' ? (
             <div
@@ -785,7 +950,8 @@ function UniCheckInModalInner({
                 onClick={() => handleConfirm(false)}
                 className="flex-1 whitespace-nowrap px-3 text-xs"
               >
-                <Check size={14} className="shrink-0" /> Guardar &amp; alinhar
+                <Check size={14} className="shrink-0" />{' '}
+                {savedEntryForContext ? 'Atualizar & alinhar' : 'Guardar & alinhar'}
               </Button>
             </div>
           </div>
@@ -802,6 +968,7 @@ function UniCheckInModalInner({
                   if (chip.sendText) {
                     void handleSendMessage(chip.sendText);
                   } else if (chip.prefillText) {
+                    if (conversationSource === 'saved') setConversationSource('draft');
                     setInputText(chip.prefillText);
                     inputRef.current?.focus();
                   }
@@ -826,7 +993,10 @@ function UniCheckInModalInner({
             ref={inputRef}
             rows={1}
             value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
+            onChange={(e) => {
+              if (conversationSource === 'saved') setConversationSource('draft');
+              setInputText(e.target.value);
+            }}
             onKeyDown={onComposerKeyDown}
             aria-label="Mensagem para o Diário do Uni"
             placeholder={

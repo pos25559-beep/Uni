@@ -336,6 +336,12 @@ export interface NotificationPreferences {
 
 export type StudyLogKind = 'class' | 'day' | 'week' | 'exam_prep';
 
+export interface StudyLogMessage {
+  id: string;
+  role: 'user' | 'model';
+  text: string;
+}
+
 export interface StudyLogEntry {
   id: ID;
   kind: StudyLogKind;
@@ -358,6 +364,8 @@ export interface StudyLogEntry {
   /** Dificuldades ou dúvidas declaradas */
   difficulties?: string;
   notes?: string;
+  /** Histórico de mensagens da conversa no Diário do Uni */
+  messages?: StudyLogMessage[];
 }
 
 export interface CompletedCourseRecord {

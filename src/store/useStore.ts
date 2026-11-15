@@ -377,24 +377,38 @@ export const useStore = create<AppState>()(
           };
         }),
       addStudyLog: (entry) => {
-        syncStudyLog(entry).catch(() => {});
+        const replacedIds: string[] = [];
         set((s) => {
           const filtered = s.studyLogs.filter((l) => {
             if (l.id === entry.id) return false;
-            if (entry.kind === 'class' && entry.classSlotId) {
-              return !(l.kind === 'class' && l.classSlotId === entry.classSlotId && l.date === entry.date);
-            }
-            if (entry.kind === 'day') {
-              return !(l.kind === 'day' && l.date === entry.date);
-            }
-            if (entry.kind === 'exam_prep' && entry.assessmentId) {
-              return !(l.kind === 'exam_prep' && l.assessmentId === entry.assessmentId && l.date === entry.date);
+            const sameDayClass =
+              entry.kind === 'class' &&
+              entry.classSlotId &&
+              l.kind === 'class' &&
+              l.classSlotId === entry.classSlotId &&
+              l.date === entry.date;
+            const sameDayLog = entry.kind === 'day' && l.kind === 'day' && l.date === entry.date;
+            const sameDayExam =
+              entry.kind === 'exam_prep' &&
+              entry.assessmentId &&
+              l.kind === 'exam_prep' &&
+              l.assessmentId === entry.assessmentId &&
+              l.date === entry.date;
+            if (sameDayClass || sameDayLog || sameDayExam) {
+              replacedIds.push(l.id);
+              return false;
             }
             return true;
           });
           return {
             studyLogs: [entry, ...filtered].slice(0, 120),
           };
+        });
+        for (const oldId of replacedIds) {
+          deleteStudyLogFromCloud(oldId).catch(() => {});
+        }
+        syncStudyLog(entry).catch((err) => {
+          if (import.meta.env.DEV) console.warn('[Store] syncStudyLog failed:', err);
         });
       },
       removeStudyLog: (id) => {
