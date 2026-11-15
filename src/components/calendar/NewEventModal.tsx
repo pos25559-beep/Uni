@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { kindLabel } from '../../lib/colors';
 import { newId, useStore } from '../../store/useStore';
 import type { AssessmentKind } from '../../types';
-import { Button, Field, Input, Modal, Select, cx } from '../ui';
+import { Button, Field, Input, Modal, Select } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 
 type Mode = 'evento' | 'avaliacao';
 

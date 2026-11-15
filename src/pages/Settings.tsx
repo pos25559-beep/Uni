@@ -18,7 +18,7 @@ import { UniBuddy } from '../components/brand/UnipediaMarks';
 import { AnimatedPage, StickerBadge } from '../components/motion/Primitives';
 import OnboardingModal from '../components/onboarding/OnboardingModal';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
-import { startUnipediaGuidedTour } from '../components/onboarding/TourManager';
+import { startUnipediaGuidedTour } from '../lib/tourRunner';
 import ClipCard from '../components/settings/ClipCard';
 import DataCard from '../components/settings/DataCard';
 import DeviceStorageCard from '../components/settings/DeviceStorageCard';
@@ -27,17 +27,8 @@ import GoogleCard from '../components/settings/GoogleCard';
 import NotebookCard from '../components/settings/NotebookCard';
 import NotificationsCard from '../components/settings/NotificationsCard';
 import ProfileCard from '../components/settings/ProfileCard';
-import {
-  Badge,
-  Button,
-  ListGroup,
-  ListRow,
-  PageHeader,
-  SegmentedControl,
-  SubpageHeader,
-  Switch,
-  showToast,
-} from '../components/ui';
+import { Badge, Button, ListGroup, ListRow, PageHeader, SegmentedControl, SubpageHeader, Switch } from '../components/ui';
+import { showToast } from '../lib/uiHelpers';
 import { APP_PALETTES } from '../lib/academicCredits';
 import { auth, logoutFirebase, onAuthStateChanged, type User } from '../lib/firebase';
 import { migrateLocalDataToCloud } from '../lib/firestoreSync';
@@ -175,7 +166,7 @@ export default function SettingsPage() {
     APP_PALETTES.find((p) => p.id === (settings.themePalette ?? 'caderno'))?.name ?? 'Caderno Vivo';
 
   return (
-    <AnimatedPage className="space-y-6">
+    <AnimatedPage className="flex flex-col gap-6">
       <PageHeader
         eyebrow="Preferências"
         title="As tuas"
@@ -273,12 +264,12 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      {/* Aparência rápida: Tema & Estilo (Expressivo vs Sério & Minimal) num só sítio */}
+      {/* Aparência rápida: Tema & Estilo (Expressivo vs Sério & Minimal) num só sítio (em desktop fica acima; no telemóvel as 5 categorias aparecem primeiro) */}
       <section
         className={
           isMinimal
-            ? 'space-y-3 rounded-[22px] border border-line/70 bg-surface-2/65 p-4'
-            : 'space-y-3 rounded-[26px] bg-pastel-sky/50 p-5 text-[#141312] shadow-card dark:bg-surface-2 dark:text-[#FAF6EC]'
+            ? 'order-3 space-y-3 rounded-[22px] border border-line/70 bg-surface-2/65 p-4 md:order-2'
+            : 'order-3 space-y-3 rounded-[26px] bg-pastel-sky/50 p-5 text-[#141312] shadow-card dark:bg-surface-2 dark:text-[#FAF6EC] md:order-2'
         }
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -352,6 +343,7 @@ export default function SettingsPage() {
         </div>
       </section>
 
+      <div className="order-2 space-y-6 md:order-3">
       {/* Grupo 1: Caderno & Estudo */}
       <ListGroup title="Caderno & Estudo">
         <ListRow
@@ -440,9 +432,10 @@ export default function SettingsPage() {
           onClick={() => navigate('/termos')}
         />
       </ListGroup>
+      </div>
 
       {/* Zona de perigo isolada */}
-      <section className="rounded-[22px] border border-coral/35 bg-coral-soft/45 p-4">
+      <section className="order-4 rounded-[22px] border border-coral/35 bg-coral-soft/45 p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="text-sm font-bold text-coral-ink">Zona de perigo</h3>

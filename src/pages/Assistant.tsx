@@ -2,7 +2,6 @@ import {
   Award,
   BookOpen,
   CalendarDays,
-  Check,
   ChevronDown,
   ChevronUp,
   FileText,
@@ -26,13 +25,15 @@ import ConversationsModal from '../components/assistant/ConversationsModal';
 import { Markdown } from '../components/assistant/Markdown';
 import { QuickActions } from '../components/assistant/QuickActions';
 import UniNotebookDrawer from '../components/assistant/UniNotebookDrawer';
+import UniSyncCard from '../components/assistant/UniSyncCard';
 import WeeklyTutorModal from '../components/assistant/WeeklyTutorModal';
 import UniCollectiblesModal from '../components/brand/UniCollectiblesModal';
 import { UniBuddy } from '../components/brand/UnipediaMarks';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import GeminiKeyGuideModal from '../components/settings/GeminiKeyGuideModal';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ActionSheet, Badge, Button, Modal, PillSelect, SegmentedControl, cx, showToast } from '../components/ui';
+import { ActionSheet, Badge, Button, Modal, PillSelect, SegmentedControl } from '../components/ui';
+import { cx, showToast } from '../lib/uiHelpers';
 import {
   buildDocumentContext,
   buildStudyContext,
@@ -45,7 +46,7 @@ import {
   type ChatMessage,
 } from '../integrations/gemini';
 import { getDailyQuotaSnapshot } from '../lib/aiQuota';
-import { courseColors, kindLabel, weekdayLong } from '../lib/colors';
+import { courseColors } from '../lib/colors';
 import { collectKnownCourseCandidates, getDegreeCurriculum } from '../lib/portugalCurriculum';
 import {
   commitScheduleSyncToStore,
@@ -122,7 +123,10 @@ export default function Assistant() {
   const [user, setUser] = useState<User | null>(() => auth.currentUser);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId] = useState<string>('default');
-  const [activeCourseId, setActiveCourseId] = useState<string>('all');
+  const [activeCourseId, setActiveCourseId] = useState<string>(() => {
+    const st = location.state as { courseId?: string } | null;
+    return st?.courseId || 'all';
+  });
   const [activeSubject, setActiveSubject] = useState<string>('all');
   const [selectedMaterialIds, setSelectedMaterialIds] = useState<string[]>([]);
   const [dismissedAutoMaterialIds, setDismissedAutoMaterialIds] = useState<string[]>([]);
@@ -230,9 +234,7 @@ export default function Assistant() {
 
   useEffect(() => {
     const st = location.state as { prefillPrompt?: string; courseId?: string } | null;
-    if (st?.courseId) setActiveCourseId(st.courseId);
-    if (st?.prefillPrompt?.trim()) {
-      setPendingSeedPrompt(st.prefillPrompt.trim());
+    if (st?.prefillPrompt?.trim() || st?.courseId) {
       navigate(location.pathname, { replace: true, state: null });
     }
   }, [location.pathname, location.state, navigate]);
@@ -1218,17 +1220,20 @@ export default function Assistant() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Aviso amigável de 1 toque para ativar o Uni nativo (zero chave obrigatória) */}
+      {/* Aviso amigável de 1 toque para ativar o Uni nativo (zero chave obrigatória; 1 linha no mobile) */}
       {!aiConsent && (
-        <div className="mt-3 flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-[22px] bg-pastel-butter/75 px-4 py-3 text-xs text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]">
-          <div className="space-y-0.5">
-            <div className="flex items-center gap-2 font-semibold">
-              <Sparkles size={14} className="text-accent" />
-              <span>Ativar o Uni</span>
-              <Badge tone="accent">Incluído</Badge>
+        <div className="mt-2.5 flex shrink-0 items-center justify-between gap-2.5 rounded-[20px] bg-pastel-butter/75 px-3.5 py-2.5 text-xs text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC] sm:rounded-[22px] sm:px-4 sm:py-3">
+          <div className="min-w-0 flex-1 space-y-0.5">
+            <div className="flex items-center gap-1.5 font-semibold">
+              <Sparkles size={14} className="shrink-0 text-accent" />
+              <span className="truncate">Ativar o Uni</span>
+              <Badge tone="accent" className="hidden sm:inline-flex">Incluído</Badge>
             </div>
-            <p className="opacity-80">
+            <p className="hidden opacity-80 sm:block">
               Pronto a usar com 1 toque (até {quota.chatLimit} mensagens/dia). Aceita apenas o envio das tuas perguntas para o Tutor responder.
+            </p>
+            <p className="truncate text-xs opacity-80 sm:hidden">
+              Até {quota.chatLimit} msgs/dia incluídas
             </p>
           </div>
           <Button size="sm" variant="primary" onClick={() => updateSettings({ aiConsent: true })}>
@@ -1242,11 +1247,11 @@ export default function Assistant() {
         <div className="mt-2 flex shrink-0 flex-wrap items-center justify-between gap-2.5 rounded-[20px] border border-line bg-surface-2/90 px-3.5 py-2.5 text-xs text-fg">
           <div className="min-w-0 flex-1 space-y-0.5">
             <div className="font-semibold">Autoriza o Google Drive para o Uni ler os PDFs anexados</div>
-            <p className="text-[11px] text-muted">
+            <p className="text-xs text-muted">
               A sessão do Google Drive expirou neste dispositivo — liga em 1 toque para extrair texto e fórmulas reais dos teus apontamentos.
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="flex shrink-0 items-center gap-1">
             <Button
               size="sm"
               variant="primary"
@@ -1270,9 +1275,9 @@ export default function Assistant() {
               type="button"
               onClick={() => setDriveAuthNeeded(false)}
               aria-label="Dispensar aviso do Google Drive"
-              className="grid size-7 place-items-center rounded-full text-muted hover:bg-surface hover:text-fg"
+              className="-mr-1.5 grid size-11 place-items-center rounded-full text-muted hover:bg-surface hover:text-fg"
             >
-              <X size={14} />
+              <X size={15} />
             </button>
           </div>
         </div>
@@ -1478,9 +1483,9 @@ export default function Assistant() {
                 type="button"
                 aria-label="Dispensar sugestão do diário"
                 onClick={() => setPendingSeedPrompt(null)}
-                className="grid size-8 place-items-center rounded-full text-muted hover:bg-surface hover:text-fg"
+                className="-mr-1.5 grid size-11 place-items-center rounded-full text-muted hover:bg-surface hover:text-fg"
               >
-                <X size={14} />
+                <X size={15} />
               </button>
             </div>
           </div>
@@ -1500,7 +1505,7 @@ export default function Assistant() {
               aria-expanded={mobileComposerToolsOpen}
               aria-label="Anexar e ferramentas do Tutor"
               className={cx(
-                'grid size-10 shrink-0 place-items-center rounded-full transition md:hidden',
+                'grid size-11 shrink-0 place-items-center rounded-full transition md:hidden',
                 mobileComposerToolsOpen
                   ? 'bg-accent-soft text-accent-ink'
                   : 'text-fg/80 hover:bg-surface-2 hover:text-fg',
@@ -1522,7 +1527,7 @@ export default function Assistant() {
                     openFilePicker();
                   }}
                   aria-label="Anexar foto ou PDF de apontamentos"
-                  className="flex min-h-[36px] items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg"
+                  className="flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg"
                 >
                   <Paperclip size={13} />
                   <span>Foto / PDF</span>
@@ -1533,7 +1538,7 @@ export default function Assistant() {
                   placement="up"
                   icon={<BookOpen size={13} />}
                   ariaLabel="Contexto da cadeira"
-                  className="min-w-0 [&>button]:min-h-[36px] [&>button]:max-w-[140px] [&>button]:px-2.5"
+                  className="min-w-0 [&>button]:min-h-11 [&>button]:max-w-[140px] [&>button]:px-2.5"
                   options={[
                     { value: 'all', label: 'Todas as cadeiras', shortLabel: 'Todas', hint: 'Vista geral do semestre' },
                     ...courses.map((c) => ({
@@ -1550,7 +1555,7 @@ export default function Assistant() {
                     setMobileComposerToolsOpen(false);
                     setShowDocPicker(true);
                   }}
-                  className="flex min-h-[36px] items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg"
+                  className="flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg"
                 >
                   <FileText size={13} />
                   <span>Apontamentos</span>
@@ -1561,7 +1566,7 @@ export default function Assistant() {
                     setMobileComposerToolsOpen(false);
                     setShowActions((v) => !v);
                   }}
-                  className="flex min-h-[36px] items-center gap-1 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg"
+                  className="flex min-h-11 items-center gap-1 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg"
                 >
                   <Sparkles size={13} />
                   <span>{showActions ? 'Ocultar' : 'Sugestões'}</span>
@@ -1572,7 +1577,7 @@ export default function Assistant() {
                     setMobileComposerToolsOpen(false);
                     setNotebookOpen(true);
                   }}
-                  className="flex min-h-[36px] items-center gap-1 rounded-full bg-pastel-butter/80 px-3 text-xs font-semibold text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]"
+                  className="flex min-h-11 items-center gap-1 rounded-full bg-pastel-butter/80 px-3 text-xs font-semibold text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]"
                 >
                   <span>Caderno</span>
                 </button>
@@ -1719,12 +1724,12 @@ export default function Assistant() {
                     <div className="flex items-center gap-1.5 text-xs font-medium text-fg">
                       <span className="truncate">{mat.title}</span>
                       {mat.pinned && (
-                        <Badge tone="accent" className="shrink-0 text-[10px]">
+                        <Badge tone="accent" className="shrink-0 text-xs">
                           Fixado
                         </Badge>
                       )}
                     </div>
-                    <div className="text-[11px] text-muted">
+                    <div className="text-xs text-muted">
                       {isNotebookLink
                         ? 'LINK NOTEBOOK · cola resumos no Caderno do Uni'
                         : mat.provider === 'gdrive'
@@ -1820,218 +1825,6 @@ export default function Assistant() {
           });
         }}
       />
-    </div>
-  );
-}
-
-interface UniSyncCardProps {
-  bundle: ResolvedScheduleSyncBundle;
-  onChange: (next: ResolvedScheduleSyncBundle) => void;
-  onApply: () => void;
-  onOpenCalendar: () => void;
-}
-
-/** Cartão interativo dentro da resposta do Uni para aplicar aulas e avaliações no Calendário e Plano. */
-function UniSyncCard({ bundle, onChange, onApply, onOpenCalendar }: UniSyncCardProps) {
-  const isMinimal = useStore((s) => (s.settings.appTone ?? 'vibrante') === 'serio');
-  const selectedCount =
-    bundle.slots.filter((s) => s.selected).length +
-    bundle.assessments.filter((a) => a.selected).length;
-
-  return (
-    <div
-      data-testid="uni-sync-card"
-      className={cx(
-        'mt-3 rounded-[20px] p-4',
-        isMinimal
-          ? 'border border-accent/25 bg-surface-2/80'
-          : 'bg-pastel-mint/55 text-[#141312] dark:bg-[#17312B] dark:text-[#FAF6EC]',
-      )}
-    >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <CalendarDays size={15} className="text-accent" />
-          <span className="text-xs font-semibold text-fg">
-            Sincronizar com o resto da app
-          </span>
-        </div>
-        <Badge tone={bundle.applied ? 'accent' : 'neutral'}>
-          {bundle.applied
-            ? 'Aplicado'
-            : `${bundle.assessments.length} aval. · ${bundle.slots.length} aula(s)`}
-        </Badge>
-      </div>
-
-      {bundle.applied ? (
-        <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2.5 rounded-xl bg-accent-soft/60 px-3 py-2 text-xs text-accent">
-          <span className="inline-flex items-center gap-1.5 font-medium">
-            <Check size={14} />
-            {bundle.appliedSummary || 'Informação aplicada ao Calendário e Plano.'}
-          </span>
-          <button
-            type="button"
-            onClick={onOpenCalendar}
-            className="rounded-lg bg-accent px-2.5 py-1 text-xs font-semibold text-accent-fg transition hover:opacity-90"
-          >
-            Abrir Calendário
-          </button>
-        </div>
-      ) : (
-        <>
-          <div className="mt-2.5 max-h-60 space-y-1.5 overflow-y-auto pr-0.5">
-            {bundle.assessments.map((a, idx) => (
-              <div
-                key={a.id}
-                onClick={() => {
-                  const next = bundle.assessments.map((item, i) =>
-                    i === idx ? { ...item, selected: !item.selected } : item,
-                  );
-                  onChange({ ...bundle, assessments: next });
-                }}
-                role="checkbox"
-                aria-checked={a.selected}
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === ' ' || e.key === 'Enter') {
-                    e.preventDefault();
-                    const next = bundle.assessments.map((item, i) =>
-                      i === idx ? { ...item, selected: !item.selected } : item,
-                    );
-                    onChange({ ...bundle, assessments: next });
-                  }
-                }}
-                className={cx(
-                  'flex cursor-pointer items-center justify-between gap-2 rounded-xl border px-3 py-2 transition',
-                  a.selected
-                    ? 'border-accent/40 bg-surface'
-                    : 'border-line bg-surface/50 opacity-60',
-                )}
-              >
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <span
-                    className={cx(
-                      'grid h-4 w-4 shrink-0 place-items-center rounded-full border transition',
-                      a.selected
-                        ? 'border-accent bg-accent text-accent-fg'
-                        : 'border-muted/40 bg-surface',
-                    )}
-                  >
-                    {a.selected && <Check size={10} />}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate text-xs font-medium text-fg">
-                      {a.courseName} · {a.title || kindLabel[a.kind]}
-                    </p>
-                    <p className="truncate text-xs text-muted">
-                      {a.date}
-                      {a.location ? ` · Sala ${a.location}` : ''}
-                    </p>
-                  </div>
-                </div>
-                <Badge tone={a.matchedCourse ? 'accent' : 'neutral'}>
-                  {a.matchedCourse
-                    ? `Liga a ${a.matchedCourse.shortName || a.matchedCourse.name}`
-                    : 'Cria cadeira'}
-                </Badge>
-              </div>
-            ))}
-
-            {bundle.slots.map((s, idx) => (
-              <div
-                key={s.id}
-                onClick={() => {
-                  const next = bundle.slots.map((item, i) =>
-                    i === idx ? { ...item, selected: !item.selected } : item,
-                  );
-                  onChange({ ...bundle, slots: next });
-                }}
-                role="checkbox"
-                aria-checked={s.selected}
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === ' ' || e.key === 'Enter') {
-                    e.preventDefault();
-                    const next = bundle.slots.map((item, i) =>
-                      i === idx ? { ...item, selected: !item.selected } : item,
-                    );
-                    onChange({ ...bundle, slots: next });
-                  }
-                }}
-                className={cx(
-                  'flex cursor-pointer items-center justify-between gap-2 rounded-xl border px-3 py-2 transition',
-                  s.selected
-                    ? 'border-accent/40 bg-surface'
-                    : 'border-line bg-surface/50 opacity-60',
-                )}
-              >
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <span
-                    className={cx(
-                      'grid h-4 w-4 shrink-0 place-items-center rounded-full border transition',
-                      s.selected
-                        ? 'border-accent bg-accent text-accent-fg'
-                        : 'border-muted/40 bg-surface',
-                    )}
-                  >
-                    {s.selected && <Check size={10} />}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate text-xs font-medium text-fg">
-                      {s.courseName} · {s.type}
-                    </p>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
-                      <select
-                        aria-label={`Dia da semana para ${s.courseName}`}
-                        value={s.weekday}
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={(e) => {
-                          const nextWeekday = Number(e.target.value);
-                          const next = bundle.slots.map((item, i) =>
-                            i === idx ? { ...item, weekday: nextWeekday } : item,
-                          );
-                          onChange({ ...bundle, slots: next });
-                        }}
-                        className="rounded-md border border-line bg-surface-2 px-1.5 py-0.5 text-xs text-fg outline-none focus:border-accent"
-                      >
-                        {[1, 2, 3, 4, 5, 6, 0].map((wd) => (
-                          <option key={wd} value={wd}>
-                            {weekdayLong[wd]}
-                          </option>
-                        ))}
-                      </select>
-                      <span>
-                        {s.start}–{s.end}
-                        {s.room ? ` · Sala ${s.room}` : ''}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <Badge tone={s.matchedCourse ? 'accent' : 'neutral'}>
-                  {s.matchedCourse
-                    ? `Liga a ${s.matchedCourse.shortName || s.matchedCourse.name}`
-                    : 'Cria cadeira'}
-                </Badge>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-            <span className="text-xs text-muted">
-              Podes ajustar o dia da semana ou desmarcar itens antes de guardar.
-            </span>
-            <Button
-              size="sm"
-              variant="primary"
-              disabled={selectedCount === 0}
-              onClick={onApply}
-              className="gap-1.5"
-            >
-              <Check size={13} />
-              Aplicar no Calendário e Plano ({selectedCount})
-            </Button>
-          </div>
-        </>
-      )}
     </div>
   );
 }

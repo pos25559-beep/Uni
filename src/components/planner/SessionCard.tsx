@@ -4,7 +4,8 @@ import { courseColors } from '../../lib/colors';
 import { daysUntil, sessionMinutes } from '../../lib/selectors';
 import { useStore } from '../../store/useStore';
 import type { Assessment, Course, StudySession, Topic } from '../../types';
-import { Badge, Button, CourseChip, cx } from '../ui';
+import { Badge, Button, CourseChip } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 
 interface SessionCardProps {
   session: StudySession;
@@ -75,14 +76,18 @@ export default function SessionCard({ session, course, topic, assessment, onFocu
           type="button"
           onClick={toggle}
           aria-label={session.done ? 'Marcar como por fazer' : 'Marcar como concluída'}
-          className={cx(
-            'grid size-8 place-items-center rounded-lg border transition',
-            session.done
-              ? 'border-ok/40 bg-ok/12 text-ok'
-              : 'border-line text-muted hover:border-ok/50 hover:text-ok',
-          )}
+          className="group -ml-1.5 grid size-11 place-items-center rounded-full"
         >
-          <Check size={15} />
+          <span
+            className={cx(
+              'grid size-8 place-items-center rounded-lg border transition',
+              session.done
+                ? 'border-ok/40 bg-ok/12 text-ok'
+                : 'border-line text-muted group-hover:border-ok/50 group-hover:text-ok',
+            )}
+          >
+            <Check size={15} />
+          </span>
         </button>
         {!session.done && (
           <Button size="sm" variant="ghost" onClick={() => onFocus(session)} aria-label="Focar nesta sessão">
@@ -94,17 +99,17 @@ export default function SessionCard({ session, course, topic, assessment, onFocu
             type="button"
             onClick={() => onEdit(session)}
             aria-label="Editar sessão"
-            className="grid size-8 place-items-center rounded-lg text-muted hover:bg-surface hover:text-fg"
+            className="grid size-11 place-items-center rounded-full text-muted hover:bg-surface hover:text-fg"
           >
-            <Pencil size={14} />
+            <Pencil size={15} />
           </button>
           <button
             type="button"
             onClick={() => remove('sessions', session.id)}
             aria-label="Apagar sessão"
-            className="grid size-8 place-items-center rounded-lg text-muted hover:bg-danger/12 hover:text-danger"
+            className="-mr-1.5 grid size-11 place-items-center rounded-full text-muted hover:bg-danger/12 hover:text-danger"
           >
-            <Trash2 size={14} />
+            <Trash2 size={15} />
           </button>
         </div>
       </div>

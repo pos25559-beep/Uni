@@ -1,70 +1,9 @@
 import { CheckCircle2, ExternalLink, Eye, EyeOff, KeyRound, ShieldCheck, Sparkles } from 'lucide-react';
 import { useState } from 'react';
-import { friendlyCustomKeyError } from '../../integrations/gemini';
+import { verifyGeminiApiKey, type GeminiKeyTestResult } from '../../integrations/geminiKeyVerify';
 import { DAILY_CHAT_LIMIT, DAILY_NOTEBOOK_LIMIT } from '../../lib/aiQuota';
 import { useStore } from '../../store/useStore';
 import { Badge, Button, Field, Input, Modal } from '../ui';
-
-const MODELS_URL = 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=50';
-const MODEL_GEN_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
-
-export interface GeminiKeyTestResult {
-  available: boolean;
-  suggestions: string[];
-  total: number;
-}
-
-/** Valida uma chave pessoal Gemini diretamente contra a Google Generative Language API (lista + teste real de geração). */
-export async function verifyGeminiApiKey(
-  rawKey: string,
-  wantedModel = 'gemini-3.8-flash',
-): Promise<GeminiKeyTestResult> {
-  const key = rawKey.trim();
-  if (!key) {
-    throw new Error('Cola primeiro a tua chave começada por «AIza…» vinda do Google AI Studio.');
-  }
-  // A chave segue sempre no cabeçalho, nunca no URL.
-  const res = await fetch(MODELS_URL, { headers: { 'x-goog-api-key': key } });
-  if (!res.ok) {
-    const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
-    throw friendlyCustomKeyError(
-      new Error(body?.error?.message ?? `Erro ${res.status} ao contactar a API Gemini.`),
-    );
-  }
-  const data = (await res.json()) as { models?: { name?: string }[] };
-  const names = (data.models ?? [])
-    .map((m) => (m.name ?? '').replace(/^models\//, ''))
-    .filter(Boolean);
-
-  // Testa também uma chamada mínima real para detetar créditos pré-pagos esgotados (402) ou quota a zero.
-  const probeModel = names.includes(wantedModel)
-    ? wantedModel
-    : names.find((n) => n.includes('flash') && !n.includes('image') && !n.includes('tts')) ||
-      wantedModel;
-  const probeRes = await fetch(
-    `${MODEL_GEN_BASE}/${encodeURIComponent(probeModel)}:generateContent`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: 'OK' }] }],
-        generationConfig: { maxOutputTokens: 2 },
-      }),
-    },
-  );
-  if (!probeRes.ok) {
-    const probeBody = (await probeRes.json().catch(() => null)) as { error?: { message?: string } } | null;
-    throw friendlyCustomKeyError(
-      new Error(probeBody?.error?.message ?? `Erro ${probeRes.status} ao validar envio na API Gemini.`),
-    );
-  }
-
-  return {
-    available: names.includes(wantedModel),
-    suggestions: names.filter((n) => n.includes('gemini')).slice(0, 8),
-    total: names.length,
-  };
-}
 
 export default function GeminiKeyGuideModal({
   open,
@@ -113,7 +52,7 @@ export default function GeminiKeyGuideModal({
       maxWidthClass="sm:max-w-lg"
       footer={
         <div className="flex w-full items-center justify-between gap-2">
-          <span className="text-[11px] text-muted">Guardada apenas no teu dispositivo</span>
+          <span className="text-xs text-muted">Guardada apenas no teu dispositivo</span>
           <Button variant="primary" onClick={onClose}>
             Concluir
           </Button>
@@ -160,7 +99,7 @@ export default function GeminiKeyGuideModal({
             <div className="min-w-0 flex-1 space-y-1">
               <p className="font-semibold text-fg">Clica em «Create API key» num projeto gratuito e copia</p>
               <p className="text-muted">
-                Começa por <code className="rounded bg-surface-2 px-1 py-0.5 font-mono text-[11px]">AIza...</code>. Se já tiveste créditos pagos/pré-pagos que acabaram, cria um <strong className="text-fg">projeto novo no nível gratuito (Free tier)</strong> para não levar erro de saldo esgotado.
+                Começa por <code className="rounded bg-surface-2 px-1 py-0.5 font-mono text-xs">AIza...</code>. Se já tiveste créditos pagos/pré-pagos que acabaram, cria um <strong className="text-fg">projeto novo no nível gratuito (Free tier)</strong> para não levar erro de saldo esgotado.
               </p>
             </div>
           </li>
@@ -215,7 +154,7 @@ export default function GeminiKeyGuideModal({
                 )}
               </div>
               {error && (
-                <div className="space-y-1.5 rounded-xl border border-danger/25 bg-danger/10 p-2.5 text-[11px] text-danger">
+                <div className="space-y-1.5 rounded-xl border border-danger/25 bg-danger/10 p-2.5 text-xs text-danger">
                   <p className="break-words">{error}</p>
                   {error.toLowerCase().includes('créditos pré-pagos') && (
                     <a
@@ -230,7 +169,7 @@ export default function GeminiKeyGuideModal({
                 </div>
               )}
               {result && (
-                <p className="flex items-center gap-1.5 rounded-xl bg-ok/10 px-2.5 py-2 text-[11px] font-medium text-ok">
+                <p className="flex items-center gap-1.5 rounded-xl bg-ok/10 px-2.5 py-2 text-xs font-medium text-ok">
                   <CheckCircle2 size={14} />
                   Chave validada ({result.total} modelos disponíveis). Limite diário local desativado!
                 </p>
@@ -239,7 +178,7 @@ export default function GeminiKeyGuideModal({
           </li>
         </ol>
 
-        <p className="flex items-center gap-1.5 text-[11px] text-muted">
+        <p className="flex items-center gap-1.5 text-xs text-muted">
           <ShieldCheck size={14} className="shrink-0 text-accent" />
           A chave é enviada diretamente do teu navegador/app para a Google API — nunca passa por servidores próprios da Unipedia.
         </p>

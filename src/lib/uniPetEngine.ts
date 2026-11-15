@@ -71,22 +71,37 @@ export function resolveVisibleUniPeers(args: {
 }
 
 const TUTOR_SAFE_ANCHORS: PetAnchorZone[] = ['right_edge_peek', 'left_edge_peek', 'top_right_corner'];
+const MOBILE_SAFE_ANCHORS: PetAnchorZone[] = ['bottom_right'];
 
 /**
  * Escolhe de forma determinística onde o Uni discreto aparece no ecrã
  * (alternando entre canto inferior direito/esquerdo, bordas laterais a espreitar e cantos superiores).
- * No Tutor (/assistente) evita a zona inferior do compositor de mensagens.
+ * Em telemóveis (`mobile: true`), restringe exclusivamente aos cantos inferiores acima da dock
+ * para nunca tapar cabeçalhos nem cartões.
  */
 export function pickNextNomadPlacement(args: {
   pathname: string;
   stepCount: number;
+  mobile?: boolean;
 }): NomadPlacement {
   const path = args.pathname || '/';
-  const pool = path.startsWith('/assistente') ? TUTOR_SAFE_ANCHORS : ANCHOR_ORDER;
+  const pool = args.mobile
+    ? MOBILE_SAFE_ANCHORS
+    : path.startsWith('/assistente')
+      ? TUTOR_SAFE_ANCHORS
+      : ANCHOR_ORDER;
   const routeOffset = hashString(path);
   const index = (routeOffset + args.stepCount) % pool.length;
   const zone = pool[index]!;
   const stepParity = args.stepCount % 2 === 0 ? 1 : -1;
+
+  if (args.mobile) {
+    return {
+      zone,
+      tiltDeg: 0,
+      offsetPx: stepParity * 4,
+    };
+  }
 
   if (zone === 'right_edge_peek') {
     return { zone, tiltDeg: -16, offsetPx: stepParity * 12 };

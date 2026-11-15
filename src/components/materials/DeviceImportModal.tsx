@@ -10,7 +10,8 @@ import {
 } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, DragEvent } from 'react';
-import { Badge, Button, Input, Modal, Select, cx, showToast } from '../ui';
+import { Badge, Button, Input, Modal, Select } from '../ui';
+import { cx, showToast } from '../../lib/uiHelpers';
 import { formatBytes, saveFile } from '../../lib/fileStorage';
 import { newId, useStore } from '../../store/useStore';
 import type { Material, MaterialCategory } from '../../types';

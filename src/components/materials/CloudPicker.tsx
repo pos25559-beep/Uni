@@ -1,37 +1,15 @@
 // Modal para navegar e importar ficheiros do Google Drive (pastas pessoais e pastas partilhadas).
 import { useEffect, useState } from 'react';
 import { ChevronRight, Folder, HardDrive, LoaderCircle } from 'lucide-react';
-import { Badge, Button, EmptyState, Field, Input, Modal, Select, cx } from '../ui';
+import { Badge, Button, EmptyState, Field, Input, Modal, Select } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 import { useStore } from '../../store/useStore';
+import type { CloudSource } from '../../lib/cloudSources';
 import { googleService, type CloudFile } from '../../services/googleService';
 import type { Material } from '../../types';
 import { materialIcon, relativeDate } from './meta';
 
 type Tab = 'folders' | 'shared' | 'recent' | 'search';
-
-export interface CloudSource {
-  provider: 'gdrive';
-  integration: 'google';
-  label: string;
-  clientIdKey: 'googleClientId';
-  clientIdName: string;
-  listFolder: (folderId?: string) => Promise<CloudFile[]>;
-  search: (text: string) => Promise<CloudFile[]>;
-  recent: () => Promise<CloudFile[]>;
-  shared: () => Promise<CloudFile[]>;
-}
-
-export const DRIVE_SOURCE: CloudSource = {
-  provider: 'gdrive',
-  integration: 'google',
-  label: 'Google Drive',
-  clientIdKey: 'googleClientId',
-  clientIdName: 'Google',
-  listFolder: (folderId) => googleService.listDriveFolder(folderId),
-  search: (text) => googleService.searchDriveFiles(text),
-  recent: () => googleService.listRecentDriveFiles(),
-  shared: () => googleService.listSharedWithMe(),
-};
 
 const tabs: { id: Tab; label: string }[] = [
   { id: 'folders', label: 'O meu Disco' },

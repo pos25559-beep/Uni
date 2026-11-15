@@ -5,7 +5,8 @@ import { TAB_GUIDES, type AppTabKey } from '../../lib/tabGuides';
 import { resolveUniAccessory } from '../../lib/uniAccessories';
 import { useStore } from '../../store/useStore';
 import { UniBuddy } from '../brand/UnipediaMarks';
-import { Button, cx } from '../ui';
+import { Button } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 
 const useTabGuideOverlay = create<{
   openTab: AppTabKey | null;

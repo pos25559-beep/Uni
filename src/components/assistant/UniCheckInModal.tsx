@@ -29,7 +29,8 @@ import type {
   WeeklyCheckIn,
 } from '../../types';
 import { UniBuddy, UniPetBuddy } from '../brand/UnipediaMarks';
-import { Badge, Button, Modal, cx, showToast } from '../ui';
+import { Badge, Button, Modal } from '../ui';
+import { cx, showToast } from '../../lib/uiHelpers';
 
 export interface UniCheckInModalProps {
   open: boolean;

@@ -19,7 +19,8 @@ import { KIND_META, KIND_ORDER } from '../components/calendar/shared';
 import { AnimatedPage } from '../components/motion/Primitives';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import WeekView from '../components/calendar/WeekView';
-import { ActionSheet, Button, Modal, PageHeader, SegmentedControl, cx, showToast } from '../components/ui';
+import { ActionSheet, Button, Modal, PageHeader, SegmentedControl } from '../components/ui';
+import { cx, showToast } from '../lib/uiHelpers';
 import { buildIcsCalendar, downloadIcsCalendar } from '../integrations/ics';
 import { capitalizeFirst, toDateStr } from '../lib/selectors';
 import {
@@ -287,9 +288,9 @@ export default function Calendar() {
               onClick={() => setSatNoticeDismissed(true)}
               aria-label="Manter aulas ao Sábado"
               title="Fechar aviso"
-              className="grid size-7 place-items-center rounded-lg text-muted transition hover:bg-surface-2 hover:text-fg"
+              className="-mr-1.5 grid size-11 place-items-center rounded-full text-muted transition hover:bg-surface-2 hover:text-fg"
             >
-              <X size={14} />
+              <X size={15} />
             </button>
           </div>
         </div>
@@ -327,7 +328,7 @@ export default function Calendar() {
               aria-pressed={on}
               onClick={() => toggleKind(k)}
               className={cx(
-                'inline-flex min-h-[38px] shrink-0 items-center gap-2 rounded-full border px-3 text-xs font-medium transition sm:h-8 sm:min-h-0',
+                'inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border px-3.5 text-xs font-medium transition',
                 on ? 'border-line bg-surface text-fg' : 'border-transparent bg-surface-2 text-muted',
               )}
             >

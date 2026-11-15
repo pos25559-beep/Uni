@@ -15,7 +15,8 @@ import type { UniAccessoryId, UniPersonaMode } from '../../lib/uniAccessories';
 import { useStore } from '../../store/useStore';
 import type { Material } from '../../types';
 import { UniBuddy } from '../brand/UnipediaMarks';
-import { Button, Modal, Textarea, cx, showToast } from '../ui';
+import { Button, Modal, Textarea } from '../ui';
+import { cx, showToast } from '../../lib/uiHelpers';
 import { Markdown } from './Markdown';
 
 export default function UniNotebookDrawer({
@@ -274,7 +275,7 @@ export default function UniNotebookDrawer({
                   }
                 }}
                 disabled={busy}
-                className="inline-flex min-h-[34px] shrink-0 whitespace-nowrap items-center gap-1 rounded-full border border-line bg-surface-2 px-2.5 text-[11px] font-semibold text-fg transition hover:border-line-strong disabled:opacity-45"
+                className="inline-flex min-h-11 shrink-0 whitespace-nowrap items-center gap-1 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg transition hover:border-line-strong disabled:opacity-45"
               >
                 <ClipboardPaste size={12} /> Colar texto
               </button>
@@ -282,7 +283,7 @@ export default function UniNotebookDrawer({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={busy || attachments.length >= 3}
-                className="inline-flex min-h-[34px] shrink-0 whitespace-nowrap items-center gap-1 rounded-full border border-line bg-surface-2 px-2.5 text-[11px] font-semibold text-fg transition hover:border-line-strong disabled:opacity-45"
+                className="inline-flex min-h-11 shrink-0 whitespace-nowrap items-center gap-1 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg transition hover:border-line-strong disabled:opacity-45"
               >
                 <Paperclip size={12} /> Anexar ficheiro
               </button>
@@ -299,7 +300,7 @@ export default function UniNotebookDrawer({
               {attachments.map((att, idx) => (
                 <span
                   key={`${att.name}-${idx}`}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface-2 py-1 pl-2.5 pr-1.5 text-[11px] font-medium text-fg"
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-surface-2 py-1 pl-3 pr-1.5 text-xs font-medium text-fg"
                 >
                   {att.mimeType.startsWith('image/') ? (
                     <ImageIcon size={12} className="text-accent" />
@@ -311,9 +312,9 @@ export default function UniNotebookDrawer({
                     type="button"
                     onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== idx))}
                     aria-label={`Remover ${att.name}`}
-                    className="grid h-5 w-5 place-items-center rounded-full text-muted hover:bg-surface hover:text-fg"
+                    className="grid size-9 place-items-center rounded-full text-muted hover:bg-surface hover:text-fg"
                   >
-                    <X size={11} />
+                    <X size={13} />
                   </button>
                 </span>
               ))}
@@ -335,7 +336,7 @@ export default function UniNotebookDrawer({
                 type="button"
                 onClick={() => setMode(id)}
                 className={cx(
-                  'min-h-[38px] rounded-full border px-3 text-xs font-semibold transition',
+                  'min-h-11 rounded-full border px-3.5 text-xs font-semibold transition',
                   mode === id
                     ? 'border-accent bg-accent-soft text-accent'
                     : 'border-line bg-surface-2 text-muted hover:text-fg',
@@ -345,7 +346,7 @@ export default function UniNotebookDrawer({
               </button>
             ))}
           </div>
-          <span className="text-[11px] font-medium text-muted">
+          <span className="text-xs font-medium text-muted">
             {customKeyActive
               ? 'Chave pessoal · ilimitado'
               : `${quota.notebookRemaining}/${quota.notebookLimit} gerações hoje`}

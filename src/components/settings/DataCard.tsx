@@ -6,7 +6,7 @@ import { applyBackupJson, buildBackupPayload } from '../../lib/backup';
 import { loadDemoData } from '../../lib/demoSeed';
 import { useStore } from '../../store/useStore';
 import { Button, Card, Modal } from '../ui';
-import { errorMessage } from './shared';
+import { errorMessage } from './helpers';
 
 export default function DataCard() {
   const [message, setMessage] = useState<string | null>(null);

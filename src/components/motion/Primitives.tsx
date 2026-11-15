@@ -1,45 +1,13 @@
-import confetti from 'canvas-confetti';
 import { ArrowRight } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { courseColors } from '../../lib/colors';
-import { hapticSuccess, hapticTap } from '../../lib/nativeBridge';
+import { UNIPEDIA_SPRING } from '../../lib/motionTokens';
+import { hapticTap } from '../../lib/nativeBridge';
 import { useStore } from '../../store/useStore';
 import type { Course } from '../../types';
-import { cx } from '../ui';
-
-export const UNIPEDIA_SPRING = {
-  type: 'spring' as const,
-  stiffness: 380,
-  damping: 24,
-  mass: 0.85,
-};
-
-export const UNIPEDIA_BOUNCE_SPRING = {
-  type: 'spring' as const,
-  stiffness: 420,
-  damping: 20,
-};
-
-/** Celebração leve com cores de papelaria Unipedia (respeita reduced-motion). */
-export function celebrateStationery() {
-  if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    return;
-  }
-  void hapticSuccess();
-  try {
-    void confetti({
-      particleCount: 28,
-      spread: 58,
-      origin: { y: 0.72 },
-      colors: ['#157F58', '#FCE99F', '#E04F33', '#C9DC9F', '#C4E0FD'],
-      disableForReducedMotion: true,
-    });
-  } catch {
-    // WebView sem suporte a canvas.
-  }
-}
+import { cx } from '../../lib/uiHelpers';
 
 export function AnimatedPage({ children, className }: { children: ReactNode; className?: string }) {
   const isMinimal = useStore((s) => (s.settings.appTone ?? 'vibrante') === 'serio');

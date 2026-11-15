@@ -1,11 +1,12 @@
-# Unipedia v3 — Design System ("Estúdio Caderno Vivo")
+# Unipedia v4 — Design System ("Estúdio Caderno Vivo Refinado")
 
 ## 1. Personalidade & Princípios Anti-Slop
 A Unipedia ajuda estudantes em Portugal (Ensino Superior e Secundário) a planear, estudar e progredir com tranquilidade e energia positiva.
-- **Direção visual**: *Estúdio Caderno Vivo* — papel creme quente, tinta negra tátil, ritmo editorial (Display sans + Serif itálico), blocos coloridos de papelaria e mascotes simples e humanos.
+- **Direção visual (v4 Refinado)**: *Estúdio Caderno Vivo* — papel creme quente, tinta negra tátil, ritmo editorial (Display sans + Serif itálico), blocos coloridos de papelaria e mascotes simples e humanos, mantendo os stickers e formas pastel com prioridade de leitura acima da dobra no telemóvel.
 - **Proibição de AI-Slop**:
   - **Zero roxo/índigo/violeta** no logo, acento primário ou modo escuro.
   - **Zero paredes infinitas de cartões brancos com borda** — alternar blocos pastel sem bordas pesadas (*color blocking*), listas limpas agrupadas (`ListGroup`) e bastante respiro entre secções.
+  - **Zero `<select>` nativos do browser/OS** — todas as escolhas de opções usam `PillSelect` ou `Select` tátil (folha inferior no telemóvel, popover posicionado no desktop).
   - **Sem linguagem técnica ou de programador na UI**: zero jargão de ERP, zero emails/IDs reais hardcoded.
 
 ## 2. Paleta de Cores (WCAG AA)
@@ -37,27 +38,33 @@ Usados como superfícies coloridas com alto contraste (`#141312` em claro, tonal
 - **Pêssego (`peach`)**: `#FAD6BA` (escuro `#382317`)
 - **Rosa Papel (`blush`)**: `#F9C5BE` (escuro `#381E21`)
 
-## 3. Tipografia & Escala Legível Mobile
+## 3. Tipografia & Escala Legível Universal
 - **Famílias**:
   - Títulos & Display: `Bricolage Grotesque Variable`, sans-serif (`tracking: -0.025em`)
   - Ênfase Humana / Editorial: `Instrument Serif` (itálico dentro de títulos, ex: *"Estuda com calma"*)
   - Corpo & UI: `Geist Variable`, sans-serif
   - Números, horas, notas & datas curtas: `Geist Mono Variable` com `font-variant-numeric: tabular-nums`
-- **Regra mínima mobile**: corpo e metadados legíveis **`>= 12px`** (permitido `11px` apenas em legendas da dock inferior; **zero `text-[10px]`**).
+- **Regra mínima v4**: todo o corpo, eyebrows, chips, dicas e metadados têm **`>= 12px`** (`text-xs` ou superior; `text-[11px]` permitido **exclusivamente** nos rótulos da dock móvel; **zero `text-[10px]`**).
 
 ## 4. Layout & Arquitetura dos Ecrãs
-1. **Pré-login Editorial (`/bem-vindo`) & Entrada (`/entrar`)**: Carrossel de apresentação em cores pastel quentes (`#FAD6BA`, `#C4E0FD`, `#FCE99F`) com atalho imediato para criar conta ou entrar; em `/entrar`, o balão do Uni abre em popover sobreposto para manter o rodapé legal sempre visível.
-2. **Top Bar Humilde**: Saudação + avatar do **Uni** interativo à esquerda; no máximo 2 ações circulares (`44x44px`) à direita.
-3. **Dock Flutuante em Cápsula (Mobile)**: Barra arredondada (`rounded-[28px]`) flutuante acima da safe-area em `#141312` (`#24211D` em dark), com 5 destinos máximos (`Hoje`, `Cadeiras`, `Plano`, `Tutor`, `Mais`) e pílula ativa deslizante (`layoutId`).
-4. **Blocos Lúdicos de Papelaria no Hoje**: Hero colorido (`Color Block`) -> Grelha Bento 2x1 (`Ver ->`) -> Mosaico orgânico (`HighlightShapesGrid`) -> Caderno pautado (`NotebookFocusSheet`), post-it amarelo (`StickyTasksPad`), fita pêssego (`AgendaRibbonCard`) e postal azul-céu (`AcademicGmailWidget`) ao lado do baralho empilhado de pastas (`FolderCardDeck`).
-5. **Uni com Acessórios & Personalidade**: O componente `UniBuddy` adapta o visual por área do conhecimento (`math`, `tech`, `health`, `arts`, `science`, `humanities`, `default`) automaticamente ou por escolha em Definições, moldando também o tom de tutor no **Tutor** (`Amigo`, `Exigente`, `Anti-stress`) e o **Caderno do Uni**.
-6. **Controlos Táteis Personalizados**: Seletores importantes (como filtro de cadeira no Tutor) usam `PillSelect` em vez de menus nativos crus do browser.
-7. **Definições & Privacidade**: Lista agrupada nativa (`ListGroup`/`ListRow`) com sub-ecrãs limpos (`SubpageHeader`) e cartão **"A tua privacidade em 30 segundos"**.
+1. **Pré-login Editorial (`/bem-vindo`) & Entrada (`/entrar`)**: Carrossel de 5 slides em cores pastel quentes com preview de acessórios/cores do Uni e atalho imediato para entrar; balão do Uni em `/entrar` abre em popover sobreposto.
+2. **Top Bar Humilde**: Saudação + avatar do **Uni** interativo à esquerda; ações circulares (`44×44px`) à direita.
+3. **Dock Flutuante em Cápsula (Mobile)**: Barra arredondada (`rounded-[28px]`) flutuante acima da safe-area em `#141312` (`#24211D` em dark), com 5 destinos máximos (`Cadeiras`, `Plano`, `Hoje`, `Tutor`, `Mais`) e pílula ativa deslizante (`layoutId`).
+4. **Blocos Lúdicos Refinados no Hoje (Prioridade acima da dobra)**:
+   - No topo: Cabeçalho → 1 alerta contextual único (quando aplicável) + faixa fina de `Primeiros passos` após ≥ 2 ligados → Pulso do dia + **`Foco de hoje`** (`NotebookFocusSheet`) visível logo no 1.º ecrã no telemóvel.
+   - Abaixo: `StickyTasksPad`, `AgendaRibbonCard`, `FolderCardDeck`, `AcademicGmailWidget`, `BentoMetricTile` 2×1 e `HighlightShapesGrid`.
+5. **Companheiros Uni (`UniLivingOverlay`)**: No telemóvel ancorados exclusivamente em **bordas inferiores seguras acima da dock** (zero colisão com cabeçalhos ou texto); no desktop livres pelas margens externas.
+6. **Cadeira (5 Abas) & Plano / Materiais Desktop**:
+   - `CourseDetail` usa `SubpageHeader` v4 e 5 abas claras (`Visão & Regras`, `Matéria & Notas`, `Materiais`, `Horário`, `Tarefas`).
+   - `Plano` expande para `max-w-7xl` no desktop (`4 cols` portátil / `7 cols` amplo).
+   - `Materiais` usa largura total da biblioteca quando não existem Gemini Notebooks guardados.
+7. **Controlos Táteis Personalizados**: Todos os seletores (`Select` e `PillSelect`) usam folha inferior no telemóvel ou popover estilizado no desktop, garantindo `44×44px` de toque.
+8. **Definições & Privacidade**: Navegação das 5 categorias no topo em mobile seguida da personalização visual, com `ListGroup`/`ListRow` e `SubpageHeader`.
 
 ## 5. Motion, Ergonomia & Acesso
-- **Alvos táteis**: `>= 44px × 44px` obrigatórios em todos os botões, inputs, checkboxes de linha, pílulas e controlos (`@media (pointer: coarse)` inclui explicitamente `button`).
+- **Alvos táteis**: `>= 44px × 44px` em botões, chips de filtro, checkboxes de linha, botões de fechar e controlos interativos tanto em touch como em desktop.
 - **Motion (`motion/react` + `<MotionConfig reducedMotion="user">`)**:
-  - Spring principal: `{ type: 'spring', stiffness: 360, damping: 28, mass: 0.9 }`.
-  - Onboarding com indicadores morfáveis, botão `>` que morfa em pílula `Começar`, transição expansiva `clipPath`, orbitadores suaves e *stickers* inclinados (`-4deg` / `+3deg`).
-  - Feedback háptico discreto + mini-confeti nas cores de papelaria apenas em conquistas reais (fechar meta diária ou concluir onboarding).
+  - Spring principal: `{ type: 'spring', stiffness: 380, damping: 24, mass: 0.85 }`.
+  - Spring de ressalto: `{ type: 'spring', stiffness: 420, damping: 20 }`.
+  - Feedback háptico discreto + confeti de papelaria apenas em conquistas reais.
 - **Autenticação segura em Mobile/WebView**: Fluxo primário por **Email e Palavra-passe** (ou uso offline sem conta). Login Google estritamente opcional e nunca disparado automaticamente.

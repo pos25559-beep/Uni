@@ -16,7 +16,8 @@ import {
 import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Assessment, Course, Material } from '../../types';
-import { Badge, Button, EmptyState, Input, cx } from '../ui';
+import { Badge, Button, EmptyState, Input } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 import { newId, useStore } from '../../store/useStore';
 import { filterMaterialsForCourse } from '../../lib/courseMaterials';
 import { courseColors, providerLabel } from '../../lib/colors';

@@ -1,6 +1,7 @@
 import { Bell, BellOff, BookOpenCheck, CalendarHeart, Flame, GraduationCap, Clock, Moon, Sparkles } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Card, Switch, showToast } from '../ui';
+import { Button, Card, Select, Switch } from '../ui';
+import { showToast } from '../../lib/uiHelpers';
 import {
   getUniNotificationPermission,
   requestUniNotificationPermission,
@@ -244,10 +245,10 @@ export default function NotificationsCard({ hideHeader = false }: { hideHeader?:
 
         {/* Cadência e silêncio */}
         <div className="grid gap-3 rounded-2xl border border-line/75 bg-surface-2/40 p-3.5 sm:grid-cols-3">
-          <label className="space-y-1 text-xs">
-            <span className="font-semibold text-muted">Hora do empurrão diário</span>
-            <select
-              className="w-full rounded-xl border border-line bg-surface px-2.5 py-2 text-sm text-fg"
+          <div className="space-y-1 text-xs">
+            <span className="block font-semibold text-muted">Hora do empurrão diário</span>
+            <Select
+              aria-label="Hora do empurrão diário"
               value={prefs.preferredHour}
               onChange={(e) => patchPrefs({ preferredHour: Number(e.target.value) })}
             >
@@ -256,13 +257,13 @@ export default function NotificationsCard({ hideHeader = false }: { hideHeader?:
                   {String(h).padStart(2, '0')}:00
                 </option>
               ))}
-            </select>
-          </label>
+            </Select>
+          </div>
 
-          <label className="space-y-1 text-xs">
-            <span className="font-semibold text-muted">Antes da aula</span>
-            <select
-              className="w-full rounded-xl border border-line bg-surface px-2.5 py-2 text-sm text-fg"
+          <div className="space-y-1 text-xs">
+            <span className="block font-semibold text-muted">Antes da aula</span>
+            <Select
+              aria-label="Antes da aula"
               value={prefs.classBeforeMinutes}
               onChange={(e) =>
                 patchPrefs({ classBeforeMinutes: Number(e.target.value) === 30 ? 30 : 15 })
@@ -270,13 +271,13 @@ export default function NotificationsCard({ hideHeader = false }: { hideHeader?:
             >
               <option value={15}>15 minutos antes</option>
               <option value={30}>30 minutos antes</option>
-            </select>
-          </label>
+            </Select>
+          </div>
 
-          <label className="space-y-1 text-xs">
-            <span className="font-semibold text-muted">Máximo por dia</span>
-            <select
-              className="w-full rounded-xl border border-line bg-surface px-2.5 py-2 text-sm text-fg"
+          <div className="space-y-1 text-xs">
+            <span className="block font-semibold text-muted">Máximo por dia</span>
+            <Select
+              aria-label="Máximo por dia"
               value={prefs.maxDailyNudges}
               onChange={(e) => {
                 const v = Number(e.target.value);
@@ -291,13 +292,13 @@ export default function NotificationsCard({ hideHeader = false }: { hideHeader?:
               <option value={3}>3 avisos/dia</option>
               <option value={4}>4 avisos/dia</option>
               <option value={6}>6 avisos/dia</option>
-            </select>
-          </label>
+            </Select>
+          </div>
 
-          <label className="space-y-1 text-xs">
-            <span className="font-semibold text-muted">Após a aula</span>
-            <select
-              className="w-full rounded-xl border border-line bg-surface px-2.5 py-2 text-sm text-fg"
+          <div className="space-y-1 text-xs">
+            <span className="block font-semibold text-muted">Após a aula</span>
+            <Select
+              aria-label="Após a aula"
               value={prefs.postClassDelayMinutes ?? 10}
               onChange={(e) => {
                 const v = Number(e.target.value);
@@ -307,13 +308,13 @@ export default function NotificationsCard({ hideHeader = false }: { hideHeader?:
               <option value={5}>5 min depois</option>
               <option value={10}>10 min depois</option>
               <option value={15}>15 min depois</option>
-            </select>
-          </label>
+            </Select>
+          </div>
 
-          <label className="space-y-1 text-xs">
-            <span className="font-semibold text-muted">Hora fim do dia</span>
-            <select
-              className="w-full rounded-xl border border-line bg-surface px-2.5 py-2 text-sm text-fg"
+          <div className="space-y-1 text-xs">
+            <span className="block font-semibold text-muted">Hora fim do dia</span>
+            <Select
+              aria-label="Hora fim do dia"
               value={prefs.eveningHour ?? 20}
               onChange={(e) => patchPrefs({ eveningHour: Number(e.target.value) })}
             >
@@ -322,14 +323,14 @@ export default function NotificationsCard({ hideHeader = false }: { hideHeader?:
                   {String(h).padStart(2, '0')}:30
                 </option>
               ))}
-            </select>
-          </label>
+            </Select>
+          </div>
 
           <label className="space-y-1 text-xs">
-            <span className="font-semibold text-muted">Silêncio desde</span>
+            <span className="block font-semibold text-muted">Silêncio desde</span>
             <input
               type="time"
-              className="w-full rounded-xl border border-line bg-surface px-2.5 py-1.5 text-sm text-fg"
+              className="min-h-11 w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm text-fg"
               value={prefs.quietStart}
               onChange={(e) => patchPrefs({ quietStart: e.target.value })}
             />

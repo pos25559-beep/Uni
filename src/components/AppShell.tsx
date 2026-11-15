@@ -29,10 +29,11 @@ import UniCheckInModal from './assistant/UniCheckInModal';
 import UniCollectiblesModal from './brand/UniCollectiblesModal';
 import UniLivingOverlay from './brand/UniLivingOverlay';
 import { UnipediaLogoMark } from './brand/UnipediaMarks';
-import { UNIPEDIA_BOUNCE_SPRING, UNIPEDIA_SPRING } from './motion/Primitives';
+import { UNIPEDIA_BOUNCE_SPRING, UNIPEDIA_SPRING } from '../lib/motionTokens';
 import PostOnboardingHubModal from './onboarding/PostOnboardingHubModal';
 import UniHubInviteOverlay from './onboarding/UniHubInviteOverlay';
-import { ToastViewport, cx } from './ui';
+import { ToastViewport } from './ui';
+import { cx } from '../lib/uiHelpers';
 
 const desktopNav = [
   { to: '/', label: 'Hoje', icon: LayoutDashboard, end: true, tour: 'nav-today' },
@@ -107,6 +108,7 @@ export default function AppShell() {
     location.pathname.startsWith('/configurar') ||
     location.pathname.startsWith('/onboarding');
   const isTutorRoute = location.pathname.startsWith('/assistente');
+  const isPlannerRoute = location.pathname.startsWith('/plano');
   const needsLoginGate = !isBypassRoute && !guestMode && !firebaseUser;
   const needsOnboardingSetup =
     !isBypassRoute && !needsLoginGate && !academicProfile?.onboardingCompleted;
@@ -117,17 +119,29 @@ export default function AppShell() {
     kind: 'day',
   });
 
-  useEffect(() => {
+  const urlCheckInRequest = useMemo<(UniCheckInRequest & { hasQuery: boolean }) | null>(() => {
     const params = new URLSearchParams(location.search);
     const logKind = params.get('uniLog');
     if (logKind === 'class' || logKind === 'day' || logKind === 'week' || logKind === 'exam_prep') {
-      setCheckInModal({
-        open: true,
+      return {
+        hasQuery: true,
         kind: logKind as StudyLogKind,
         courseId: params.get('courseId') || undefined,
         classSlotId: params.get('classSlotId') || undefined,
         assessmentId: params.get('assessmentId') || undefined,
-      });
+      };
+    }
+    return null;
+  }, [location.search]);
+
+  const effectiveCheckInModal = urlCheckInRequest
+    ? { open: true, ...urlCheckInRequest }
+    : checkInModal;
+
+  const closeCheckInModal = () => {
+    setCheckInModal((prev) => ({ ...prev, open: false }));
+    if (urlCheckInRequest) {
+      const params = new URLSearchParams(location.search);
       params.delete('uniLog');
       params.delete('courseId');
       params.delete('classSlotId');
@@ -138,7 +152,7 @@ export default function AppShell() {
         { replace: true },
       );
     }
-  }, [location.pathname, location.search, navigate]);
+  };
 
   useEffect(() => {
     const handler = (event: Event) => {
@@ -376,7 +390,9 @@ export default function AppShell() {
                 ? 'mx-auto w-full max-w-5xl px-3.5 py-2 md:px-8 md:py-6'
                 : isTutorRoute
                   ? 'mx-auto w-full max-w-5xl px-3.5 py-2 md:px-8 md:py-6'
-                  : 'mx-auto w-full max-w-5xl px-4 py-4 md:px-8 md:py-8',
+                  : isPlannerRoute
+                    ? 'mx-auto w-full max-w-7xl px-4 py-4 md:px-8 md:py-8'
+                    : 'mx-auto w-full max-w-5xl px-4 py-4 md:px-8 md:py-8',
           )}
         >
           <Outlet />
@@ -609,12 +625,12 @@ export default function AppShell() {
 
       {/* Diário & Check-in Guiado do Uni (Pós-aula, Fim do dia, Domingo, Modo Teste) */}
       <UniCheckInModal
-        open={checkInModal.open}
-        onClose={() => setCheckInModal((prev) => ({ ...prev, open: false }))}
-        initialKind={checkInModal.kind}
-        initialCourseId={checkInModal.courseId}
-        initialClassSlotId={checkInModal.classSlotId}
-        initialAssessmentId={checkInModal.assessmentId}
+        open={effectiveCheckInModal.open}
+        onClose={closeCheckInModal}
+        initialKind={effectiveCheckInModal.kind}
+        initialCourseId={effectiveCheckInModal.courseId}
+        initialClassSlotId={effectiveCheckInModal.classSlotId}
+        initialAssessmentId={effectiveCheckInModal.assessmentId}
       />
 
       {/* Companheiros discretos apenas nas abas principais */}

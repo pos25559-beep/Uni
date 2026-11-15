@@ -18,7 +18,8 @@ import type {
   StudySession,
   WeeklyCheckIn,
 } from '../../types';
-import { Badge, Button, CourseChip, Modal, cx } from '../ui';
+import { Badge, Button, CourseChip, Modal } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 

@@ -5,7 +5,8 @@ import { Plus } from 'lucide-react';
 import { weekdayShort } from '../../lib/colors';
 import { fmtMinutes, sessionMinutes } from '../../lib/selectors';
 import type { Assessment, Course, StudySession, Topic } from '../../types';
-import { Badge, Progress, cx } from '../ui';
+import { Badge, Progress } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 import SessionCard from './SessionCard';
 
 interface DayColumnProps {
@@ -49,9 +50,9 @@ export default function DayColumn({
             type="button"
             onClick={() => onAdd(dateKey)}
             aria-label={`Adicionar sessão a ${format(date, 'd MMM', { locale: pt })}`}
-            className="grid size-8 shrink-0 place-items-center rounded-lg text-muted hover:bg-surface-2 hover:text-fg"
+            className="-mr-2 -mt-2 grid size-11 shrink-0 place-items-center rounded-full text-muted hover:bg-surface-2 hover:text-fg"
           >
-            <Plus size={15} />
+            <Plus size={16} />
           </button>
         </div>
         <div className="flex items-center justify-between gap-1.5">

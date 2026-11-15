@@ -66,7 +66,7 @@ export default function MaterialViewerModal({ material, onClose }: Props) {
             </div>
             <div className="min-w-0">
               <h3 className="text-sm font-semibold text-fg truncate">{material.title}</h3>
-              <div className="flex items-center gap-2 text-[11px] text-muted">
+              <div className="flex items-center gap-2 text-xs text-muted">
                 <Badge>{providerLabel[material.provider] ?? 'Ficheiro'}</Badge>
                 {material.year && <span>{material.year}</span>}
                 {material.epoch && <span>({material.epoch})</span>}

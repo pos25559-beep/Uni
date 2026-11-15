@@ -2,7 +2,8 @@ import { BrainCircuit, CalendarRange, Lightbulb, ListChecks, Target, TrendingDow
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { useStore } from '../../store/useStore';
-import { Button, Select, cx } from '../ui';
+import { Button, Select } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 
 interface Props {
   disabled?: boolean;

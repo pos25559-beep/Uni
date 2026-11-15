@@ -9,7 +9,8 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { Course } from '../../types';
-import { Badge, Button, EmptyState, Input, Modal, cx } from '../ui';
+import { Badge, Button, EmptyState, Input, Modal } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 import { useAcademicEmails } from '../../hooks/useGoogleData';
 import type { AcademicEmail } from '../../services/googleService';
 import { matchesCourse } from '../../lib/courseAliases';
@@ -242,7 +243,7 @@ export default function CourseEmailsTab({ course }: Props) {
                 </div>
               </div>
 
-              <span className="shrink-0 font-mono text-[11px] text-muted">
+              <span className="shrink-0 font-mono text-xs text-muted">
                 {format(parseISO(em.date), 'd MMM, HH:mm', { locale: pt })}
               </span>
             </button>

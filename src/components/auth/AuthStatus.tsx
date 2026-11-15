@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { auth, logoutFirebase, onAuthStateChanged, type User } from '../../lib/firebase';
 import { migrateLocalDataToCloud } from '../../lib/firestoreSync';
 import { useStore } from '../../store/useStore';
-import { showToast } from '../ui';
+import { showToast } from '../../lib/uiHelpers';
 
 /**
  * Cartão compacto de estado da conta para sidebar e folha "Mais":

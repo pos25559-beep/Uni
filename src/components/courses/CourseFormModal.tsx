@@ -3,7 +3,8 @@ import type { FormEvent } from 'react';
 import { courseColors, colorNames } from '../../lib/colors';
 import { newId, useStore } from '../../store/useStore';
 import type { Course, CourseColor } from '../../types';
-import { Button, cx, Field, Input, Modal } from '../ui';
+import { Button, Field, Input, Modal } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 
 interface Props {
   /** Cadeira a editar; omitir para criar uma nova. */

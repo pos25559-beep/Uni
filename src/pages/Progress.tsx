@@ -13,7 +13,8 @@ import { ReadinessChart } from '../components/progress/ReadinessChart';
 import { StreakHeatmap } from '../components/progress/StreakHeatmap';
 import { StudyByDayChart } from '../components/progress/StudyByDayChart';
 import { WeaknessChart } from '../components/progress/WeaknessChart';
-import { Badge, Button, Card, PageHeader, Progress, Ring, SegmentedControl, cx, showToast } from '../components/ui';
+import { Badge, Button, Card, PageHeader, Progress, Ring, SegmentedControl } from '../components/ui';
+import { cx, showToast } from '../lib/uiHelpers';
 import { openUniCheckIn } from '../lib/uniCheckInBus';
 import type { StudyLogKind } from '../types';
 import {
@@ -167,7 +168,7 @@ export default function ProgressPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
           {collectibles.map((item) => {
             const isEquipped = activeSkin === item.skin.id;
             return (
@@ -212,7 +213,7 @@ export default function ProgressPage() {
         <section className="space-y-4 rounded-[26px] bg-pastel-mint/55 p-5 text-[#141312] shadow-card dark:bg-surface-2 dark:text-[#FAF6EC]">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="max-w-lg space-y-1">
-              <p className="text-[11px] font-bold uppercase tracking-[0.12em] opacity-70">
+              <p className="text-xs font-bold uppercase tracking-[0.1em] opacity-75">
                 Caderno de ritmo &amp; métricas
               </p>
               <h2 className="font-display text-lg font-bold">

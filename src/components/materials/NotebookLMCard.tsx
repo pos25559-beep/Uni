@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { BookOpen, ExternalLink, Info } from 'lucide-react';
-import { EmptyState, cx } from '../ui';
+import { EmptyState } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 import { useStore } from '../../store/useStore';
 import { safeHref } from './meta';
 

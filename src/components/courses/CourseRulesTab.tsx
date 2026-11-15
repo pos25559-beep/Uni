@@ -27,7 +27,7 @@ export default function CourseRulesTab({ course, onOpenClipModal }: Props) {
                 href={course.clipUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-line bg-surface-2 px-3 text-xs font-medium text-fg hover:border-muted/50"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-line bg-surface-2 px-3 py-2 text-xs font-medium text-fg hover:border-muted/50"
               >
                 Abrir portal da cadeira
                 <ExternalLink size={12} className="text-muted" />

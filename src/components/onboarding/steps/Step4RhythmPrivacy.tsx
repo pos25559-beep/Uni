@@ -3,7 +3,8 @@ import { LEGAL_INFO } from '../../../lib/legal';
 import { hapticTap } from '../../../lib/nativeBridge';
 import { useStore } from '../../../store/useStore';
 import { StickerBadge } from '../../motion/Primitives';
-import { Button, Field, Input, Textarea, cx } from '../../ui';
+import { Button, Field, Input, Textarea } from '../../ui';
+import { cx } from '../../../lib/uiHelpers';
 
 const DAY_LABELS = [
   { day: 1, label: 'Seg' },

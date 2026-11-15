@@ -5,7 +5,8 @@ import { fmtMinutes } from '../../lib/selectors';
 import { weekdayShort } from '../../lib/colors';
 import { UNI_ACCESSORIES, UNI_PERSONAS } from '../../lib/uniAccessories';
 import { UniBuddy } from '../brand/UnipediaMarks';
-import { Button, Card, Field, Input, cx } from '../ui';
+import { Button, Card, Field, Input } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;

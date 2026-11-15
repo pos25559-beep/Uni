@@ -9,7 +9,8 @@ import { computeNextSrsState, RECALL_LABELS, type RecallScore } from '../../lib/
 import { useHubUiStore } from '../../store/useHubUiStore';
 import { useStore } from '../../store/useStore';
 import type { Course, StudySession, Topic } from '../../types';
-import { Button, Ring, cx } from '../ui';
+import { Button, Ring } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 
 type Phase = 'idle' | 'running' | 'paused' | 'finished';
 const levels: Topic['confidence'][] = [1, 2, 3, 4, 5];

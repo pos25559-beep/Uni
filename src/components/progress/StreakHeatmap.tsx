@@ -4,7 +4,7 @@ import { Fragment, useMemo } from 'react';
 import { fmtMinutes, studyStreak } from '../../lib/selectors';
 import type { StudySession } from '../../types';
 import { ChartCard } from './ChartCard';
-import { cx } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 import { heatmap, plural } from './data';
 
 const WEEKDAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
@@ -40,7 +40,7 @@ export function StreakHeatmap({ sessions, now }: Props) {
       <div className="grid items-center gap-1.5" style={{ gridTemplateColumns: 'auto repeat(12, minmax(0, 1fr))' }}>
         {WEEKDAYS.map((label, d) => (
           <Fragment key={label}>
-            <span className="pr-1 text-right text-[11px] leading-none tabular text-muted">{label}</span>
+            <span className="pr-1 text-right text-xs leading-none tabular text-muted">{label}</span>
             {map.columns.map((column, w) => {
               const cell = column[d];
               const level = levelOf(cell.minutes);

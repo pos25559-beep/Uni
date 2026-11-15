@@ -13,8 +13,9 @@ import { parseIcs } from '../../integrations/ics';
 import { colorNames, kindLabel, weekdayLong } from '../../lib/colors';
 import { newId, useStore } from '../../store/useStore';
 import type { Assessment, CalendarEvent, ClassSlot, Course, CourseColor } from '../../types';
-import { Button, Modal, Select, Textarea, cx } from '../ui';
-import { errorMessage } from './shared';
+import { Button, Modal, Select, Textarea } from '../ui';
+import { cx } from '../../lib/uiHelpers';
+import { errorMessage } from './helpers';
 
 const currentIso = () => new Date().toISOString();
 
@@ -79,7 +80,7 @@ function buildRows(p: Preview, courses: Course[]): { classes: Row[]; assessments
   return { classes, assessments, events };
 }
 
-const kbd = 'rounded border border-line bg-surface px-1 font-mono text-[11px] text-fg';
+const kbd = 'rounded border border-line bg-surface px-1 font-mono text-xs text-fg';
 
 export default function ClipImportModal({ onClose }: { onClose: () => void }) {
   const courses = useStore((s) => s.courses);

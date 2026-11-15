@@ -13,7 +13,8 @@ import {
 import type { ExtraActivity } from '../../../types';
 import { useStore } from '../../../store/useStore';
 import { StickerBadge } from '../../motion/Primitives';
-import { Button, Field, Input, Select, cx } from '../../ui';
+import { Button, Field, Input, Select } from '../../ui';
+import { cx } from '../../../lib/uiHelpers';
 
 export type AcademicCycleMode = 'licenciatura' | 'mestrado' | 'misto';
 

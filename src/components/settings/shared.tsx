@@ -1,21 +1,17 @@
 // Blocos partilhados pelos cartões de Definições.
-import { formatDistanceToNow, parseISO } from 'date-fns';
-import { pt } from 'date-fns/locale';
 import { Check, ChevronDown, Copy } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import type { IntegrationStatus } from '../../types';
-import { Badge, Button, cx } from '../ui';
+import { Badge, Button } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 import { useStore } from '../../store/useStore';
+import { relativeTime } from './helpers';
 
 export function StatusBadge({ status }: { status: IntegrationStatus }) {
   if (status.error) return <Badge tone="danger">Erro</Badge>;
   if (status.connected) return <Badge tone="ok">Ligado</Badge>;
   return <Badge>Por ligar</Badge>;
-}
-
-export function relativeTime(iso: string): string {
-  return formatDistanceToNow(parseISO(iso), { addSuffix: true, locale: pt });
 }
 
 /** Cartão de uma fonte de dados: ícone, estado, erro e conteúdo próprio. */
@@ -102,8 +98,4 @@ export function CopyField({ value, label }: { value: string; label: string }) {
       </Button>
     </div>
   );
-}
-
-export function errorMessage(e: unknown, fallback = 'Ocorreu um erro inesperado.'): string {
-  return e instanceof Error && e.message ? e.message : fallback;
 }

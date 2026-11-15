@@ -10,7 +10,8 @@ import {
 import type { AppTone, Settings, ThemePalette, UniLiveCompanionsMode } from '../../../types';
 import { UniBuddy } from '../../brand/UnipediaMarks';
 import { StickerBadge } from '../../motion/Primitives';
-import { Field, Input, cx } from '../../ui';
+import { Field, Input } from '../../ui';
+import { cx } from '../../../lib/uiHelpers';
 
 interface Step1IdentityProps {
   userName: string;

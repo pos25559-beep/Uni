@@ -60,8 +60,9 @@ import SmartScheduleImportModal, {
   type SmartImportInitialMode,
   type SmartScheduleImportSummary,
 } from '../courses/SmartScheduleImportModal';
-import { celebrateStationery, UNIPEDIA_SPRING } from '../motion/Primitives';
-import { Button, cx } from '../ui';
+import { celebrateStationery, UNIPEDIA_SPRING } from '../../lib/motionTokens';
+import { Button } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 import Step1Identity from './steps/Step1Identity';
 import Step2Academic, { type AcademicCycleMode } from './steps/Step2Academic';
 import Step3Courses from './steps/Step3Courses';

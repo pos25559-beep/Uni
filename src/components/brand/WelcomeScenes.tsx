@@ -1,7 +1,7 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { BookOpen, Brain, CalendarDays, CheckCircle2, HardDrive, Mail, Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { UNIPEDIA_BOUNCE_SPRING } from '../motion/Primitives';
+import { UNIPEDIA_BOUNCE_SPRING } from '../../lib/motionTokens';
 import { UniBuddy } from './UnipediaMarks';
 
 /** Cena animada: Professor Uni ao quadro negro com alunos Uni nas carteiras. */

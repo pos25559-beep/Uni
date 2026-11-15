@@ -5,7 +5,8 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AnimatedPage, StickerBadge } from '../components/motion/Primitives';
 import AccountDeletionModal from '../components/settings/AccountDeletionModal';
-import { Button, Card, SubpageHeader, cx } from '../components/ui';
+import { Button, Card, SubpageHeader } from '../components/ui';
+import { cx } from '../lib/uiHelpers';
 import { auth } from '../lib/firebase';
 import { LEGAL_INFO } from '../lib/legal';
 

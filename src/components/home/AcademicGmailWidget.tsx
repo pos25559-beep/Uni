@@ -1,7 +1,8 @@
 import { CheckCircle2, ExternalLink, GraduationCap, KeyRound, Mail, RefreshCw, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button, Modal, cx } from '../ui';
+import { Button, Modal } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 import { useAcademicEmails } from '../../hooks/useGoogleData';
 import { parseEmlToAcademicEmail } from '../../integrations/gmail';
 import type { AcademicEmail } from '../../services/googleService';

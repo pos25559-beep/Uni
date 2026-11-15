@@ -35,12 +35,14 @@ import { resolveUniAccessory } from '../../lib/uniAccessories';
 import { newId, useStore } from '../../store/useStore';
 import type { AssessmentKind, HubFlowId } from '../../types';
 import { UniBuddy } from '../brand/UnipediaMarks';
-import { celebrateStationery } from '../motion/Primitives';
+import { DRIVE_SOURCE } from '../../lib/cloudSources';
+import { celebrateStationery } from '../../lib/motionTokens';
 import SmartScheduleImportModal from '../courses/SmartScheduleImportModal';
-import CloudPicker, { DRIVE_SOURCE } from '../materials/CloudPicker';
+import CloudPicker from '../materials/CloudPicker';
 import DeviceImportModal from '../materials/DeviceImportModal';
 import ClipImportModal from '../settings/ClipImportModal';
-import { Button, Field, Input, Modal, Select, cx, showToast } from '../ui';
+import { Button, Field, Input, Modal, Select } from '../ui';
+import { cx, showToast } from '../../lib/uiHelpers';
 
 interface Props {
   open: boolean;

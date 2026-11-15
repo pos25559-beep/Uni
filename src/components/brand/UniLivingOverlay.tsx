@@ -19,16 +19,16 @@ import {
 } from '../../lib/uniPetEngine';
 import { useHubUiStore } from '../../store/useHubUiStore';
 import { useStore } from '../../store/useStore';
-import { cx } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 import { UniBuddy, UniPetBuddy, type BuddyMood } from './UnipediaMarks';
 
 const ZONE_CONTAINER_CLASS: Record<PetAnchorZone, string> = {
-  bottom_right: 'right-3 bottom-[88px] md:right-6 md:bottom-4 items-end flex-row',
-  bottom_left: 'left-3 bottom-[88px] md:left-[248px] md:bottom-4 items-end flex-row-reverse',
-  right_edge_peek: 'right-0 top-[44%] translate-x-1 items-center flex-row',
-  left_edge_peek: 'left-0 top-[42%] -translate-x-1 md:left-[228px] items-center flex-row-reverse',
-  top_right_corner: 'right-3 top-14 md:right-6 md:top-4 items-start flex-row',
-  top_left_corner: 'left-3 top-14 md:left-[248px] md:top-4 items-start flex-row-reverse',
+  bottom_right: 'right-2.5 bottom-[84px] md:right-6 md:bottom-4 items-end flex-row',
+  bottom_left: 'right-2.5 bottom-[84px] md:left-[248px] md:right-auto md:bottom-4 items-end flex-row md:flex-row-reverse',
+  right_edge_peek: 'right-2.5 bottom-[84px] md:right-0 md:bottom-auto md:top-[44%] md:translate-x-1 items-center flex-row',
+  left_edge_peek: 'right-2.5 bottom-[84px] md:left-[228px] md:right-auto md:bottom-auto md:top-[42%] md:-translate-x-1 items-center flex-row md:flex-row-reverse',
+  top_right_corner: 'right-2.5 bottom-[84px] md:right-6 md:bottom-auto md:top-4 items-start flex-row',
+  top_left_corner: 'right-2.5 bottom-[84px] md:left-[248px] md:right-auto md:bottom-auto md:top-4 items-start flex-row md:flex-row-reverse',
 };
 
 /**
@@ -59,6 +59,11 @@ export default function UniLivingOverlay() {
       ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
       : false,
   );
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(min-width: 768px)').matches
+      : true,
+  );
 
   const mode = settings.uniLiveCompanions ?? 'all';
   const appTone = settings.appTone ?? 'vibrante';
@@ -87,10 +92,16 @@ export default function UniLivingOverlay() {
 
   useEffect(() => {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const onChange = () => setReducedMotion(mq.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
+    const mqReduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const mqDesktop = window.matchMedia('(min-width: 768px)');
+    const onReduced = () => setReducedMotion(mqReduced.matches);
+    const onDesktop = () => setIsDesktop(mqDesktop.matches);
+    mqReduced.addEventListener('change', onReduced);
+    mqDesktop.addEventListener('change', onDesktop);
+    return () => {
+      mqReduced.removeEventListener('change', onReduced);
+      mqDesktop.removeEventListener('change', onDesktop);
+    };
   }, []);
 
   useEffect(() => {
@@ -146,7 +157,15 @@ export default function UniLivingOverlay() {
     return () => window.clearTimeout(timer);
   }, [blushed]);
 
-  if (visibleSkins.length === 0 || reducedMotion || focusTimerOpen || hubModalOpen) return null;
+  if (
+    visibleSkins.length === 0 ||
+    reducedMotion ||
+    focusTimerOpen ||
+    hubModalOpen ||
+    (!isDesktop && pathname.startsWith('/assistente'))
+  ) {
+    return null;
+  }
 
   const isHidden = inputFocused || scrolling;
   const behavior = pickNextShyBehavior({
@@ -154,7 +173,7 @@ export default function UniLivingOverlay() {
     stepCount,
     isFocusActive: isHidden,
   });
-  const placement = pickNextNomadPlacement({ pathname, stepCount });
+  const placement = pickNextNomadPlacement({ pathname, stepCount, mobile: !isDesktop });
 
   const primaryAccessory = resolveUniAccessory(
     settings.uniAccessory,
@@ -267,7 +286,7 @@ export default function UniLivingOverlay() {
           disabled={isHidden}
           onClick={handleTapUni}
           aria-label="Fazer carinho no Uni discreto"
-          className="pointer-events-auto rounded-full p-0.5 transition-transform hover:scale-110 active:scale-95 focus:outline-none"
+          className="pointer-events-auto inline-flex min-h-11 min-w-11 items-center justify-center rounded-full p-1 transition-transform hover:scale-110 active:scale-95 focus:outline-none"
         >
           <UniBuddy
             mood={primaryMood}

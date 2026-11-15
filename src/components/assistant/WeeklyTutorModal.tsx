@@ -14,7 +14,8 @@ import { todayStr } from '../../lib/selectors';
 import { resolveUniAccessory } from '../../lib/uniAccessories';
 import { newId, useStore } from '../../store/useStore';
 import type { WeeklyCheckIn } from '../../types';
-import { Badge, Button, Field, Input, Modal, Textarea, cx } from '../ui';
+import { Badge, Button, Field, Input, Modal, Textarea } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 import { Markdown } from './Markdown';
 
 interface WeeklyTutorModalProps {

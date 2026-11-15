@@ -21,7 +21,8 @@ import { readNormalizedScreenshot } from '../../lib/imageUpload';
 import { newId, useStore } from '../../store/useStore';
 import type { Assessment, ClassSlot, Course, CourseColor } from '../../types';
 import { StickerBadge } from '../motion/Primitives';
-import { Badge, Button, Modal, cx } from '../ui';
+import { Badge, Button, Modal, Select } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 
 export type SmartImportInitialMode = 'photo' | 'gcal';
 
@@ -576,7 +577,7 @@ export default function SmartScheduleImportModal({
                   {focus === 'assessments' ? 'Print de testes e avaliações' : 'Leitura de foto / print'}
                 </span>
               )}
-              <span className="text-[11px] opacity-75">PNG, JPG ou print</span>
+              <span className="text-xs opacity-75">PNG, JPG ou print</span>
             </div>
             <p className="leading-relaxed opacity-90">
               {focus === 'assessments'
@@ -600,7 +601,7 @@ export default function SmartScheduleImportModal({
               />
             </label>
             {busy && pickedNames.length > 0 && (
-              <p className="flex items-center gap-2 rounded-xl bg-white/75 px-3 py-2 text-[11px] font-medium text-[#141312] dark:bg-black/30 dark:text-[#FAF6EC]">
+              <p className="flex items-center gap-2 rounded-xl bg-white/75 px-3 py-2 text-xs font-medium text-[#141312] dark:bg-black/30 dark:text-[#FAF6EC]">
                 <Loader2 size={13} className="shrink-0 animate-spin text-accent" />
                 <span className="truncate">
                   A analisar {pickedNames.join(', ')}…
@@ -657,16 +658,16 @@ export default function SmartScheduleImportModal({
             {slots.length > 0 && (
               <div className="space-y-1.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted">
                     Aulas detetadas ({slots.length})
                   </p>
                   {existingClasses.length > 0 && (
-                    <label className="inline-flex cursor-pointer items-center gap-1.5 text-[11px] font-medium text-fg">
+                    <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-xs font-medium text-fg">
                       <input
                         type="checkbox"
                         checked={replaceExistingClasses}
                         onChange={(e) => setReplaceExistingClasses(e.target.checked)}
-                        className="size-3.5 accent-accent"
+                        className="size-4 accent-accent"
                       />
                       Substituir {existingClasses.length} aula(s) atuais
                     </label>
@@ -676,14 +677,21 @@ export default function SmartScheduleImportModal({
                   const matched = matchCourse(s.courseName, courses, s.courseCode);
                   const displayName = matched?.name || s.courseName;
                   return (
-                    <label
+                    <div
                       key={s.id}
+                      onClick={() =>
+                        setSlots((prev) =>
+                          prev.map((x) => (x.id === s.id ? { ...x, selected: !x.selected } : x)),
+                        )
+                      }
                       className="flex cursor-pointer items-center justify-between gap-2 rounded-xl border border-line bg-surface px-3 py-2 text-xs"
                     >
                       <div className="flex items-center gap-2.5">
                         <input
                           type="checkbox"
                           checked={s.selected}
+                          aria-label={`Selecionar ${displayName}`}
+                          onClick={(e) => e.stopPropagation()}
                           onChange={(e) =>
                             setSlots((prev) =>
                               prev.map((x) => (x.id === s.id ? { ...x, selected: e.target.checked } : x)),
@@ -695,10 +703,12 @@ export default function SmartScheduleImportModal({
                           <p className="font-semibold text-fg">
                             {displayName} · {s.type}
                           </p>
-                          <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted">
-                            <select
+                          <div
+                            onClick={(e) => e.stopPropagation()}
+                            className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted"
+                          >
+                            <Select
                               value={s.weekday}
-                              onClick={(e) => e.stopPropagation()}
                               onChange={(e) => {
                                 const nextDay = Number(e.target.value);
                                 setSlots((prev) =>
@@ -706,14 +716,14 @@ export default function SmartScheduleImportModal({
                                 );
                               }}
                               aria-label={`Dia da semana para ${displayName}`}
-                              className="rounded-md border border-line bg-surface-2 px-1.5 py-0.5 text-[11px] font-medium text-fg focus:border-accent focus:outline-none"
+                              className="!min-h-11 !rounded-lg !px-2.5 !py-1 !text-xs font-medium"
                             >
                               {weekdayLong.map((dayName, idx) => (
                                 <option key={idx} value={idx}>
                                   {dayName}
                                 </option>
                               ))}
-                            </select>
+                            </Select>
                             <span>
                               {s.start}–{s.end}
                               {s.room ? ` · Sala ${s.room}` : ''}
@@ -724,7 +734,7 @@ export default function SmartScheduleImportModal({
                       <Badge tone={matched ? 'ok' : 'accent'}>
                         {matched ? `Liga a ${matched.shortName}` : 'Cria cadeira'}
                       </Badge>
-                    </label>
+                    </div>
                   );
                 })}
               </div>
@@ -732,7 +742,7 @@ export default function SmartScheduleImportModal({
 
             {assessments.length > 0 && (
               <div className="space-y-1.5">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted">
                   Avaliações detetadas ({assessments.length})
                 </p>
                 {assessments.map((a) => (
@@ -755,7 +765,7 @@ export default function SmartScheduleImportModal({
                         <p className="font-semibold text-fg">
                           {a.courseName} · {a.title}
                         </p>
-                        <p className="text-[11px] text-muted">
+                        <p className="text-xs text-muted">
                           {kindLabel[a.kind]} · {a.date.slice(0, 16).replace('T', ' ')}
                         </p>
                       </div>
@@ -767,7 +777,7 @@ export default function SmartScheduleImportModal({
 
             {detectedCourses.length > 0 && (
               <div className="space-y-1.5">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted">
                   Cadeiras detetadas ({detectedCourses.length})
                 </p>
                 {detectedCourses.map((c) => {
@@ -790,7 +800,7 @@ export default function SmartScheduleImportModal({
                         />
                         <div>
                           <p className="font-semibold text-fg">{matched?.name || c.name}</p>
-                          <p className="text-[11px] text-muted">
+                          <p className="text-xs text-muted">
                             {c.code ? `${c.code} · ` : ''}
                             {c.ects} ECTS
                           </p>

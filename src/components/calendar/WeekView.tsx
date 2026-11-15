@@ -5,7 +5,8 @@ import { Clock, MapPin } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { weekdayLong, weekdayShort } from '../../lib/colors';
 import type { Course } from '../../types';
-import { CourseChip, cx } from '../ui';
+import { CourseChip } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 import { toMinutes } from './items';
 import type { CalItem } from './items';
 import { KIND_META, itemDot, itemTone, timeLabel } from './shared';
@@ -126,8 +127,10 @@ export default function WeekView({ days, byDay, courseById, today, selected, onS
 
         {activeMobileDate && (
           <div className="flex items-center justify-between px-1 text-xs font-semibold text-muted">
-            <span className="capitalize">
-              {weekdayLong[activeMobileDate.getDay()]} · {format(activeMobileDate, "d 'de' MMMM", { locale: pt })}
+            <span>
+              {weekdayLong[activeMobileDate.getDay()]!.charAt(0).toUpperCase() +
+                weekdayLong[activeMobileDate.getDay()]!.slice(1)}{' '}
+              · {format(activeMobileDate, "d 'de' MMMM", { locale: pt })}
             </span>
             <span className="font-mono tabular">
               {mobileDayItems.length} {mobileDayItems.length === 1 ? 'item' : 'itens'}

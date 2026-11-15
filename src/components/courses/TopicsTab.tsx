@@ -6,7 +6,8 @@ import { todayStr } from '../../lib/selectors';
 import { computeNextSrsState } from '../../lib/spacedRepetition';
 import { newId, useStore } from '../../store/useStore';
 import type { Course, Topic, TopicStatus } from '../../types';
-import { Button, cx, EmptyState, Input, Select } from '../ui';
+import { Button, EmptyState, Input, Select } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 import { DeleteButton } from './ConfirmModal';
 import { lastStudiedLabel, topicStatuses } from './helpers';
 

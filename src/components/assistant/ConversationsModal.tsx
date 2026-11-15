@@ -7,7 +7,8 @@ import {
   type Conversation,
 } from '../../lib/geminiConversations';
 import type { Course } from '../../types';
-import { Button, Input, Modal, cx } from '../ui';
+import { Button, Input, Modal } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 
 interface ConversationsModalProps {
   open: boolean;
@@ -203,7 +204,7 @@ export default function ConversationsModal({
           <div className="max-h-[48dvh] space-y-4 overflow-y-auto pr-1">
             {groups.map((group) => (
               <div key={group.key} className="space-y-2">
-                <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted">
+                <p className="text-xs font-bold uppercase tracking-[0.1em] text-muted">
                   {group.label} · {group.items.length}
                 </p>
                 <div className="space-y-1.5">

@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { courseColors, kindLabel } from '../../lib/colors';
 import { fmtGrade, topicProgress, type GradeSummary } from '../../lib/selectors';
 import type { Assessment, Course } from '../../types';
-import { Badge, cx, Ring } from '../ui';
+import { Badge, Ring } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 import { dueLabel } from './helpers';
 
 interface Props {
@@ -36,7 +37,7 @@ export default function CourseCard({ course, summary, next }: Props) {
           <span className={cx('size-2 rounded-full', colors.dot)} />
           <span className="font-mono tracking-tight text-fg">{course.shortName || course.code}</span>
         </span>
-        <span className="font-mono text-[11px] tabular text-muted">{course.ects} ECTS</span>
+        <span className="font-mono text-xs tabular text-muted">{course.ects} ECTS</span>
       </div>
       <div className="flex flex-1 flex-col gap-4 p-5">
         <div className="flex items-start justify-between gap-3">

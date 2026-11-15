@@ -16,7 +16,8 @@ import type { CompletedCourseRecord } from '../../../types';
 import type { SmartImportInitialMode } from '../../courses/SmartScheduleImportModal';
 import { useStore } from '../../../store/useStore';
 import { StickerBadge } from '../../motion/Primitives';
-import { Button, Field, Input, Select, cx } from '../../ui';
+import { Button, Field, Input, Select } from '../../ui';
+import { cx } from '../../../lib/uiHelpers';
 
 interface Step3CoursesProps {
   records: CompletedCourseRecord[];

@@ -3,7 +3,8 @@ import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { newId, useStore } from '../../store/useStore';
 import type { Course, Task } from '../../types';
-import { Badge, Button, cx, EmptyState, Input } from '../ui';
+import { Badge, Button, EmptyState, Input } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 import { DeleteButton } from './ConfirmModal';
 import { dueLabel, fmtShortDate } from './helpers';
 

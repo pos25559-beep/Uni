@@ -41,20 +41,10 @@ import {
   StaggerContainer,
   StaggerItem,
   StickerBadge,
-  UNIPEDIA_BOUNCE_SPRING,
-  celebrateStationery,
 } from '../components/motion/Primitives';
-import {
-  Badge,
-  Button,
-  Card,
-  CourseChip,
-  Modal,
-  Progress,
-  SegmentedControl,
-  cx,
-  showToast,
-} from '../components/ui';
+import { UNIPEDIA_BOUNCE_SPRING, celebrateStationery } from '../lib/motionTokens';
+import { Badge, Button, Card, CourseChip, Modal, Progress, SegmentedControl } from '../components/ui';
+import { cx, showToast } from '../lib/uiHelpers';
 import { courseColors, kindLabel } from '../lib/colors';
 import { hapticSuccess, hapticTap } from '../lib/nativeBridge';
 import { analyzeTestMode } from '../lib/planner';
@@ -479,17 +469,51 @@ export default function Dashboard() {
                   // noop
                 }
               }}
-              className="grid size-8 place-items-center rounded-lg text-muted hover:bg-surface-2 hover:text-fg"
+              className="-mr-2 grid size-11 place-items-center rounded-full text-muted hover:bg-surface-2 hover:text-fg"
               aria-label="Dispensar lembrete"
             >
-              <X size={15} />
+              <X size={16} />
             </button>
           </div>
         </section>
       )}
 
-      {/* Cartão compacto de Primeiros passos */}
+      {/* Cartão compacto (ou barra mínima quando >= 2/4 passos ligados) de Primeiros passos */}
       {!settings.hubSetupDismissed && !hubProgress.allReady && (
+        hubProgress.readyCount >= 2 ? (
+          <div
+            aria-label="Primeiros passos da tua configuração"
+            className={cx(
+              'flex min-h-11 items-center justify-between gap-2 pl-3.5 pr-1 py-1 shadow-card',
+              isMinimal
+                ? 'rounded-2xl border border-line bg-surface text-fg'
+                : 'rounded-2xl bg-pastel-sage/50 text-[#141312] dark:bg-surface dark:text-fg dark:ring-1 dark:ring-white/10',
+            )}
+          >
+            <button
+              type="button"
+              onClick={() => openHubModal(null)}
+              className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-left text-xs font-semibold"
+            >
+              <Sparkles size={14} className="shrink-0 text-accent" />
+              <span className="truncate">
+                Primeiros passos · {hubProgress.readyCount}/{hubProgress.totalCount} ligadas
+              </span>
+              <span className="hidden shrink-0 rounded-full bg-surface/85 px-2 py-0.5 text-xs font-bold text-accent-ink dark:bg-surface-2 sm:inline-flex">
+                Completar
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => updateSettings({ hubSetupDismissed: true })}
+              aria-label="Dispensar cartão de Primeiros passos"
+              title="Dispensar"
+              className="grid size-11 shrink-0 place-items-center rounded-full text-muted transition hover:bg-surface/70 hover:text-fg"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        ) : (
         <section
           aria-label="Primeiros passos da tua configuração"
           className={cx(
@@ -572,6 +596,7 @@ export default function Dashboard() {
             })}
           </div>
         </section>
+        )
       )}
 
       {/* Balão interativo do Uni ("Clippy" da Unipedia) */}
@@ -595,9 +620,9 @@ export default function Dashboard() {
               type="button"
               onClick={() => setUniBubbleOpen(false)}
               aria-label="Fechar sugestão do Uni"
-              className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted transition hover:bg-surface-2 hover:text-fg"
+              className="-mr-1.5 flex size-11 shrink-0 items-center justify-center rounded-full text-muted transition hover:bg-surface-2 hover:text-fg"
             >
-              <X size={15} />
+              <X size={16} />
             </button>
           </motion.div>
         )}
@@ -628,7 +653,7 @@ export default function Dashboard() {
                 setCollectiblesOpen(true);
               }}
               aria-label={`Coleção Uni (${unlockedCollectibles} de ${collectibles.length})`}
-              className="inline-flex min-h-[38px] items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 py-1 text-xs font-semibold text-fg transition hover:border-accent sm:px-3"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-fg transition hover:border-accent"
             >
               <Sparkles size={13} className="text-accent" />
               {activePet !== 'none' && (
@@ -641,7 +666,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <StaggerContainer className="space-y-4 sm:space-y-5">
+      <StaggerContainer className="space-y-3.5 sm:space-y-5">
       {/* Cartão Hero estilo papelaria com métricas inline */}
       <StaggerItem>
       <section
@@ -725,8 +750,8 @@ export default function Dashboard() {
       </section>
       </StaggerItem>
 
-      {/* Alertas contextuais compactos (funde aviso repetido se Modo Teste já cobrir topAlert) */}
-      {testMode.mode !== 'normal' && (
+      {/* Alertas contextuais compactos (omite se o lembrete Modo Teste do topo já estiver visível) */}
+      {testMode.mode !== 'normal' && visibleNudge?.kind !== 'exam_prep' && (
         <StaggerItem>
         <Link
           to="/plano"
@@ -777,7 +802,7 @@ export default function Dashboard() {
 
       {overdue > 0 && (
         <StaggerItem>
-        <Link to="/plano" className="flex items-center gap-2 px-1 text-xs font-medium text-muted hover:text-fg">
+        <Link to="/plano" className="inline-flex min-h-11 items-center gap-2 px-1 text-xs font-medium text-muted hover:text-fg">
           <Clock size={14} className="shrink-0" />
           <span>
             {overdue} {overdue === 1 ? 'sessão por concluir' : 'sessões por concluir'} — reagendar no plano
@@ -1013,12 +1038,18 @@ function SessionRow({
         type="button"
         onClick={onToggle}
         aria-label={session.done ? 'Marcar como por concluir' : 'Marcar como concluída'}
-        className={cx(
-          'grid size-9 shrink-0 place-items-center rounded-full border-2 transition',
-          session.done ? 'border-ok bg-ok text-white' : 'border-muted/50 bg-surface hover:border-accent',
-        )}
+        className="group -ml-1.5 grid size-11 shrink-0 place-items-center rounded-full"
       >
-        {session.done && <Check size={15} strokeWidth={3} />}
+        <span
+          className={cx(
+            'grid size-8 place-items-center rounded-full border-2 transition',
+            session.done
+              ? 'border-ok bg-ok text-white'
+              : 'border-muted/50 bg-surface group-hover:border-accent',
+          )}
+        >
+          {session.done && <Check size={15} strokeWidth={3} />}
+        </span>
       </button>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
@@ -1099,8 +1130,10 @@ function TaskRow({
         type="button"
         onClick={onToggle}
         aria-label={`Concluir: ${task.title}`}
-        className="grid size-7 shrink-0 place-items-center rounded-full border-2 border-muted/50 bg-surface transition hover:border-accent"
-      />
+        className="group -ml-2 grid size-11 shrink-0 place-items-center rounded-full"
+      >
+        <span className="size-7 rounded-full border-2 border-muted/50 bg-surface transition group-hover:border-accent" />
+      </button>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{task.title}</p>
         {(course || dueLabel) && (

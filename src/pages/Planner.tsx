@@ -19,8 +19,8 @@ import {
   AnimatedPage,
   BentoMetricTile,
   WeekDayPills,
-  celebrateStationery,
 } from '../components/motion/Primitives';
+import { celebrateStationery } from '../lib/motionTokens';
 import CourseDistribution from '../components/planner/CourseDistribution';
 import DayColumn from '../components/planner/DayColumn';
 import FocusTimer from '../components/planner/FocusTimer';
@@ -28,17 +28,8 @@ import PlanBuilderModal from '../components/planner/PlanBuilderModal';
 import SessionModal from '../components/planner/SessionModal';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import { openUniCheckIn } from '../lib/uniCheckInBus';
-import {
-  ActionSheet,
-  Badge,
-  Button,
-  Card,
-  CourseChip,
-  EmptyState,
-  PageHeader,
-  SegmentedControl,
-  showToast,
-} from '../components/ui';
+import { ActionSheet, Badge, Button, Card, CourseChip, EmptyState, PageHeader, SegmentedControl } from '../components/ui';
+import { showToast } from '../lib/uiHelpers';
 import { weekdayShort } from '../lib/colors';
 import { hapticTap } from '../lib/nativeBridge';
 import { analyzeTestMode, generatePlan, planSummary, rescheduleOverdueSessions } from '../lib/planner';
@@ -545,7 +536,13 @@ export default function Planner() {
               />
             </div>
 
-            <div className={viewMode === 'week' ? 'grid gap-3 lg:grid-cols-7' : 'hidden lg:grid lg:grid-cols-7 lg:gap-3'}>
+            <div
+              className={
+                viewMode === 'week'
+                  ? 'grid gap-3 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7'
+                  : 'hidden lg:grid lg:grid-cols-4 lg:gap-3 xl:grid-cols-7'
+              }
+            >
               {weekDays.map((d, i) => {
                 const key = weekKeys[i];
                 return (

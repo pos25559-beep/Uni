@@ -2,7 +2,7 @@ import { ChevronDown, ShieldCheck } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { buildStudyContext } from '../../integrations/gemini';
 import { useStore } from '../../store/useStore';
-import { cx } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 
 /** Mostra exatamente o texto que é enviado à Google em cada pergunta. */
 export function ContextPanel({ defaultOpen = false }: { defaultOpen?: boolean }) {

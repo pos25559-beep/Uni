@@ -2,7 +2,7 @@ import { FileText, Image as ImageIcon, Paperclip, ArrowUp, Square, X } from 'luc
 import { useId, useLayoutEffect, useRef, useState } from 'react';
 import type { ChangeEvent, KeyboardEvent, ReactNode } from 'react';
 import { fileToChatAttachment, type ChatAttachment } from '../../integrations/gemini';
-import { cx, showToast } from '../ui';
+import { cx, showToast } from '../../lib/uiHelpers';
 
 export interface ComposerSlotHelpers {
   openFilePicker: () => void;

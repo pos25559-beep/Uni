@@ -59,7 +59,7 @@ const topicValue: Record<Topic['status'], number> = { todo: 0, learning: 0.35, r
 /** Progresso da matéria de uma cadeira, 0–1. */
 export function topicProgress(course: Course): number {
   if (course.topics.length === 0) return 0;
-  return course.topics.reduce((s, t) => s + topicValue[t.status], 0) / course.topics.length;
+  return course.topics.reduce((s, t) => s + (topicValue[t.status] ?? 0), 0) / course.topics.length;
 }
 
 /** Avaliações futuras (ainda sem nota), ordenadas por data. */
@@ -74,7 +74,12 @@ export function readiness(assessment: Assessment, course: Course | undefined): n
   if (!course) return 0;
   const ts = course.topics.filter((t) => assessment.topicIds.includes(t.id));
   if (ts.length === 0) return topicProgress(course);
-  return ts.reduce((s, t) => s + (topicValue[t.status] * 0.6 + (t.confidence / 5) * 0.4), 0) / ts.length;
+  return (
+    ts.reduce(
+      (s, t) => s + ((topicValue[t.status] ?? 0) * 0.6 + ((t.confidence ?? 3) / 5) * 0.4),
+      0,
+    ) / ts.length
+  );
 }
 
 /** Urgência 0–100: sobe com a proximidade, o peso e a falta de preparação. */

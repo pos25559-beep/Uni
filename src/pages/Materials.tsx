@@ -1,8 +1,9 @@
 import { useCallback, useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, ChevronUp, FileUp, FolderOpen, HardDrive, HelpCircle, Link2, Loader2, Pin, Plus, Search, Sparkles, X } from 'lucide-react';
+import { BookOpen, ChevronDown, ChevronRight, ChevronUp, FileUp, FolderOpen, HardDrive, HelpCircle, Link2, Loader2, Pin, Plus, Search, Sparkles, X } from 'lucide-react';
 import { AnimatedPage } from '../components/motion/Primitives';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
-import { ActionSheet, Button, CourseChip, EmptyState, Input, PageHeader, Select, cx, showToast } from '../components/ui';
+import { ActionSheet, Button, CourseChip, EmptyState, Input, PageHeader, PillSelect } from '../components/ui';
+import { cx, showToast } from '../lib/uiHelpers';
 import { useStore } from '../store/useStore';
 import { providerLabel } from '../lib/colors';
 import { driveFolderIdFromUrl } from '../integrations/drive';
@@ -10,8 +11,8 @@ import type { Material, MaterialProvider } from '../types';
 import AddLinkModal from '../components/materials/AddLinkModal';
 import FileUploadModal from '../components/materials/FileUploadModal';
 import DeviceImportModal from '../components/materials/DeviceImportModal';
-import CloudPicker, { DRIVE_SOURCE } from '../components/materials/CloudPicker';
-import type { CloudSource } from '../components/materials/CloudPicker';
+import CloudPicker from '../components/materials/CloudPicker';
+import { DRIVE_SOURCE, type CloudSource } from '../lib/cloudSources';
 import MaterialRow from '../components/materials/MaterialRow';
 import NotebookLMCard from '../components/materials/NotebookLMCard';
 import MaterialViewerModal from '../components/materials/MaterialViewerModal';
@@ -174,6 +175,20 @@ export default function Materials() {
       .join(', ');
   }, [courses]);
 
+  const hasNotebooks = useMemo(
+    () => materials.some((m) => m.provider === 'notebooklm') || courses.some((c) => Boolean(c.notebookUrl)),
+    [materials, courses],
+  );
+
+  const courseFilterOptions = useMemo(
+    () => [
+      { value: 'all', label: 'Todas as cadeiras' },
+      ...courses.map((c) => ({ value: c.id, label: c.name })),
+      { value: 'none', label: 'Sem cadeira' },
+    ],
+    [courses],
+  );
+
   const renderRows = (list: Material[]) => (
     <ul className="divide-y divide-line/80">
       {list.map((m) => (
@@ -207,13 +222,13 @@ export default function Materials() {
 
       <TabGuideBanner tabKey="materiais" />
 
-      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className={hasNotebooks ? 'grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]' : 'space-y-6'}>
         <div className="min-w-0 space-y-4">
           {/* Bloco Caderno Vivo: Varredura automática (minimizável no Desktop & Mobile) */}
           <section
             className={cx(
               'shadow-card transition',
-              scanCardExpanded || rootFolderOpen || scanningDrive ? 'space-y-3 p-4 sm:p-5' : 'px-4 py-2.5',
+              scanCardExpanded || rootFolderOpen || scanningDrive ? 'space-y-3 p-4 sm:p-5' : 'px-4 py-2',
               isMinimal
                 ? 'rounded-[22px] border border-line bg-surface text-fg'
                 : 'rounded-[24px] bg-pastel-mint/70 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]',
@@ -224,14 +239,14 @@ export default function Materials() {
                 type="button"
                 onClick={toggleScanCardExpanded}
                 aria-expanded={scanCardExpanded}
-                className="flex min-w-0 items-center gap-2 text-left"
+                className="flex min-h-11 min-w-0 items-center gap-2 text-left"
               >
                 <Sparkles size={15} className="shrink-0 text-accent-ink dark:text-accent" />
                 <span className="truncate text-xs font-bold uppercase tracking-[0.08em]">
                   Varredura automática
                 </span>
                 {sharedHubDriveUrls.length > 0 && (
-                  <span className="hidden rounded-full bg-white/75 px-2 py-0.5 text-[11px] font-semibold sm:inline dark:bg-black/25">
+                  <span className="hidden rounded-full bg-white/75 px-2 py-0.5 text-xs font-semibold sm:inline dark:bg-black/25">
                     {sharedHubDriveUrls.length} pasta raiz
                   </span>
                 )}
@@ -248,15 +263,15 @@ export default function Materials() {
                   onClick={() => window.dispatchEvent(new CustomEvent('uni-open-tab-guide', { detail: 'materiais' }))}
                   aria-label="Como organizar pastas na varredura"
                   title="Ver guia de pastas e materiais (?)"
-                  className="inline-flex size-8 items-center justify-center rounded-full opacity-75 transition hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10"
+                  className="inline-flex size-11 items-center justify-center rounded-full opacity-75 transition hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10"
                 >
-                  <HelpCircle size={15} />
+                  <HelpCircle size={16} />
                 </button>
                 <button
                   type="button"
                   onClick={toggleScanCardExpanded}
                   aria-expanded={scanCardExpanded}
-                  className="inline-flex min-h-[32px] items-center gap-1 rounded-full bg-white/80 px-3 py-1 text-xs font-semibold transition hover:bg-white dark:bg-black/25 dark:hover:bg-black/40"
+                  className="inline-flex min-h-11 items-center gap-1 rounded-full bg-white/80 px-3.5 py-2 text-xs font-semibold transition hover:bg-white dark:bg-black/25 dark:hover:bg-black/40"
                 >
                   <span>{scanCardExpanded ? 'Minimizar' : 'Expandir'}</span>
                   {scanCardExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -319,7 +334,7 @@ export default function Materials() {
                     {sharedHubDriveUrls.map((url, idx) => (
                       <span
                         key={url}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 text-[11px] font-medium text-fg"
+                        className="inline-flex min-h-11 items-center gap-1 rounded-full bg-surface pl-3.5 pr-1 text-xs font-medium text-fg"
                       >
                         <span className="max-w-[180px] truncate">{url}</span>
                         <button
@@ -330,9 +345,9 @@ export default function Materials() {
                             })
                           }
                           aria-label="Remover pasta raiz"
-                          className="text-muted hover:text-danger"
+                          className="grid size-10 place-items-center rounded-full text-muted hover:text-danger"
                         >
-                          <X size={12} />
+                          <X size={14} />
                         </button>
                       </span>
                     ))}
@@ -351,13 +366,13 @@ export default function Materials() {
             )}
 
             {scanFeedback && (
-              <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/75 px-3.5 py-2.5 text-xs text-[#141312] dark:bg-black/25 dark:text-[#FAF6EC]">
+              <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/75 px-3.5 py-2 text-xs text-[#141312] dark:bg-black/25 dark:text-[#FAF6EC]">
                 <span className="min-w-0 truncate font-medium">{scanFeedback}</span>
                 <button
                   type="button"
                   onClick={clearFeedback}
                   aria-label="Fechar aviso"
-                  className="inline-flex size-8 shrink-0 items-center justify-center rounded-full font-semibold opacity-70 hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10"
+                  className="-mr-1.5 inline-flex size-11 shrink-0 items-center justify-center rounded-full font-semibold opacity-70 hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10"
                 >
                   ✕
                 </button>
@@ -366,7 +381,7 @@ export default function Materials() {
           </section>
           {materials.length > 0 && (
             <>
-              <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
+              <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center">
                 <div className="relative min-w-0 flex-1">
                   <Search size={16} className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-muted" />
                   <Input
@@ -378,16 +393,13 @@ export default function Materials() {
                     className="pl-10"
                   />
                 </div>
-                <Select
-                  aria-label="Filtrar por cadeira"
+                <PillSelect
+                  ariaLabel="Filtrar por cadeira"
                   value={courseFilter}
-                  onChange={(e) => setCourseFilter(e.target.value)}
+                  options={courseFilterOptions}
+                  onChange={setCourseFilter}
                   className="sm:w-56"
-                >
-                  <option value="all">Todas as cadeiras</option>
-                  {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  <option value="none">Sem cadeira</option>
-                </Select>
+                />
               </div>
 
               <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Filtrar por fornecedor">
@@ -559,9 +571,33 @@ export default function Materials() {
           )}
         </div>
 
-        <aside className="min-w-0 space-y-4">
-          <NotebookLMCard />
-        </aside>
+        {hasNotebooks ? (
+          <aside className="min-w-0 space-y-4">
+            <NotebookLMCard />
+          </aside>
+        ) : (
+          <div
+            className={cx(
+              'flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-xs shadow-card',
+              isMinimal
+                ? 'rounded-2xl border border-line bg-surface text-fg'
+                : 'rounded-[22px] bg-pastel-butter/60 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]',
+            )}
+          >
+            <div className="flex min-w-0 items-center gap-2.5">
+              <BookOpen size={16} className="shrink-0 text-accent-ink dark:text-accent" />
+              <p className="min-w-0">
+                <strong className="font-semibold">Gemini Notebook</strong>
+                <span className="ml-1.5 opacity-80">
+                  — ainda sem cadernos ligados. Cola o link para abrir daqui num toque.
+                </span>
+              </p>
+            </div>
+            <Button size="sm" variant="secondary" onClick={() => setAddOpen(true)}>
+              <Link2 size={14} /> Guardar link
+            </Button>
+          </div>
+        )}
       </div>
 
       <ActionSheet

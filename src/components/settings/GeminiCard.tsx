@@ -3,9 +3,12 @@ import { useState } from 'react';
 import { hasCustomGeminiKey } from '../../integrations/gemini';
 import { getDailyQuotaSnapshot } from '../../lib/aiQuota';
 import { useStore } from '../../store/useStore';
-import { Badge, Button, Field, Input, cx } from '../ui';
-import GeminiKeyGuideModal, { verifyGeminiApiKey, type GeminiKeyTestResult } from './GeminiKeyGuideModal';
-import { IntegrationCard, errorMessage } from './shared';
+import { Badge, Button, Field, Input } from '../ui';
+import { cx } from '../../lib/uiHelpers';
+import { verifyGeminiApiKey, type GeminiKeyTestResult } from '../../integrations/geminiKeyVerify';
+import GeminiKeyGuideModal from './GeminiKeyGuideModal';
+import { IntegrationCard } from './shared';
+import { errorMessage } from './helpers';
 
 export default function GeminiCard() {
   const status = useStore((s) => s.integrations.gemini);

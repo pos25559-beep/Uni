@@ -5,8 +5,10 @@ import type { UniAccessoryId } from '../../lib/uniAccessories';
 import { hapticTap } from '../../lib/nativeBridge';
 import { useStore } from '../../store/useStore';
 import { UniBuddy } from '../brand/UnipediaMarks';
-import { StickerBadge, UNIPEDIA_BOUNCE_SPRING } from '../motion/Primitives';
-import { Badge, Button, Input, cx } from '../ui';
+import { StickerBadge } from '../motion/Primitives';
+import { UNIPEDIA_BOUNCE_SPRING } from '../../lib/motionTokens';
+import { Badge, Button, Input } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 
 /**
  * Mosaico de formas orgânicas estilo "Daily highlights" (gotas, trevos, estrelas e stickers pastel).

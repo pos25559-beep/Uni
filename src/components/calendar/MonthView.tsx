@@ -3,7 +3,7 @@ import { format, isSameMonth } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { weekdayShort } from '../../lib/colors';
 import type { Course } from '../../types';
-import { cx } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 import type { CalItem } from './items';
 import { KIND_META, itemDot, itemTone } from './shared';
 
@@ -74,7 +74,7 @@ export default function MonthView({ days, anchor, byDay, courseById, selected, t
                     <span
                       key={it.id}
                       className={cx(
-                        'flex min-w-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] leading-tight',
+                        'flex min-w-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-xs leading-tight',
                         itemTone(it, course),
                         it.done && 'opacity-50',
                       )}
@@ -84,7 +84,7 @@ export default function MonthView({ days, anchor, byDay, courseById, selected, t
                     </span>
                   );
                 })}
-                {more > 0 && <span className="px-1 text-[11px] text-muted">+{more}</span>}
+                {more > 0 && <span className="px-1 text-xs text-muted">+{more}</span>}
               </div>
             </button>
           );

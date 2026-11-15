@@ -1,10 +1,12 @@
 import {
-  ArrowLeft,
   BookOpen,
+  ChevronDown,
+  ChevronUp,
   Clock,
   ExternalLink,
   GraduationCap,
   HardDrive,
+  Mail,
   Pencil,
   Sparkles,
   Target,
@@ -23,7 +25,10 @@ import CourseRepositoryTab from '../components/courses/CourseRepositoryTab';
 import CourseEmailsTab from '../components/courses/CourseEmailsTab';
 import ClipCourseModal from '../components/courses/ClipCourseModal';
 import FileUploadModal from '../components/materials/FileUploadModal';
-import { Button, cx, EmptyState, Stat } from '../components/ui';
+import { AnimatedPage } from '../components/motion/Primitives';
+import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
+import { Button, EmptyState, Stat, SubpageHeader } from '../components/ui';
+import { cx } from '../lib/uiHelpers';
 import { courseColors } from '../lib/colors';
 import {
   fmtGrade,
@@ -36,22 +41,13 @@ import {
 } from '../lib/selectors';
 import { useStore } from '../store/useStore';
 
-type TabKey =
-  | 'guia'
-  | 'repositorio'
-  | 'materia'
-  | 'avaliacoes'
-  | 'horario'
-  | 'gmail'
-  | 'tarefas';
+type TabKey = 'visao' | 'materia' | 'materiais' | 'horario' | 'tarefas';
 
 const tabs: { key: TabKey; label: string }[] = [
-  { key: 'guia', label: 'Guia & Regras' },
-  { key: 'repositorio', label: 'Repositório & Materiais' },
-  { key: 'materia', label: 'Matéria' },
-  { key: 'avaliacoes', label: 'Avaliações' },
-  { key: 'horario', label: 'Horário & Salas' },
-  { key: 'gmail', label: 'Avisos Gmail' },
+  { key: 'visao', label: 'Visão & Regras' },
+  { key: 'materia', label: 'Matéria & Notas' },
+  { key: 'materiais', label: 'Materiais' },
+  { key: 'horario', label: 'Horário' },
   { key: 'tarefas', label: 'Tarefas' },
 ];
 
@@ -64,7 +60,8 @@ export default function CourseDetail() {
   const remove = useStore((s) => s.remove);
 
   const [editing, setEditing] = useState(false);
-  const [tab, setTab] = useState<TabKey>('guia');
+  const [tab, setTab] = useState<TabKey>('visao');
+  const [emailsExpanded, setEmailsExpanded] = useState(false);
   const [clipModalOpen, setClipModalOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
 
@@ -111,46 +108,49 @@ export default function CourseDetail() {
   const meta = [course.code, `${course.ects} ECTS`, course.teacher].filter(Boolean).join(' · ');
 
   return (
-    <>
-      <Link to="/cadeiras" className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted hover:text-fg">
-        <ArrowLeft size={16} /> Cadeiras
-      </Link>
-
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="flex items-center gap-3 text-2xl font-semibold tracking-tight">
-            <span className={cx('size-3.5 shrink-0 rounded-full', colors.dot)} aria-hidden />
+    <AnimatedPage className="space-y-5">
+      <SubpageHeader
+        backTo="/cadeiras"
+        title={
+          <span className="inline-flex min-w-0 items-center gap-2.5">
+            <span className={cx('size-3 shrink-0 rounded-full', colors.dot)} aria-hidden />
             <span className="truncate">{course.name}</span>
-          </h1>
-          <p className="mt-1 text-sm text-muted">{meta}</p>
-        </div>
+          </span>
+        }
+        subtitle={meta || 'Detalhes da cadeira'}
+        action={
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <TabGuideHelpButton tabKey="cadeiras" />
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => navigate('/assistente')}
+              className="gap-1.5"
+            >
+              <Sparkles size={14} className="text-accent" />
+              <span className="hidden sm:inline">Tutor Gemini</span>
+              <span className="sm:hidden">Tutor</span>
+            </Button>
+            <Button size="sm" onClick={() => setEditing(true)}>
+              <Pencil size={14} /> <span className="hidden sm:inline">Editar</span>
+            </Button>
+            <DeleteButton
+              label="Apagar"
+              message={`Apagar "${course.name}"? Também são apagadas as avaliações, aulas, sessões, tarefas e materiais desta cadeira. Esta ação não pode ser desfeita.`}
+              onConfirm={() => {
+                remove('courses', course.id);
+                navigate('/cadeiras');
+              }}
+            />
+          </div>
+        }
+      />
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="secondary"
-            onClick={() => navigate('/assistente')}
-            className="gap-1.5"
-          >
-            <Sparkles size={14} className="text-accent" />
-            Tutor Gemini
-          </Button>
-          <Button onClick={() => setEditing(true)}>
-            <Pencil size={14} /> Editar
-          </Button>
-          <DeleteButton
-            label="Apagar"
-            message={`Apagar "${course.name}"? Também são apagadas as avaliações, aulas, sessões, tarefas e materiais desta cadeira. Esta ação não pode ser desfeita.`}
-            onConfirm={() => {
-              remove('courses', course.id);
-              navigate('/cadeiras');
-            }}
-          />
-        </div>
-      </header>
+      <TabGuideBanner tabKey="cadeiras" />
 
       {/* Links Diretos do Repositório e Plataformas */}
       {links.length > 0 && (
-        <div className="-mt-3 mb-6 flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2">
           {links.map((l) => {
             const Icon = l.icon;
             return (
@@ -159,11 +159,11 @@ export default function CourseDetail() {
                 href={l.url}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-line bg-surface-2 px-3 text-xs font-medium text-fg transition hover:border-muted/50"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-line bg-surface-2 px-3.5 py-2 text-xs font-medium text-fg transition hover:border-muted/50"
               >
-                <Icon size={13} className="text-muted" />
+                <Icon size={14} className="text-muted" />
                 {l.label}
-                <ExternalLink size={11} className="text-muted" />
+                <ExternalLink size={12} className="text-muted" />
               </a>
             );
           })}
@@ -208,11 +208,11 @@ export default function CourseDetail() {
         />
       </div>
 
-      {/* Navegação por Separadores */}
+      {/* Navegação por Separadores (5 abas consolidadas UI v4) */}
       <div
         role="tablist"
         aria-label="Secções da cadeira"
-        className="mb-5 flex gap-1 overflow-x-auto border-b border-line"
+        className="flex gap-1.5 overflow-x-auto pb-1"
       >
         {tabs.map((t) => (
           <button
@@ -222,10 +222,10 @@ export default function CourseDetail() {
             aria-selected={tab === t.key}
             onClick={() => setTab(t.key)}
             className={cx(
-              '-mb-px shrink-0 border-b-2 px-3 py-2.5 text-sm font-medium transition',
+              'min-h-11 shrink-0 rounded-full px-4 py-2 text-xs font-semibold transition sm:text-sm',
               tab === t.key
-                ? 'border-accent text-fg'
-                : 'border-transparent text-muted hover:text-fg',
+                ? 'bg-ink-cta text-ink-cta-fg shadow-sm'
+                : 'bg-surface-2 text-muted hover:text-fg',
             )}
           >
             {t.label}
@@ -235,29 +235,66 @@ export default function CourseDetail() {
 
       {/* Conteúdo dos Separadores */}
       <div role="tabpanel">
-        {tab === 'guia' && (
-          <CourseRulesTab
-            course={course}
-            onOpenClipModal={() => setClipModalOpen(true)}
-          />
+        {tab === 'visao' && (
+          <div className="space-y-6">
+            <CourseRulesTab
+              course={course}
+              onOpenClipModal={() => setClipModalOpen(true)}
+            />
+            <section className="rounded-2xl border border-line bg-surface p-4 sm:p-5">
+              <button
+                type="button"
+                aria-expanded={emailsExpanded}
+                onClick={() => setEmailsExpanded((v) => !v)}
+                className="flex min-h-11 w-full items-center justify-between gap-3 text-left"
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="grid size-8 place-items-center rounded-xl bg-surface-2 text-accent">
+                    <Mail size={16} />
+                  </span>
+                  <div>
+                    <h2 className="text-sm font-semibold text-fg sm:text-base">
+                      Avisos Gmail da Cadeira
+                    </h2>
+                    <p className="text-xs text-muted">
+                      Mensagens de docentes e atualizações ligadas a {course.shortName}
+                    </p>
+                  </div>
+                </div>
+                {emailsExpanded ? (
+                  <ChevronUp size={16} className="shrink-0 text-muted" />
+                ) : (
+                  <ChevronDown size={16} className="shrink-0 text-muted" />
+                )}
+              </button>
+              {emailsExpanded && (
+                <div className="mt-4 border-t border-line pt-4">
+                  <CourseEmailsTab course={course} />
+                </div>
+              )}
+            </section>
+          </div>
         )}
-        {tab === 'repositorio' && (
+        {tab === 'materia' && (
+          <div className="space-y-8">
+            <TopicsTab course={course} />
+            <AssessmentsTab course={course} />
+          </div>
+        )}
+        {tab === 'materiais' && (
           <CourseRepositoryTab
             course={course}
             assessments={assessments}
             onUploadFile={() => setUploadOpen(true)}
           />
         )}
-        {tab === 'materia' && <TopicsTab course={course} />}
-        {tab === 'avaliacoes' && <AssessmentsTab course={course} />}
         {tab === 'horario' && <ScheduleTab course={course} />}
-        {tab === 'gmail' && <CourseEmailsTab course={course} />}
         {tab === 'tarefas' && <TasksTab course={course} />}
       </div>
 
       {editing && <CourseFormModal course={course} onClose={() => setEditing(false)} />}
       {clipModalOpen && <ClipCourseModal course={course} onClose={() => setClipModalOpen(false)} />}
       {uploadOpen && <FileUploadModal initialCourseId={course.id} onClose={() => setUploadOpen(false)} />}
-    </>
+    </AnimatedPage>
   );
 }

@@ -1,6 +1,7 @@
 import { Download, ExternalLink, Pin, PinOff, Trash2 } from 'lucide-react';
 import { createElement, useState } from 'react';
-import { Badge, Button, Select, cx, showToast } from '../ui';
+import { Badge, Button, Select } from '../ui';
+import { cx, showToast } from '../../lib/uiHelpers';
 import { ConfirmModal } from '../courses/ConfirmModal';
 import { useStore } from '../../store/useStore';
 import { courseColors, providerLabel } from '../../lib/colors';

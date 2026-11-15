@@ -13,7 +13,8 @@ import {
   type UniPetId,
 } from '../../lib/uniCollectibles';
 import { useStore } from '../../store/useStore';
-import { Badge, Button, Modal, Progress, SegmentedControl, cx } from '../ui';
+import { Badge, Button, Modal, Progress, SegmentedControl } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 import { UniBuddy, UniPetBuddy } from './UnipediaMarks';
 
 interface Props {

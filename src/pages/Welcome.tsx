@@ -8,8 +8,9 @@ import {
   UniLearningModesScene,
   UniPlanAndConnectScene,
 } from '../components/brand/WelcomeScenes';
-import { StickerBadge, UNIPEDIA_BOUNCE_SPRING } from '../components/motion/Primitives';
-import { cx } from '../components/ui';
+import { StickerBadge } from '../components/motion/Primitives';
+import { UNIPEDIA_BOUNCE_SPRING } from '../lib/motionTokens';
+import { cx } from '../lib/uiHelpers';
 import { hapticTap } from '../lib/nativeBridge';
 import { UNI_ACCESSORIES, type UniAccessoryId } from '../lib/uniAccessories';
 import { UNI_SKINS, type UniSkinId } from '../lib/uniCollectibles';

@@ -6,7 +6,8 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 import type { ClassSlot, Course } from '../../types';
-import { Badge, Button, Card, CourseChip, EmptyState, cx } from '../ui';
+import { Badge, Button, Card, CourseChip, EmptyState } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 import { capitalizeFirst } from '../../lib/selectors';
 import ClassFormModal from '../courses/ClassFormModal';
 import { ConfirmModal } from '../courses/ConfirmModal';
@@ -63,7 +64,7 @@ export default function DayPanel({ date, items, courseById, onNewEvent }: Props)
                 </span>
 
                 <div className="min-w-0 flex-1">
-                  <p className="text-[11px] tabular text-muted">{timeLabel(it)} · {KIND_META[it.kind].label}</p>
+                  <p className="text-xs tabular text-muted">{timeLabel(it)} · {KIND_META[it.kind].label}</p>
                   <p className={cx('truncate text-sm font-medium', it.done && 'line-through')}>{it.title}</p>
                   <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                     {course && <CourseChip course={course} />}

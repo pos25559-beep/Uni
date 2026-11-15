@@ -23,18 +23,10 @@ import {
   StaggerContainer,
   StaggerItem,
   StickerBadge,
-  UNIPEDIA_BOUNCE_SPRING,
-  UNIPEDIA_SPRING,
 } from '../components/motion/Primitives';
-import {
-  Button,
-  Card,
-  Field,
-  Input,
-  SegmentedControl,
-  SubpageHeader,
-  showToast,
-} from '../components/ui';
+import { UNIPEDIA_BOUNCE_SPRING, UNIPEDIA_SPRING } from '../lib/motionTokens';
+import { Button, Card, Field, Input, SegmentedControl, SubpageHeader } from '../components/ui';
+import { showToast } from '../lib/uiHelpers';
 import {
   auth,
   completeMagicEmailLinkSignIn,
@@ -718,12 +710,12 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={handleContinueOffline}
-                  className="min-h-[36px] rounded-xl px-2 text-xs font-semibold text-fg hover:underline"
+                  className="min-h-11 rounded-xl px-3 text-xs font-semibold text-fg hover:underline"
                 >
                   Usar só neste telemóvel
                 </button>
               </div>
-              <p className="text-[11px] text-muted">
+              <p className="text-xs text-muted">
                 Ao continuar aceitas a{' '}
                 <Link to="/privacidade" className="inline-link font-semibold text-accent underline">
                   Privacidade

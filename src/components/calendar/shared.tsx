@@ -3,7 +3,7 @@ import { BookOpen, Brain, CalendarDays, CheckSquare, GraduationCap } from 'lucid
 import type { LucideIcon } from 'lucide-react';
 import { courseColors } from '../../lib/colors';
 import type { Course, Source } from '../../types';
-import { cx } from '../ui';
+import { cx } from '../../lib/uiHelpers';
 import type { CalItem, CalKind } from './items';
 
 export const KIND_META: Record<CalKind, { label: string; plural: string; icon: LucideIcon; dot: string }> = {

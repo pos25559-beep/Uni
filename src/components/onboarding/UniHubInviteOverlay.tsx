@@ -7,7 +7,7 @@ import { resolveUniAccessory } from '../../lib/uniAccessories';
 import { useStore } from '../../store/useStore';
 import { useHubUiStore } from '../../store/useHubUiStore';
 import { UniBuddy } from '../brand/UnipediaMarks';
-import { UNIPEDIA_BOUNCE_SPRING } from '../motion/Primitives';
+import { UNIPEDIA_BOUNCE_SPRING } from '../../lib/motionTokens';
 import { Button } from '../ui';
 
 const EXPLORE_DELAY_MS = 12_000;
