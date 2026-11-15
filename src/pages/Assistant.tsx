@@ -1110,6 +1110,7 @@ export default function Assistant() {
             <PillSelect
               value={activeCourseId}
               onChange={setActiveCourseId}
+              placement="up"
               icon={<BookOpen size={14} />}
               ariaLabel="Contexto da cadeira"
               className="min-w-0 [&>button]:max-w-[210px] [&>button]:px-3"
@@ -1230,6 +1231,7 @@ export default function Assistant() {
                 <PillSelect
                   value={activeCourseId}
                   onChange={setActiveCourseId}
+                  placement="up"
                   icon={<BookOpen size={13} />}
                   ariaLabel="Contexto da cadeira"
                   className="min-w-0 [&>button]:min-h-[36px] [&>button]:max-w-[140px] [&>button]:px-2.5"

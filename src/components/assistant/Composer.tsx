@@ -1,5 +1,5 @@
 import { FileText, Image as ImageIcon, Paperclip, ArrowUp, Square, X } from 'lucide-react';
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useId, useLayoutEffect, useRef, useState } from 'react';
 import type { ChangeEvent, KeyboardEvent, ReactNode } from 'react';
 import { fileToChatAttachment, type ChatAttachment } from '../../integrations/gemini';
 import { cx, showToast } from '../ui';
@@ -34,11 +34,15 @@ export function Composer({
 }: Props) {
   const [text, setText] = useState('');
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
+  const fileInputId = useId();
   const ref = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const slotHelpers: ComposerSlotHelpers = {
-    openFilePicker: () => fileRef.current?.click(),
+    openFilePicker: () => {
+      const el = document.getElementById(fileInputId);
+      if (el instanceof HTMLInputElement) el.click();
+    },
   };
   const resolvedTopSlot = typeof topSlot === 'function' ? topSlot(slotHelpers) : topSlot;
   const resolvedLeadingSlot =
@@ -133,6 +137,7 @@ export function Composer({
       <div className="flex items-end gap-1.5">
         {resolvedLeadingSlot}
         <input
+          id={fileInputId}
           ref={fileRef}
           type="file"
           accept="image/*,application/pdf"

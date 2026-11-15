@@ -1,4 +1,4 @@
-// Renderização segura de Markdown simples. Faz parse para elementos React (sem HTML bruto).
+// Renderização segura de Markdown simples e fórmulas matemáticas sem LaTeX cru.
 import type { ReactNode } from 'react';
 
 const FENCE = /^\s*```/;
@@ -6,8 +6,124 @@ const HEADING = /^(#{1,3})\s+(.*)$/;
 const UL_ITEM = /^\s*[-*]\s+(.*)$/;
 const OL_ITEM = /^\s*\d+[.)]\s+(.*)$/;
 
-// Ordem importa: código, ligações, negrito, itálico.
-const INLINE = /(`[^`\n]+`)|(\[[^\]\n]+\]\([^)\s]+\))|(\*\*[^*\n]+\*\*)|(\*[^*\n]+\*)/g;
+const LATEX_SYMBOLS: Array<[RegExp, string]> = [
+  [/\\infty\b/g, '∞'],
+  [/\\approx\b/g, '≈'],
+  [/\\neq\b/g, '≠'],
+  [/\\leq?\b/g, '≤'],
+  [/\\geq?\b/g, '≥'],
+  [/\\times\b/g, '×'],
+  [/\\cdot\b/g, '·'],
+  [/\\pm\b/g, '±'],
+  [/\\div\b/g, '÷'],
+  [/\\rightarrow\b|\\to\b/g, '→'],
+  [/\\leftarrow\b/g, '←'],
+  [/\\leftrightarrow\b/g, '↔'],
+  [/\\Rightarrow\b/g, '⇒'],
+  [/\\partial\b/g, '∂'],
+  [/\\nabla\b/g, '∇'],
+  [/\\forall\b/g, '∀'],
+  [/\\exists\b/g, '∃'],
+  [/\\in\b/g, '∈'],
+  [/\\notin\b/g, '∉'],
+  [/\\subset\b/g, '⊂'],
+  [/\\subseteq\b/g, '⊆'],
+  [/\\cup\b/g, '∪'],
+  [/\\cap\b/g, '∩'],
+  [/\\int\b/g, '∫'],
+  [/\\sum\b/g, '∑'],
+  [/\\prod\b/g, '∏'],
+  [/\\degree\b/g, '°'],
+  [/\\alpha\b/g, 'α'],
+  [/\\beta\b/g, 'β'],
+  [/\\gamma\b/g, 'γ'],
+  [/\\delta\b/g, 'δ'],
+  [/\\epsilon\b|\\varepsilon\b/g, 'ε'],
+  [/\\zeta\b/g, 'ζ'],
+  [/\\eta\b/g, 'η'],
+  [/\\theta\b/g, 'θ'],
+  [/\\lambda\b/g, 'λ'],
+  [/\\mu\b/g, 'μ'],
+  [/\\nu\b/g, 'ν'],
+  [/\\xi\b/g, 'ξ'],
+  [/\\pi\b/g, 'π'],
+  [/\\rho\b/g, 'ρ'],
+  [/\\sigma\b/g, 'σ'],
+  [/\\tau\b/g, 'τ'],
+  [/\\phi\b|\\varphi\b/g, 'φ'],
+  [/\\chi\b/g, 'χ'],
+  [/\\psi\b/g, 'ψ'],
+  [/\\omega\b/g, 'ω'],
+  [/\\Delta\b/g, 'Δ'],
+  [/\\Gamma\b/g, 'Γ'],
+  [/\\Theta\b/g, 'Θ'],
+  [/\\Lambda\b/g, 'Λ'],
+  [/\\Pi\b/g, 'Π'],
+  [/\\Sigma\b/g, 'Σ'],
+  [/\\Phi\b/g, 'Φ'],
+  [/\\Psi\b/g, 'Ψ'],
+  [/\\Omega\b/g, 'Ω'],
+  [/\\left\(/g, '('],
+  [/\\right\)/g, ')'],
+  [/\\left\[/g, '['],
+  [/\\right\]/g, ']'],
+  [/\\left\|/g, '|'],
+  [/\\right\|/g, '|'],
+  [/\\,/g, ' '],
+];
+
+/** Converte expressões LaTeX simples (ex.: `\pi`, `\frac{a}{b}`, `\sqrt{x}`) em notação legível Unicode. */
+export function formatInlineLatexToText(raw: string): string {
+  let out = raw.trim();
+  out = out.replace(/\\(?:text|mathrm|mathbf|mathit)\{([^{}]+)\}/g, '$1');
+  // Resolve frações simples aninhadas até 2 níveis.
+  for (let pass = 0; pass < 2; pass++) {
+    out = out.replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, '($1)/($2)');
+    out = out.replace(/\\sqrt\{([^{}]+)\}/g, '√($1)');
+  }
+  for (const [pattern, replacement] of LATEX_SYMBOLS) {
+    out = out.replace(pattern, replacement);
+  }
+  // Remove delimitadores {} residuais simples.
+  out = out.replace(/\{([^{}\s]{1,12})\}/g, '$1');
+  return out.replace(/\s{2,}/g, ' ').trim();
+}
+
+function renderMathNodes(raw: string, keyPrefix: string): ReactNode {
+  const formatted = formatInlineLatexToText(raw);
+  const parts: ReactNode[] = [];
+  const scriptRe = /(\^\{[^}]+\}|\^[A-Za-z0-9+π∞-]+|_\{[^}]+\}|_[A-Za-z0-9+-]+)|(\\[a-zA-Z]+)/g;
+  let last = 0;
+  let idx = 0;
+
+  for (const m of formatted.matchAll(scriptRe)) {
+    const start = m.index ?? 0;
+    if (start > last) parts.push(formatted.slice(last, start));
+    const tok = m[0];
+    const key = `${keyPrefix}-m-${idx++}`;
+    if (tok.startsWith('^')) {
+      const inner = tok.startsWith('^{') ? tok.slice(2, -1) : tok.slice(1);
+      parts.push(<sup key={key} className="text-[0.75em]">{inner}</sup>);
+    } else if (tok.startsWith('_')) {
+      const inner = tok.startsWith('_{') ? tok.slice(2, -1) : tok.slice(1);
+      parts.push(<sub key={key} className="text-[0.75em]">{inner}</sub>);
+    } else {
+      parts.push(tok.slice(1));
+    }
+    last = start + tok.length;
+  }
+  if (last < formatted.length) parts.push(formatted.slice(last));
+
+  return (
+    <span className="font-serif italic tracking-tight text-fg">
+      {parts.length > 0 ? parts : formatted}
+    </span>
+  );
+}
+
+// Ordem importa: código, matemática inline ($...$ / \(...\)), ligações, negrito, itálico.
+const INLINE =
+  /(`[^`\n]+`)|(\\\([^)\n]+\\\))|(\$(?!\s)(?!\d+(?:[.,]\d+)?(?:\s|$))([^$\n]+?)(?<!\s)\$)|(\[[^\]\n]+\]\([^)\s]+\))|(\*\*[^*\n]+\*\*)|(\*[^*\n]+\*)/g;
 
 const isSafeUrl = (url: string) => /^https?:\/\//i.test(url);
 
@@ -27,6 +143,10 @@ function renderInline(text: string, keyPrefix: string): ReactNode[] {
           {token.slice(1, -1)}
         </code>,
       );
+    } else if (token.startsWith('\\(')) {
+      out.push(<span key={key}>{renderMathNodes(token.slice(2, -2), key)}</span>);
+    } else if (token.startsWith('$')) {
+      out.push(<span key={key}>{renderMathNodes(token.slice(1, -1), key)}</span>);
     } else if (token.startsWith('[')) {
       const sep = token.indexOf('](');
       const label = token.slice(1, sep);
@@ -66,6 +186,43 @@ export function Markdown({ text }: { text: string }) {
         <pre key={key} className="overflow-x-auto rounded-xl border border-line bg-bg p-3 font-mono text-xs leading-relaxed">
           <code>{code.join('\n')}</code>
         </pre>,
+      );
+      continue;
+    }
+
+    const trimmedLine = line.trim();
+    if (trimmedLine.startsWith('$$') || trimmedLine.startsWith('\\[')) {
+      const endDelim = trimmedLine.startsWith('$$') ? '$$' : '\\]';
+      const innerFirst = trimmedLine.slice(2);
+      if (innerFirst.endsWith(endDelim) && innerFirst.length >= 2) {
+        blocks.push(
+          <div
+            key={key}
+            className="overflow-x-auto rounded-xl border border-line/70 bg-surface-2/65 px-3.5 py-2.5 text-center text-base"
+          >
+            {renderMathNodes(innerFirst.slice(0, -2), key)}
+          </div>,
+        );
+        i++;
+        continue;
+      }
+      const mathLines = [innerFirst];
+      i++;
+      while (i < lines.length && !lines[i].trim().endsWith(endDelim)) {
+        mathLines.push(lines[i]);
+        i++;
+      }
+      if (i < lines.length) {
+        mathLines.push(lines[i].trim().slice(0, -2));
+        i++;
+      }
+      blocks.push(
+        <div
+          key={key}
+          className="overflow-x-auto rounded-xl border border-line/70 bg-surface-2/65 px-3.5 py-2.5 text-center text-base"
+        >
+          {renderMathNodes(mathLines.join(' '), key)}
+        </div>,
       );
       continue;
     }

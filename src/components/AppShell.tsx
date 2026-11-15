@@ -12,8 +12,8 @@ import {
   Target,
   X,
 } from 'lucide-react';
-import { AnimatePresence, MotionConfig, motion } from 'motion/react';
-import { useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, MotionConfig, motion, useDragControls } from 'motion/react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { auth, onAuthStateChanged, type User } from '../lib/firebase';
 import { hapticTap, syncNativeTheme } from '../lib/nativeBridge';
@@ -43,9 +43,9 @@ const desktopNav = [
 ];
 
 const mobilePrimaryNav = [
-  { to: '/', label: 'Hoje', icon: LayoutDashboard, end: true, tour: 'nav-today' },
   { to: '/cadeiras', label: 'Cadeiras', icon: BookOpen, tour: 'nav-cadeiras' },
   { to: '/plano', label: 'Plano', icon: Target, tour: 'nav-plano' },
+  { to: '/', label: 'Hoje', icon: LayoutDashboard, end: true, tour: 'nav-today', center: true },
   { to: '/assistente', label: 'Tutor', icon: Sparkles, tour: 'nav-assistente' },
 ];
 
@@ -90,6 +90,9 @@ export default function AppShell() {
     setMoreOpenPath(resolved ? location.pathname : null);
   };
   const [collectiblesOpen, setCollectiblesOpen] = useState(false);
+  const moreDragControls = useDragControls();
+  const moreSheetRef = useRef<HTMLDivElement>(null);
+  const touchSwipeStartY = useRef<number | null>(null);
   const hubModalOpen = useHubUiStore((s) => s.modalOpen);
   const hubModalStep = useHubUiStore((s) => s.focusStep);
   const closeHubModal = useHubUiStore((s) => s.closeModal);
@@ -339,7 +342,7 @@ export default function AppShell() {
           aria-label="Barra de navegação"
           className="pointer-events-auto grid w-full max-w-md grid-cols-5 items-center gap-1 rounded-[28px] bg-[#141312] p-1.5 text-[#FAF8F2] shadow-dock dark:border dark:border-white/10 dark:bg-[#23201B]"
         >
-          {mobilePrimaryNav.map(({ to, label, icon: Icon, end, tour }) => (
+          {mobilePrimaryNav.map(({ to, label, icon: Icon, end, tour, center }) => (
             <NavLink
               key={to}
               to={to}
@@ -349,7 +352,11 @@ export default function AppShell() {
               className={({ isActive }) =>
                 cx(
                   'relative flex min-h-[48px] flex-col items-center justify-center gap-0.5 rounded-[22px] px-1 py-1 text-[11px] font-semibold transition-colors',
-                  isActive ? 'text-[#141312]' : 'text-[#FAF8F2]/65 hover:text-[#FAF8F2]',
+                  isActive
+                    ? 'text-[#141312]'
+                    : center
+                      ? 'bg-white/8 text-[#FAF8F2] ring-1 ring-white/15 hover:bg-white/14'
+                      : 'text-[#FAF8F2]/65 hover:text-[#FAF8F2]',
                 )
               }
             >
@@ -367,7 +374,7 @@ export default function AppShell() {
                     transition={UNIPEDIA_BOUNCE_SPRING}
                     className="relative z-10 inline-flex"
                   >
-                    <Icon size={18} aria-hidden="true" />
+                    <Icon size={center ? 19 : 18} aria-hidden="true" />
                   </motion.span>
                   <span className="relative z-10 leading-none">{label}</span>
                 </>
@@ -415,29 +422,69 @@ export default function AppShell() {
               className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"
             />
             <motion.div
+              ref={moreSheetRef}
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={UNIPEDIA_SPRING}
+              drag="y"
+              dragControls={moreDragControls}
+              dragListener={false}
+              dragConstraints={{ top: 0 }}
+              dragElastic={{ top: 0, bottom: 0.35 }}
+              onDragEnd={(_, info) => {
+                if (info.offset.y > 85 || info.velocity.y > 420) {
+                  void hapticTap();
+                  setMoreOpen(false);
+                }
+              }}
+              onTouchStart={(e) => {
+                const el = moreSheetRef.current;
+                if (el && el.scrollTop <= 0 && e.touches.length === 1) {
+                  touchSwipeStartY.current = e.touches[0].clientY;
+                } else {
+                  touchSwipeStartY.current = null;
+                }
+              }}
+              onTouchEnd={(e) => {
+                const startY = touchSwipeStartY.current;
+                touchSwipeStartY.current = null;
+                if (startY === null || e.changedTouches.length === 0) return;
+                const dy = e.changedTouches[0].clientY - startY;
+                const el = moreSheetRef.current;
+                if (dy > 75 && (!el || el.scrollTop <= 0)) {
+                  void hapticTap();
+                  setMoreOpen(false);
+                }
+              }}
               className="absolute inset-x-0 bottom-0 max-h-[84dvh] overflow-y-auto rounded-t-[28px] border-t border-line bg-surface px-4 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-float"
             >
-              <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line" aria-hidden="true" />
-              <div className="mb-4 flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <UnipediaLogoMark size={32} />
-                  <div>
-                    <p className="font-display text-base font-bold text-fg">Mais na Unipedia</p>
-                    <p className="text-xs text-muted">{semesterName}</p>
+              <div
+                onPointerDown={(e) => {
+                  if (!(e.target as HTMLElement).closest('button')) {
+                    moreDragControls.start(e);
+                  }
+                }}
+                className="-mx-4 -mt-3 mb-2 cursor-grab touch-none px-4 pt-3 pb-2 active:cursor-grabbing"
+              >
+                <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-line" aria-hidden="true" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <UnipediaLogoMark size={32} />
+                    <div>
+                      <p className="font-display text-base font-bold text-fg">Mais na Unipedia</p>
+                      <p className="text-xs text-muted">{semesterName}</p>
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    aria-label="Fechar menu"
+                    onClick={() => setMoreOpen(false)}
+                    className="flex size-11 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-fg"
+                  >
+                    <X size={18} />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  aria-label="Fechar menu"
-                  onClick={() => setMoreOpen(false)}
-                  className="flex size-11 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-fg"
-                >
-                  <X size={18} />
-                </button>
               </div>
 
               <div className="grid grid-cols-2 gap-2.5">

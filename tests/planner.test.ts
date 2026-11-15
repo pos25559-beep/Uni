@@ -11,6 +11,7 @@ import { buildIcsCalendar } from '../src/integrations/ics';
 import { isLikelyAcademicDriveFolderName } from '../src/integrations/drive';
 import { parseFilenameToParsedItem } from '../src/lib/courseAliases';
 import { groupConversations, subjectLabel } from '../src/lib/geminiConversations';
+import { formatInlineLatexToText } from '../src/components/assistant/Markdown';
 import { CustomKeyError, HttpStatusError, friendlyCustomKeyError } from '../src/lib/geminiErrors';
 import { sanitizePdfWinAnsi } from '../src/lib/pdfExport';
 import { generatePlan, analyzeTestMode } from '../src/lib/planner';
@@ -1536,4 +1537,11 @@ test('varredura dá prioridade a pastas por cadeira (FCT2627/C3D, MF, AMIII) e r
   const sharedAmiiTypo = parseFilenameToParsedItem('AMIII / TP AMII 09-10-2024.pdf', courses, undefined, 'gdrive');
   assert.equal(sharedAmiiTypo.courseId, 'c-c3d');
   assert.equal(sharedAmiiTypo.matchSource, 'folder');
+});
+
+test('formatInlineLatexToText converts common LaTeX commands and keeps readable notation', () => {
+  assert.equal(formatInlineLatexToText('\\pi'), 'π');
+  assert.equal(formatInlineLatexToText('\\frac{a}{b}'), '(a)/(b)');
+  assert.equal(formatInlineLatexToText('\\sqrt{x^2 + 1}'), '√(x^2 + 1)');
+  assert.equal(formatInlineLatexToText('\\alpha \\to \\infty'), 'α → ∞');
 });

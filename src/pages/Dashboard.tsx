@@ -332,6 +332,7 @@ export default function Dashboard() {
   const isMinimal = (settings.appTone ?? 'vibrante') === 'serio';
   const firstName = settings.userName.trim().split(/\s+/)[0] ?? '';
   const dateLabel = capitalize(format(now, "EEEE, d 'de' MMM", { locale: pt }));
+  const shortDateLabel = capitalize(format(now, 'EEE, d MMM', { locale: pt }));
   const doneSessionsCount = todaySessions.filter((s) => s.done).length;
   const uniTip = next
     ? `Tens ${next.title}${nextCourse ? ` (${nextCourse.shortName})` : ''} ${dayWord(daysUntil(next.date))}. Queres que prepare um plano ou resumo rápido?`
@@ -339,71 +340,86 @@ export default function Dashboard() {
       ? `Faltam ${todaySessions.length - doneSessionsCount} sessões para fechares a meta de hoje. Vamos a isso!`
       : 'Sem sessões marcadas para hoje — adiciona as tuas cadeiras ou conversa comigo no Tutor!';
 
+  const greetingHeading = (
+    <>
+      {greeting(now.getHours())}
+      {firstName ? (
+        <>
+          ,{' '}
+          <span className={cx(isMinimal ? 'text-accent-ink' : 'font-serif font-medium italic text-accent')}>
+            {firstName}
+          </span>
+        </>
+      ) : (
+        <>
+          ,{' '}
+          <span className={cx(isMinimal ? 'text-accent-ink' : 'font-serif font-medium italic text-accent')}>
+            bora estudar
+          </span>
+        </>
+      )}
+    </>
+  );
+
   return (
-    <AnimatedPage className="space-y-5">
-      {/* Cabeçalho editorial com o Uni interativo ("Clippy") e máximo 2 ações circulares */}
-      <header className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          {!isMinimal && (
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-pastel-sage/85 ring-1 ring-line/50 dark:bg-surface-2">
-              <UniBuddy
-                mood={streak >= 3 || progressToday >= 1 ? 'celebrate' : 'happy'}
-                accessory={uniAccessory}
-                size={38}
-                onClick={() => {
-                  void hapticTap();
-                  setUniBubbleOpen((v) => !v);
-                }}
-                ariaLabel="Falar com o Uni"
-              />
+    <AnimatedPage className="space-y-4 sm:space-y-5">
+      {/* Cabeçalho editorial sem truncamento no telemóvel */}
+      <header className="space-y-2 sm:space-y-0">
+        <div className="flex items-center justify-between gap-2 sm:items-start sm:gap-3">
+          <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+            {!isMinimal && (
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-pastel-sage/85 ring-1 ring-line/50 dark:bg-surface-2 sm:size-12">
+                <UniBuddy
+                  mood={streak >= 3 || progressToday >= 1 ? 'celebrate' : 'happy'}
+                  accessory={uniAccessory}
+                  size={34}
+                  onClick={() => {
+                    void hapticTap();
+                    setUniBubbleOpen((v) => !v);
+                  }}
+                  ariaLabel="Falar com o Uni"
+                />
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="truncate text-xs font-medium text-muted">
+                <span className="sm:hidden">{shortDateLabel}</span>
+                <span className="hidden sm:inline">{dateLabel}</span>
+                {' · '}
+                {settings.semesterName}
+              </p>
+              <h1 className="hidden truncate font-display text-3xl font-bold leading-tight tracking-tight sm:block">
+                {greetingHeading}
+              </h1>
             </div>
-          )}
-          <div className="min-w-0">
-            <p className="truncate text-xs font-medium text-muted">
-              {dateLabel} · {settings.semesterName}
-            </p>
-            <h1 className="truncate font-display text-[26px] font-bold leading-tight tracking-tight sm:text-3xl">
-              {greeting(now.getHours())}
-              {firstName ? (
-                <>
-                  ,{' '}
-                  <span className={cx(isMinimal ? 'text-accent-ink' : 'font-serif font-medium italic text-accent')}>
-                    {firstName}
-                  </span>
-                </>
-              ) : (
-                <>
-                  ,{' '}
-                  <span className={cx(isMinimal ? 'text-accent-ink' : 'font-serif font-medium italic text-accent')}>
-                    bora estudar
-                  </span>
-                </>
-              )}
-            </h1>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+            <TabGuideHelpButton tabKey="dashboard" />
+            <Button
+              variant="secondary"
+              iconOnly
+              onClick={() => setTutorOpen(true)}
+              aria-label="Abrir check-in com o Uni"
+              title="Check-in semanal"
+            >
+              <MessageSquare size={18} />
+            </Button>
+            <Button
+              variant="secondary"
+              iconOnly
+              onClick={() => navigate('/definicoes')}
+              aria-label="Abrir definições"
+              title="Definições"
+            >
+              <SettingsIcon size={18} />
+            </Button>
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
-          <TabGuideHelpButton tabKey="dashboard" />
-          <Button
-            variant="secondary"
-            iconOnly
-            onClick={() => setTutorOpen(true)}
-            aria-label="Abrir check-in com o Uni"
-            title="Check-in semanal"
-          >
-            <MessageSquare size={18} />
-          </Button>
-          <Button
-            variant="secondary"
-            iconOnly
-            onClick={() => navigate('/definicoes')}
-            aria-label="Abrir definições"
-            title="Definições"
-          >
-            <SettingsIcon size={18} />
-          </Button>
-        </div>
+        <h1 className="font-display text-[26px] font-bold leading-tight tracking-tight sm:hidden">
+          {greetingHeading}
+        </h1>
       </header>
 
       <TabGuideBanner tabKey="dashboard" />
@@ -565,47 +581,51 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
-      {/* Switcher compacto com transição spring */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      {/* Switcher compacto alinhado numa só faixa com a coleção/sequência */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <SegmentedControl
           layoutId="dashboard-scope"
           value={scope}
           onChange={(v) => setScope(v as 'today' | 'week')}
           items={[
             { id: 'today', label: 'Hoje', count: todaySessions.length },
-            { id: 'week', label: 'Esta semana' },
+            { id: 'week', label: 'Semana' },
           ]}
         />
-        {streak > 0 && (
-          <StickerBadge tone="butter" tilt={-1.5}>
-            {streak} {streak === 1 ? 'dia seguido' : 'dias seguidos'}
-          </StickerBadge>
-        )}
-        {!isMinimal && (
-          <button
-            type="button"
-            onClick={() => {
-              void hapticTap();
-              setCollectiblesOpen(true);
-            }}
-            className="inline-flex min-h-[38px] items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1 text-xs font-semibold text-fg transition hover:border-accent"
-          >
-            <Sparkles size={13} className="text-accent" />
-            <span>Coleção Uni · {unlockedCollectibles}/{collectibles.length}</span>
-          </button>
-        )}
+        <div className="flex shrink-0 items-center gap-1.5">
+          {streak > 0 && (
+            <StickerBadge tone="butter" tilt={-1.5}>
+              {streak}d
+            </StickerBadge>
+          )}
+          {!isMinimal && (
+            <button
+              type="button"
+              onClick={() => {
+                void hapticTap();
+                setCollectiblesOpen(true);
+              }}
+              aria-label={`Coleção Uni (${unlockedCollectibles} de ${collectibles.length})`}
+              className="inline-flex min-h-[38px] items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 py-1 text-xs font-semibold text-fg transition hover:border-accent sm:px-3"
+            >
+              <Sparkles size={13} className="text-accent" />
+              <span className="hidden sm:inline">Coleção Uni · </span>
+              <span className="tabular">{unlockedCollectibles}/{collectibles.length}</span>
+            </button>
+          )}
+        </div>
       </div>
 
-      <StaggerContainer className="space-y-5">
+      <StaggerContainer className="space-y-4 sm:space-y-5">
       {/* Cartão Hero estilo papelaria com métricas inline */}
       <StaggerItem>
       <section
         data-tour="bento-overview"
         className={cx(
-          'p-5 shadow-card',
+          'p-4 shadow-card sm:p-5',
           isMinimal
             ? 'rounded-2xl border border-line bg-surface text-fg'
-            : 'rounded-[26px] bg-pastel-butter/75 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]',
+            : 'rounded-[24px] bg-pastel-butter/75 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC] sm:rounded-[26px]',
         )}
       >
         <div className="flex items-start justify-between gap-3">
@@ -613,7 +633,7 @@ export default function Dashboard() {
             <p className="text-xs font-semibold uppercase tracking-wider opacity-70">
               {scope === 'today' ? 'Resumo de hoje' : 'Pulso da semana'}
             </p>
-            <h2 className="mt-0.5 font-display text-lg font-bold">
+            <h2 className="mt-0.5 font-display text-base font-bold sm:text-lg">
               {scope === 'today'
                 ? plannedToday > 0
                   ? `${fmtMinutes(doneToday)} de ${fmtMinutes(plannedToday)} focados`
@@ -625,7 +645,7 @@ export default function Dashboard() {
             <button
               type="button"
               onClick={() => navigate('/plano')}
-              className="flex size-10 items-center justify-center rounded-full bg-surface/85 text-fg shadow-card transition hover:scale-105 dark:bg-black/30 dark:text-[#FAF6EC]"
+              className="flex size-9 items-center justify-center rounded-full bg-surface/85 text-fg shadow-card transition hover:scale-105 dark:bg-black/30 dark:text-[#FAF6EC] sm:size-10"
               aria-label="Abrir plano"
             >
               <CalendarDays size={16} />
@@ -635,29 +655,29 @@ export default function Dashboard() {
 
         {courses.length > 0 || todaySessions.length > 0 || pendingTasks.length > 0 ? (
           <>
-            <div className="mt-4 grid grid-cols-4 gap-2 text-left">
+            <div className="mt-3 grid grid-cols-4 gap-2 text-left sm:mt-4">
               <div>
                 <p className="text-xs font-medium opacity-75">Média</p>
-                <p className="mt-0.5 font-display text-xl font-bold tabular sm:text-2xl">{fmtGrade(average)}</p>
+                <p className="mt-0.5 font-display text-lg font-bold tabular sm:text-2xl">{fmtGrade(average)}</p>
               </div>
               <div>
                 <p className="text-xs font-medium opacity-75">Semana</p>
-                <p className="mt-0.5 font-display text-xl font-bold tabular sm:text-2xl">{weekPct}%</p>
+                <p className="mt-0.5 font-display text-lg font-bold tabular sm:text-2xl">{weekPct}%</p>
               </div>
               <div>
                 <p className="text-xs font-medium opacity-75">Sessões</p>
-                <p className="mt-0.5 font-display text-xl font-bold tabular sm:text-2xl">
+                <p className="mt-0.5 font-display text-lg font-bold tabular sm:text-2xl">
                   {doneSessionsCount}/{todaySessions.length}
                 </p>
               </div>
               <div>
                 <p className="text-xs font-medium opacity-75">Provas</p>
-                <p className="mt-0.5 font-display text-xl font-bold tabular sm:text-2xl">{upcoming.length}</p>
+                <p className="mt-0.5 font-display text-lg font-bold tabular sm:text-2xl">{upcoming.length}</p>
               </div>
             </div>
 
-            <div className="mt-4">
-              <div className="mb-1.5 flex items-center justify-between text-xs font-medium opacity-80">
+            <div className="mt-3 sm:mt-4">
+              <div className="mb-1 flex items-center justify-between text-xs font-medium opacity-80">
                 <span>{scope === 'today' ? 'Progresso de hoje' : 'Meta semanal'}</span>
                 <span className="tabular">{scope === 'today' ? pct(progressToday) : `${weekPct}%`}</span>
               </div>
@@ -668,7 +688,7 @@ export default function Dashboard() {
             </div>
           </>
         ) : (
-          <div className="mt-4 flex flex-wrap items-center gap-2">
+          <div className="mt-3 flex flex-wrap items-center gap-2 sm:mt-4">
             <Button size="sm" variant="primary" onClick={() => navigate('/cadeiras')}>
               Adicionar cadeiras
             </Button>
@@ -680,45 +700,52 @@ export default function Dashboard() {
       </section>
       </StaggerItem>
 
-      {/* Alertas contextuais compactos */}
+      {/* Alertas contextuais compactos (funde aviso repetido se Modo Teste já cobrir topAlert) */}
       {testMode.mode !== 'normal' && (
         <StaggerItem>
         <Link
           to="/plano"
-          className="flex items-center justify-between gap-3 rounded-[20px] bg-pastel-peach/80 px-4 py-3 text-[#141312] transition hover:opacity-95 dark:bg-surface-2 dark:text-[#FAF6EC]"
+          className="flex items-center justify-between gap-3 rounded-[20px] bg-pastel-peach/80 px-4 py-2.5 text-[#141312] transition hover:opacity-95 dark:bg-surface-2 dark:text-[#FAF6EC]"
         >
-          <div className="flex min-w-0 items-center gap-3">
-            <Sparkles size={18} className="shrink-0 text-coral" />
-            <div className="min-w-0 text-sm">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <Sparkles size={16} className="shrink-0 text-coral" />
+            <div className="min-w-0 text-xs sm:text-sm">
               <span className="font-semibold">
-                {testMode.mode === 'single_test' ? 'Modo Teste ativo (< 10 dias)' : 'Modo Teste Múltiplo'}
+                {testMode.mode === 'single_test' ? 'Modo Teste (< 10 dias)' : 'Modo Teste Múltiplo'}
               </span>
-              <span className="ml-2 opacity-75">
+              <span className="ml-1.5 opacity-80">
                 {testMode.urgentAssessments
                   .map((u) => `${u.course.shortName} (${u.daysLeft === 0 ? 'hoje' : `${u.daysLeft}d`})`)
                   .join(' · ')}
+                {topAlert && testMode.urgentAssessments.some((u) => u.assessment.id === topAlert.a.id)
+                  ? ` · prep. ${pct(topAlert.ready)}`
+                  : ''}
               </span>
             </div>
           </div>
-          <ArrowRight size={16} className="shrink-0" />
+          <ArrowRight size={15} className="shrink-0" />
         </Link>
         </StaggerItem>
       )}
 
-      {topAlert && (
+      {topAlert &&
+        !(
+          testMode.mode !== 'normal' &&
+          testMode.urgentAssessments.some((u) => u.assessment.id === topAlert.a.id)
+        ) && (
         <StaggerItem>
         <Link
           to="/plano"
-          className="flex items-center gap-3 rounded-[20px] border border-warn/40 bg-warn/10 px-4 py-3 transition hover:bg-warn/15"
+          className="flex items-center gap-3 rounded-[20px] border border-warn/40 bg-warn/10 px-4 py-2.5 transition hover:bg-warn/15"
         >
-          <AlertTriangle size={18} className="shrink-0 text-warn" />
-          <p className="min-w-0 flex-1 text-sm">
+          <AlertTriangle size={16} className="shrink-0 text-warn" />
+          <p className="min-w-0 flex-1 text-xs sm:text-sm">
             <span className="font-medium">
               {topAlert.a.title} de {topAlert.course?.shortName ?? 'cadeira'} {dayWord(daysUntil(topAlert.a.date))}
             </span>
             <span className="text-muted"> — preparação a {pct(topAlert.ready)}</span>
           </p>
-          <ArrowRight size={16} className="shrink-0 text-muted" />
+          <ArrowRight size={15} className="shrink-0 text-muted" />
         </Link>
         </StaggerItem>
       )}

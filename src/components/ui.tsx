@@ -1,6 +1,6 @@
 // Kit de UI partilhado Unipedia v3 ("Estúdio Caderno Vivo").
 import { ArrowLeft, Check, ChevronDown, ChevronRight, Loader2, X } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, useDragControls } from 'motion/react';
 import { useEffect, useId, useRef, useState } from 'react';
 import type {
   ButtonHTMLAttributes,
@@ -675,6 +675,7 @@ export function ActionSheet({
     onSelect: () => void;
   }>;
 }) {
+  const dragControls = useDragControls();
   return (
     <AnimatePresence>
       {open && (
@@ -691,12 +692,28 @@ export function ActionSheet({
           <motion.div
             initial={{ y: 40, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 40, opacity: 0 }}
+            exit={{ y: '100%', opacity: 0 }}
             transition={{ type: 'spring', stiffness: 360, damping: 28 }}
+            drag="y"
+            dragControls={dragControls}
+            dragListener={false}
+            dragConstraints={{ top: 0 }}
+            dragElastic={{ top: 0, bottom: 0.35 }}
+            onDragEnd={(_, info) => {
+              if (info.offset.y > 80 || info.velocity.y > 400) {
+                void hapticTap();
+                onClose();
+              }
+            }}
             className="relative z-10 w-full max-w-md rounded-t-[28px] border border-line bg-surface px-4 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-float sm:rounded-[26px] sm:pb-4"
           >
-            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line sm:hidden" aria-hidden="true" />
-            {title && <p className="mb-3 px-2 font-display text-sm font-bold text-fg">{title}</p>}
+            <div
+              onPointerDown={(e) => dragControls.start(e)}
+              className="-mx-4 -mt-3 mb-2 cursor-grab touch-none px-4 pt-3 pb-1 active:cursor-grabbing sm:cursor-auto sm:touch-auto"
+            >
+              <div className="mx-auto mb-2 h-1.5 w-11 rounded-full bg-line sm:hidden" aria-hidden="true" />
+              {title && <p className="px-2 font-display text-sm font-bold text-fg">{title}</p>}
+            </div>
             <div className="divide-y divide-line overflow-hidden rounded-[20px] border border-line bg-bg">
               {actions.map((item) => (
                 <button
@@ -870,6 +887,7 @@ export function PillSelect({
   icon,
   ariaLabel,
   className,
+  placement = 'auto',
 }: {
   value: string;
   options: PillSelectOption[];
@@ -877,8 +895,10 @@ export function PillSelect({
   icon?: ReactNode;
   ariaLabel: string;
   className?: string;
+  placement?: 'down' | 'up' | 'auto';
 }) {
   const [open, setOpen] = useState(false);
+  const [openUp, setOpenUp] = useState(placement === 'up');
   const wrapRef = useRef<HTMLDivElement>(null);
   const selected = options.find((o) => o.value === value) ?? options[0];
 
@@ -911,6 +931,14 @@ export function PillSelect({
         aria-label={ariaLabel}
         onClick={() => {
           void hapticTap();
+          if (!open) {
+            if (placement === 'up') setOpenUp(true);
+            else if (placement === 'down') setOpenUp(false);
+            else {
+              const rect = wrapRef.current?.getBoundingClientRect();
+              setOpenUp(Boolean(rect && window.innerHeight - rect.bottom < 280));
+            }
+          }
           setOpen((v) => !v);
         }}
         className={cx(
@@ -941,11 +969,14 @@ export function PillSelect({
           <motion.div
             role="listbox"
             aria-label={ariaLabel}
-            initial={{ opacity: 0, y: 6, scale: 0.96 }}
+            initial={{ opacity: 0, y: openUp ? 6 : -6, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 4, scale: 0.96 }}
+            exit={{ opacity: 0, y: openUp ? 4 : -4, scale: 0.96 }}
             transition={{ type: 'spring', stiffness: 420, damping: 28 }}
-            className="absolute left-0 z-40 mt-2 max-h-64 min-w-[230px] max-w-[85vw] overflow-y-auto rounded-[22px] border border-line bg-surface p-1.5 shadow-float"
+            className={cx(
+              'absolute left-0 z-50 max-h-60 min-w-[220px] max-w-[min(280px,82vw)] overflow-y-auto rounded-[22px] border border-line bg-surface p-1.5 shadow-float',
+              openUp ? 'bottom-full mb-2 origin-bottom-left' : 'top-full mt-2 origin-top-left',
+            )}
           >
             {options.map((opt) => {
               const active = opt.value === value;
