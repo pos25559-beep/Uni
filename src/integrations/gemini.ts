@@ -2,7 +2,7 @@
 // com App Check e quota conservadora, ou chave pessoal opcional em Definições → Avançado.
 import { format, parseISO } from 'date-fns';
 import { pt } from 'date-fns/locale';
-import { getGenerativeModel, type Content, type GenerationConfig, type Part } from 'firebase/ai';
+import type { Content, GenerationConfig, Part } from 'firebase/ai';
 import { statusLabel } from '../lib/colors';
 import { consumeDailyQuota, refundDailyQuota, type QuotaKind } from '../lib/aiQuota';
 import {
@@ -515,7 +515,7 @@ async function runNativeGenerate(args: {
   signal?: AbortSignal;
   primaryTimeoutMs?: number;
 }): Promise<string> {
-  const ai = getNativeAI();
+  const [ai, { getGenerativeModel }] = await Promise.all([getNativeAI(), import('firebase/ai')]);
   try {
     return await runModelChain({
       primaryModel: args.model,
@@ -549,7 +549,7 @@ async function runNativeStream(args: {
   primaryTimeoutMs?: number;
   onToken: (accumulatedText: string) => void;
 }): Promise<string> {
-  const ai = getNativeAI();
+  const [ai, { getGenerativeModel }] = await Promise.all([getNativeAI(), import('firebase/ai')]);
   try {
     return await runModelChain({
       primaryModel: args.model,

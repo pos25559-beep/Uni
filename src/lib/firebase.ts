@@ -1,8 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { SocialLogin } from '@capgo/capacitor-social-login';
-import { getAI, GoogleAIBackend, type AI } from 'firebase/ai';
+import type { AI } from 'firebase/ai';
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 import {
   createUserWithEmailAndPassword,
   deleteUser,
@@ -46,9 +45,11 @@ let appCheckInitialized = false;
 let nativeAIInstance: AI | null = null;
 
 /**
- * Inicializa o Firebase App Check (quando configurado) e devolve o cliente nativo Firebase AI Logic.
+ * Inicializa o Firebase App Check (quando configurado) e devolve o cliente nativo Firebase AI Logic sob demanda.
  */
-export function getNativeAI(): AI {
+export async function getNativeAI(): Promise<AI> {
+  const [{ getAI, GoogleAIBackend }, { initializeAppCheck, ReCaptchaEnterpriseProvider }] =
+    await Promise.all([import('firebase/ai'), import('firebase/app-check')]);
   if (typeof window !== 'undefined' && !appCheckInitialized) {
     appCheckInitialized = true;
     if (import.meta.env?.DEV) {
