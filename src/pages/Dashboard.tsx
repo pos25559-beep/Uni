@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useMemo, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import {
   AlertTriangle,
@@ -24,9 +24,14 @@ import UniCollectiblesModal from '../components/brand/UniCollectiblesModal';
 import { UniBuddy, UniPetBuddy } from '../components/brand/UnipediaMarks';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import AcademicGmailWidget from '../components/home/AcademicGmailWidget';
+import {
+  AssessmentRow,
+  SessionRow,
+  TaskRow,
+} from '../components/home/DashboardRows';
+import { capitalize, dayWord, pct, useDashboardAgenda } from '../components/home/useDashboardAgenda';
 import { getUniCollectibleStates, readCollectibleTelemetry } from '../lib/uniCollectibles';
 import { openUniCheckIn } from '../lib/uniCheckInBus';
-import { pickActiveInAppNudge } from '../lib/uniNotifications';
 import type { StudyLogKind } from '../types';
 import {
   AgendaRibbonCard,
@@ -43,78 +48,17 @@ import {
   StickerBadge,
 } from '../components/motion/Primitives';
 import { UNIPEDIA_BOUNCE_SPRING, celebrateStationery } from '../lib/motionTokens';
-import { Badge, Button, Card, CourseChip, Modal, Progress, SegmentedControl } from '../components/ui';
+import { Button, Card, Modal, Progress, SegmentedControl } from '../components/ui';
 import { cx, showToast } from '../lib/uiHelpers';
-import { courseColors, kindLabel } from '../lib/colors';
 import { hapticSuccess, hapticTap } from '../lib/nativeBridge';
-import { analyzeTestMode } from '../lib/planner';
 import { getHubProgress } from '../lib/studyHub';
 import { resolveUniAccessory } from '../lib/uniAccessories';
-import {
-  daysUntil,
-  fmtGrade,
-  fmtMinutes,
-  minutesThisWeek,
-  readiness,
-  semesterAverage,
-  sessionMinutes,
-  studyStreak,
-  upcomingAssessments,
-  urgency,
-} from '../lib/selectors';
+import { daysUntil, fmtGrade, fmtMinutes, sessionMinutes } from '../lib/selectors';
 import { useHubUiStore } from '../store/useHubUiStore';
 import { newId, useStore } from '../store/useStore';
-import type { Assessment, Course, StudySession, Task } from '../types';
+import type { StudySession, Task } from '../types';
 
 const greeting = (hour: number) => (hour < 12 ? 'Bom dia' : hour < 19 ? 'Boa tarde' : 'Boa noite');
-const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-const pct = (v: number) => `${Math.round(v * 100)}%`;
-const fmtDay = (iso: string) => format(parseISO(iso), 'd MMM', { locale: pt });
-const fmtDateTime = (iso: string) => format(parseISO(iso), 'EEE d MMM · HH:mm', { locale: pt });
-
-const dayWord = (days: number) => {
-  if (days === 0) return 'hoje';
-  if (days === 1) return 'amanhã';
-  if (days === -1) return 'ontem';
-  return days > 0 ? `em ${days} dias` : `há ${-days} dias`;
-};
-
-const PRIORITY_DOT: Record<Task['priority'], string> = {
-  1: 'bg-danger',
-  2: 'bg-warn',
-  3: 'bg-muted',
-};
-const PRIORITY_LABEL: Record<Task['priority'], string> = {
-  1: 'Prioridade alta',
-  2: 'Prioridade média',
-  3: 'Prioridade baixa',
-};
-
-const compareTasks = (a: Task, b: Task) => {
-  if (a.due !== b.due) {
-    if (!a.due) return 1;
-    if (!b.due) return -1;
-    return a.due < b.due ? -1 : 1;
-  }
-  return a.priority - b.priority;
-};
-
-interface Scored {
-  a: Assessment;
-  course: Course | undefined;
-  score: number;
-  ready: number;
-}
-
-interface AgendaItem {
-  key: string;
-  start: string;
-  end: string;
-  allDay: boolean;
-  title: string;
-  sub?: string;
-  dot: string;
-}
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -174,73 +118,47 @@ export default function Dashboard() {
   );
 
   const [now] = useState(() => new Date());
-  const today = useMemo(() => format(now, 'yyyy-MM-dd'), [now]);
-  const weekday = now.getDay();
-  const nowTime = useMemo(() => format(now, 'HH:mm'), [now]);
+  const {
+    today,
+    nowTime,
+    courseById,
+    upcoming,
+    scored,
+    topAlert,
+    overdue,
+    average,
+    weekMinutes,
+    weekGoal,
+    weekPct,
+    streak,
+    todaySessions,
+    plannedToday,
+    doneToday,
+    progressToday,
+    inAppNudge,
+    agenda,
+    pendingTasks,
+    testMode,
+  } = useDashboardAgenda({
+    courses,
+    assessments,
+    classes,
+    events,
+    sessions,
+    tasks,
+    studyLogs,
+    weeklyCheckIns,
+    settings,
+    now,
+  });
 
-  const courseById = useMemo(() => new Map<string, Course>(courses.map((c) => [c.id, c])), [courses]);
-
-  const upcoming = useMemo(() => upcomingAssessments(assessments), [assessments]);
-
-  const scored = useMemo<Scored[]>(
-    () =>
-      upcoming.map((a) => {
-        const course = courseById.get(a.courseId);
-        return { a, course, score: urgency(a, course), ready: readiness(a, course) };
-      }),
-    [upcoming, courseById],
-  );
-
-  const topAlert = useMemo(() => {
-    let top: Scored | undefined;
-    for (const x of scored) {
-      if (daysUntil(x.a.date) <= 14 && (!top || x.score > top.score)) top = x;
-    }
-    return top && top.score >= 30 ? top : undefined;
-  }, [scored]);
-
-  const overdue = useMemo(
-    () => sessions.filter((s) => !s.done && s.date < today).length,
-    [sessions, today],
-  );
-
-  const average = useMemo(() => semesterAverage(courses, assessments), [courses, assessments]);
-  const weekMinutes = useMemo(() => minutesThisWeek(sessions), [sessions]);
-  const weekGoal = settings.dailyStudyMinutes * settings.studyDays.length;
-  const weekPct = weekGoal > 0 ? Math.min(100, Math.round((weekMinutes / weekGoal) * 100)) : 0;
-  const streak = useMemo(() => studyStreak(sessions), [sessions]);
   const next = upcoming[0];
   const nextCourse = next ? courseById.get(next.courseId) : undefined;
   const nextDays = next ? daysUntil(next.date) : null;
 
-  const todaySessions = useMemo(
-    () =>
-      sessions
-        .filter((s) => s.date === today)
-        .sort((a, b) => (a.start ?? '99:99').localeCompare(b.start ?? '99:99') || a.minutes - b.minutes),
-    [sessions, today],
-  );
-  const plannedToday = todaySessions.reduce((sum, s) => sum + s.minutes, 0);
-  const doneToday = todaySessions.reduce((sum, s) => sum + (s.done ? sessionMinutes(s) : 0), 0);
-  const progressToday = plannedToday > 0 ? doneToday / plannedToday : 0;
-
   const topicTitle = (s: StudySession) =>
     courseById.get(s.courseId)?.topics.find((t) => t.id === s.topicId)?.title ?? 'Estudo geral';
 
-  const inAppNudge = useMemo(
-    () =>
-      pickActiveInAppNudge({
-        courses,
-        assessments,
-        classes,
-        sessions,
-        studyLogs,
-        weeklyCheckIns,
-        settings,
-        now,
-      }),
-    [courses, assessments, classes, sessions, studyLogs, weeklyCheckIns, settings, now],
-  );
   const visibleNudge = inAppNudge && inAppNudge.key !== dismissedNudgeKey ? inAppNudge : null;
 
   const handleOpenNudgeRoute = (route: string) => {
@@ -283,44 +201,6 @@ export default function Dashboard() {
     }
     applySessionToggle(s, true);
   };
-
-  const agenda = useMemo<AgendaItem[]>(() => {
-    const fromClasses: AgendaItem[] = classes
-      .filter((c) => c.weekday === weekday)
-      .map((c) => {
-        const course = courseById.get(c.courseId);
-        return {
-          key: `c-${c.id}`,
-          start: c.start,
-          end: c.end,
-          allDay: false,
-          title: course ? `${course.shortName} · ${c.type}` : c.type,
-          sub: c.room,
-          dot: course ? courseColors[course.color].dot : 'bg-muted',
-        };
-      });
-    const fromEvents: AgendaItem[] = events
-      .filter((e) => e.start.slice(0, 10) === today)
-      .map((e) => {
-        const course = e.courseId ? courseById.get(e.courseId) : undefined;
-        return {
-          key: `e-${e.id}`,
-          start: e.allDay ? '00:00' : e.start.slice(11, 16),
-          end: e.allDay ? '' : e.end.slice(11, 16),
-          allDay: !!e.allDay,
-          title: e.title,
-          sub: e.location,
-          dot: course ? courseColors[course.color].dot : 'bg-accent',
-        };
-      });
-    return [...fromClasses, ...fromEvents].sort((a, b) => a.start.localeCompare(b.start));
-  }, [classes, events, courseById, today, weekday]);
-
-  const pendingTasks = useMemo(() => tasks.filter((t) => !t.done).sort(compareTasks), [tasks]);
-  const testMode = useMemo(
-    () => analyzeTestMode(courses, assessments, today),
-    [courses, assessments, today],
-  );
 
   const addTask = () => {
     const title = draft.trim();
@@ -1008,146 +888,5 @@ export default function Dashboard() {
         )}
       </Modal>
     </AnimatedPage>
-  );
-}
-
-function SessionRow({
-  session,
-  course,
-  topic,
-  onToggle,
-}: {
-  session: StudySession;
-  course: Course | undefined;
-  topic: string;
-  onToggle: () => void;
-}) {
-  const isPartial =
-    session.done &&
-    session.actualMinutes !== undefined &&
-    session.actualMinutes < session.minutes * 0.8;
-
-  return (
-    <li
-      className={cx(
-        'flex min-h-[54px] items-center gap-3 rounded-2xl bg-surface-2/70 px-3 py-2.5 transition',
-        session.done && 'opacity-70',
-      )}
-    >
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-label={session.done ? 'Marcar como por concluir' : 'Marcar como concluída'}
-        className="group -ml-1.5 grid size-11 shrink-0 place-items-center rounded-full"
-      >
-        <span
-          className={cx(
-            'grid size-8 place-items-center rounded-full border-2 transition',
-            session.done
-              ? 'border-ok bg-ok text-white'
-              : 'border-muted/50 bg-surface group-hover:border-accent',
-          )}
-        >
-          {session.done && <Check size={15} strokeWidth={3} />}
-        </span>
-      </button>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <CourseChip course={course} />
-          <span className="text-xs tabular text-muted">{session.start ?? 'Qualquer hora'}</span>
-          {isPartial && <Badge tone="warn">Parcial</Badge>}
-        </div>
-        <p className={cx('mt-1 truncate text-sm font-medium', session.done && 'text-muted line-through')}>
-          {topic}
-        </p>
-      </div>
-      <span className="shrink-0 text-xs font-semibold tabular text-muted">
-        {session.done ? fmtMinutes(sessionMinutes(session)) : `${session.minutes} min`}
-      </span>
-    </li>
-  );
-}
-
-function AssessmentRow({
-  assessment,
-  course,
-  ready,
-}: {
-  assessment: Assessment;
-  course: Course | undefined;
-  ready: number;
-}) {
-  const days = daysUntil(assessment.date);
-  const tone = days <= 3 ? 'danger' : days <= 7 ? 'warn' : 'neutral';
-  const bar = course ? courseColors[course.color].dot : 'bg-accent';
-  return (
-    <li>
-      <Link
-        to={`/cadeiras/${assessment.courseId}`}
-        className="-mx-2 block rounded-xl px-2 py-3 transition hover:bg-surface-2"
-      >
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge tone={tone}>{capitalize(dayWord(days))}</Badge>
-          <span className="text-xs text-muted">{kindLabel[assessment.kind]}</span>
-        </div>
-        <p className="mt-1.5 truncate text-sm font-medium">{assessment.title}</p>
-        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
-          <CourseChip course={course} />
-          <span className="tabular">{fmtDateTime(assessment.date)}</span>
-          <span className="tabular">· peso {assessment.weight}%</span>
-        </div>
-        <div className="mt-3 flex items-center gap-3">
-          <Progress value={ready} color={bar} className="flex-1" />
-          <span className="w-10 text-right text-xs font-medium tabular">{pct(ready)}</span>
-        </div>
-      </Link>
-    </li>
-  );
-}
-
-function TaskRow({
-  task,
-  course,
-  today,
-  onToggle,
-}: {
-  task: Task;
-  course: Course | undefined;
-  today: string;
-  onToggle: () => void;
-}) {
-  const overdue = !!task.due && task.due < today;
-  const dueLabel = task.due
-    ? task.due === today
-      ? 'hoje'
-      : overdue
-        ? `${dayWord(daysUntil(task.due))} · ${fmtDay(task.due)}`
-        : fmtDay(task.due)
-    : null;
-  return (
-    <li className="flex min-h-[48px] items-center gap-3 rounded-xl px-2 py-1.5 transition hover:bg-surface-2">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-label={`Concluir: ${task.title}`}
-        className="group -ml-2 grid size-11 shrink-0 place-items-center rounded-full"
-      >
-        <span className="size-7 rounded-full border-2 border-muted/50 bg-surface transition group-hover:border-accent" />
-      </button>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{task.title}</p>
-        {(course || dueLabel) && (
-          <p className="flex flex-wrap items-center gap-x-2 text-xs text-muted">
-            {course && <span>{course.shortName}</span>}
-            {dueLabel && <span className={cx('tabular', overdue && 'font-medium text-danger')}>{dueLabel}</span>}
-          </p>
-        )}
-      </div>
-      <span
-        title={PRIORITY_LABEL[task.priority]}
-        aria-label={PRIORITY_LABEL[task.priority]}
-        className={cx('size-2 shrink-0 rounded-full', PRIORITY_DOT[task.priority])}
-      />
-    </li>
   );
 }

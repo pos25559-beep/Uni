@@ -1,108 +1,49 @@
 import {
   Award,
   BookOpen,
+  BookOpenCheck,
   CalendarDays,
   ChevronDown,
   ChevronUp,
   FileText,
   FolderOpen,
   Menu,
-  MessageSquare,
   MoreHorizontal,
   Paperclip,
   Plus,
   RotateCcw,
-  Shield,
   Sparkles,
   SquarePen,
   Trash2,
   X,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ContextPanel } from '../components/assistant/ContextPanel';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import AssistantModals from '../components/assistant/AssistantModals';
 import { Composer } from '../components/assistant/Composer';
-import ConversationsModal from '../components/assistant/ConversationsModal';
 import { Markdown } from '../components/assistant/Markdown';
 import { QuickActions } from '../components/assistant/QuickActions';
-import UniNotebookDrawer from '../components/assistant/UniNotebookDrawer';
 import UniSyncCard from '../components/assistant/UniSyncCard';
-import WeeklyTutorModal from '../components/assistant/WeeklyTutorModal';
-import UniCollectiblesModal from '../components/brand/UniCollectiblesModal';
+import { useAssistantChat } from '../components/assistant/useAssistantChat';
 import { UniBuddy } from '../components/brand/UnipediaMarks';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
-import GeminiKeyGuideModal from '../components/settings/GeminiKeyGuideModal';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { ActionSheet, Badge, Button, Modal, PillSelect, SegmentedControl } from '../components/ui';
-import { cx, showToast } from '../lib/uiHelpers';
-import {
-  buildDocumentContext,
-  buildStudyContext,
-  extractScheduleFromText,
-  hasCustomGeminiKey,
-  parseTimetableFromScreenshot,
-  streamGeminiChat,
-  SYSTEM_PROMPT,
-  type ChatAttachment,
-  type ChatMessage,
-} from '../integrations/gemini';
-import { getDailyQuotaSnapshot } from '../lib/aiQuota';
+import { Badge, Button, PillSelect, SegmentedControl } from '../components/ui';
+import { hasCustomGeminiKey } from '../integrations/gemini';
 import { courseColors } from '../lib/colors';
-import { collectKnownCourseCandidates, getDegreeCurriculum } from '../lib/portugalCurriculum';
-import {
-  commitScheduleSyncToStore,
-  resolveExtractedScheduleBundle,
-  type ResolvedScheduleSyncBundle,
-} from '../lib/scheduleSync';
-import { extractUniSyncBlock, looksSyncableReply } from '../lib/visionParsers';
-import {
-  TUTOR_SUBJECTS,
-  appendMessage,
-  deleteConversation,
-  subjectLabel,
-  subscribeConversations,
-  subscribeMessages,
-  upsertConversation,
-  type Conversation,
-} from '../lib/geminiConversations';
-import { auth, onAuthStateChanged, type User } from '../lib/firebase';
+import { TUTOR_SUBJECTS, subjectLabel } from '../lib/geminiConversations';
+import { commitScheduleSyncToStore } from '../lib/scheduleSync';
+import { cx, showToast } from '../lib/uiHelpers';
 import { resolveUniAccessory, UNI_PERSONAS } from '../lib/uniAccessories';
-import { getAiMaterialLimit, resolveMaterialsForAI } from '../lib/materialContent';
+import { openUniCheckIn } from '../lib/uniCheckInBus';
+import { looksSyncableReply } from '../lib/visionParsers';
 import { googleService } from '../services/googleService';
-import { newId, useStore } from '../store/useStore';
-
-const MAX_SENT = 20;
-const PENDING_SYNC_STORAGE_KEY = 'unipedia-pending-sync-v1';
-
-function readStoredPendingSync(): Record<string, ResolvedScheduleSyncBundle> {
-  try {
-    const raw = localStorage.getItem(PENDING_SYNC_STORAGE_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as unknown;
-    return parsed && typeof parsed === 'object'
-      ? (parsed as Record<string, ResolvedScheduleSyncBundle>)
-      : {};
-  } catch {
-    return {};
-  }
-}
-
-function getKnownCourseHintsFromStore() {
-  const state = useStore.getState();
-  const profile = state.academicProfile;
-  const degreeTemplates =
-    profile?.universityId && profile?.degreeId
-      ? (getDegreeCurriculum(profile.universityId, profile.degreeId)?.courses ?? [])
-      : [];
-  return collectKnownCourseCandidates({
-    courses: state.courses,
-    completedCourses: profile?.completedCourses ?? [],
-    degreeTemplates,
-  });
-}
+import { useStore } from '../store/useStore';
 
 export default function Assistant() {
   const navigate = useNavigate();
   const location = useLocation();
+  const routeState = location.state as { prefillPrompt?: string; courseId?: string } | null;
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [mobileComposerToolsOpen, setMobileComposerToolsOpen] = useState(false);
@@ -120,32 +61,12 @@ export default function Assistant() {
   const userName = useStore((s) => s.settings.userName);
   const setIntegration = useStore((s) => s.setIntegration);
 
-  const [user, setUser] = useState<User | null>(() => auth.currentUser);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeConvId, setActiveConvId] = useState<string>('default');
-  const [activeCourseId, setActiveCourseId] = useState<string>(() => {
-    const st = location.state as { courseId?: string } | null;
-    return st?.courseId || 'all';
-  });
+  const [activeCourseId, setActiveCourseId] = useState<string>(() => routeState?.courseId || 'all');
   const [activeSubject, setActiveSubject] = useState<string>('all');
-  const [selectedMaterialIds, setSelectedMaterialIds] = useState<string[]>([]);
-  const [dismissedAutoMaterialIds, setDismissedAutoMaterialIds] = useState<string[]>([]);
-  const autoPinnedIdsRef = useRef<string[]>([]);
-  const [driveAuthNeeded, setDriveAuthNeeded] = useState(false);
   const [authorizingDrive, setAuthorizingDrive] = useState(false);
   const [showDocPicker, setShowDocPicker] = useState(false);
   const [notebookOpen, setNotebookOpen] = useState(false);
   const [convsModalMode, setConvsModalMode] = useState<'list' | 'new' | null>(null);
-
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [streamingText, setStreamingText] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [quotaTick, setQuotaTick] = useState(0);
-  const [error, setError] = useState<string | null>(null);
-  const quota = useMemo(() => {
-    void quotaTick;
-    return getDailyQuotaSnapshot(hasCustomKey);
-  }, [hasCustomKey, quotaTick]);
   const [confirmDeleteConv, setConfirmDeleteConv] = useState(false);
   const [showActions, setShowActions] = useState(false);
   const [materialsStripMode, setMaterialsStripMode] = useState<'compact' | 'collapsed' | 'expanded'>('compact');
@@ -153,58 +74,9 @@ export default function Assistant() {
   const [keyGuideOpen, setKeyGuideOpen] = useState(false);
   const [collectiblesOpen, setCollectiblesOpen] = useState(false);
   const [contextModalOpen, setContextModalOpen] = useState(false);
-  const [pendingSyncByMsgId, setPendingSyncByMsgId] = useState<
-    Record<string, ResolvedScheduleSyncBundle>
-  >(readStoredPendingSync);
-  const [syncingMsgId, setSyncingMsgId] = useState<string | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
-  const lastAttachmentsRef = useRef<{
-    convId: string;
-    msgId: string;
-    attachments: ChatAttachment[];
-  } | null>(null);
+  const [dismissedPrompt, setDismissedPrompt] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Escuta estado de autenticação
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
-    return () => unsub();
-  }, []);
-
-  // Escuta lista de conversas
-  useEffect(() => {
-    const unsub = subscribeConversations((list) => {
-      setConversations(list);
-      if (list.length > 0 && !list.some((c) => c.id === activeConvId)) {
-        setActiveConvId(list[0].id);
-      }
-    });
-    return () => unsub();
-  }, [activeConvId]);
-
-  // Escuta mensagens da conversa ativa
-  useEffect(() => {
-    if (!activeConvId) return;
-    const unsub = subscribeMessages(activeConvId, (msgs) => {
-      setMessages(msgs);
-    });
-    return () => unsub();
-  }, [activeConvId]);
-
-  useEffect(() => () => abortRef.current?.abort(), []);
-
-  useEffect(() => {
-    if (messages.length === 0 && !loading && !error && !streamingText) return;
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [messages.length, loading, error, streamingText]);
-
-  // Conversa ativa atual
-  const currentConv = useMemo(
-    () => conversations.find((c) => c.id === activeConvId),
-    [conversations, activeConvId],
-  );
-
-  // Cadeira e visual ativo do Uni
   const activeCourse = useMemo(
     () => (activeCourseId === 'all' ? undefined : courses.find((c) => c.id === activeCourseId)),
     [courses, activeCourseId],
@@ -219,6 +91,59 @@ export default function Assistant() {
       ),
     [uniPreference, activeCourse, academicProfile?.degreeName],
   );
+
+  const {
+    user,
+    conversations,
+    filteredConversations,
+    activeConvId,
+    setActiveConvId,
+    currentConv,
+    selectedMaterialIds,
+    availableMaterials,
+    attachedMaterials,
+    maxAiFiles,
+    driveAuthNeeded,
+    setDriveAuthNeeded,
+    messages,
+    streamingText,
+    loading,
+    quota,
+    error,
+    setError,
+    pendingSyncByMsgId,
+    syncingMsgId,
+    toggleMaterial,
+    selectAllMaterials,
+    clearAttachedMaterials,
+    handleCreateConversation,
+    handleRenameConversation,
+    handleDeleteConversationById,
+    send,
+    stop,
+    retry,
+    updatePendingSyncForMsg,
+    extractSyncFromExistingMessage,
+  } = useAssistantChat({
+    activeCourseId,
+    setActiveCourseId,
+    activeSubject,
+    activeCourse,
+    courses,
+    materials,
+    academicProfile,
+    hasCustomKey,
+    uniAccessory,
+    uniPersona,
+    userName,
+    setIntegration,
+  });
+
+  useEffect(() => {
+    if (messages.length === 0 && !loading && !error && !streamingText) return;
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [messages.length, loading, error, streamingText]);
+
   const uniWelcomeMood = loading
     ? 'thinking'
     : uniPersona === 'calmo'
@@ -227,17 +152,14 @@ export default function Assistant() {
         ? 'curious'
         : 'happy';
 
-  const [pendingSeedPrompt, setPendingSeedPrompt] = useState<string | null>(() => {
-    const st = location.state as { prefillPrompt?: string } | null;
-    return st?.prefillPrompt?.trim() || null;
-  });
+  const rawRoutePrompt = routeState?.prefillPrompt?.trim() || null;
+  const pendingSeedPrompt =
+    rawRoutePrompt && rawRoutePrompt !== dismissedPrompt ? rawRoutePrompt : null;
 
-  useEffect(() => {
-    const st = location.state as { prefillPrompt?: string; courseId?: string } | null;
-    if (st?.prefillPrompt?.trim() || st?.courseId) {
-      navigate(location.pathname, { replace: true, state: null });
-    }
-  }, [location.pathname, location.state, navigate]);
+  const dismissPendingSeedPrompt = () => {
+    if (rawRoutePrompt) setDismissedPrompt(rawRoutePrompt);
+    navigate(location.pathname, { replace: true, state: null });
+  };
 
   const recentLogSuggestion = useMemo(() => {
     const latestExam = studyLogs.find((l) => l.kind === 'exam_prep');
@@ -259,421 +181,10 @@ export default function Assistant() {
     return null;
   }, [studyLogs, courses]);
 
-  // Materiais filtrados pela cadeira selecionada
-  const availableMaterials = useMemo(() => {
-    if (activeCourseId === 'all') return materials;
-    return materials.filter((m) => m.courseId === activeCourseId);
-  }, [materials, activeCourseId]);
-
-  // Documentos anexados à conversa
-  const maxAiFiles = getAiMaterialLimit(hasCustomKey);
-  const attachedMaterials = useMemo(() => {
-    return materials.filter((m) => selectedMaterialIds.includes(m.id));
-  }, [materials, selectedMaterialIds]);
-
-  // Pré-anexa até `maxAiFiles` materiais fixados da cadeira ativa (3 nativo, 12 com chave pessoal)
-  useEffect(() => {
-    const prevAuto = new Set(autoPinnedIdsRef.current);
-    const nextPinnedIds =
-      activeCourseId === 'all'
-        ? []
-        : materials
-            .filter(
-              (m) =>
-                m.courseId === activeCourseId &&
-                m.pinned &&
-                !dismissedAutoMaterialIds.includes(m.id),
-            )
-            .slice(0, maxAiFiles)
-            .map((m) => m.id);
-
-    autoPinnedIdsRef.current = nextPinnedIds;
-    setSelectedMaterialIds((prev) => {
-      const preserved = prev.filter((id) => !prevAuto.has(id) || nextPinnedIds.includes(id));
-      const merged = [...preserved];
-      for (const id of nextPinnedIds) {
-        if (!merged.includes(id)) merged.push(id);
-      }
-      if (merged.length === prev.length && merged.every((id, i) => id === prev[i])) {
-        return prev;
-      }
-      return merged;
-    });
-  }, [activeCourseId, materials, dismissedAutoMaterialIds, maxAiFiles]);
-
-  const toggleMaterial = (id: string) => {
-    setSelectedMaterialIds((prev) => {
-      const removing = prev.includes(id);
-      setDismissedAutoMaterialIds((dismissed) =>
-        removing
-          ? dismissed.includes(id)
-            ? dismissed
-            : [...dismissed, id]
-          : dismissed.filter((x) => x !== id),
-      );
-      return removing ? prev.filter((x) => x !== id) : [...prev, id];
-    });
-  };
-
-  const clearAttachedMaterials = () => {
-    if (selectedMaterialIds.length === 0) return;
-    setDismissedAutoMaterialIds((prev) => [...new Set([...prev, ...selectedMaterialIds])]);
-    setSelectedMaterialIds([]);
+  const handleClearAttachedMaterials = () => {
+    clearAttachedMaterials();
     setMaterialsStripMode('compact');
   };
-
-  const handleCreateConversation = async (opts?: {
-    title?: string;
-    courseId?: string;
-    subject?: string;
-  }) => {
-    const id = newId();
-    const resolvedCourseId =
-      opts?.courseId !== undefined
-        ? opts.courseId
-        : activeCourseId !== 'all'
-          ? activeCourseId
-          : undefined;
-    const resolvedSubject =
-      opts?.subject ?? (activeSubject !== 'all' ? activeSubject : 'geral');
-    const newConv: Conversation = {
-      id,
-      title: opts?.title?.trim() || 'Nova conversa',
-      courseId: resolvedCourseId,
-      subject: resolvedSubject,
-      materialIds: selectedMaterialIds,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    await upsertConversation(newConv);
-    setActiveConvId(id);
-    if (resolvedCourseId) setActiveCourseId(resolvedCourseId);
-    setMessages([]);
-  };
-
-  const handleRenameConversation = async (conv: Conversation, title: string) => {
-    await upsertConversation({
-      ...conv,
-      title,
-      updatedAt: new Date().toISOString(),
-    });
-  };
-
-  const handleDeleteConversationById = async (targetId: string) => {
-    await deleteConversation(targetId);
-    setConfirmDeleteConv(false);
-    if (targetId === activeConvId) {
-      const remaining = conversations.filter((c) => c.id !== targetId);
-      if (remaining.length > 0) {
-        setActiveConvId(remaining[0].id);
-      } else {
-        setActiveConvId('default');
-        setMessages([]);
-      }
-    }
-  };
-
-  const handleDeleteActiveConv = async () => {
-    if (!activeConvId) return;
-    await handleDeleteConversationById(activeConvId);
-  };
-
-  const filteredConversations = useMemo(() => {
-    return conversations.filter((c) => {
-      if (activeCourseId !== 'all' && c.courseId !== activeCourseId) return false;
-      if (activeSubject !== 'all' && (c.subject || 'geral') !== activeSubject) return false;
-      return true;
-    });
-  }, [conversations, activeCourseId, activeSubject]);
-
-  const run = useCallback(
-    async (list: ChatMessage[], targetConvId: string, attachments?: ChatAttachment[]) => {
-      const controller = new AbortController();
-      abortRef.current = controller;
-      setLoading(true);
-      setStreamingText('');
-      setError(null);
-      try {
-        const recent = list.slice(-MAX_SENT);
-        const firstUser = recent.findIndex((m) => m.role === 'user');
-        const payload = firstUser > 0 ? recent.slice(firstUser) : recent;
-
-        // Contexto com resumo do semestre + leitura real dos materiais anexados + personalidade do Uni
-        const resolvedMaterials =
-          attachedMaterials.length > 0
-            ? await resolveMaterialsForAI(attachedMaterials, {
-                maxFiles: maxAiFiles,
-                signal: controller.signal,
-              })
-            : {
-                attachments: [] as ChatAttachment[],
-                textExcerpts: [],
-                readTitles: [],
-                skipped: [],
-                needsDriveAuth: false,
-              };
-        setDriveAuthNeeded(resolvedMaterials.needsDriveAuth);
-
-        const mergedAttachments: ChatAttachment[] = [
-          ...resolvedMaterials.attachments,
-          ...(attachments ?? []),
-        ].slice(0, hasCustomKey ? maxAiFiles + 2 : 4);
-
-        const studyContext = buildStudyContext(useStore.getState());
-        const activeCourseName = activeCourse?.shortName || activeCourse?.name;
-        const docContext = buildDocumentContext(attachedMaterials, {
-          activeCourseName,
-          courseMaterials: availableMaterials,
-          resolvedExcerpts: resolvedMaterials.textExcerpts,
-          maxFiles: maxAiFiles,
-        });
-        const system = SYSTEM_PROMPT(studyContext, docContext, {
-          persona: uniPersona,
-          accessory: uniAccessory,
-          studentName: userName,
-          appTone: useStore.getState().settings.appTone,
-        });
-
-        const reply = await streamGeminiChat({
-          messages: payload,
-          system,
-          attachments: mergedAttachments.length > 0 ? mergedAttachments : undefined,
-          signal: controller.signal,
-          onToken: (partial) => setStreamingText(extractUniSyncBlock(partial).displayText),
-        });
-        const now = new Date().toISOString();
-        const extractedFromReply = extractUniSyncBlock(reply);
-        let syncPayload = extractedFromReply.payload;
-
-        const lastUserText =
-          [...list].reverse().find((m) => m.role === 'user')?.text ?? '';
-        const imageAtt = attachments?.find((a) => a.mimeType.startsWith('image/'));
-        const displayText =
-          extractedFromReply.displayText ||
-          'Não consegui gerar texto desta vez. Podes tentar novamente?';
-
-        const shouldAutoExtract =
-          !syncPayload &&
-          (Boolean(imageAtt) ||
-            looksSyncableReply(displayText) ||
-            /(atualiz|calend[aá]ri|agenda|plano|guarda|sincroniz|adiciona.*(teste|exame|aula)|p[õo]e.*(teste|exame|hor[aá]rio))/i.test(
-              lastUserText,
-            ));
-
-        if (shouldAutoExtract) {
-          const knownCourses = getKnownCourseHintsFromStore();
-          try {
-            if (looksSyncableReply(displayText)) {
-              const fromText = await extractScheduleFromText(displayText, knownCourses);
-              if (fromText.slots.length > 0 || fromText.assessments.length > 0) {
-                syncPayload = fromText;
-              }
-            }
-            if (!syncPayload && imageAtt) {
-              const parsed = await parseTimetableFromScreenshot(
-                imageAtt.dataBase64,
-                imageAtt.mimeType,
-                { focus: 'assessments', knownCourses },
-              );
-              if (parsed.slots.length > 0 || parsed.assessments.length > 0) {
-                syncPayload = parsed;
-              }
-            }
-          } catch {
-            // Não bloqueia a resposta do chat se a extração secundária falhar; o botão manual mantém-se disponível
-          }
-        }
-
-        const msgId = newId();
-        const modelMsg: ChatMessage = {
-          id: msgId,
-          role: 'model',
-          text: displayText,
-          at: now,
-          sourceDocTitles: [
-            ...resolvedMaterials.readTitles,
-            ...attachedMaterials
-              .filter(
-                (m) =>
-                  !resolvedMaterials.readTitles.includes(m.title) &&
-                  m.provider !== 'notebooklm',
-              )
-              .slice(0, maxAiFiles)
-              .map((m) => m.title),
-            ...(attachments?.map((a) => a.name) ?? []),
-          ].filter((title, i, arr) => Boolean(title) && arr.indexOf(title) === i),
-        };
-
-        if (syncPayload && (syncPayload.slots.length > 0 || syncPayload.assessments.length > 0)) {
-          const resolved = resolveExtractedScheduleBundle(syncPayload);
-          if (resolved.slots.length > 0 || resolved.assessments.length > 0) {
-            setPendingSyncByMsgId((prev) => {
-              const next = { ...prev, [msgId]: resolved };
-              try {
-                const entries = Object.entries(next).slice(-25);
-                localStorage.setItem(
-                  PENDING_SYNC_STORAGE_KEY,
-                  JSON.stringify(Object.fromEntries(entries)),
-                );
-              } catch {
-                // ignore storage quota errors
-              }
-              return next;
-            });
-          }
-        }
-
-        setStreamingText(null);
-        await appendMessage(targetConvId, modelMsg);
-        setIntegration('gemini', { connected: true, lastSync: now, error: undefined });
-      } catch (err) {
-        if (controller.signal.aborted) return;
-        const message = err instanceof Error ? err.message : 'O Uni teve um percalço ao responder.';
-        setError(message);
-        setIntegration('gemini', { error: message });
-      } finally {
-        setQuotaTick((n) => n + 1);
-        if (abortRef.current === controller) {
-          abortRef.current = null;
-          setStreamingText(null);
-          setLoading(false);
-        }
-      }
-    },
-    [
-      activeCourse,
-      attachedMaterials,
-      availableMaterials,
-      hasCustomKey,
-      maxAiFiles,
-      setIntegration,
-      uniAccessory,
-      uniPersona,
-      userName,
-    ],
-  );
-
-  const send = async (text: string, attachments?: ChatAttachment[]) => {
-    if (loading) return;
-    setError(null);
-
-    const userMsg: ChatMessage = {
-      id: newId(),
-      role: 'user',
-      text,
-      at: new Date().toISOString(),
-      ...(attachments && attachments.length > 0
-        ? { attachmentNames: attachments.map((a) => a.name) }
-        : {}),
-    };
-
-    let convId = activeConvId;
-    try {
-      if (!currentConv) {
-        convId = newId();
-        const newConv: Conversation = {
-          id: convId,
-          title: text.slice(0, 40) + (text.length > 40 ? '…' : ''),
-          courseId: activeCourseId !== 'all' ? activeCourseId : undefined,
-          subject: activeSubject !== 'all' ? activeSubject : 'geral',
-          materialIds: selectedMaterialIds,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        await upsertConversation(newConv);
-        setActiveConvId(convId);
-      } else if (currentConv.title === 'Nova conversa') {
-        await upsertConversation({
-          ...currentConv,
-          title: text.slice(0, 40) + (text.length > 40 ? '…' : ''),
-          updatedAt: new Date().toISOString(),
-        });
-      }
-
-      const nextMessages = [...messages, userMsg];
-      setMessages(nextMessages);
-      lastAttachmentsRef.current =
-        attachments && attachments.length > 0
-          ? { convId, msgId: userMsg.id, attachments }
-          : null;
-      await appendMessage(convId, userMsg);
-      void run(nextMessages, convId, attachments);
-    } catch (err) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : 'Não foi possível guardar ou enviar a mensagem agora. Tenta novamente.';
-      setError(msg);
-    }
-  };
-
-  const stop = () => {
-    abortRef.current?.abort();
-    abortRef.current = null;
-    setStreamingText(null);
-    setLoading(false);
-  };
-
-  const retry = () => {
-    if (!loading && messages.length > 0) {
-      const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
-      const retryAttachments =
-        lastAttachmentsRef.current &&
-        lastAttachmentsRef.current.convId === activeConvId &&
-        lastAttachmentsRef.current.msgId === lastUserMsg?.id
-          ? lastAttachmentsRef.current.attachments
-          : undefined;
-      void run(messages, activeConvId, retryAttachments);
-    }
-  };
-
-  const updatePendingSyncForMsg = useCallback(
-    (msgId: string, nextBundle: ResolvedScheduleSyncBundle) => {
-      setPendingSyncByMsgId((prev) => {
-        const next = { ...prev, [msgId]: nextBundle };
-        try {
-          const entries = Object.entries(next).slice(-25);
-          localStorage.setItem(
-            PENDING_SYNC_STORAGE_KEY,
-            JSON.stringify(Object.fromEntries(entries)),
-          );
-        } catch {
-          // ignore
-        }
-        return next;
-      });
-    },
-    [],
-  );
-
-  const extractSyncFromExistingMessage = useCallback(
-    async (msg: ChatMessage) => {
-      if (syncingMsgId) return;
-      setSyncingMsgId(msg.id);
-      try {
-        const inline = extractUniSyncBlock(msg.text).payload;
-        const knownCourses = getKnownCourseHintsFromStore();
-        const parsed =
-          inline ?? (await extractScheduleFromText(msg.text, knownCourses));
-        const resolved = resolveExtractedScheduleBundle(parsed);
-        if (resolved.slots.length === 0 && resolved.assessments.length === 0) {
-          showToast('Não encontrei datas exatas de provas ou aulas nesta resposta.', 'neutral');
-          return;
-        }
-        updatePendingSyncForMsg(msg.id, resolved);
-      } catch (err) {
-        showToast(
-          err instanceof Error
-            ? err.message
-            : 'Não foi possível preparar a sincronização agora.',
-          'danger',
-        );
-      } finally {
-        setSyncingMsgId(null);
-      }
-    },
-    [syncingMsgId, updatePendingSyncForMsg],
-  );
 
   const firstName = userName?.trim().split(/\s+/)[0] || '';
 
@@ -774,6 +285,16 @@ export default function Assistant() {
               >
                 <Sparkles size={13} /> Caderno do Uni
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileFiltersOpen(false);
+                  openUniCheckIn({ kind: 'day', courseId: activeCourse?.id });
+                }}
+                className="flex min-h-[38px] items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg"
+              >
+                <BookOpenCheck size={13} /> Diário
+              </button>
               {!isMinimal && (
                 <button
                   type="button"
@@ -861,6 +382,15 @@ export default function Assistant() {
               >
                 <Sparkles size={13} className="text-accent-ink dark:text-accent" />
                 <span>Caderno</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => openUniCheckIn({ kind: 'day', courseId: activeCourse?.id })}
+                className="flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 py-1.5 text-xs font-semibold text-fg transition hover:bg-surface-2"
+              >
+                <BookOpenCheck size={13} className="text-accent-ink dark:text-accent" />
+                <span>Diário</span>
               </button>
 
               {!isMinimal && (
@@ -1365,7 +895,7 @@ export default function Assistant() {
                 </div>
                 <button
                   type="button"
-                  onClick={clearAttachedMaterials}
+                  onClick={handleClearAttachedMaterials}
                   aria-label="Limpar todos os apontamentos anexados"
                   className="min-h-[30px] shrink-0 rounded-full px-2 text-xs font-medium text-muted hover:bg-surface hover:text-danger"
                 >
@@ -1407,7 +937,7 @@ export default function Assistant() {
                       </button>
                       <button
                         type="button"
-                        onClick={clearAttachedMaterials}
+                        onClick={handleClearAttachedMaterials}
                         aria-label="Limpar todos os apontamentos"
                         className="min-h-[28px] rounded-full px-2 text-muted hover:text-danger"
                       >
@@ -1473,7 +1003,8 @@ export default function Assistant() {
                 disabled={loading}
                 onClick={() => {
                   const text = pendingSeedPrompt;
-                  setPendingSeedPrompt(null);
+                  if (routeState?.courseId) setActiveCourseId(routeState.courseId);
+                  dismissPendingSeedPrompt();
                   void send(text);
                 }}
               >
@@ -1482,7 +1013,7 @@ export default function Assistant() {
               <button
                 type="button"
                 aria-label="Dispensar sugestão do diário"
-                onClick={() => setPendingSeedPrompt(null)}
+                onClick={dismissPendingSeedPrompt}
                 className="-mr-1.5 grid size-11 place-items-center rounded-full text-muted hover:bg-surface hover:text-fg"
               >
                 <X size={15} />
@@ -1581,249 +1112,75 @@ export default function Assistant() {
                 >
                   <span>Caderno</span>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileComposerToolsOpen(false);
+                    openUniCheckIn({ kind: 'day', courseId: activeCourse?.id });
+                  }}
+                  className="flex min-h-11 items-center gap-1 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg"
+                >
+                  <BookOpenCheck size={13} />
+                  <span>Diário</span>
+                </button>
               </div>
             ) : null
           }
         />
       </div>
 
-      <ActionSheet
-        open={menuOpen}
-        onClose={() => setMenuOpen(false)}
-        title="Opções do Tutor"
-        actions={[
-          {
-            id: 'checkin',
-            label: 'Check-in semanal',
-            hint: 'Avalia o ritmo e ajusta o planeador',
-            icon: <MessageSquare size={16} />,
-            onSelect: () => setTutorOpen(true),
-          },
-          {
-            id: 'docs',
-            label: 'Anexar documentos',
-            hint: 'Seleciona PDFs ou links como contexto',
-            icon: <FileText size={16} />,
-            onSelect: () => setShowDocPicker(true),
-          },
-          {
-            id: 'collectibles',
-            label: 'Coleção do Uni',
-            hint: 'Estilos e acessórios desbloqueados',
-            icon: <Award size={16} />,
-            onSelect: () => setCollectiblesOpen(true),
-          },
-          {
-            id: 'privacy',
-            label: 'Preferências do Uni',
-            hint: 'Gerir permissões e modelo do Uni',
-            icon: <Shield size={16} />,
-            onSelect: () => navigate('/definicoes/tutor'),
-          },
-          {
-            id: 'context-view',
-            label: 'O que o Uni sabe',
-            hint: 'Ver resumo enviado com as perguntas',
-            icon: <Shield size={16} />,
-            onSelect: () => setContextModalOpen(true),
-          },
-          {
-            id: 'clear',
-            label: 'Apagar esta conversa',
-            danger: true,
-            icon: <Trash2 size={16} />,
-            onSelect: () => setConfirmDeleteConv(true),
-          },
-        ]}
-      />
-
-      {/* Modal Seletor de Documentos/Materiais */}
-      <Modal
-        open={showDocPicker}
-        onClose={() => setShowDocPicker(false)}
-        title="Anexar Documentos de Estudo"
-        footer={
-          <Button variant="primary" onClick={() => setShowDocPicker(false)}>
-            Concluir
-          </Button>
-        }
-      >
-        <div className="mb-3 space-y-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <Badge tone={hasCustomKey ? 'accent' : 'neutral'}>
-              {hasCustomKey
-                ? `Modo Caderno ativo · até ${maxAiFiles} fontes`
-                : `Modo Nativo · até ${maxAiFiles} fontes`}
-            </Badge>
-            {availableMaterials.length > 0 && (
-              <div className="flex items-center gap-2 text-xs">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const readableIds = availableMaterials
-                      .filter((m) => m.provider === 'gdrive' || m.provider === 'upload')
-                      .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)))
-                      .slice(0, maxAiFiles)
-                      .map((m) => m.id);
-                    const picked =
-                      readableIds.length > 0
-                        ? readableIds
-                        : availableMaterials.slice(0, maxAiFiles).map((m) => m.id);
-                    setDismissedAutoMaterialIds((prev) =>
-                      prev.filter((id) => !picked.includes(id)),
-                    );
-                    setSelectedMaterialIds(picked);
-                  }}
-                  className="font-semibold text-accent-ink hover:underline dark:text-accent"
-                >
-                  Selecionar tudo (até {maxAiFiles})
-                </button>
-                {selectedMaterialIds.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDismissedAutoMaterialIds(autoPinnedIdsRef.current);
-                      setSelectedMaterialIds([]);
-                    }}
-                    className="text-muted hover:text-fg"
-                  >
-                    Limpar
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-          <p className="text-xs text-muted">
-            Até <strong className="text-fg">{maxAiFiles} PDFs, Google Docs ou ficheiros locais</strong> têm
-            o conteúdo real lido por pergunta; materiais{' '}
-            <span className="font-medium text-fg">Fixados</span> da cadeira entram automaticamente.
-            {!hasCustomKey && (
-              <>
-                {' '}
-                Com chave pessoal Google Gemini podes ler até <strong className="text-fg">12 fontes</strong> de uma vez (estilo Google Notebook).
-              </>
-            )}
-          </p>
-        </div>
-        {availableMaterials.length === 0 ? (
-          <p className="text-xs text-muted py-4 text-center">
-            Nenhum material encontrado para esta cadeira. Podes adicionar na página Materiais.
-          </p>
-        ) : (
-          <ul className="divide-y divide-line max-h-60 overflow-y-auto">
-            {availableMaterials.map((mat) => {
-              const checked = selectedMaterialIds.includes(mat.id);
-              const isNotebookLink = mat.provider === 'notebooklm';
-              return (
-                <li
-                  key={mat.id}
-                  onClick={() => toggleMaterial(mat.id)}
-                  className="flex items-center justify-between p-2 hover:bg-surface-2 rounded-xl cursor-pointer"
-                >
-                  <div className="min-w-0 pr-3">
-                    <div className="flex items-center gap-1.5 text-xs font-medium text-fg">
-                      <span className="truncate">{mat.title}</span>
-                      {mat.pinned && (
-                        <Badge tone="accent" className="shrink-0 text-xs">
-                          Fixado
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="text-xs text-muted">
-                      {isNotebookLink
-                        ? 'LINK NOTEBOOK · cola resumos no Caderno do Uni'
-                        : mat.provider === 'gdrive'
-                          ? 'GOOGLE DRIVE · leitura direta de PDF/Doc'
-                          : mat.provider === 'upload'
-                            ? 'FICHEIRO LOCAL · leitura direta'
-                            : mat.provider.toUpperCase()}
-                    </div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => {}}
-                    className="size-4 rounded border-line"
-                  />
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </Modal>
-
-      {/* Confirmação de Apagar Conversa */}
-      <Modal
-        open={confirmDeleteConv}
-        onClose={() => setConfirmDeleteConv(false)}
-        title="Apagar conversa?"
-        footer={
-          <>
-            <Button onClick={() => setConfirmDeleteConv(false)}>Cancelar</Button>
-            <Button variant="danger" onClick={handleDeleteActiveConv}>
-              Apagar
-            </Button>
-          </>
-        }
-      >
-        <p className="text-sm text-muted">
-          Apaga o histórico de mensagens desta conversa. Os teus dados de estudo e outras conversas
-          não são afetados.
-        </p>
-      </Modal>
-
-      <WeeklyTutorModal open={tutorOpen} onClose={() => setTutorOpen(false)} />
-      <GeminiKeyGuideModal open={keyGuideOpen} onClose={() => setKeyGuideOpen(false)} />
-      <UniCollectiblesModal open={collectiblesOpen} onClose={() => setCollectiblesOpen(false)} />
-      {contextModalOpen && (
-        <Modal
-          open
-          onClose={() => setContextModalOpen(false)}
-          title="O que o Uni sabe"
-          footer={
-            <Button variant="primary" onClick={() => setContextModalOpen(false)}>
-              Fechar
-            </Button>
-          }
-        >
-          <ContextPanel defaultOpen />
-        </Modal>
-      )}
-      {convsModalMode && (
-        <ConversationsModal
-          open
-          initialTab={convsModalMode}
-          onClose={() => setConvsModalMode(null)}
-          conversations={conversations}
-          activeConvId={activeConvId}
-          courses={courses}
-          defaultCourseId={activeCourseId}
-          defaultSubject={activeSubject}
-          onSelectConversation={(conv) => {
-            setActiveConvId(conv.id);
-            if (conv.courseId) setActiveCourseId(conv.courseId);
-          }}
-          onCreateConversation={handleCreateConversation}
-          onRenameConversation={handleRenameConversation}
-          onDeleteConversation={handleDeleteConversationById}
-        />
-      )}
-      <UniNotebookDrawer
-        open={notebookOpen}
-        onClose={() => setNotebookOpen(false)}
-        courseName={activeCourse?.shortName || activeCourse?.name}
-        attachedMaterials={attachedMaterials}
-        accessory={uniAccessory}
-        persona={uniPersona}
-        onSendToChat={(markdown) => {
-          void appendMessage(activeConvId, {
-            id: newId(),
-            role: 'model',
-            text: markdown,
-            at: new Date().toISOString(),
-            sourceDocTitles: attachedMaterials.map((m) => m.title),
-          });
+      <AssistantModals
+        menuOpen={menuOpen}
+        onCloseMenu={() => setMenuOpen(false)}
+        onOpenWeeklyTutor={() => setTutorOpen(true)}
+        onOpenDocPicker={() => setShowDocPicker(true)}
+        onOpenCollectibles={() => setCollectiblesOpen(true)}
+        onNavigateSettings={() => navigate('/definicoes/tutor')}
+        onOpenContextModal={() => setContextModalOpen(true)}
+        onRequestDeleteConv={() => setConfirmDeleteConv(true)}
+        showDocPicker={showDocPicker}
+        onCloseDocPicker={() => setShowDocPicker(false)}
+        hasCustomKey={hasCustomKey}
+        maxAiFiles={maxAiFiles}
+        availableMaterials={availableMaterials}
+        selectedMaterialIds={selectedMaterialIds}
+        onToggleMaterial={toggleMaterial}
+        onSelectAllMaterials={selectAllMaterials}
+        onClearAttachedMaterials={handleClearAttachedMaterials}
+        confirmDeleteConv={confirmDeleteConv}
+        onCloseDeleteConv={() => setConfirmDeleteConv(false)}
+        onConfirmDeleteConv={() => {
+          setConfirmDeleteConv(false);
+          if (activeConvId) void handleDeleteConversationById(activeConvId);
         }}
+        tutorOpen={tutorOpen}
+        onCloseTutor={() => setTutorOpen(false)}
+        keyGuideOpen={keyGuideOpen}
+        onCloseKeyGuide={() => setKeyGuideOpen(false)}
+        collectiblesOpen={collectiblesOpen}
+        onCloseCollectibles={() => setCollectiblesOpen(false)}
+        contextModalOpen={contextModalOpen}
+        onCloseContextModal={() => setContextModalOpen(false)}
+        convsModalMode={convsModalMode}
+        onCloseConvsModal={() => setConvsModalMode(null)}
+        conversations={conversations}
+        activeConvId={activeConvId}
+        courses={courses}
+        activeCourse={activeCourse}
+        activeCourseId={activeCourseId}
+        activeSubject={activeSubject}
+        onSelectConversation={(conv) => {
+          setActiveConvId(conv.id);
+          if (conv.courseId) setActiveCourseId(conv.courseId);
+        }}
+        onCreateConversation={handleCreateConversation}
+        onRenameConversation={handleRenameConversation}
+        onDeleteConversation={handleDeleteConversationById}
+        notebookOpen={notebookOpen}
+        onCloseNotebook={() => setNotebookOpen(false)}
+        attachedMaterials={attachedMaterials}
+        uniAccessory={uniAccessory}
+        uniPersona={uniPersona}
       />
     </div>
   );
