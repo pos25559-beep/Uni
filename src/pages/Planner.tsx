@@ -413,35 +413,6 @@ export default function Planner() {
         />
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <BentoMetricTile
-              tone="sage"
-              label="Planeado"
-              value={fmtMinutes(stats.planned)}
-              hint={`${weekSessions.length} sessões na semana`}
-              icon={<Clock size={15} />}
-            />
-            <BentoMetricTile
-              tone="mint"
-              label="Concluído"
-              value={fmtMinutes(stats.done)}
-              hint={`${stats.pct}% da semana`}
-            />
-            <BentoMetricTile
-              tone="butter"
-              label="Meta diária"
-              value={fmtMinutes(settings.dailyStudyMinutes)}
-              hint={studyDaysLabel(settings.studyDays)}
-            />
-            <BentoMetricTile
-              tone={overdue.length > 0 ? 'peach' : 'sky'}
-              label="Em atraso"
-              value={overdue.length}
-              hint={overdue.length > 0 ? 'por reagendar' : 'tudo em dia'}
-              icon={<AlertTriangle size={15} className={overdue.length > 0 ? 'text-coral' : undefined} />}
-            />
-          </div>
-
           {overdue.length > 0 && (
             <Card
               className="border-warn/40"
@@ -582,6 +553,35 @@ export default function Planner() {
               })}
             </div>
           </section>
+
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <BentoMetricTile
+              tone="sage"
+              label="Planeado"
+              value={fmtMinutes(stats.planned)}
+              hint={`${weekSessions.length} sessões na semana`}
+              icon={<Clock size={15} />}
+            />
+            <BentoMetricTile
+              tone="mint"
+              label="Concluído"
+              value={fmtMinutes(stats.done)}
+              hint={`${stats.pct}% da semana`}
+            />
+            <BentoMetricTile
+              tone="butter"
+              label="Meta diária"
+              value={fmtMinutes(settings.dailyStudyMinutes)}
+              hint={studyDaysLabel(settings.studyDays)}
+            />
+            <BentoMetricTile
+              tone={overdue.length > 0 ? 'peach' : 'sky'}
+              label="Em atraso"
+              value={overdue.length}
+              hint={overdue.length > 0 ? 'por reagendar' : 'tudo em dia'}
+              icon={<AlertTriangle size={15} className={overdue.length > 0 ? 'text-coral' : undefined} />}
+            />
+          </div>
 
           <Card title="Distribuição por cadeira">
             {distribution.length > 0 ? (

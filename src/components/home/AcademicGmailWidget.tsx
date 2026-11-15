@@ -127,7 +127,7 @@ export default function AcademicGmailWidget() {
                           )}
                           <span className="truncate font-semibold text-fg">{em.fromName}</span>
                           {course && (
-                            <span className="rounded-full bg-surface-2 px-2 py-0.5 font-mono text-xs text-accent-ink">
+                            <span className="shrink-0 whitespace-nowrap rounded-full bg-surface-2 px-2 py-0.5 font-mono text-xs text-accent-ink">
                               {course.shortName}
                             </span>
                           )}

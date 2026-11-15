@@ -215,7 +215,7 @@ export default function UniCollectiblesModal({ open, onClose }: Props) {
                         <UniBuddy
                           skin={skin.id}
                           accessory={accessory}
-                          mood={unlocked ? 'celebrate' : 'shy'}
+                          mood={unlocked ? 'happy' : 'calm'}
                           size={50}
                           interactive={false}
                         />

@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useMemo, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import {
   AlertTriangle,
@@ -13,7 +13,6 @@ import {
   CalendarDays,
   Check,
   Clock,
-  GraduationCap,
   HardDrive,
   MessageSquare,
   Settings as SettingsIcon,
@@ -35,18 +34,17 @@ import { openUniCheckIn } from '../lib/uniCheckInBus';
 import type { StudyLogKind } from '../types';
 import {
   AgendaRibbonCard,
-  HighlightShapesGrid,
   NotebookFocusSheet,
   StickyTasksPad,
 } from '../components/home/PlayfulWidgets';
 import {
   AnimatedPage,
-  BentoMetricTile,
   FolderCardDeck,
   StaggerContainer,
   StaggerItem,
   StickerBadge,
 } from '../components/motion/Primitives';
+import { courseColors } from '../lib/colors';
 import { UNIPEDIA_BOUNCE_SPRING, celebrateStationery } from '../lib/motionTokens';
 import { Button, Card, Modal, Progress, SegmentedControl } from '../components/ui';
 import { cx, showToast } from '../lib/uiHelpers';
@@ -154,7 +152,26 @@ export default function Dashboard() {
 
   const next = upcoming[0];
   const nextCourse = next ? courseById.get(next.courseId) : undefined;
-  const nextDays = next ? daysUntil(next.date) : null;
+  const upcomingPlanSessions = useMemo(
+    () =>
+      sessions
+        .filter((s) => !s.done && s.date > today)
+        .sort((a, b) => a.date.localeCompare(b.date) || (a.start ?? '').localeCompare(b.start ?? '')),
+    [sessions, today],
+  );
+  const nextStudyDate = upcomingPlanSessions[0]?.date;
+  const nextStudyDaySessions = useMemo(
+    () => (nextStudyDate ? upcomingPlanSessions.filter((s) => s.date === nextStudyDate) : []),
+    [upcomingPlanSessions, nextStudyDate],
+  );
+  const nextStudyDayLabel = useMemo(() => {
+    if (!nextStudyDate) return null;
+    try {
+      return format(parseISO(`${nextStudyDate}T12:00:00`), "EEE, d MMM", { locale: pt });
+    } catch {
+      return nextStudyDate;
+    }
+  }, [nextStudyDate]);
 
   const topicTitle = (s: StudySession) => {
     const topic = courseById.get(s.courseId)?.topics.find((t) => t.id === s.topicId);
@@ -568,7 +585,9 @@ export default function Dashboard() {
               {scope === 'today'
                 ? plannedToday > 0
                   ? `${fmtMinutes(doneToday)} de ${fmtMinutes(plannedToday)} focados`
-                  : 'Dia leve para pôr matéria em dia'
+                  : nextStudyDayLabel
+                    ? `Dia de descanso · Próx. ${nextStudyDayLabel}`
+                    : 'Dia leve para pôr matéria em dia'
                 : `${fmtMinutes(weekMinutes)} de ${fmtMinutes(weekGoal)} esta semana`}
             </h2>
           </div>
@@ -698,21 +717,79 @@ export default function Dashboard() {
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <div className="min-w-0 space-y-5">
           <NotebookFocusSheet
-            isEmpty={todaySessions.length === 0}
+            isEmpty={todaySessions.length === 0 && nextStudyDaySessions.length === 0}
             onOpenPlan={() => navigate('/plano')}
             uniAccessory={uniAccessory}
           >
-            <ul className="space-y-2">
-              {todaySessions.map((s) => (
-                <SessionRow
-                  key={s.id}
-                  session={s}
-                  course={courseById.get(s.courseId)}
-                  topic={topicTitle(s)}
-                  onToggle={() => toggleSession(s)}
-                />
-              ))}
-            </ul>
+            {todaySessions.length > 0 ? (
+              <ul className="space-y-2">
+                {todaySessions.map((s) => (
+                  <SessionRow
+                    key={s.id}
+                    session={s}
+                    course={courseById.get(s.courseId)}
+                    topic={topicTitle(s)}
+                    onToggle={() => toggleSession(s)}
+                  />
+                ))}
+              </ul>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-white/75 px-3.5 py-2.5 text-xs dark:bg-black/25">
+                  <span className="font-semibold text-fg">
+                    Dia de descanso programado · próximo plano ({nextStudyDayLabel})
+                  </span>
+                  <span className="font-mono text-xs text-muted tabular">
+                    {nextStudyDaySessions.length}{' '}
+                    {nextStudyDaySessions.length === 1 ? 'bloco' : 'blocos'} ·{' '}
+                    {fmtMinutes(nextStudyDaySessions.reduce((acc, s) => acc + sessionMinutes(s), 0))}
+                  </span>
+                </div>
+                <ul className="space-y-2">
+                  {nextStudyDaySessions.slice(0, 3).map((s) => {
+                    const course = courseById.get(s.courseId);
+                    const colorStyle = course ? courseColors[course.color] : courseColors.emerald;
+                    return (
+                      <li key={s.id}>
+                        <Link
+                          to="/plano"
+                          className="flex items-center justify-between gap-3 rounded-2xl bg-white/80 px-3.5 py-2.5 transition hover:bg-white dark:bg-black/25 dark:hover:bg-black/35"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={cx(
+                                  'inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold',
+                                  colorStyle.soft,
+                                )}
+                              >
+                                <span className={cx('size-1.5 rounded-full', colorStyle.dot)} />
+                                {course?.shortName ?? 'Estudo'}
+                              </span>
+                              {s.start && (
+                                <span className="font-mono text-xs text-muted tabular">{s.start}</span>
+                              )}
+                            </div>
+                            <p className="mt-1 truncate text-sm font-semibold text-fg">{topicTitle(s)}</p>
+                          </div>
+                          <span className="shrink-0 font-mono text-xs font-semibold text-muted tabular">
+                            {fmtMinutes(sessionMinutes(s))}
+                          </span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+                {nextStudyDaySessions.length > 3 && (
+                  <Link
+                    to="/plano"
+                    className="inline-flex min-h-11 items-center gap-1 px-1 text-xs font-semibold text-accent-ink hover:underline"
+                  >
+                    Ver todos os {nextStudyDaySessions.length} blocos no plano <ArrowRight size={13} />
+                  </Link>
+                )}
+              </div>
+            )}
           </NotebookFocusSheet>
 
           <StickyTasksPad
@@ -808,51 +885,6 @@ export default function Dashboard() {
         </div>
       </div>
       </StaggerItem>
-
-      {/* Bento 2x1 colorido estilo referência "Ver ->" */}
-      <StaggerItem>
-      <div className="grid grid-cols-2 gap-3">
-        <BentoMetricTile
-          tone="sage"
-          label="Próxima avaliação"
-          value={nextDays === null ? 'Livre' : capitalize(dayWord(nextDays))}
-          hint={next ? `${next.title}${nextCourse ? ` · ${nextCourse.shortName}` : ''}` : 'Sem provas próximas'}
-          icon={<CalendarClock size={16} />}
-          actionLabel="Ver"
-          onClick={() => navigate(next ? `/cadeiras/${next.courseId}` : '/calendario')}
-        />
-        <BentoMetricTile
-          tone="sky"
-          label="Caderno & Progresso"
-          value={courses.length > 0 ? `${courses.length} cad.` : 'Novo'}
-          hint={average !== null ? `Média atual ${fmtGrade(average)}` : 'Abre as tuas estatísticas'}
-          icon={<GraduationCap size={16} />}
-          actionLabel="Ver"
-          onClick={() => navigate(scope === 'week' ? '/progresso' : '/cadeiras')}
-        />
-      </div>
-      </StaggerItem>
-
-      {/* Mosaico orgânico de formas pastel ("Daily highlights") apenas em Expressivo */}
-      {!isMinimal && (courses.length > 0 || todaySessions.length > 0 || pendingTasks.length > 0) && (
-        <StaggerItem>
-          <HighlightShapesGrid
-            focusedLabel={fmtMinutes(weekMinutes)}
-            streakDays={streak}
-            sessionsLabel={`${doneSessionsCount}/${todaySessions.length}`}
-            pendingCount={pendingTasks.length}
-            onOpenProgress={() => navigate('/progresso')}
-            onOpenPlan={() => navigate('/plano')}
-            onFocusTasks={() => {
-              const el = document.getElementById('dashboard-quick-task');
-              if (el) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                el.focus();
-              }
-            }}
-          />
-        </StaggerItem>
-      )}
       </StaggerContainer>
 
       <UniCollectiblesModal open={collectiblesOpen} onClose={() => setCollectiblesOpen(false)} />

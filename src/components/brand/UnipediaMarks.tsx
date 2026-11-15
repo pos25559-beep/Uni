@@ -118,11 +118,9 @@ export function UniBuddy({
     peek: '#C4E0FD',
   };
   const bg =
-    activeSkin === 'classic'
+    !skin && activeSkin === 'classic'
       ? classicMoodFill[mood] ?? palette.fill
-      : mood === 'celebrate' && palette.celebrateFill
-        ? palette.celebrateFill
-        : palette.fill;
+      : palette.fill;
 
   const floatAnimate =
     mood === 'celebrate'

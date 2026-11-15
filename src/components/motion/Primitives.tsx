@@ -242,9 +242,9 @@ export function BentoMetricTile({
       </div>
 
       <div className="mt-4 flex items-end justify-between gap-2">
-        <div className="text-2xl font-bold tracking-tight tabular">{value}</div>
+        <div className="min-w-0 text-xl font-bold leading-tight tracking-tight tabular sm:text-2xl">{value}</div>
         {(actionLabel || onClick) && (
-          <span className="inline-flex items-center gap-1 text-xs font-semibold opacity-85">
+          <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-semibold opacity-85">
             {actionLabel || 'Ver'}
             <ArrowRight size={13} aria-hidden="true" />
           </span>

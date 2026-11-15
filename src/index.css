@@ -463,3 +463,18 @@ dialog::backdrop {
   border-radius: 999px;
   text-shadow: none;
 }
+@media (max-width: 640px) {
+  .driver-popover.unipedia-tour-popover {
+    max-width: calc(100vw - 24px);
+    padding: 14px 16px;
+  }
+  .driver-popover.unipedia-tour-popover .driver-popover-footer {
+    gap: 8px;
+  }
+  .driver-popover.unipedia-tour-popover button.driver-popover-next-btn,
+  .driver-popover.unipedia-tour-popover button.driver-popover-prev-btn {
+    min-height: 38px;
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+}
