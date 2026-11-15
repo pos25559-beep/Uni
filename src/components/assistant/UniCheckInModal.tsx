@@ -1,17 +1,21 @@
 import { format, parseISO, startOfWeek } from 'date-fns';
 import {
+  ArrowUp,
   BookOpenCheck,
   Check,
   Flame,
   Moon,
-  Send,
   Sparkles,
   Sun,
+  X,
 } from 'lucide-react';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { KeyboardEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { converseCheckInWithGemini } from '../../integrations/gemini';
 import { daysUntil, fmtMinutes, sessionMinutes, todayStr, upcomingAssessments } from '../../lib/selectors';
+import { cx, showToast } from '../../lib/uiHelpers';
 import { resolveUniAccessory } from '../../lib/uniAccessories';
 import {
   buildLocalUniCheckInReply,
@@ -19,6 +23,7 @@ import {
   studyLogEntryToHumanPrompt,
   type ParsedCheckInUnderstanding,
 } from '../../lib/uniCheckInNlu';
+import { useSheetSwipeDismiss } from '../../lib/useSheetSwipeDismiss';
 import { newId, useStore } from '../../store/useStore';
 import type {
   Assessment,
@@ -29,8 +34,7 @@ import type {
   WeeklyCheckIn,
 } from '../../types';
 import { UniBuddy, UniPetBuddy } from '../brand/UnipediaMarks';
-import { Badge, Button, Modal } from '../ui';
-import { cx, showToast } from '../../lib/uiHelpers';
+import { Badge, Button } from '../ui';
 
 export interface UniCheckInModalProps {
   open: boolean;
@@ -53,6 +57,18 @@ interface QuickChip {
   prefillText?: string;
 }
 
+const CHECKIN_TABS: ReadonlyArray<{
+  id: StudyLogKind;
+  label: string;
+  shortLabel: string;
+  icon: typeof BookOpenCheck;
+}> = [
+  { id: 'class', label: 'Pós-Aula', shortLabel: 'Aula', icon: BookOpenCheck },
+  { id: 'day', label: 'Fim do Dia', shortLabel: 'Dia', icon: Moon },
+  { id: 'week', label: 'Domingo', shortLabel: 'Semana', icon: Sun },
+  { id: 'exam_prep', label: 'Modo Teste', shortLabel: 'Teste', icon: Flame },
+];
+
 function buildOpeningGreeting(args: {
   kind: StudyLogKind;
   course?: Course;
@@ -66,7 +82,7 @@ function buildOpeningGreeting(args: {
 
   if (kind === 'class') {
     const slotText = classSlotLabel ? ` (${classSlotLabel})` : '';
-    return `Olá! Como correu a aula de **${cname}**${slotText}? Podes responder naturalmente — ex.: *"Entendi tudo sobre Laminagem"* ou *"Foi difícil, demos Critério de Von Mises e travei nos sinais"*.`;
+    return `Como correu a aula de **${cname}**${slotText}? Podes escrever naturalmente — ex.: *"Entendi tudo sobre Laminagem"* ou *"Foi difícil, demos Critério de Von Mises e travei nos sinais"*.`;
   }
   if (kind === 'day') {
     const summary =
@@ -75,15 +91,15 @@ function buildOpeningGreeting(args: {
         : classesCountToday > 0
           ? `Tiveste ${classesCountToday} aula(s) hoje`
           : 'Dia tranquilo no horário';
-    return `Boa noite! ${summary}. Como sentiste o dia e o teu estudo hoje? Conta-me por palavras tuas para eu calibrar o plano de amanhã.`;
+    return `${summary}. Como sentiste o dia e o teu estudo hoje? Conta-me por palavras tuas para eu calibrar o plano de amanhã.`;
   }
   if (kind === 'week') {
-    return `Hora do nosso balanço de domingo! Como sentiste esta semana no geral — o que ficou bem consolidado, onde travaste ou que cadeiras pedem mais foco?`;
+    return `Hora do balanço da semana! O que ficou bem consolidado, onde travaste ou que cadeiras pedem mais foco nos próximos dias?`;
   }
   const testName = assessment ? `**${assessment.title}** de **${cname}**` : `o próximo teste de **${cname}**`;
   const days = assessment ? Math.max(0, daysUntil(assessment.date)) : null;
   const when = days !== null ? (days === 0 ? ' (é hoje!)' : ` (faltam ${days} dia${days === 1 ? '' : 's'})`) : '';
-  return `Vamos alinhar ${testName}${when}! Diz-me naturalmente: **até que slide, aula ou matéria sai**, o que já estudaste e como te sentes. (Ex.: *"Cai até ao slide 8, já revi até T03 e estou ansioso"*)`;
+  return `Vamos alinhar ${testName}${when}! Diz-me **até que slide, aula ou matéria sai**, o que já estudaste e como te sentes.\n*(Ex.: "Cai até ao slide 8, já revi até T03 e estou ansioso")*`;
 }
 
 function getQuickChips(kind: StudyLogKind, course?: Course): QuickChip[] {
@@ -91,19 +107,19 @@ function getQuickChips(kind: StudyLogKind, course?: Course): QuickChip[] {
   if (kind === 'class') {
     return [
       { label: 'Entendi bem', sendText: 'Entendi bem a aula de hoje, deu para acompanhar tudo.' },
-      { label: 'Algumas dúvidas em…', prefillText: 'Fiquei com dúvidas em ' },
+      { label: 'Dúvidas em…', prefillText: 'Fiquei com dúvidas em ' },
       { label: 'Difícil / demos…', prefillText: 'A aula foi difícil, demos ' },
       ...(firstTopic
-        ? [{ label: `Demos ${firstTopic.slice(0, 22)}`, prefillText: `Hoje demos ${firstTopic} e ` }]
+        ? [{ label: `Demos ${firstTopic.slice(0, 18)}`, prefillText: `Hoje demos ${firstTopic} e ` }]
         : []),
       { label: 'Faltei / rever', sendText: 'Faltei à aula hoje, preciso de rever a matéria.' },
     ];
   }
   if (kind === 'day') {
     return [
-      { label: 'Dia produtivo!', sendText: 'Hoje foi um dia produtivo, rendeu bem o estudo (4/5).' },
-      { label: 'Estudo normal', sendText: 'Dia normal de estudo, avancei ao meu ritmo (3/5).' },
-      { label: 'Estou cansado hoje', sendText: 'Estou muito cansado hoje, quase não deu para estudar (2/5).' },
+      { label: 'Dia produtivo', sendText: 'Hoje foi um dia produtivo, rendeu bem o estudo (4/5).' },
+      { label: 'Ritmo normal', sendText: 'Dia normal de estudo, avancei ao meu ritmo (3/5).' },
+      { label: 'Estou cansado', sendText: 'Estou muito cansado hoje, quase não deu para estudar (2/5).' },
     ];
   }
   if (kind === 'week') {
@@ -115,10 +131,26 @@ function getQuickChips(kind: StudyLogKind, course?: Course): QuickChip[] {
   }
   return [
     { label: 'Cai até ao slide…', prefillText: 'A matéria do teste cai até ao slide ' },
-    { label: 'Já estudei metade, ansioso', sendText: 'Já estudei cerca de metade da matéria, mas sinto-me um pouco ansioso.' },
+    { label: 'Já estudei metade', sendText: 'Já estudei cerca de metade da matéria, mas sinto-me um pouco ansioso.' },
     { label: 'Ainda não comecei', prefillText: 'Ainda não comecei a estudar e sai até ao slide ' },
     { label: 'Sinto-me confiante', sendText: 'Já revi bem os tópicos principais e sinto-me confiante.' },
   ];
+}
+
+function renderInlineMarkdown(text: string) {
+  return text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g).map((seg, idx) => {
+    if (seg.startsWith('**') && seg.endsWith('**')) {
+      return <strong key={idx}>{seg.slice(2, -2)}</strong>;
+    }
+    if (seg.startsWith('*') && seg.endsWith('*')) {
+      return (
+        <em key={idx} className="text-muted">
+          {seg.slice(1, -1)}
+        </em>
+      );
+    }
+    return <span key={idx}>{seg}</span>;
+  });
 }
 
 export default function UniCheckInModal(props: UniCheckInModalProps) {
@@ -136,6 +168,10 @@ function UniCheckInModalInner({
   initialAssessmentId,
 }: UniCheckInModalProps) {
   const navigate = useNavigate();
+  const titleId = useId();
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const pressedOutsideRef = useRef(false);
+
   const courses = useStore((s) => s.courses);
   const assessments = useStore((s) => s.assessments);
   const classes = useStore((s) => s.classes);
@@ -149,6 +185,23 @@ function UniCheckInModalInner({
   const ensureCourseTopic = useStore((s) => s.ensureCourseTopic);
   const patchAssessment = useStore((s) => s.patch);
   const reconcileFuturePlan = useStore((s) => s.reconcileFuturePlan);
+
+  useSheetSwipeDismiss({
+    ref: dialogRef,
+    open,
+    onClose,
+    maxViewportWidth: 640,
+  });
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (open && !dialog.open) {
+      dialog.showModal();
+    } else if (!open && dialog.open) {
+      dialog.close();
+    }
+  }, [open]);
 
   const today = todayStr();
   const todayDate = useMemo(() => parseISO(`${today}T12:00:00`), [today]);
@@ -227,14 +280,27 @@ function UniCheckInModalInner({
   ]);
 
   const [understanding, setUnderstanding] = useState<ParsedCheckInUnderstanding | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 112)}px`;
+  }, [inputText]);
 
   const uniAccessory = resolveUniAccessory(
     settings.uniAccessory,
     academicProfile?.degreeName,
     effectiveCourse?.name ?? courses[0]?.name,
   );
+
+  const scrollChatBottom = () => {
+    setTimeout(() => {
+      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+    }, 35);
+  };
 
   const resetChatForContext = (nextKind: StudyLogKind, nextCourseId: string, nextAssessmentId: string) => {
     const nextAssess = assessments.find((a) => a.id === nextAssessmentId) ?? futureAssessments[0];
@@ -303,11 +369,8 @@ function UniCheckInModalInner({
     });
 
     setUnderstanding(localParsed);
-    setTimeout(() => {
-      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-    }, 30);
+    scrollChatBottom();
 
-    // Se IA estiver autorizada, obtém resposta conversacional humana do Uni + refinamento semântico; caso contrário responde logo offline com 0 ms.
     if (settings.aiConsent && effectiveCourse) {
       setSending(true);
       try {
@@ -340,9 +403,7 @@ function UniCheckInModalInner({
         ]);
       } finally {
         setSending(false);
-        setTimeout(() => {
-          scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-        }, 40);
+        scrollChatBottom();
       }
       return;
     }
@@ -353,14 +414,11 @@ function UniCheckInModalInner({
       assessment: selectedAssessment,
     });
     setTurns((prev) => [...prev, { id: `m-${Date.now()}`, role: 'model', text: reply }]);
-    setTimeout(() => {
-      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-    }, 40);
+    scrollChatBottom();
   };
 
   const handleConfirm = (openTutorAfter = false) => {
     const nowIso = new Date().toISOString();
-    // Se o estudante escreveu no input mas carregou logo em Confirmar sem enviar no chat, interpreta na hora!
     let finalUnderstanding = understanding;
     if (!finalUnderstanding && inputText.trim()) {
       finalUnderstanding = parseConversationalCheckIn({
@@ -379,7 +437,6 @@ function UniCheckInModalInner({
 
     const syncedTopicIds = new Set<string>(finalUnderstanding.matchedTopicIds);
 
-    // Cria/atualiza tópicos identificados na cadeira ativa
     if (effectiveCourse) {
       const status: Topic['status'] =
         finalUnderstanding.feeling === 'clara' || finalUnderstanding.feeling === 'confiante'
@@ -464,55 +521,104 @@ function UniCheckInModalInner({
     }
   };
 
+  const onComposerKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+      void handleSendMessage();
+    }
+  };
+
+  const isOutsideDialog = (clientX: number, clientY: number) => {
+    const dialog = dialogRef.current;
+    if (!dialog) return false;
+    const rect = dialog.getBoundingClientRect();
+    return (
+      clientX < rect.left ||
+      clientX > rect.right ||
+      clientY < rect.top ||
+      clientY > rect.bottom
+    );
+  };
+
   const quickChips = getQuickChips(kind, effectiveCourse);
   const perceivedCount =
     (understanding?.matchedTopicIds.length ?? 0) + (understanding?.newTopicsToAdd.length ?? 0);
+  const hasDraftOrResult = Boolean(understanding || inputText.trim());
 
-  return (
-    <Modal
-      open={open}
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <dialog
+      ref={dialogRef}
+      aria-labelledby={titleId}
       onClose={onClose}
-      title="Conversa com o Uni · Diário"
-      maxWidthClass="sm:max-w-2xl"
-      footer={
-        <div className="flex w-full flex-wrap items-center justify-between gap-2">
-          <Button variant="ghost" onClick={onClose}>
-            Agora não
-          </Button>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="secondary"
-              disabled={!understanding && !inputText.trim()}
-              onClick={() => handleConfirm(true)}
+      onCancel={(e) => {
+        e.preventDefault();
+        onClose();
+      }}
+      onPointerDown={(e) => {
+        if (!('closedBy' in HTMLDialogElement.prototype)) {
+          pressedOutsideRef.current = isOutsideDialog(e.clientX, e.clientY);
+        }
+      }}
+      onPointerUp={(e) => {
+        if (
+          !('closedBy' in HTMLDialogElement.prototype) &&
+          pressedOutsideRef.current &&
+          isOutsideDialog(e.clientX, e.clientY)
+        ) {
+          onClose();
+        }
+        pressedOutsideRef.current = false;
+      }}
+      {...({ closedby: 'any' } as Record<string, unknown>)}
+      className="rise m-auto mb-0 h-[92dvh] max-h-[92dvh] w-full max-w-none open:flex flex-col overscroll-contain rounded-t-[28px] border border-line bg-bg p-0 text-fg shadow-float backdrop:bg-black/45 backdrop:backdrop-blur-[2px] sm:mb-auto sm:h-[min(86dvh,740px)] sm:max-w-2xl sm:rounded-[26px]"
+    >
+      {/* Cabeçalho estilo Uni Tutor Gemini + Puxador swipe-down */}
+      <header className="shrink-0 border-b border-line/70 bg-surface px-4 pb-2.5 pt-2">
+        <div data-sheet-handle="" className="-mx-4 -mt-2 px-4 pt-2.5 pb-1 touch-none sm:touch-auto">
+          <div className="mx-auto mb-2.5 h-1.5 w-11 rounded-full bg-line sm:hidden" aria-hidden="true" />
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <div className="grid size-8 shrink-0 place-items-center rounded-full bg-pastel-butter/80 dark:bg-surface-2">
+                <UniBuddy
+                  size={24}
+                  accessory={uniAccessory}
+                  skin={settings.uniSkin ?? 'classic'}
+                  mood={sending ? 'thinking' : 'happy'}
+                  interactive={false}
+                />
+              </div>
+              <div className="min-w-0">
+                <h2 id={titleId} className="truncate font-display text-base font-bold leading-tight text-fg">
+                  Diário do{' '}
+                  <span className="font-serif font-medium italic text-accent-ink dark:text-accent">Uni</span>
+                </h2>
+              </div>
+              <Badge tone="accent" className="shrink-0 text-xs">
+                +4 ⚡
+              </Badge>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Fechar"
+              className="hidden size-11 -mr-1.5 items-center justify-center rounded-full text-muted transition hover:bg-surface-2 hover:text-fg sm:flex"
             >
-              <Sparkles size={15} /> Abrir no Tutor
-            </Button>
-            <Button
-              variant="primary"
-              disabled={!understanding && !inputText.trim()}
-              onClick={() => handleConfirm(false)}
-            >
-              <Check size={15} /> Confirmar & alinhar plano
-            </Button>
+              <X size={18} aria-hidden="true" />
+            </button>
           </div>
         </div>
-      }
-    >
-      <div className="space-y-3">
-        {/* Abas 2x2 mobile / 4-col desktop para trocar rapidamente o contexto do check-in */}
+
+        {/* Faixa compacta de modos em 1 linha (estilo chips do Tutor) */}
         <div
           role="tablist"
           aria-label="Tipo de conversa do Uni"
-          className="grid grid-cols-2 gap-1.5 rounded-2xl bg-surface-2 p-1.5 sm:grid-cols-4"
+          className="mt-1.5 flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar"
         >
-          {(
-            [
-              { id: 'class', label: 'Pós-Aula', icon: <BookOpenCheck size={14} /> },
-              { id: 'day', label: 'Fim do Dia', icon: <Moon size={14} /> },
-              { id: 'week', label: 'Domingo', icon: <Sun size={14} /> },
-              { id: 'exam_prep', label: 'Modo Teste', icon: <Flame size={14} /> },
-            ] as const
-          ).map((item) => {
+          {CHECKIN_TABS.map((item) => {
+            const Icon = item.icon;
             const active = kind === item.id;
             return (
               <button
@@ -522,22 +628,23 @@ function UniCheckInModalInner({
                 aria-selected={active}
                 onClick={() => handleKindChange(item.id)}
                 className={cx(
-                  'inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-semibold transition',
+                  'inline-flex min-h-[36px] shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition',
                   active
-                    ? 'bg-surface text-fg shadow-card'
-                    : 'text-muted hover:text-fg',
+                    ? 'border-[#141312] bg-ink-cta text-ink-cta-fg dark:border-white/20'
+                    : 'border-line bg-bg text-muted hover:text-fg',
                 )}
               >
-                {item.icon}
-                <span>{item.label}</span>
+                <Icon size={13} />
+                <span className="sm:hidden">{item.shortLabel}</span>
+                <span className="hidden sm:inline">{item.label}</span>
               </button>
             );
           })}
         </div>
 
-        {/* Cápsulas horizontais limpas (sem abrir seletor nativo gigante no telemóvel) */}
+        {/* Faixa contextual (Cadeira em Pós-Aula / Teste em Modo Teste) */}
         {kind === 'class' && courses.length > 0 && (
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+          <div className="mt-1.5 flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
             {courses.map((c) => {
               const selected = (effectiveCourse?.id ?? '') === c.id;
               return (
@@ -546,9 +653,9 @@ function UniCheckInModalInner({
                   type="button"
                   onClick={() => handleCourseSelect(c.id)}
                   className={cx(
-                    'min-h-[36px] shrink-0 rounded-full border px-3 py-1 text-xs font-semibold transition',
+                    'min-h-[34px] shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition',
                     selected
-                      ? 'border-accent bg-accent text-accent-fg'
+                      ? 'border-accent bg-accent-soft font-semibold text-accent-ink'
                       : 'border-line bg-surface-2/60 text-muted hover:text-fg',
                   )}
                 >
@@ -560,7 +667,7 @@ function UniCheckInModalInner({
         )}
 
         {kind === 'exam_prep' && futureAssessments.length > 0 && (
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+          <div className="mt-1.5 flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
             {futureAssessments.map((a) => {
               const c = courses.find((x) => x.id === a.courseId);
               const selected = (selectedAssessment?.id ?? '') === a.id;
@@ -571,9 +678,9 @@ function UniCheckInModalInner({
                   type="button"
                   onClick={() => handleAssessmentSelect(a.id)}
                   className={cx(
-                    'min-h-[36px] shrink-0 rounded-full border px-3 py-1 text-xs font-semibold transition',
+                    'min-h-[34px] shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition',
                     selected
-                      ? 'border-accent bg-accent text-accent-fg'
+                      ? 'border-accent bg-accent-soft font-semibold text-accent-ink'
                       : 'border-line bg-surface-2/60 text-muted hover:text-fg',
                   )}
                 >
@@ -583,83 +690,75 @@ function UniCheckInModalInner({
             })}
           </div>
         )}
+      </header>
 
-        {/* Área conversacional humana */}
-        <div
-          ref={scrollRef}
-          className="max-h-44 space-y-2.5 overflow-y-auto rounded-2xl border border-line/70 bg-surface-2/40 p-3 sm:max-h-60"
-        >
-          {turns.map((turn) => (
+      {/* Feed de conversa aberto e respirável estilo Uni Tutor */}
+      <div
+        ref={scrollRef}
+        className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 py-4"
+      >
+        {turns.map((turn) =>
+          turn.role === 'user' ? (
             <div
               key={turn.id}
-              className={cx(
-                'flex items-end gap-2',
-                turn.role === 'user' ? 'justify-end' : 'justify-start',
-              )}
+              className="rise ml-auto max-w-[85%] whitespace-pre-wrap break-words rounded-[22px] rounded-br-md bg-ink-cta px-4 py-3 text-sm leading-relaxed text-ink-cta-fg shadow-card"
             >
-              {turn.role === 'model' && (
-                <div className="flex shrink-0 items-end gap-0.5 rounded-xl bg-pastel-butter/70 p-1.5 dark:bg-surface">
-                  <UniBuddy
-                    size={28}
-                    accessory={uniAccessory}
-                    skin={settings.uniSkin ?? 'classic'}
-                    mood="happy"
-                  />
-                  {settings.uniPet && settings.uniPet !== 'none' && (
-                    <UniPetBuddy pet={settings.uniPet} size={14} />
-                  )}
-                </div>
-              )}
-              <div
-                className={cx(
-                  'max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap',
-                  turn.role === 'user'
-                    ? 'rounded-br-sm bg-ink-cta text-ink-cta-fg'
-                    : 'rounded-bl-sm border border-line/70 bg-surface text-fg',
+              {turn.text}
+            </div>
+          ) : (
+            <div
+              key={turn.id}
+              className="rise max-w-[94%] rounded-[22px] rounded-bl-md bg-surface px-4 py-3.5 text-sm leading-relaxed text-fg shadow-card"
+            >
+              <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-accent-ink dark:text-accent">
+                <UniBuddy
+                  size={18}
+                  accessory={uniAccessory}
+                  skin={settings.uniSkin ?? 'classic'}
+                  mood="happy"
+                  interactive={false}
+                />
+                <span>Uni</span>
+                {settings.uniPet && settings.uniPet !== 'none' && (
+                  <UniPetBuddy pet={settings.uniPet} size={13} />
                 )}
-              >
-                {turn.text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g).map((seg, idx) => {
-                  if (seg.startsWith('**') && seg.endsWith('**')) {
-                    return <strong key={idx}>{seg.slice(2, -2)}</strong>;
-                  }
-                  if (seg.startsWith('*') && seg.endsWith('*')) {
-                    return (
-                      <em key={idx} className="text-muted">
-                        {seg.slice(1, -1)}
-                      </em>
-                    );
-                  }
-                  return <span key={idx}>{seg}</span>;
-                })}
               </div>
+              <div className="whitespace-pre-wrap">{renderInlineMarkdown(turn.text)}</div>
             </div>
-          ))}
-          {sending && (
-            <div className="flex items-center gap-2 text-xs text-muted">
-              <Sparkles size={13} className="animate-pulse text-accent" />
-              <span>Uni está a alinhar a matéria e o plano…</span>
-            </div>
-          )}
-        </div>
+          ),
+        )}
 
-        {/* Cartão compacto do que o Uni percebeu e vai sincronizar */}
+        {sending && (
+          <div
+            role="status"
+            className="rise flex w-fit items-center gap-2.5 rounded-[22px] rounded-bl-md bg-surface px-4 py-2.5 text-sm text-muted shadow-card"
+          >
+            <UniBuddy
+              mood="thinking"
+              accessory={uniAccessory}
+              skin={settings.uniSkin ?? 'classic'}
+              size={26}
+              interactive={false}
+            />
+            <span>O Uni está a alinhar o plano…</span>
+          </div>
+        )}
+      </div>
+
+      {/* Rodapé fixo estilo Gemini: Cartão de Alinhamento (quando pronto) + Sugestões + Cápsula Compositor */}
+      <footer className="shrink-0 space-y-2 border-t border-line/70 bg-surface px-3.5 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         {understanding && (
-          <div className="rounded-2xl border border-accent/35 bg-accent-soft/55 px-3.5 py-2.5 text-xs">
+          <div className="rounded-2xl border border-accent/35 bg-accent-soft/55 px-3 py-2.5 text-xs">
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="font-bold text-accent-ink dark:text-accent">
-                Alinhamento pronto:
-              </span>
+              <span className="font-bold text-accent-ink dark:text-accent">Alinhamento pronto:</span>
               <Badge tone="accent">{understanding.feelingLabel}</Badge>
               {understanding.scopeLabel && <Badge tone="neutral">{understanding.scopeLabel}</Badge>}
               {understanding.topicTitle && <Badge tone="neutral">{understanding.topicTitle}</Badge>}
-              {perceivedCount > 0 && (
-                <Badge tone="neutral">{perceivedCount} tópico(s)</Badge>
-              )}
-              <Badge tone="accent">+4 ⚡ Ninho</Badge>
+              {perceivedCount > 0 && <Badge tone="neutral">{perceivedCount} tópico(s)</Badge>}
             </div>
             {(understanding.newTopicsToAdd.length > 0 || understanding.matchedTopicIds.length > 0) &&
               effectiveCourse && (
-                <p className="mt-1.5 line-clamp-2 text-muted">
+                <p className="mt-1 line-clamp-1 text-muted">
                   Tópicos:{' '}
                   {[
                     ...effectiveCourse.topics
@@ -669,67 +768,88 @@ function UniCheckInModalInner({
                   ].join(', ')}
                 </p>
               )}
+            <div className="mt-2 flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={!hasDraftOrResult}
+                onClick={() => handleConfirm(true)}
+                className="flex-1 whitespace-nowrap px-3 text-xs"
+              >
+                <Sparkles size={14} className="shrink-0" /> Falar no Tutor
+              </Button>
+              <Button
+                size="sm"
+                variant="primary"
+                disabled={!hasDraftOrResult}
+                onClick={() => handleConfirm(false)}
+                className="flex-1 whitespace-nowrap px-3 text-xs"
+              >
+                <Check size={14} className="shrink-0" /> Guardar &amp; alinhar
+              </Button>
+            </div>
           </div>
         )}
 
-        {/* Sugestões táteis opcionais de resposta rápida */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
-          {quickChips.map((chip) => (
-            <button
-              key={chip.label}
-              type="button"
-              onClick={() => {
-                if (chip.sendText) {
-                  void handleSendMessage(chip.sendText);
-                } else if (chip.prefillText) {
-                  setInputText(chip.prefillText);
-                  inputRef.current?.focus();
-                }
-              }}
-              className="min-h-[36px] shrink-0 rounded-full border border-line bg-surface px-3 py-1 text-xs font-medium text-fg transition hover:border-accent hover:bg-accent-soft/40"
-            >
-              {chip.label}
-            </button>
-          ))}
-        </div>
+        {/* Sugestões rápidas antes da primeira resposta (sem cortes horizontais) */}
+        {!understanding && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {quickChips.map((chip) => (
+              <button
+                key={chip.label}
+                type="button"
+                onClick={() => {
+                  if (chip.sendText) {
+                    void handleSendMessage(chip.sendText);
+                  } else if (chip.prefillText) {
+                    setInputText(chip.prefillText);
+                    inputRef.current?.focus();
+                  }
+                }}
+                className="min-h-[34px] rounded-full border border-line/85 bg-bg px-3 py-1 text-xs font-medium text-fg transition hover:border-accent hover:bg-accent-soft/45"
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+        )}
 
-        {/* Input conversacional natural */}
+        {/* Cápsula compositor estilo Gemini (igual ao Uni Tutor) */}
         <form
           onSubmit={(e) => {
             e.preventDefault();
             void handleSendMessage();
           }}
-          className="flex items-center gap-2"
+          className="flex items-end gap-1.5 rounded-[28px] border border-line/80 bg-bg/75 px-3 py-1.5 shadow-card transition focus-within:border-accent focus-within:bg-surface"
         >
-          <input
+          <textarea
             ref={inputRef}
-            type="text"
+            rows={1}
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
+            onKeyDown={onComposerKeyDown}
+            aria-label="Mensagem para o Diário do Uni"
             placeholder={
               kind === 'exam_prep'
-                ? 'Ex.: A matéria cai até ao slide 8 e já revi T01–T03…'
+                ? 'Ex.: Cai até ao slide 8 e já revi T01–T03…'
                 : kind === 'class'
-                  ? 'Ex.: Hoje demos Critério de Von Mises, fiquei com dúvidas…'
+                  ? 'Ex.: Demos Critério de Von Mises, fiquei com dúvidas…'
                   : 'Responde ao Uni com as tuas palavras…'
             }
-            className="min-h-[44px] min-w-0 flex-1 rounded-2xl border border-line bg-surface px-3.5 py-2 text-sm text-fg placeholder:text-muted focus:border-accent focus:outline-none"
+            style={{ minHeight: 40 }}
+            className="max-h-28 min-w-0 flex-1 resize-none bg-transparent px-1 py-2 text-sm text-fg placeholder:text-muted/75 focus:outline-none"
           />
           <button
             type="submit"
             disabled={!inputText.trim() || sending}
             aria-label="Enviar resposta ao Uni"
-            className={cx(
-              'grid size-11 shrink-0 place-items-center rounded-2xl transition',
-              inputText.trim() && !sending
-                ? 'bg-accent text-accent-fg shadow-sm hover:opacity-95'
-                : 'bg-surface-2 text-muted opacity-60',
-            )}
+            className="grid size-10 shrink-0 place-items-center rounded-full bg-ink-cta text-ink-cta-fg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-35"
           >
-            <Send size={17} />
+            <ArrowUp size={18} strokeWidth={2.2} />
           </button>
         </form>
-      </div>
-    </Modal>
+      </footer>
+    </dialog>,
+    document.body,
   );
 }
