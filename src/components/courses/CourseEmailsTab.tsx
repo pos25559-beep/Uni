@@ -26,6 +26,7 @@ export default function CourseEmailsTab({ course }: Props) {
     emails,
     loading,
     connected,
+    hasLiveToken,
     needsPermission,
     academicEmail,
     loadEmails,
@@ -182,7 +183,9 @@ export default function CourseEmailsTab({ course }: Props) {
           hint={
             emails.length > 0
               ? `Tens ${emails.length} mensagens sincronizadas da faculdade, mas nenhuma menciona "${course.name}" ou a sigla "${course.code}". Podes ver todos os avisos clicando abaixo.`
-              : 'Não encontrámos mensagens com avisos de testes, enunciados ou da sigla desta cadeira na tua caixa de correio.'
+              : !hasLiveToken && academicEmail
+                ? `A conta académica (${academicEmail}) está guardada. Clica em «Atualizar da Google» para ir buscar os avisos mais recentes desta sessão.`
+                : 'Não encontrámos mensagens com avisos de testes, enunciados ou da sigla desta cadeira na tua caixa de correio.'
           }
           action={
             <div className="flex flex-wrap gap-2 justify-center">

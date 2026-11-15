@@ -10,49 +10,103 @@ export function useAcademicEmails(triggerKey?: string) {
   const courses = useStore((s) => s.courses);
   const savedAcademicEmail = useStore((s) => s.settings.academicEmail);
   const updateSettings = useStore((s) => s.updateSettings);
-  const [emails, setEmails] = useState<AcademicEmail[]>(
-    () => googleService.getCachedAcademicEmails() ?? [],
-  );
+
+  const [fetchedEmails, setFetchedEmails] = useState<AcademicEmail[] | null>(null);
   const [loading, setLoading] = useState(false);
-  const [connected, setConnected] = useState(() => googleService.isGmailConnected());
+  const [tokenLive, setTokenLive] = useState(() => googleService.isGmailConnected());
   const [needsPermission, setNeedsPermission] = useState(false);
   const [academicEmail, setAcademicEmail] = useState<string | null>(
-    () => googleService.getAcademicAccountStatus().email || savedAcademicEmail || null,
+    () =>
+      googleService.getAcademicAccountStatus().email ||
+      (savedAcademicEmail?.trim() ? savedAcademicEmail.trim() : null),
+  );
+
+  const resolvedAcademicEmail =
+    googleService.getAcademicAccountStatus().email ||
+    academicEmail ||
+    (savedAcademicEmail?.trim() ? savedAcademicEmail.trim() : null);
+  const hasLiveToken = tokenLive || googleService.isGmailConnected();
+  const connected = Boolean(hasLiveToken || resolvedAcademicEmail);
+  const emails =
+    fetchedEmails ??
+    googleService.getCachedAcademicEmails() ??
+    googleService.loadPersistedAcademicEmails(courses, resolvedAcademicEmail);
+
+  const fetchLiveEmails = useCallback(
+    async (forceRefresh: boolean) => {
+      setLoading(true);
+      try {
+        const res = await googleService.fetchAcademicEmails(courses, forceRefresh);
+        const live = googleService.isGmailConnected();
+        setTokenLive(live);
+        const currentEmail =
+          googleService.getAcademicAccountStatus().email ||
+          (savedAcademicEmail?.trim() ? savedAcademicEmail.trim() : null);
+        if (currentEmail) setAcademicEmail(currentEmail);
+
+        if (!res.hasPermission && res.error === 'insufficient_scopes') {
+          setNeedsPermission(true);
+          setFetchedEmails(googleService.loadPersistedAcademicEmails(courses, currentEmail));
+        } else {
+          setNeedsPermission(false);
+          setFetchedEmails(res.emails);
+        }
+      } finally {
+        setLoading(false);
+      }
+    },
+    [courses, savedAcademicEmail],
+  );
+
+  const connect = useCallback(
+    async (forceConsent = false, loginHint?: string) => {
+      try {
+        const hint = loginHint ?? resolvedAcademicEmail ?? undefined;
+        const res = await googleService.connectAcademicAccount(forceConsent, hint);
+        setTokenLive(true);
+        setNeedsPermission(false);
+        const resolved =
+          res.email ||
+          googleService.getAcademicAccountStatus().email ||
+          resolvedAcademicEmail ||
+          null;
+        setAcademicEmail(resolved);
+        if (resolved) {
+          updateSettings({ academicEmail: resolved });
+        }
+        await fetchLiveEmails(true);
+      } catch (err) {
+        console.warn('Erro ao ligar ao Google Académico:', err);
+      }
+    },
+    [fetchLiveEmails, resolvedAcademicEmail, updateSettings],
   );
 
   const loadEmails = useCallback(
     async (forceRefresh = false) => {
       const cached = googleService.getCachedAcademicEmails();
       const isConn = googleService.isGmailConnected();
-      setConnected(isConn);
-      setAcademicEmail(googleService.getAcademicAccountStatus().email);
+      setTokenLive(isConn);
+      if (resolvedAcademicEmail) setAcademicEmail(resolvedAcademicEmail);
 
       if (!forceRefresh && cached !== null) {
-        setEmails(cached);
+        setFetchedEmails(cached);
         return;
       }
 
       if (!isConn) {
-        setEmails([]);
+        if (forceRefresh && resolvedAcademicEmail) {
+          await connect(false, resolvedAcademicEmail);
+          return;
+        }
+        setFetchedEmails(googleService.loadPersistedAcademicEmails(courses, resolvedAcademicEmail));
         setNeedsPermission(false);
         return;
       }
 
-      setLoading(true);
-      try {
-        const res = await googleService.fetchAcademicEmails(courses, forceRefresh);
-        if (!res.hasPermission && res.error === 'insufficient_scopes') {
-          setNeedsPermission(true);
-          setEmails([]);
-        } else {
-          setNeedsPermission(false);
-          setEmails(res.emails);
-        }
-      } finally {
-        setLoading(false);
-      }
+      await fetchLiveEmails(forceRefresh);
     },
-    [courses],
+    [connect, courses, fetchLiveEmails, resolvedAcademicEmail],
   );
 
   useEffect(() => {
@@ -63,51 +117,31 @@ export function useAcademicEmails(triggerKey?: string) {
     let cancelled = false;
     void googleService.fetchAcademicEmails(courses, false).then((res) => {
       if (cancelled) return;
-      setConnected(true);
-      setAcademicEmail(googleService.getAcademicAccountStatus().email);
+      setTokenLive(googleService.isGmailConnected());
+      const latestEmail =
+        googleService.getAcademicAccountStatus().email || resolvedAcademicEmail;
+      if (latestEmail) setAcademicEmail(latestEmail);
       if (!res.hasPermission && res.error === 'insufficient_scopes') {
         setNeedsPermission(true);
-        setEmails([]);
+        setFetchedEmails(googleService.loadPersistedAcademicEmails(courses, latestEmail));
       } else {
         setNeedsPermission(false);
-        setEmails(res.emails);
+        setFetchedEmails(res.emails);
       }
     });
 
     return () => {
       cancelled = true;
     };
-  }, [courses, triggerKey]);
-
-  const connect = useCallback(
-    async (forceConsent = false, loginHint?: string) => {
-      try {
-        const res = await googleService.connectAcademicAccount(
-          forceConsent,
-          loginHint ?? savedAcademicEmail,
-        );
-        setConnected(true);
-        setNeedsPermission(false);
-        const resolvedEmail =
-          res.email || googleService.getAcademicAccountStatus().email || savedAcademicEmail || null;
-        setAcademicEmail(resolvedEmail);
-        if (resolvedEmail) {
-          updateSettings({ academicEmail: resolvedEmail });
-        }
-        await loadEmails(true);
-      } catch (err) {
-        console.warn('Erro ao ligar ao Google Académico:', err);
-      }
-    },
-    [loadEmails, savedAcademicEmail, updateSettings],
-  );
+  }, [courses, resolvedAcademicEmail, triggerKey]);
 
   return {
     emails,
     loading,
     connected,
+    hasLiveToken,
     needsPermission,
-    academicEmail,
+    academicEmail: resolvedAcademicEmail,
     loadEmails,
     connect,
   };
@@ -195,6 +229,8 @@ export function useDriveAutoScan() {
  */
 export function useGoogleAccounts() {
   const courses = useStore((s) => s.courses);
+  const savedAcademicEmail = useStore((s) => s.settings.academicEmail);
+  const updateSettings = useStore((s) => s.updateSettings);
   const replaceSource = useStore((s) => s.replaceSource);
   const setIntegration = useStore((s) => s.setIntegration);
   const cleanupMismatchedMaterials = useStore((s) => s.cleanupMismatchedMaterials);
@@ -203,14 +239,19 @@ export function useGoogleAccounts() {
   const [academicBusy, setAcademicBusy] = useState(false);
   const [scanningDrive, setScanningDrive] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [academicEmail, setAcademicEmail] = useState<string | null>(
+  const [liveAcademicEmail, setLiveAcademicEmail] = useState<string | null>(
     () => googleService.getAcademicAccountStatus().email,
   );
 
   const personal = googleService.getPersonalAccountStatus();
   const academic = googleService.getAcademicAccountStatus();
+  const academicEmail =
+    liveAcademicEmail ||
+    academic.email ||
+    (savedAcademicEmail?.trim() ? savedAcademicEmail.trim() : null);
   const isPersonalConnected = personal.connected;
-  const isAcademicConnected = Boolean(academic.hasToken);
+  const isAcademicTokenLive = academic.hasToken;
+  const isAcademicConnected = Boolean(academic.hasToken || academicEmail);
 
   const loginPersonal = useCallback(async () => {
     setPersonalBusy(true);
@@ -302,8 +343,15 @@ export function useGoogleAccounts() {
     setAcademicBusy(true);
     setMessage(null);
     try {
-      const res = await googleService.connectAcademicAccount(true);
-      setAcademicEmail(res.email);
+      const shouldForceConsent = !academicEmail || academic.hasToken;
+      const res = await googleService.connectAcademicAccount(
+        shouldForceConsent,
+        academicEmail || undefined,
+      );
+      setLiveAcademicEmail(res.email);
+      if (res.email) {
+        updateSettings({ academicEmail: res.email });
+      }
       setMessage(`Conta académica ligada com sucesso: ${res.email}`);
     } catch (err: unknown) {
       const code = typeof err === 'object' && err && 'code' in err ? String((err as { code: unknown }).code) : '';
@@ -313,13 +361,14 @@ export function useGoogleAccounts() {
     } finally {
       setAcademicBusy(false);
     }
-  }, []);
+  }, [academic.hasToken, academicEmail, updateSettings]);
 
   const disconnectAcademic = useCallback(() => {
     googleService.disconnectAcademicAccount();
-    setAcademicEmail(null);
+    setLiveAcademicEmail(null);
+    updateSettings({ academicEmail: '' });
     setMessage('Conta académica da faculdade desligada.');
-  }, []);
+  }, [updateSettings]);
 
   const syncCalendar = useCallback(async () => {
     setPersonalBusy(true);
@@ -344,15 +393,17 @@ export function useGoogleAccounts() {
     googleService.disconnectAll();
     replaceSource('events', 'google', []);
     setIntegration('google', { connected: false, lastSync: undefined, error: undefined });
-    setAcademicEmail(null);
+    updateSettings({ academicEmail: '' });
+    setLiveAcademicEmail(null);
     setMessage(null);
-  }, [replaceSource, setIntegration]);
+  }, [replaceSource, setIntegration, updateSettings]);
 
   return {
     personalEmail: personal.email,
     academicEmail,
     isPersonalConnected,
     isAcademicConnected,
+    isAcademicTokenLive,
     personalBusy,
     academicBusy,
     scanningDrive,

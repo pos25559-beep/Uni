@@ -50,6 +50,7 @@ export interface ChatAttachment {
   name: string;
   mimeType: string;
   dataBase64: string;
+  fileUri?: string;
   sizeBytes: number;
 }
 
@@ -339,13 +340,23 @@ function buildContentsWithAttachments(
     const parts: Part[] = [{ type: 'text', text: m.text }];
     if (idx === attachIndex && attachments && attachments.length > 0) {
       for (const att of attachments) {
-        parts.push({
-          type: 'inlineData',
-          inlineData: {
-            mimeType: att.mimeType,
-            data: att.dataBase64,
-          },
-        });
+        if (att.fileUri) {
+          parts.push({
+            type: 'fileData',
+            fileData: {
+              mimeType: att.mimeType,
+              fileUri: att.fileUri,
+            },
+          });
+        } else if (att.dataBase64) {
+          parts.push({
+            type: 'inlineData',
+            inlineData: {
+              mimeType: att.mimeType,
+              data: att.dataBase64,
+            },
+          });
+        }
       }
     }
     return { role: m.role, parts };
@@ -356,9 +367,11 @@ function toRestContents(contents: Content[]) {
   return contents.map((c) => ({
     role: c.role,
     parts: c.parts.map((p) =>
-      p.type === 'inlineData'
-        ? { inlineData: p.inlineData }
-        : { text: 'text' in p ? p.text : '' },
+      p.type === 'fileData'
+        ? { fileData: p.fileData }
+        : p.type === 'inlineData'
+          ? { inlineData: p.inlineData }
+          : { text: 'text' in p ? p.text : '' },
     ),
   }));
 }
@@ -920,6 +933,7 @@ export interface DocumentContextOptions {
   courseMaterials?: Material[];
   resolvedExcerpts?: Array<{ title: string; provider: string; content: string }>;
   notebookNotes?: string;
+  maxFiles?: number;
 }
 
 /** Resumo dos documentos/materiais associados e excertos extraídos para personalizar o ensino do Uni. */
@@ -965,8 +979,9 @@ export function buildDocumentContext(
       .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)))
       .slice(0, 15);
     if (libraryPreview.length > 0) {
+      const limitLabel = options?.maxFiles ?? (hasCustomGeminiKey() ? 12 : 3);
       sections.push(
-        `BIBLIOTECA DISPONÍVEL EM ${options.activeCourseName?.toUpperCase() ?? 'CADEIRA'} (${options.courseMaterials.length} itens no total — podes sugerir ao estudante selecionar até 3 PDFs em «Apontamentos» caso queira que os analises em detalhe):`,
+        `BIBLIOTECA DISPONÍVEL EM ${options.activeCourseName?.toUpperCase() ?? 'CADEIRA'} (${options.courseMaterials.length} itens no total — podes sugerir ao estudante selecionar até ${limitLabel} PDFs em «Apontamentos» caso queira que os analises em detalhe):`,
       );
       for (const m of libraryPreview) {
         const meta = [m.category, m.year, m.hasSolution ? 'c/ resolução' : '', m.pinned ? 'fixado' : '']
@@ -1022,7 +1037,7 @@ Identidade obrigatória:
 ${toneDirective}
 - Baseia o ensino e as explicações nos dados do resumo e no **conteúdo real dos PDFs, excertos e notas** anexados abaixo. Quando usares informação ou exercícios de um material/anexo, cita a origem explicitamente (ex.: \`[Fonte: nome do ficheiro]\`). Se algo não estiver nos dados nem nos anexos, assume com naturalidade em vez de inventar.
 - Usa Markdown: títulos curtos (###), listas e **negrito** para destacar o essencial.
-- Matemática e símbolos: no texto normal usa Unicode direto (π, ², ³, √, ≈, →, ≥, ∫, ∑) em vez de embrulhar símbolos isolados em $...$; reserva blocos ou expressões matemáticas apenas quando houver fórmulas reais.
+- Matemática e equações (LaTeX / KaTeX): para frações, integrais, derivadas parciais, somatórios, matrizes, sistemas ou fórmulas de engenharia usa **LaTeX padrão** (\`$...$\` na linha ou \`$$...$$\` numa linha própria para destacar equações principais); para letras gregas ou símbolos isolados no texto corrido podes usar Unicode direto (ex.: \`π\`, \`α\`, \`≈\`, \`→\`). Nunca coloques \`$\` em preços sem necessidade matemática.
 - Em quizzes: faz UMA pergunta de cada vez e espera pela resposta antes de corrigir e avançar.
 - Se a conversa fugir do estudo, brinca brevemente como o Uni e traz o foco de volta às cadeiras.
 - SINCRONIZAÇÃO COM O CADERNO (Calendário, Cadeiras e Plano): sempre que o estudante enviar uma imagem/print ou texto com datas de testes, exames, entregas de projetos ou aulas semanais do horário (ou pedir para guardar/atualizar no resto da app), explica claramente o que encontraste e no FINAL da tua resposta inclui exatamente um bloco técnico (que a interface transforma num cartão de 1 toque):

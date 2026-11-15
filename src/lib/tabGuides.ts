@@ -91,11 +91,12 @@ export const TAB_GUIDES: Record<AppTabKey, TabGuideSpec> = {
   materiais: {
     key: 'materiais',
     eyebrow: 'Guia do Uni · Aba Materiais',
-    title: 'Apontamentos e exames sempre à mão',
+    title: 'Pastas automáticas, exames e base para o Tutor',
     summary:
-      'Agrupa PDFs locais, pastas do Google Drive e cadernos do NotebookLM por cadeira — e marca os materiais prioritários para os poder consultar no Tutor.',
+      'Agrupa PDFs locais, pastas do Google Drive (ex.: FCT2627/C3D/, TEP/, MS2/) e cadernos do NotebookLM por cadeira — mesmo que o nome do PDF não tenha a sigla da cadeira.',
     highlights: [
-      'Podes enviar sebentas ou testes antigos diretamente do dispositivo ou escolher do Drive.',
+      'Varredura Drive / HD: cria pastas com a sigla ou nome da cadeira e cola o link da pasta mãe (ex.: FCT2627) em «Pasta raiz» para acelerar o Google Drive.',
+      'Marca materiais prioritários como «Fixado»: o Tutor lê automaticamente até 3 PDFs/Docs reais (ou até 12 com chave pessoal Gemini).',
     ],
     mood: 'curious',
     tintClass: 'border-[#0891B2]/25 bg-[#F1FAFC] dark:bg-[#132429]',

@@ -2,7 +2,7 @@
 // Lê mensagens reais dos docentes e avisos institucionais do CLIP diretamente da conta Google do utilizador.
 // NUNCA gera nem inventa emails falsos ou simulados.
 
-import { getAcademicGoogleAccessToken } from '../lib/firebase';
+import { getAcademicGoogleAccessToken, getAcademicGoogleEmail } from '../lib/firebase';
 import { googleFetch } from './googleAuth';
 import type { Course } from '../types';
 import { matchCourseByText } from '../lib/courseAliases';
@@ -68,11 +68,68 @@ export function isGmailConnected(): boolean {
   return Boolean(getAcademicGoogleAccessToken());
 }
 
-// Cache global em memória para evitar chamadas de rede repetidas e rate-limiting da Google
-let academicEmailsCache: {
+// Cache global em memória (10 min) + persistência local (7 dias) para evitar perder avisos ao recarregar
+const ACADEMIC_EMAILS_STORAGE_KEY = 'uni_academic_emails_cache_v1';
+const PERSISTED_EMAIL_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+interface PersistedAcademicEmails {
+  email?: string;
   emails: AcademicEmail[];
   timestamp: number;
-} | null = null;
+}
+
+let academicEmailsCache: PersistedAcademicEmails | null = null;
+
+function readPersistedEmailCache(): PersistedAcademicEmails | null {
+  if (typeof localStorage === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(ACADEMIC_EMAILS_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<PersistedAcademicEmails>;
+    if (!Array.isArray(parsed.emails) || typeof parsed.timestamp !== 'number') return null;
+    if (Date.now() - parsed.timestamp > PERSISTED_EMAIL_CACHE_TTL_MS) return null;
+    return {
+      email: typeof parsed.email === 'string' ? parsed.email : undefined,
+      emails: parsed.emails,
+      timestamp: parsed.timestamp,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function persistAcademicEmails(emails: AcademicEmail[], accountEmail?: string): void {
+  const cleanEmail = accountEmail?.trim().toLowerCase() || undefined;
+  const payload: PersistedAcademicEmails = {
+    email: cleanEmail,
+    emails: emails.slice(0, 40),
+    timestamp: Date.now(),
+  };
+  academicEmailsCache = payload;
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(ACADEMIC_EMAILS_STORAGE_KEY, JSON.stringify(payload));
+  } catch {
+    // ignore storage quota
+  }
+}
+
+export function loadPersistedAcademicEmails(
+  courses: Course[] = [],
+  expectedEmail?: string | null,
+): AcademicEmail[] {
+  const mem = academicEmailsCache;
+  const disk = mem ?? readPersistedEmailCache();
+  if (!disk) return [];
+  const normExpected = expectedEmail?.trim().toLowerCase();
+  if (normExpected && disk.email && disk.email !== normExpected) {
+    return [];
+  }
+  return disk.emails.map((em) => ({
+    ...em,
+    courseId: em.courseId || detectCourseFromEmail(em.subject, em.snippet, em.from, courses),
+  }));
+}
 
 export function getCachedAcademicEmails(): AcademicEmail[] | null {
   if (academicEmailsCache && Date.now() - academicEmailsCache.timestamp < 10 * 60 * 1000) {
@@ -81,8 +138,15 @@ export function getCachedAcademicEmails(): AcademicEmail[] | null {
   return null;
 }
 
-export function clearAcademicEmailsCache(): void {
+export function clearAcademicEmailsCache(clearPersisted = false): void {
   academicEmailsCache = null;
+  if (clearPersisted && typeof localStorage !== 'undefined') {
+    try {
+      localStorage.removeItem(ACADEMIC_EMAILS_STORAGE_KEY);
+    } catch {
+      // ignore storage errors
+    }
+  }
 }
 
 /**
@@ -123,7 +187,7 @@ export async function fetchAcademicEmailsDetailed(
     const msgIds = (listData.messages ?? []).slice(0, 25).map((m) => m.id);
 
     if (msgIds.length === 0) {
-      academicEmailsCache = { emails: [], timestamp: Date.now() };
+      persistAcademicEmails([], getAcademicGoogleEmail() ?? undefined);
       return { emails: [], hasPermission: true };
     }
 
@@ -176,7 +240,7 @@ export async function fetchAcademicEmailsDetailed(
       });
     }
 
-    academicEmailsCache = { emails, timestamp: Date.now() };
+    persistAcademicEmails(emails, getAcademicGoogleEmail() ?? undefined);
     return { emails, hasPermission: true };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);

@@ -8,7 +8,7 @@ import {
   type NotebookSourceInput,
 } from '../../integrations/gemini';
 import { getDailyQuotaSnapshot } from '../../lib/aiQuota';
-import { MAX_AI_MATERIAL_FILES, resolveMaterialsForAI } from '../../lib/materialContent';
+import { getAiMaterialLimit, resolveMaterialsForAI } from '../../lib/materialContent';
 import { openInAppBrowser } from '../../lib/nativeBridge';
 import { buildNotebookPdfBytes, downloadPdfFile } from '../../lib/pdfExport';
 import type { UniAccessoryId, UniPersonaMode } from '../../lib/uniAccessories';
@@ -46,15 +46,17 @@ export default function UniNotebookDrawer({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const customKeyActive = hasCustomGeminiKey();
+  const maxAiFiles = getAiMaterialLimit(customKeyActive);
+  const maxLocalUploadSlots = customKeyActive ? 8 : 3;
   const quota = getDailyQuotaSnapshot();
 
   const handlePickFiles = async (e: ChangeEvent<HTMLInputElement>) => {
     const picked = Array.from(e.target.files ?? []);
     e.target.value = '';
     if (!picked.length) return;
-    const slots = Math.max(0, 3 - attachments.length);
+    const slots = Math.max(0, maxLocalUploadSlots - attachments.length);
     if (slots === 0) {
-      showToast('Podes juntar até 3 ficheiros por geração.');
+      showToast(`Podes juntar até ${maxLocalUploadSlots} ficheiros por geração.`);
       return;
     }
     const next: ChatAttachment[] = [];
@@ -74,7 +76,7 @@ export default function UniNotebookDrawer({
     try {
       const resolved =
         attachedMaterials.length > 0
-          ? await resolveMaterialsForAI(attachedMaterials, { maxFiles: MAX_AI_MATERIAL_FILES })
+          ? await resolveMaterialsForAI(attachedMaterials, { maxFiles: maxAiFiles })
           : {
               attachments: [] as ChatAttachment[],
               textExcerpts: [],
@@ -110,7 +112,10 @@ export default function UniNotebookDrawer({
         });
       }
 
-      const mergedAttachments = [...resolved.attachments, ...attachments].slice(0, 4);
+      const mergedAttachments = [...resolved.attachments, ...attachments].slice(
+        0,
+        customKeyActive ? maxAiFiles + 2 : 4,
+      );
 
       const result = await generateNotebookBrief({
         mode,

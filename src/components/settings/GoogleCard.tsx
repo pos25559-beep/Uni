@@ -26,6 +26,7 @@ export default function GoogleCard() {
     academicEmail,
     isPersonalConnected,
     isAcademicConnected,
+    isAcademicTokenLive,
     personalBusy,
     academicBusy,
     scanningDrive,
@@ -171,7 +172,11 @@ export default function GoogleCard() {
                       Conta Académica (Email Escolar / Universitário)
                     </p>
                     {isAcademicConnected ? (
-                      <Badge tone="ok">Ativa</Badge>
+                      isAcademicTokenLive ? (
+                        <Badge tone="ok">Ativa</Badge>
+                      ) : (
+                        <Badge tone="accent">Guardada</Badge>
+                      )
                     ) : (
                       <Badge tone="warn">Por ligar</Badge>
                     )}
@@ -206,7 +211,7 @@ export default function GoogleCard() {
                     disabled={academicBusy}
                   >
                     {academicBusy ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-                    Reautenticar / Renovar Token
+                    {isAcademicTokenLive ? 'Reautenticar / Renovar Token' : 'Sincronizar / Renovar Sessão'}
                   </Button>
                   <Button
                     size="sm"

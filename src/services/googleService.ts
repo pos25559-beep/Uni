@@ -30,6 +30,7 @@ import {
   fetchAcademicEmailsDetailed,
   getCachedAcademicEmails,
   isGmailConnected as checkGmailConnected,
+  loadPersistedAcademicEmails,
   type AcademicEmail,
   type GmailFetchDetailedResult,
 } from '../integrations/gmail';
@@ -68,9 +69,9 @@ export const googleService = {
     const token = getAcademicGoogleAccessToken();
     const email = getAcademicGoogleEmail();
     return {
-      connected: Boolean(token),
+      connected: Boolean(token || email),
       hasToken: Boolean(token),
-      email: token || auth.currentUser ? email : null,
+      email,
     };
   },
 
@@ -109,13 +110,13 @@ export const googleService = {
 
   disconnectAcademicAccount(): void {
     logoutAcademicGoogle();
-    clearAcademicEmailsCache();
+    clearAcademicEmailsCache(true);
   },
 
   disconnectAll(): void {
     signOutGoogle();
     logoutAcademicGoogle();
-    clearAcademicEmailsCache();
+    clearAcademicEmailsCache(true);
   },
 
   // --- Google Drive ---
@@ -158,6 +159,10 @@ export const googleService = {
 
   getCachedAcademicEmails(): AcademicEmail[] | null {
     return getCachedAcademicEmails();
+  },
+
+  loadPersistedAcademicEmails(courses: Course[] = [], expectedEmail?: string | null): AcademicEmail[] {
+    return loadPersistedAcademicEmails(courses, expectedEmail);
   },
 
   clearAcademicEmailsCache(): void {

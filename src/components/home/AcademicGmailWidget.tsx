@@ -19,6 +19,7 @@ export default function AcademicGmailWidget() {
     emails: allEmails,
     loading,
     connected,
+    hasLiveToken,
     needsPermission,
     academicEmail,
     loadEmails,
@@ -197,10 +198,14 @@ export default function AcademicGmailWidget() {
             <p className="py-2 text-xs opacity-75">A consultar o teu correio académico...</p>
           ) : (
             <div className="space-y-2.5 text-xs">
-              <p className="opacity-80">Nenhum aviso recente encontrado na tua caixa.</p>
+              <p className="opacity-80">
+                {!hasLiveToken && academicEmail
+                  ? `Conta ${academicEmail} guardada. Clica em «Sincronizar» para carregar novos avisos do Gmail.`
+                  : 'Nenhum aviso recente encontrado na tua caixa.'}
+              </p>
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="secondary" onClick={() => void loadEmails(true)} className="bg-white/80 dark:bg-surface">
-                  <RefreshCw size={12} /> Verificar de novo
+                  <RefreshCw size={12} /> {!hasLiveToken ? 'Sincronizar Gmail' : 'Verificar de novo'}
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => emlInputRef.current?.click()}>
                   <Upload size={12} /> Importar .eml

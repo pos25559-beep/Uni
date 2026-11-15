@@ -18,7 +18,7 @@ import type { FormEvent } from 'react';
 import type { Assessment, Course, Material } from '../../types';
 import { Badge, Button, EmptyState, Input, cx } from '../ui';
 import { newId, useStore } from '../../store/useStore';
-import { matchesCourse, isNonAcademicDocument } from '../../lib/courseAliases';
+import { filterMaterialsForCourse } from '../../lib/courseMaterials';
 import { courseColors, providerLabel } from '../../lib/colors';
 import { daysUntil } from '../../lib/selectors';
 import { formatBytes } from '../../lib/fileStorage';
@@ -83,39 +83,9 @@ export default function CourseRepositoryTab({
     ? courseColors[course.color]
     : courseColors.violet;
 
-  // Filtra por cadeira com correspondência flexível (ID, código, sigla e termos no título)
+  // Filtra por cadeira (inclui UUIDs com hífenes, códigos, siglas e ficheiros detetados por pasta)
   const allMaterials = useMemo(() => {
-    if (!Array.isArray(materials)) return [];
-    const courseIdLower = (course.id || '').toLowerCase();
-    const codeLower = (course.code || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    const shortLower = (course.shortName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-
-    return materials.filter((m) => {
-      if (!m.courseId) return false;
-      // Rejeita documentos pessoais / faturas mesmo que tenham sido associados no passado
-      if (isNonAcademicDocument(m.title) || (m.fileName && isNonAcademicDocument(m.fileName))) return false;
-
-      const mCourseId = m.courseId.toLowerCase().replace(/[^a-z0-9]/g, '');
-      const isDirectMatch =
-        mCourseId === courseIdLower ||
-        (codeLower && mCourseId === codeLower) ||
-        (shortLower && mCourseId === shortLower);
-
-      if (isDirectMatch) {
-        // Rejeita apenas material explicitamente de AM1/AM2 caso venha com etiqueta errada em C3D
-        if (course.id === 'c3d') {
-          const raw = `${m.title || ''} ${m.fileName || ''}`.toLowerCase();
-          if (/\b(am\s?i{1,2}|am\s?[12]|c1\s?d|c2\s?d)\b/.test(raw) && !/\b(c3\s?d|am\s?3|am\s?iii)\b/.test(raw)) {
-            return false;
-          }
-        }
-        return true;
-      }
-
-      if (matchesCourse(m.title || '', course)) return true;
-      if (m.fileName && matchesCourse(m.fileName, course)) return true;
-      return false;
-    });
+    return filterMaterialsForCourse(materials, course);
   }, [materials, course]);
 
   // Ordena: fixados primeiro, depois mais recentes

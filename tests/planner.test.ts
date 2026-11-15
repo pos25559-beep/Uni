@@ -14,10 +14,22 @@ import {
   isPreEntryDriveFile,
   parseFilenameToParsedItem,
 } from '../src/lib/courseAliases';
-import { extractGoogleDriveFileId } from '../src/lib/materialContent';
+import katex from 'katex';
+import {
+  extractGoogleDriveFileId,
+  getAiMaterialLimit,
+  isFileUriCacheValid,
+} from '../src/lib/materialContent';
 import { sanitizeMaterials } from '../src/lib/storeMigration';
+import { filterMaterialsForCourse } from '../src/lib/courseMaterials';
+import {
+  clearAcademicEmailsCache,
+  loadPersistedAcademicEmails,
+  persistAcademicEmails,
+  type AcademicEmail,
+} from '../src/integrations/gmail';
 import { groupConversations, subjectLabel } from '../src/lib/geminiConversations';
-import { formatInlineLatexToText } from '../src/components/assistant/Markdown';
+import { flattenMarkdownMathForText, formatInlineLatexToText } from '../src/lib/latexText';
 import { CustomKeyError, HttpStatusError, friendlyCustomKeyError } from '../src/lib/geminiErrors';
 import { sanitizePdfWinAnsi } from '../src/lib/pdfExport';
 import { generatePlan, analyzeTestMode } from '../src/lib/planner';
@@ -1671,4 +1683,186 @@ test('extractGoogleDriveFileId extracts IDs from Drive URLs, Docs URLs and gdriv
   );
   assert.equal(extractGoogleDriveFileId(undefined, 'gdrive:1PrefixedId_ABCDEF12345'), '1PrefixedId_ABCDEF12345');
   assert.equal(extractGoogleDriveFileId('https://notebooklm.google.com/notebook/abc'), null);
+});
+
+test('getAiMaterialLimit unlocks 12 sources with personal Gemini key vs 3 on native free tier', () => {
+  assert.equal(getAiMaterialLimit(false), 3);
+  assert.equal(getAiMaterialLimit(true), 12);
+});
+
+test('isFileUriCacheValid validates expiry and size mismatches for Gemini Files API entries', () => {
+  const now = 1_700_000_000_000;
+  const fresh = {
+    fileUri: 'https://generativelanguage.googleapis.com/v1beta/files/abc123',
+    mimeType: 'application/pdf',
+    sizeBytes: 2048,
+    expiresAt: now + 60_000,
+  };
+  assert.equal(isFileUriCacheValid(fresh, 2048, now), true);
+  assert.equal(isFileUriCacheValid(fresh, 4096, now), false);
+  assert.equal(isFileUriCacheValid(fresh, 2048, now + 60_001), false);
+  assert.equal(isFileUriCacheValid(null, 2048, now), false);
+});
+
+test('KaTeX renders complex scientific LaTeX while PDF export flattens math without leaking dollar currency', () => {
+  const rendered = katex.renderToString('\\int_0^{\\infty} e^{-x^2}\\,dx = \\frac{\\sqrt{\\pi}}{2}', {
+    displayMode: true,
+    throwOnError: false,
+    strict: false,
+    trust: false,
+  });
+  assert.ok(rendered.includes('katex'), 'KaTeX HTML must include .katex class');
+  assert.ok(rendered.includes('katex-display'), 'Display mode KaTeX must include .katex-display');
+
+  const flattened = flattenMarkdownMathForText(
+    'O resultado é $$\\frac{a}{b}$$ e o preço são $100.',
+  );
+  assert.equal(flattened, 'O resultado é (a)/(b) e o preço são $100.');
+  const pdfSafe = sanitizePdfWinAnsi('Fórmula: $\\alpha \\to \\frac{1}{2}$ · Custo $100');
+  assert.equal(pdfSafe.includes('\\frac'), false);
+  assert.ok(pdfSafe.includes('$100'));
+});
+
+test('filterMaterialsForCourse devolve todos os materiais associados a uma cadeira mesmo com UUID e sem sigla no titulo', () => {
+  const mdfCourse = {
+    id: '550e8400-e29b-41d4-a716-446655440000',
+    code: 'MDF',
+    shortName: 'MdF',
+    name: 'Mecânica dos Fluidos',
+    ects: 6,
+    color: '#e04f33',
+    target: 14,
+    syllabus: [],
+    assessments: [],
+    schedule: [],
+    rules: {},
+  };
+
+  const c3dCourse = {
+    ...mdfCourse,
+    id: 'c3d',
+    code: 'C3D',
+    shortName: 'Cálculo III D',
+    name: 'Cálculo III D',
+  };
+
+  const materials = [
+    {
+      id: 'm1',
+      courseId: '550e8400-e29b-41d4-a716-446655440000',
+      title: 'MdF Exercícios',
+      kind: 'resumo' as const,
+      source: 'gdrive' as const,
+    },
+    {
+      id: 'm2',
+      courseId: '550e8400-e29b-41d4-a716-446655440000',
+      title: 'IMG 6729.jpg',
+      kind: 'apontamento' as const,
+      source: 'gdrive' as const,
+    },
+    {
+      id: 'm3',
+      courseId: '550e8400-e29b-41d4-a716-446655440000',
+      title: 'Fatura_Uber_2025.pdf',
+      kind: 'apontamento' as const,
+      source: 'gdrive' as const,
+    },
+    {
+      id: 'm4',
+      courseId: 'other-course',
+      title: 'Aula T01 Análise Matemática I',
+      kind: 'apontamento' as const,
+      source: 'gdrive' as const,
+    },
+  ];
+
+  const mdfFiltered = filterMaterialsForCourse(materials, mdfCourse);
+  assert.deepEqual(
+    mdfFiltered.map((m) => m.id),
+    ['m1', 'm2'],
+    'Inclui tanto MdF Exercícios como IMG 6729 da pasta associada à UUID, excluindo lixo pessoal',
+  );
+
+  const c3dFiltered = filterMaterialsForCourse(materials, c3dCourse);
+  assert.equal(c3dFiltered.length, 0, 'Guarda contra mistura de AM1 em Cálculo III D mantida');
+});
+
+test('persistAcademicEmails e loadPersistedAcademicEmails persistem avisos entre recarregamentos por conta institucional', () => {
+  const prevStorage = (globalThis as { localStorage?: Storage }).localStorage;
+  const backing = new Map<string, string>();
+  const mockStorage: Storage = {
+    get length() {
+      return backing.size;
+    },
+    clear() {
+      backing.clear();
+    },
+    getItem(key: string) {
+      return backing.get(key) ?? null;
+    },
+    key(index: number) {
+      return Array.from(backing.keys())[index] ?? null;
+    },
+    removeItem(key: string) {
+      backing.delete(key);
+    },
+    setItem(key: string, value: string) {
+      backing.set(key, value);
+    },
+  };
+  Object.defineProperty(globalThis, 'localStorage', {
+    value: mockStorage,
+    configurable: true,
+    writable: true,
+  });
+
+  try {
+    const sampleCourses = [
+      {
+        id: 'tep-uuid',
+        code: 'TEP',
+        shortName: 'TEP',
+        name: 'Tecnologia da Embutidura e Plasticidade',
+        ects: 6,
+        color: '#22c55e',
+        target: 14,
+        syllabus: [],
+        assessments: [],
+        schedule: [],
+        rules: {},
+      },
+    ];
+    const emails: AcademicEmail[] = [
+      {
+        id: 'em-1',
+        threadId: 'th-1',
+        from: 'docente@fct.unl.pt',
+        subject: 'Sala do 1.º Teste de TEP',
+        snippet: 'O teste realiza-se no anfiteatro 1A.',
+        date: '2026-11-14T10:00:00Z',
+        isImportant: true,
+      },
+    ];
+
+    persistAcademicEmails(emails, 'Aluno@Campus.FCT.UNL.pt');
+
+    const loaded = loadPersistedAcademicEmails(sampleCourses, 'aluno@campus.fct.unl.pt');
+    assert.equal(loaded.length, 1);
+    assert.equal(loaded[0]?.courseId, 'tep-uuid');
+
+    const wrongAccount = loadPersistedAcademicEmails(sampleCourses, 'outro@fct.unl.pt');
+    assert.equal(wrongAccount.length, 0);
+
+    clearAcademicEmailsCache(true);
+    const afterClear = loadPersistedAcademicEmails(sampleCourses, 'aluno@campus.fct.unl.pt');
+    assert.equal(afterClear.length, 0);
+  } finally {
+    Object.defineProperty(globalThis, 'localStorage', {
+      value: prevStorage,
+      configurable: true,
+      writable: true,
+    });
+    clearAcademicEmailsCache(true);
+  }
 });

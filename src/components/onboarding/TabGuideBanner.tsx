@@ -1,5 +1,5 @@
 import { Check, HelpCircle, Sparkles, X } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { create } from 'zustand';
 import { TAB_GUIDES, type AppTabKey } from '../../lib/tabGuides';
 import { resolveUniAccessory } from '../../lib/uniAccessories';
@@ -35,6 +35,17 @@ export function TabGuideBanner({
   const courses = useStore((s) => s.courses);
   const degreeName = useStore((s) => s.academicProfile.degreeName);
   const uniPreference = useStore((s) => s.settings.uniAccessory);
+
+  useEffect(() => {
+    const onOpenGuide = (event: Event) => {
+      const target = (event as CustomEvent<AppTabKey>).detail;
+      if (target === tabKey) {
+        useTabGuideOverlay.setState({ openTab: tabKey });
+      }
+    };
+    window.addEventListener('uni-open-tab-guide', onOpenGuide);
+    return () => window.removeEventListener('uni-open-tab-guide', onOpenGuide);
+  }, [tabKey]);
 
   if (openTab !== tabKey) return null;
 

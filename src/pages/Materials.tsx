@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, FileUp, FolderOpen, HardDrive, Link2, Loader2, Pin, Plus, Search, Sparkles, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronUp, FileUp, FolderOpen, HardDrive, HelpCircle, Link2, Loader2, Pin, Plus, Search, Sparkles, X } from 'lucide-react';
 import { AnimatedPage } from '../components/motion/Primitives';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import { ActionSheet, Button, CourseChip, EmptyState, Input, PageHeader, Select, cx, showToast } from '../components/ui';
@@ -45,6 +45,28 @@ export default function Materials() {
   const [expandedAllRows, setExpandedAllRows] = useState<Record<string, boolean>>({});
   const [rootFolderOpen, setRootFolderOpen] = useState(false);
   const [rootFolderInput, setRootFolderInput] = useState('');
+  const [scanCardExpanded, setScanCardExpanded] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('uni-materials-scan-expanded-v1');
+      if (saved === '1') return true;
+      if (saved === '0') return false;
+    } catch {
+      // ignore storage errors
+    }
+    return useStore.getState().materials.length === 0;
+  });
+
+  const toggleScanCardExpanded = () => {
+    setScanCardExpanded((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('uni-materials-scan-expanded-v1', next ? '1' : '0');
+      } catch {
+        // ignore storage errors
+      }
+      return next;
+    });
+  };
 
   const {
     scanning: scanningDrive,
@@ -187,60 +209,93 @@ export default function Materials() {
 
       <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-4">
-          {/* Bloco Caderno Vivo: Varredura automática (HD pessoal & Google Drive) */}
+          {/* Bloco Caderno Vivo: Varredura automática (minimizável no Desktop & Mobile) */}
           <section
             className={cx(
-              'space-y-3.5 p-5 shadow-card transition',
+              'shadow-card transition',
+              scanCardExpanded || rootFolderOpen || scanningDrive ? 'space-y-3 p-4 sm:p-5' : 'px-4 py-2.5',
               isMinimal
                 ? 'rounded-[22px] border border-line bg-surface text-fg'
-                : 'rounded-[26px] bg-pastel-mint/70 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]',
+                : 'rounded-[24px] bg-pastel-mint/70 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]',
             )}
           >
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="min-w-0 flex-1 space-y-1">
-                <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.12em] opacity-75">
-                  <Sparkles size={13} className="text-accent-ink dark:text-accent" />
-                  Varredura automática · Pastas locais & Drive
-                </p>
-                <p className="font-display text-base font-bold sm:text-lg">
-                  Organiza tudo num clique por cadeira
-                </p>
-                <p className="text-xs leading-relaxed opacity-85">
-                  Guarda apontamentos ou ficheiros do portal académico em{' '}
-                  <strong>pastas com o nome/sigla da cadeira</strong> (ex.:{' '}
-                  <span className="font-mono font-semibold">{exampleFolders}</span>) — a varredura associa tudo lá dentro, mesmo sem a sigla no nome do PDF.
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button variant="secondary" size="sm" onClick={() => setDeviceImportOpen(true)}>
-                  <HardDrive size={14} /> Varrer HD / Pasta local
-                </Button>
-                <Button variant="primary" size="sm" onClick={handleAutoScanDrive} disabled={scanningDrive}>
-                  {scanningDrive ? <Loader2 size={14} className="animate-spin" /> : <FolderOpen size={14} />}
-                  {scanningDrive
-                    ? 'A varrer…'
-                    : isGoogleConnected
-                      ? 'Revarrer Google Drive'
-                      : 'Ligar e varrer Drive'}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setRootFolderOpen((v) => !v)}
-                  aria-expanded={rootFolderOpen}
-                >
-                  <Link2 size={14} />
-                  {sharedHubDriveUrls.length > 0
-                    ? `Pasta raiz (${sharedHubDriveUrls.length})`
-                    : 'Associar pasta raiz'}
-                </Button>
+            <div className="flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={toggleScanCardExpanded}
+                aria-expanded={scanCardExpanded}
+                className="flex min-w-0 items-center gap-2 text-left"
+              >
+                <Sparkles size={15} className="shrink-0 text-accent-ink dark:text-accent" />
+                <span className="truncate text-xs font-bold uppercase tracking-[0.08em]">
+                  Varredura automática
+                </span>
+                {sharedHubDriveUrls.length > 0 && (
+                  <span className="hidden rounded-full bg-white/75 px-2 py-0.5 text-[11px] font-semibold sm:inline dark:bg-black/25">
+                    {sharedHubDriveUrls.length} pasta raiz
+                  </span>
+                )}
+              </button>
+
+              <div className="flex shrink-0 items-center gap-1.5">
                 {scanningDrive && (
                   <Button variant="ghost" size="sm" onClick={cancelScan}>
                     <X size={14} /> Cancelar
                   </Button>
                 )}
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent('uni-open-tab-guide', { detail: 'materiais' }))}
+                  aria-label="Como organizar pastas na varredura"
+                  title="Ver guia de pastas e materiais (?)"
+                  className="inline-flex size-8 items-center justify-center rounded-full opacity-75 transition hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10"
+                >
+                  <HelpCircle size={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={toggleScanCardExpanded}
+                  aria-expanded={scanCardExpanded}
+                  className="inline-flex min-h-[32px] items-center gap-1 rounded-full bg-white/80 px-3 py-1 text-xs font-semibold transition hover:bg-white dark:bg-black/25 dark:hover:bg-black/40"
+                >
+                  <span>{scanCardExpanded ? 'Minimizar' : 'Expandir'}</span>
+                  {scanCardExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                </button>
               </div>
             </div>
+
+            {(scanCardExpanded || rootFolderOpen || scanningDrive) && (
+              <div className="space-y-2.5 border-t border-black/10 pt-3 dark:border-white/10">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button variant="secondary" size="sm" onClick={() => setDeviceImportOpen(true)}>
+                    <HardDrive size={14} /> Varrer HD / Pasta local
+                  </Button>
+                  <Button variant="primary" size="sm" onClick={handleAutoScanDrive} disabled={scanningDrive}>
+                    {scanningDrive ? <Loader2 size={14} className="animate-spin" /> : <FolderOpen size={14} />}
+                    {scanningDrive
+                      ? 'A varrer…'
+                      : isGoogleConnected
+                        ? 'Revarrer Google Drive'
+                        : 'Ligar e varrer Drive'}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setRootFolderOpen((v) => !v)}
+                    aria-expanded={rootFolderOpen}
+                  >
+                    <Link2 size={14} />
+                    {sharedHubDriveUrls.length > 0
+                      ? `Pasta raiz (${sharedHubDriveUrls.length})`
+                      : 'Associar pasta raiz'}
+                  </Button>
+                </div>
+                <p className="text-xs leading-relaxed opacity-90">
+                  <strong className="font-semibold">Organiza por cadeira:</strong> guarda apontamentos em pastas com o nome/sigla (ex.:{' '}
+                  <span className="font-mono font-semibold">{exampleFolders}</span>) — a varredura associa tudo lá dentro, mesmo sem a sigla no nome do PDF. Podes abrir o guia detalhado no botão <strong>?</strong> acima.
+                </p>
+              </div>
+            )}
 
             {rootFolderOpen && (
               <div className="space-y-2.5 rounded-2xl bg-white/75 p-3 text-xs text-[#141312] dark:bg-black/25 dark:text-[#FAF6EC]">

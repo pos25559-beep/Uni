@@ -1,6 +1,8 @@
+import { flattenMarkdownMathForText } from './latexText';
+
 /** Converte markdown/texto para caracteres seguros no font Standard Helvetica (WinAnsi). */
 export function sanitizePdfWinAnsi(text: string): string {
-  return text
+  return flattenMarkdownMathForText(text)
     .replaceAll('\u2022', '*')
     .replaceAll('\u2192', '->')
     .replaceAll('\u2190', '<-')

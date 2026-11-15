@@ -14,6 +14,7 @@ export default defineConfig({
           if (id.includes('motion')) return 'vendor-motion'
           if (id.includes('@onboardjs') || id.includes('driver.js')) return 'vendor-onboarding'
           if (id.includes('pdf-lib')) return 'vendor-pdf'
+          if (id.includes('katex')) return 'vendor-math'
           if (id.includes('lucide-react')) return 'vendor-icons'
           return undefined
         },

@@ -64,7 +64,7 @@ import {
 } from '../lib/geminiConversations';
 import { auth, onAuthStateChanged, type User } from '../lib/firebase';
 import { resolveUniAccessory, UNI_PERSONAS } from '../lib/uniAccessories';
-import { MAX_AI_MATERIAL_FILES, resolveMaterialsForAI } from '../lib/materialContent';
+import { getAiMaterialLimit, resolveMaterialsForAI } from '../lib/materialContent';
 import { googleService } from '../services/googleService';
 import { newId, useStore } from '../store/useStore';
 
@@ -226,11 +226,12 @@ export default function Assistant() {
   }, [materials, activeCourseId]);
 
   // Documentos anexados à conversa
+  const maxAiFiles = getAiMaterialLimit(hasCustomKey);
   const attachedMaterials = useMemo(() => {
     return materials.filter((m) => selectedMaterialIds.includes(m.id));
   }, [materials, selectedMaterialIds]);
 
-  // Pré-anexa até 3 materiais fixados da cadeira ativa (sem sobrescrever dispensas do utilizador)
+  // Pré-anexa até `maxAiFiles` materiais fixados da cadeira ativa (3 nativo, 12 com chave pessoal)
   useEffect(() => {
     const prevAuto = new Set(autoPinnedIdsRef.current);
     const nextPinnedIds =
@@ -243,7 +244,7 @@ export default function Assistant() {
                 m.pinned &&
                 !dismissedAutoMaterialIds.includes(m.id),
             )
-            .slice(0, MAX_AI_MATERIAL_FILES)
+            .slice(0, maxAiFiles)
             .map((m) => m.id);
 
     autoPinnedIdsRef.current = nextPinnedIds;
@@ -258,7 +259,7 @@ export default function Assistant() {
       }
       return merged;
     });
-  }, [activeCourseId, materials, dismissedAutoMaterialIds]);
+  }, [activeCourseId, materials, dismissedAutoMaterialIds, maxAiFiles]);
 
   const toggleMaterial = (id: string) => {
     setSelectedMaterialIds((prev) => {
@@ -354,7 +355,7 @@ export default function Assistant() {
         const resolvedMaterials =
           attachedMaterials.length > 0
             ? await resolveMaterialsForAI(attachedMaterials, {
-                maxFiles: MAX_AI_MATERIAL_FILES,
+                maxFiles: maxAiFiles,
                 signal: controller.signal,
               })
             : {
@@ -369,7 +370,7 @@ export default function Assistant() {
         const mergedAttachments: ChatAttachment[] = [
           ...resolvedMaterials.attachments,
           ...(attachments ?? []),
-        ].slice(0, 4);
+        ].slice(0, hasCustomKey ? maxAiFiles + 2 : 4);
 
         const studyContext = buildStudyContext(useStore.getState());
         const activeCourseName = activeCourse?.shortName || activeCourse?.name;
@@ -377,6 +378,7 @@ export default function Assistant() {
           activeCourseName,
           courseMaterials: availableMaterials,
           resolvedExcerpts: resolvedMaterials.textExcerpts,
+          maxFiles: maxAiFiles,
         });
         const system = SYSTEM_PROMPT(studyContext, docContext, {
           persona: uniPersona,
@@ -449,7 +451,7 @@ export default function Assistant() {
                   !resolvedMaterials.readTitles.includes(m.title) &&
                   m.provider !== 'notebooklm',
               )
-              .slice(0, MAX_AI_MATERIAL_FILES)
+              .slice(0, maxAiFiles)
               .map((m) => m.title),
             ...(attachments?.map((a) => a.name) ?? []),
           ].filter((title, i, arr) => Boolean(title) && arr.indexOf(title) === i),
@@ -495,6 +497,8 @@ export default function Assistant() {
       activeCourse,
       attachedMaterials,
       availableMaterials,
+      hasCustomKey,
+      maxAiFiles,
       setIntegration,
       uniAccessory,
       uniPersona,
@@ -1470,11 +1474,63 @@ export default function Assistant() {
           </Button>
         }
       >
-        <p className="text-xs text-muted mb-3">
-          Seleciona os materiais que o Uni deve consultar. Até {MAX_AI_MATERIAL_FILES} PDFs, Google Docs
-          ou ficheiros locais têm o seu conteúdo real lido em cada pergunta; materiais{' '}
-          <span className="font-medium text-fg">Fixados</span> da cadeira entram automaticamente.
-        </p>
+        <div className="mb-3 space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <Badge tone={hasCustomKey ? 'accent' : 'neutral'}>
+              {hasCustomKey
+                ? `Modo Caderno ativo · até ${maxAiFiles} fontes`
+                : `Modo Nativo · até ${maxAiFiles} fontes`}
+            </Badge>
+            {availableMaterials.length > 0 && (
+              <div className="flex items-center gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const readableIds = availableMaterials
+                      .filter((m) => m.provider === 'gdrive' || m.provider === 'upload')
+                      .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)))
+                      .slice(0, maxAiFiles)
+                      .map((m) => m.id);
+                    const picked =
+                      readableIds.length > 0
+                        ? readableIds
+                        : availableMaterials.slice(0, maxAiFiles).map((m) => m.id);
+                    setDismissedAutoMaterialIds((prev) =>
+                      prev.filter((id) => !picked.includes(id)),
+                    );
+                    setSelectedMaterialIds(picked);
+                  }}
+                  className="font-semibold text-accent-ink hover:underline dark:text-accent"
+                >
+                  Selecionar tudo (até {maxAiFiles})
+                </button>
+                {selectedMaterialIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDismissedAutoMaterialIds(autoPinnedIdsRef.current);
+                      setSelectedMaterialIds([]);
+                    }}
+                    className="text-muted hover:text-fg"
+                  >
+                    Limpar
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+          <p className="text-xs text-muted">
+            Até <strong className="text-fg">{maxAiFiles} PDFs, Google Docs ou ficheiros locais</strong> têm
+            o conteúdo real lido por pergunta; materiais{' '}
+            <span className="font-medium text-fg">Fixados</span> da cadeira entram automaticamente.
+            {!hasCustomKey && (
+              <>
+                {' '}
+                Com chave pessoal Google Gemini podes ler até <strong className="text-fg">12 fontes</strong> de uma vez (estilo Google Notebook).
+              </>
+            )}
+          </p>
+        </div>
         {availableMaterials.length === 0 ? (
           <p className="text-xs text-muted py-4 text-center">
             Nenhum material encontrado para esta cadeira. Podes adicionar na página Materiais.
