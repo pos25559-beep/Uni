@@ -89,6 +89,7 @@ service cloud.firestore {
     //   - assessmentId: string (optional, 1 - 100 chars)
     //   - feeling: string (required, 1 - 40 chars)
     //   - rating: number (optional, 1 - 5)
+    //   - studyFocus: string (optional, 0 - 120 chars)
     //   - topicTitle: string (optional, 0 - 250 chars)
     //   - topicIds: list of strings (optional, max 100 items)
     //   - studiedSummary: string (optional, 0 - 1000 chars)
@@ -434,7 +435,7 @@ service cloud.firestore {
         ]) &&
         isValidOptionalString(settings, 'userName', 0, 100) &&
         (!('theme' in settings) || settings.theme in ['light', 'dark']) &&
-        isValidOptionalString(settings, 'semesterName', 1, 100) &&
+        isValidOptionalString(settings, 'semesterName', 0, 100) &&
         isValidOptionalDateOrTimestamp(settings, 'semesterStart') &&
         isValidOptionalDateOrTimestamp(settings, 'semesterEnd') &&
         isValidOptionalNumber(settings, 'dailyStudyMinutes', 0, 1440) &&
@@ -472,7 +473,7 @@ service cloud.firestore {
         isValidOptionalUrl(data, 'photoURL') &&
         isValidOptionalString(data, 'userName', 0, 100) &&
         (!('theme' in data) || data.theme in ['light', 'dark']) &&
-        isValidOptionalString(data, 'semesterName', 1, 100) &&
+        isValidOptionalString(data, 'semesterName', 0, 100) &&
         isValidOptionalDateOrTimestamp(data, 'semesterStart') &&
         isValidOptionalDateOrTimestamp(data, 'semesterEnd') &&
         isValidOptionalNumber(data, 'dailyStudyMinutes', 0, 1440) &&
@@ -770,7 +771,7 @@ service cloud.firestore {
       return data.keys().hasOnly([
           'id', 'kind', 'date', 'createdAt', 'updatedAt', 'userId',
           'courseId', 'classSlotId', 'assessmentId', 'feeling', 'rating',
-          'topicTitle', 'topicIds', 'studiedSummary', 'difficulties', 'notes',
+          'studyFocus', 'topicTitle', 'topicIds', 'studiedSummary', 'difficulties', 'notes',
           'messages'
         ]) &&
         data.keys().hasAll(['kind', 'date', 'feeling', 'createdAt']) &&
@@ -782,6 +783,7 @@ service cloud.firestore {
         isValidOptionalString(data, 'courseId', 1, 100) &&
         isValidOptionalString(data, 'classSlotId', 1, 100) &&
         isValidOptionalString(data, 'assessmentId', 1, 100) &&
+        isValidOptionalString(data, 'studyFocus', 0, 120) &&
         isValidOptionalString(data, 'topicTitle', 0, 250) &&
         (!('topicIds' in data) || (data.topicIds is list && data.topicIds.size() <= 100)) &&
         isValidOptionalString(data, 'studiedSummary', 0, 1000) &&

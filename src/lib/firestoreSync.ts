@@ -178,6 +178,7 @@ function sanitizeStudyLog(log: StudyLogEntry): Record<string, unknown> {
       ? { studiedSummary: log.studiedSummary.trim().slice(0, 1000) }
       : {}),
     ...(log.difficulties?.trim() ? { difficulties: log.difficulties.trim().slice(0, 1000) } : {}),
+    ...(log.studyFocus?.trim() ? { studyFocus: log.studyFocus.trim().slice(0, 120) } : {}),
     ...(log.notes?.trim() ? { notes: log.notes.trim().slice(0, 4000) } : {}),
     ...(Array.isArray(log.messages) && log.messages.length > 0
       ? {

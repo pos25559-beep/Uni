@@ -53,7 +53,7 @@ import { cx, showToast } from '../lib/uiHelpers';
 import { hapticSuccess, hapticTap } from '../lib/nativeBridge';
 import { getHubProgress } from '../lib/studyHub';
 import { resolveUniAccessory } from '../lib/uniAccessories';
-import { daysUntil, fmtGrade, fmtMinutes, sessionMinutes } from '../lib/selectors';
+import { daysUntil, fmtGrade, fmtMinutes, formatSessionDisplay, sessionMinutes } from '../lib/selectors';
 import { useHubUiStore } from '../store/useHubUiStore';
 import { newId, useStore } from '../store/useStore';
 import type { StudySession, Task } from '../types';
@@ -156,8 +156,10 @@ export default function Dashboard() {
   const nextCourse = next ? courseById.get(next.courseId) : undefined;
   const nextDays = next ? daysUntil(next.date) : null;
 
-  const topicTitle = (s: StudySession) =>
-    courseById.get(s.courseId)?.topics.find((t) => t.id === s.topicId)?.title ?? 'Estudo geral';
+  const topicTitle = (s: StudySession) => {
+    const topic = courseById.get(s.courseId)?.topics.find((t) => t.id === s.topicId);
+    return formatSessionDisplay(s, topic).title;
+  };
 
   const visibleNudge = inAppNudge && inAppNudge.key !== dismissedNudgeKey ? inAppNudge : null;
 
@@ -277,8 +279,7 @@ export default function Dashboard() {
               <p className="truncate text-xs font-medium text-muted">
                 <span className="sm:hidden">{shortDateLabel}</span>
                 <span className="hidden sm:inline">{dateLabel}</span>
-                {' · '}
-                {settings.semesterName}
+                {settings.semesterName.trim() ? ` · ${settings.semesterName.trim()}` : ''}
               </p>
               <h1 className="hidden truncate font-display text-3xl font-bold leading-tight tracking-tight sm:block">
                 {greetingHeading}

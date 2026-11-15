@@ -315,9 +315,14 @@ export default function AppShell() {
           <div className="min-w-0 leading-tight">
             <div className="font-display text-base font-extrabold tracking-tight">Unipedia</div>
             <div className="truncate text-xs text-muted">
-              {academicProfile?.onboardingCompleted && academicProfile.universityName
-                ? `${academicProfile.universityName.split('—')[0].trim()} · ${semesterName}`
-                : semesterName}
+              {[
+                academicProfile?.onboardingCompleted && academicProfile.universityName
+                  ? academicProfile.universityName.split('—')[0].trim()
+                  : '',
+                semesterName.trim(),
+              ]
+                .filter(Boolean)
+                .join(' · ') || 'Semestre atual'}
             </div>
           </div>
         </div>
@@ -517,7 +522,7 @@ export default function AppShell() {
                     <UnipediaLogoMark size={32} />
                     <div>
                       <p className="font-display text-base font-bold text-fg">Mais na Unipedia</p>
-                      <p className="text-xs text-muted">{semesterName}</p>
+                      {semesterName.trim() && <p className="text-xs text-muted">{semesterName.trim()}</p>}
                     </div>
                   </div>
                 </div>

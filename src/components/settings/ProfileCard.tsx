@@ -20,6 +20,9 @@ export default function ProfileCard() {
   const settings = useStore((s) => s.settings);
   const updateSettings = useStore((s) => s.updateSettings);
   const [minutesText, setMinutesText] = useState(String(settings.dailyStudyMinutes));
+  const [userNameDraft, setUserNameDraft] = useState(settings.userName);
+  const [semesterDraft, setSemesterDraft] = useState(settings.semesterName);
+  const [editingField, setEditingField] = useState<'userName' | 'semesterName' | null>(null);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches,
@@ -83,15 +86,34 @@ export default function ProfileCard() {
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Nome">
           <Input
-            value={settings.userName}
+            value={editingField === 'userName' ? userNameDraft : settings.userName}
             placeholder="Como te devemos chamar?"
-            onChange={(e) => updateSettings({ userName: e.target.value })}
+            onFocus={() => {
+              setUserNameDraft(settings.userName);
+              setEditingField('userName');
+            }}
+            onChange={(e) => {
+              const v = e.target.value;
+              setUserNameDraft(v);
+              updateSettings({ userName: v });
+            }}
+            onBlur={() => setEditingField(null)}
           />
         </Field>
         <Field label="Nome do semestre">
           <Input
-            value={settings.semesterName}
-            onChange={(e) => updateSettings({ semesterName: e.target.value })}
+            value={editingField === 'semesterName' ? semesterDraft : settings.semesterName}
+            placeholder="Ex.: 2026/27 · 1.º Semestre"
+            onFocus={() => {
+              setSemesterDraft(settings.semesterName);
+              setEditingField('semesterName');
+            }}
+            onChange={(e) => {
+              const v = e.target.value;
+              setSemesterDraft(v);
+              updateSettings({ semesterName: v });
+            }}
+            onBlur={() => setEditingField(null)}
           />
         </Field>
         <Field label="Início do semestre">

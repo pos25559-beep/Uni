@@ -4,7 +4,7 @@ import { Brain, Check, ChevronDown, ChevronUp, Loader2, Pause, Play, Plus, Spark
 import { useEffect, useRef, useState } from 'react';
 import { generateRecallChallenge, type RecallChallenge } from '../../integrations/gemini';
 import { courseColors } from '../../lib/colors';
-import { todayStr } from '../../lib/selectors';
+import { formatSessionDisplay, todayStr } from '../../lib/selectors';
 import { computeNextSrsState, RECALL_LABELS, type RecallScore } from '../../lib/spacedRepetition';
 import { useHubUiStore } from '../../store/useHubUiStore';
 import { useStore } from '../../store/useStore';
@@ -228,7 +228,7 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
           <span className="tabular">{session.minutes} min planeados</span>
         </div>
         <h2 className="mt-3 text-lg font-semibold tracking-tight">
-          {topic?.title ?? session.notes ?? 'Estudo'}
+          {formatSessionDisplay(session, topic).title}
         </h2>
 
         <div className="my-7">

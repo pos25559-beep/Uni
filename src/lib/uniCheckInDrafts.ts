@@ -156,6 +156,7 @@ export function buildUnderstandingFromSavedEntry(entry: StudyLogEntry): ParsedCh
     rating: entry.rating,
     matchedTopicIds: entry.topicIds ?? [],
     newTopicsToAdd: [],
+    ...(entry.studyFocus ? { studyFocus: entry.studyFocus } : {}),
     topicTitle: entry.topicTitle,
     studiedSummary: entry.studiedSummary,
     difficulties: entry.difficulties,

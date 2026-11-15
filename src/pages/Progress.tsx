@@ -93,7 +93,7 @@ export default function ProgressPage() {
         eyebrow="Análise"
         title="O teu"
         accentTitle="progresso"
-        subtitle={settings.semesterName}
+        subtitle={settings.semesterName.trim() || undefined}
         actions={
           <div className="flex items-center gap-2">
             <TabGuideHelpButton tabKey="progresso" />

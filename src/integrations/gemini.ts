@@ -1375,7 +1375,7 @@ Apontamentos disponíveis na biblioteca desta cadeira (usa para perceber interva
 ${matsList}
 
 No FINAL da tua resposta, inclui exatamente um bloco técnico invisível ao utilizador:
-<uni-checkin-sync>{"feeling":"clara|mais_ou_menos|dificil|faltei|produtivo|normal|cansado|confiante|estavel|pressionado|atrasado|ansioso","scopeLabel":"opcional ex: Até Slide 8","topicTitle":"opcional","matchedTopicIds":["ids existentes aplicáveis"],"newTopics":["títulos novos a adicionar caso faltem"],"studiedSummary":"opcional","difficulties":"opcional","rating":4}</uni-checkin-sync>`;
+<uni-checkin-sync>{"feeling":"clara|mais_ou_menos|dificil|faltei|produtivo|normal|cansado|confiante|estavel|pressionado|atrasado|ansioso","scopeLabel":"opcional ex: Até Slide 8","studyFocus":"opcional ex: Refazer testes antigos / Resolver exercícios / Rever resumos","topicTitle":"opcional","matchedTopicIds":["ids existentes aplicáveis"],"newTopics":["títulos novos a adicionar caso faltem"],"studiedSummary":"opcional","difficulties":"opcional","rating":4}</uni-checkin-sync>`;
 
   const raw = await askGemini({
     messages: args.messages,

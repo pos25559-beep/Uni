@@ -87,4 +87,24 @@ describe('uniCheckInNlu.parseConversationalCheckIn', () => {
     expect(merged.matchedTopicIds).not.toContain('inexistente');
     expect(merged.rating).toBe(4);
   });
+
+  it('deteta foco e método de estudo personalizado no alinhamento', () => {
+    const pastTests = parseConversationalCheckIn({
+      kind: 'exam_prep',
+      userText: 'Quero focar em refazer os testes antigos e cai até ao slide 8',
+      course: sampleCourse,
+      courses: [sampleCourse],
+      materials: sampleMaterials,
+    });
+    expect(pastTests.studyFocus).toBe('Refazer testes antigos');
+
+    const customFocus = parseConversationalCheckIn({
+      kind: 'exam_prep',
+      userText: 'Quero focar em derivadas parciais aplicadas, estou ansioso',
+      course: sampleCourse,
+      courses: [sampleCourse],
+      materials: [],
+    });
+    expect(customFocus.studyFocus).toBe('Derivadas parciais aplicadas');
+  });
 });

@@ -363,6 +363,8 @@ export interface StudyLogEntry {
   studiedSummary?: string;
   /** Dificuldades ou dúvidas declaradas */
   difficulties?: string;
+  /** Foco ou método escolhido pelo aluno (ex.: "Refazer testes antigos", "Resolver exercícios") */
+  studyFocus?: string;
   notes?: string;
   /** Histórico de mensagens da conversa no Diário do Uni */
   messages?: StudyLogMessage[];

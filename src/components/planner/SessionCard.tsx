@@ -1,7 +1,7 @@
 // Cartão de uma sessão no quadro semanal.
 import { Check, Pencil, Play, Trash2 } from 'lucide-react';
 import { courseColors } from '../../lib/colors';
-import { daysUntil, sessionMinutes } from '../../lib/selectors';
+import { daysUntil, formatSessionDisplay, sessionMinutes } from '../../lib/selectors';
 import { useStore } from '../../store/useStore';
 import type { Assessment, Course, StudySession, Topic } from '../../types';
 import { Badge, Button, CourseChip } from '../ui';
@@ -28,7 +28,7 @@ export default function SessionCard({ session, course, topic, assessment, onFocu
   const patch = useStore((s) => s.patch);
   const remove = useStore((s) => s.remove);
   const color = course ? courseColors[course.color].hex : undefined;
-  const title = topic?.title ?? session.notes ?? 'Estudo';
+  const { title, badge, isPersonalized } = formatSessionDisplay(session, topic);
 
   const toggle = () => {
     if (session.done) patch('sessions', session.id, { done: false, actualMinutes: undefined });
@@ -58,9 +58,17 @@ export default function SessionCard({ session, course, topic, assessment, onFocu
             ? `${sessionMinutes(session)} min estudados`
             : `${session.minutes} min`}
         </span>
-        {topic && session.notes && (
-          <Badge tone={session.notes.includes('Teste') ? 'warn' : session.notes.includes('SRS') ? 'ok' : 'accent'}>
-            {session.notes}
+        {badge && (
+          <Badge
+            tone={
+              badge.includes('Teste')
+                ? 'warn'
+                : badge.includes('SRS') || isPersonalized
+                  ? 'ok'
+                  : 'accent'
+            }
+          >
+            {badge}
           </Badge>
         )}
       </div>

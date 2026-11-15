@@ -16,6 +16,7 @@ export interface ParsedCheckInUnderstanding {
   matchedTopicIds: string[];
   newTopicsToAdd: string[];
   scopeLabel?: string;
+  studyFocus?: string;
   topicTitle?: string;
   studiedSummary?: string;
   difficulties?: string;
@@ -290,6 +291,33 @@ function matchTopicsAndMaterialsByText(args: {
   };
 }
 
+function extractStudyFocusPhrase(text: string): string | undefined {
+  const n = stripDiacritics(text);
+  if (/\b(?:refazer|resolver|fazer|praticar|rever)\b[^.!?\n]{0,30}\b(?:testes?\s+antigos?|provas?\s+antigas?)\b/.test(n) || /\btestes?\s+antigos?\b/.test(n)) {
+    return 'Refazer testes antigos';
+  }
+  if (/\b(?:exames?\s+(?:antigos?|anteriores|passados)|provas?\s+anteriores|enunciados?\s+antigos?)\b/.test(n)) {
+    return 'Resolver exames antigos';
+  }
+  if (/\b(?:resolver|fazer|praticar)\b[^.!?\n]{0,25}\b(?:exercicios?|fichas?(?:\s+praticas?)?|problemas?)\b/.test(n)) {
+    return 'Resolver exercícios práticos';
+  }
+  if (/\b(?:fazer|rever|preparar)\b[^.!?\n]{0,25}\b(?:resumos?|formulario|apontamentos?|slides?)\b/.test(n)) {
+    return 'Rever resumos e slides';
+  }
+  const custom = text.match(
+    /(?:quero\s+focar(?:-me)?\s+em|focar(?:-me)?\s+em|prefiro\s+focar\s+em|foco\s+(?:principal\s+)?(?:em|para)|vou\s+focar\s+em)\s+([^.;!?\n]{4,70})/i,
+  );
+  if (custom?.[1]) {
+    const trimmedClause = custom[1].split(/\s*(?:,\s*(?:mas|estou|sinto|e\s+(?:estou|sinto))|\s+(?:mas|e\s+estou|e\s+sinto)\b)/i)[0];
+    const cleaned = cleanSpaces(trimmedClause ?? '').replace(/^(?:o|a|os|as)\s+/i, '');
+    if (cleaned.length >= 4) {
+      return (cleaned.charAt(0).toUpperCase() + cleaned.slice(1)).slice(0, 80);
+    }
+  }
+  return undefined;
+}
+
 function extractDifficultiesPhrase(text: string): string | undefined {
   const m = text.match(
     /(?:d[úu]vidas?\s+(?:em|sobre|no|na|nos|nas)|travei\s+(?:em|no|na)|dificuldade(?:s)?\s+(?:em|com|no|na)|custou(?:-me)?\s+(?:a|o)?|n[ãa]o\s+percebi\s+(?:bem\s+)?)\s*([^.;!?\n]{3,90})/i,
@@ -346,6 +374,7 @@ export function parseConversationalCheckIn(args: {
   const trimmed = cleanSpaces(userText);
 
   const difficulties = extractDifficultiesPhrase(trimmed);
+  const studyFocus = extractStudyFocusPhrase(trimmed);
   const feelingRes = detectFeeling(kind, trimmed, Boolean(difficulties));
   const { matchedTopicIds, newTopicsToAdd, scopeLabel } = matchTopicsAndMaterialsByText({
     text: trimmed,
@@ -395,6 +424,7 @@ export function parseConversationalCheckIn(args: {
     matchedTopicIds,
     newTopicsToAdd,
     ...(scopeLabel ? { scopeLabel } : {}),
+    ...(studyFocus ? { studyFocus } : {}),
     ...(topicTitle ? { topicTitle } : {}),
     ...(studied.summary ? { studiedSummary: studied.summary } : {}),
     ...(difficulties ? { difficulties } : {}),
@@ -411,6 +441,7 @@ export function parseConversationalCheckIn(args: {
 export interface UniCheckInAiSyncPayload {
   feeling?: string;
   scopeLabel?: string;
+  studyFocus?: string;
   topicTitle?: string;
   matchedTopicIds?: string[];
   newTopics?: string[];
@@ -474,6 +505,11 @@ export function mergeParsedUnderstandingWithAi(
     matchedTopicIds: mergedTopicIds,
     newTopicsToAdd: mergedNewTopics,
     ...(sync.scopeLabel ? { scopeLabel: sync.scopeLabel } : base.scopeLabel ? { scopeLabel: base.scopeLabel } : {}),
+    ...(sync.studyFocus?.trim()
+      ? { studyFocus: cleanSpaces(sync.studyFocus).slice(0, 80) }
+      : base.studyFocus
+        ? { studyFocus: base.studyFocus }
+        : {}),
     ...(sync.topicTitle ? { topicTitle: sync.topicTitle } : base.topicTitle ? { topicTitle: base.topicTitle } : {}),
     ...(sync.studiedSummary ? { studiedSummary: sync.studiedSummary } : base.studiedSummary ? { studiedSummary: base.studiedSummary } : {}),
     ...(sync.difficulties ? { difficulties: sync.difficulties } : base.difficulties ? { difficulties: base.difficulties } : {}),
@@ -503,7 +539,8 @@ export function buildLocalUniCheckInReply(args: {
         : parsed.feeling === 'confiante'
           ? 'Excelente ritmo — mantenho apenas revisões estratégicas para consolidar.'
           : 'Mantenho um ritmo equilibrado até ao dia da prova.';
-    return `Percebi! Em **${testName}**, ${scopeNote}${parsed.studiedSummary ? ` (${parsed.studiedSummary.toLowerCase()})` : ''}. ${empathy} Se estiver certo, carrega em **Confirmar & alinhar plano** ou corrige-me aqui!`;
+    const focusNote = parsed.studyFocus ? ` com foco em **${parsed.studyFocus.toLowerCase()}**` : '';
+    return `Percebi! Em **${testName}**, ${scopeNote}${focusNote}${parsed.studiedSummary ? ` (${parsed.studiedSummary.toLowerCase()})` : ''}. ${empathy} Se estiver certo, carrega em **Guardar & alinhar** ou corrige-me aqui!`;
   }
 
   if (parsed.kind === 'class') {

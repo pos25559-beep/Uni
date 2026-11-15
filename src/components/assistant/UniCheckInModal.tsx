@@ -634,6 +634,7 @@ function UniCheckInModalInner({
       ...(kind === 'exam_prep' && selectedAssessment ? { assessmentId: selectedAssessment.id } : {}),
       feeling: finalUnderstanding.feeling,
       ...(finalUnderstanding.rating ? { rating: finalUnderstanding.rating } : {}),
+      ...(finalUnderstanding.studyFocus ? { studyFocus: finalUnderstanding.studyFocus } : {}),
       ...(finalUnderstanding.topicTitle ? { topicTitle: finalUnderstanding.topicTitle } : {}),
       ...(finalTopicIds.length > 0 ? { topicIds: finalTopicIds } : {}),
       ...(finalUnderstanding.studiedSummary ? { studiedSummary: finalUnderstanding.studiedSummary } : {}),
@@ -917,6 +918,7 @@ function UniCheckInModalInner({
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="font-bold text-accent-ink dark:text-accent">Alinhamento pronto:</span>
               <Badge tone="accent">{understanding.feelingLabel}</Badge>
+              {understanding.studyFocus && <Badge tone="ok">{understanding.studyFocus}</Badge>}
               {understanding.scopeLabel && <Badge tone="neutral">{understanding.scopeLabel}</Badge>}
               {understanding.topicTitle && <Badge tone="neutral">{understanding.topicTitle}</Badge>}
               {perceivedCount > 0 && <Badge tone="neutral">{perceivedCount} tópico(s)</Badge>}

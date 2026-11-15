@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Assessment, ClassSlot, Course, Settings, StudySession } from '../../types';
 import { analyzeTestMode, generatePlan, rescheduleOverdueSessions } from '../planner';
+import { formatSessionDisplay } from '../selectors';
 
 const baseSettings: Settings = {
   userName: 'Pedro',
@@ -140,6 +141,50 @@ describe('planner.generatePlan', () => {
       pausedCourseIds: ['c1'],
     });
     expect(sessions.filter((s) => s.courseId === 'c1')).toEqual([]);
+  });
+
+  it('aplica foco personalizado do Diário do Uni (ex.: Refazer testes antigos) nos blocos do teste', () => {
+    const assessments: Assessment[] = [
+      {
+        id: 'a1',
+        courseId: 'c1',
+        kind: 'teste',
+        title: '1.º Teste',
+        date: '2026-11-20T10:00:00',
+        weight: 50,
+        topicIds: ['t1'],
+        source: 'local',
+      },
+    ];
+    const sessions = generatePlan({
+      courses: [baseCourse],
+      assessments,
+      classes: [],
+      events: [],
+      settings: baseSettings,
+      from: '2026-11-16',
+      days: 3,
+      studyLogs: [
+        {
+          id: 'log-1',
+          kind: 'exam_prep',
+          date: '2026-11-15',
+          createdAt: '2026-11-15T20:00:00.000Z',
+          courseId: 'c1',
+          assessmentId: 'a1',
+          feeling: 'estavel',
+          studyFocus: 'Refazer testes antigos',
+          topicIds: ['t1'],
+        },
+      ],
+    });
+
+    expect(sessions.length).toBeGreaterThan(0);
+    expect(sessions[0]?.notes).toBe('Refazer testes antigos');
+    const display = formatSessionDisplay(sessions[0]!, baseCourse.topics[0]);
+    expect(display.title).toBe('Refazer testes antigos · Plasticidade aplicada');
+    expect(display.badge).toBe('Modo Teste');
+    expect(display.isPersonalized).toBe(true);
   });
 });
 

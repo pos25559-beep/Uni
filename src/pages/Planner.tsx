@@ -33,7 +33,7 @@ import { showToast } from '../lib/uiHelpers';
 import { weekdayShort } from '../lib/colors';
 import { hapticTap } from '../lib/nativeBridge';
 import { analyzeTestMode, generatePlan, planSummary, rescheduleOverdueSessions } from '../lib/planner';
-import { capitalizeFirst, fmtMinutes, sessionMinutes, todayStr } from '../lib/selectors';
+import { capitalizeFirst, fmtMinutes, formatSessionDisplay, sessionMinutes, todayStr } from '../lib/selectors';
 import { useStore } from '../store/useStore';
 import type { PlannerPreferences, StudySession } from '../types';
 
@@ -453,7 +453,9 @@ export default function Planner() {
                             {format(parseISO(s.date), 'EEE d MMM', { locale: pt })}
                           </span>
                         </div>
-                        <p className="mt-1 truncate text-sm font-medium">{topic?.title ?? s.notes ?? 'Estudo'}</p>
+                        <p className="mt-1 truncate text-sm font-medium">
+                          {formatSessionDisplay(s, topic).title}
+                        </p>
                         <p className="text-xs tabular text-muted">{s.minutes} min</p>
                       </div>
                       <div className="flex items-center gap-2">

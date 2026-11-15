@@ -225,7 +225,37 @@ export function generatePlan(input: PlanInput): StudySession[] {
   const examAnxiousCourseSet = new Set<ID>();
   const logHighlightedTopicIds = new Set<ID>();
   const logTopicHints: string[] = [];
+  const examFocusByAssessmentId = new Map<ID, string>();
+  const examFocusByCourseId = new Map<ID, string>();
+  const classFocusByCourseId = new Map<ID, string>();
   let recentTiredDay = false;
+
+  const sortedLogs = [...studyLogs].sort((a, b) =>
+    (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''),
+  );
+  const openAssessmentIds = new Set(
+    assessments.filter((a) => a.grade === undefined).map((a) => a.id),
+  );
+  for (const log of sortedLogs) {
+    const focus = log.studyFocus?.trim();
+    if (!focus) continue;
+    if (log.kind === 'exam_prep') {
+      if (log.assessmentId && openAssessmentIds.has(log.assessmentId) && !examFocusByAssessmentId.has(log.assessmentId)) {
+        examFocusByAssessmentId.set(log.assessmentId, focus);
+      }
+      if (log.courseId && !examFocusByCourseId.has(log.courseId)) {
+        examFocusByCourseId.set(log.courseId, focus);
+      }
+      for (const tid of log.topicIds ?? []) logHighlightedTopicIds.add(tid);
+    } else if (log.courseId && !classFocusByCourseId.has(log.courseId)) {
+      try {
+        const diff = differenceInCalendarDays(start, parseDay(log.date));
+        if (diff >= -1 && diff <= 7) classFocusByCourseId.set(log.courseId, focus);
+      } catch {
+        // Ignora data inválida
+      }
+    }
+  }
 
   for (const log of recentLogs) {
     if (log.kind === 'class' && (log.feeling === 'dificil' || log.feeling === 'faltei')) {
@@ -439,11 +469,13 @@ export function generatePlan(input: PlanInput): StudySession[] {
     // Revisão geral na véspera de cada avaliação.
     for (const it of active) {
       if (it.daysLeft !== 1 || !canTake() || !courseOk(it.courseId)) continue;
+      const eveFocus =
+        examFocusByAssessmentId.get(it.assessment.id) ?? examFocusByCourseId.get(it.courseId);
       add({
         courseId: it.courseId,
         assessmentId: it.assessment.id,
         minutes: Math.min(targetBlock, remaining),
-        notes: 'Revisão geral',
+        notes: eveFocus || 'Revisão geral',
       });
     }
 
@@ -524,20 +556,29 @@ export function generatePlan(input: PlanInput): StudySession[] {
       const targetCap = lowConfidence ? adaptiveLowCap : tiredModeration;
       const want = Math.min(targetCap, Math.max(MIN_BLOCK, eff));
       const minutes = Math.min(want, remaining);
+      const customFocus =
+        examFocusByAssessmentId.get(best.item.assessment.id) ??
+        examFocusByCourseId.get(best.item.courseId) ??
+        classFocusByCourseId.get(best.item.courseId);
+      const naturalNote = urgentCourseIdsToday.has(best.item.courseId)
+        ? singleTestMode
+          ? 'Prática para teste'
+          : 'Revisão para teste'
+        : postClassFlagged
+          ? 'Reforçar dúvidas'
+          : boostSet.has(best.item.courseId)
+            ? 'Reforço escolhido'
+            : lowConfidence
+              ? 'Prática guiada'
+              : best.topic.status === 'todo'
+                ? 'Estudar base'
+                : 'Praticar exercícios';
       add({
         courseId: best.item.courseId,
         topicId: best.topic.id,
         assessmentId: best.item.assessment.id,
         minutes,
-        ...(urgentCourseIdsToday.has(best.item.courseId)
-          ? { notes: singleTestMode ? 'Foco Modo Teste' : 'Equilíbrio Modo Teste' }
-          : postClassFlagged
-            ? { notes: 'Reforço pós-aula' }
-            : boostSet.has(best.item.courseId)
-              ? { notes: 'Reforço escolhido' }
-              : lowConfidence
-                ? { notes: 'Bloco focado curto (reforço)' }
-                : {}),
+        notes: customFocus || naturalNote,
       });
       effort.set(best.topic.id, Math.max(0, eff - minutes));
     }
@@ -583,15 +624,19 @@ export function generatePlan(input: PlanInput): StudySession[] {
             : targetBlock;
         const minutes = Math.min(targetMinutes, remaining);
         if (minutes < MIN_BLOCK) break;
+        const starterFocus =
+          examFocusByCourseId.get(picked.course.id) ?? classFocusByCourseId.get(picked.course.id);
         add({
           courseId: picked.course.id,
           ...(picked.topic ? { topicId: picked.topic.id } : {}),
           minutes,
-          notes: postClassHardCourseSet.has(picked.course.id)
-            ? 'Reforço pós-aula · consolidação'
-            : boostSet.has(picked.course.id)
-              ? 'Reforço · consolidação'
-              : 'Arranque contínuo · consolidação',
+          notes:
+            starterFocus ||
+            (postClassHardCourseSet.has(picked.course.id)
+              ? 'Reforçar dúvidas'
+              : boostSet.has(picked.course.id)
+                ? 'Prática guiada'
+                : 'Consolidação'),
         });
         starterMinutesByCourse.set(
           picked.course.id,

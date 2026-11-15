@@ -171,7 +171,7 @@ export default function SettingsPage() {
         eyebrow="Preferências"
         title="As tuas"
         accentTitle="definições"
-        subtitle={`${settings.semesterName} · tema ${THEME_LABELS[settings.theme]}`}
+        subtitle={[settings.semesterName.trim(), `tema ${THEME_LABELS[settings.theme]}`].filter(Boolean).join(' · ')}
         actions={<TabGuideHelpButton tabKey="definicoes" />}
       />
 
@@ -349,7 +349,7 @@ export default function SettingsPage() {
         <ListRow
           icon={<Sliders size={18} />}
           title="Semestre, meta e Uni"
-          subtitle={`${settings.semesterName} · ${fmtMinutes(settings.dailyStudyMinutes)}/dia`}
+          subtitle={[settings.semesterName.trim(), `${fmtMinutes(settings.dailyStudyMinutes)}/dia`].filter(Boolean).join(' · ')}
           onClick={() => navigate('/definicoes/estudo')}
         />
         <ListRow

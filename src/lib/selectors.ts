@@ -136,3 +136,49 @@ export function parsePtGrade(raw: string): number | null | 'invalid' {
   if (!Number.isFinite(n) || n < 0 || n > 20) return 'invalid';
   return Math.round(n * 100) / 100;
 }
+
+const SYSTEM_SESSION_NOTES = new Set([
+  'Foco Modo Teste',
+  'Equilíbrio Modo Teste',
+  'Prática para teste',
+  'Revisão para teste',
+  'Reforço pós-aula',
+  'Reforçar dúvidas',
+  'Reforço escolhido',
+  'Bloco focado curto (reforço)',
+  'Prática guiada',
+  'Revisão espaçada (SRS)',
+  'Revisão ativa',
+  'Revisão geral',
+  'Revisão rápida',
+  'Estudar base',
+  'Consolidação',
+  'Reforço pós-aula · consolidação',
+  'Reforço · consolidação',
+  'Arranque contínuo · consolidação',
+]);
+
+/** Formata o título e a etiqueta realistas de uma sessão de estudo (priorizando o foco alinhado pelo aluno). */
+export function formatSessionDisplay(
+  session: StudySession,
+  topic?: { title: string },
+): { title: string; badge?: string; isPersonalized: boolean } {
+  const note = session.notes?.trim();
+  const topicName = topic?.title.trim();
+  if (note && !SYSTEM_SESSION_NOTES.has(note)) {
+    const redundant =
+      topicName &&
+      (note.toLowerCase().includes(topicName.toLowerCase()) ||
+        topicName.toLowerCase().includes(note.toLowerCase()));
+    return {
+      title: topicName && !redundant ? `${note} · ${topicName}` : note,
+      badge: session.assessmentId ? 'Modo Teste' : 'Alinhado c/ Uni',
+      isPersonalized: true,
+    };
+  }
+  return {
+    title: topicName || note || 'Estudo livre',
+    badge: topicName && note ? note : undefined,
+    isPersonalized: false,
+  };
+}
