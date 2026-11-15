@@ -1,22 +1,18 @@
 // Temporizador de foco para uma sessão. Baseado em timestamps (Date.now()), por isso
 // continua certo mesmo com o separador em segundo plano (os timers do browser abrandam).
 import {
-  Brain,
   Check,
   ChevronDown,
   ChevronUp,
-  Loader2,
   Pause,
   Play,
   Plus,
   RotateCcw,
   Shield,
   ShieldCheck,
-  Sparkles,
   X,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { generateRecallChallenge, type RecallChallenge } from '../../integrations/gemini';
 import { courseColors } from '../../lib/colors';
 import { FocusAudioEngine } from '../../lib/focusAudio';
 import {
@@ -42,25 +38,18 @@ import {
   type NativeFocusShieldCapabilities,
 } from '../../lib/nativeBridge';
 import { formatSessionDisplay, todayStr } from '../../lib/selectors';
-import { computeNextSrsState, RECALL_LABELS, type RecallScore } from '../../lib/spacedRepetition';
 import { useHubUiStore } from '../../store/useHubUiStore';
 import { useStore } from '../../store/useStore';
 import type { Course, StudySession, Topic } from '../../types';
 import { Button, Ring } from '../ui';
 import { cx } from '../../lib/uiHelpers';
+import ActivePracticeDeck, { type PracticeOutcomeSummary } from '../practice/ActivePracticeDeck';
 import FocusShieldPanel from './FocusShieldPanel';
 
 type Phase = FocusTimerPhase;
 const levels: Topic['confidence'][] = [1, 2, 3, 4, 5];
 const levelText = ['Muito fraca', 'Fraca', 'Razoável', 'Boa', 'Dominada'];
-const recallScores: RecallScore[] = [1, 2, 3];
 const EXTRA_MS = 5 * 60_000;
-
-const derivedConfidenceFromRecall = (score: RecallScore, current: Topic['confidence']): Topic['confidence'] => {
-  if (score === 1) return 2;
-  if (score === 2) return 3;
-  return Math.max(4, current) as Topic['confidence'];
-};
 
 const formatClock = (ms: number) => {
   const total = Math.ceil(ms / 1000);
@@ -87,7 +76,6 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
   const patch = useStore((s) => s.patch);
   const updateTopic = useStore((s) => s.updateTopic);
   const reconcileFuturePlan = useStore((s) => s.reconcileFuturePlan);
-  const aiConsent = Boolean(useStore((s) => s.settings.aiConsent));
   const setFocusTimerOpen = useHubUiStore((s) => s.setFocusTimerOpen);
   const setFocusShieldRunning = useHubUiStore((s) => s.setFocusShieldRunning);
 
@@ -112,12 +100,9 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
   const [confirmEarlyFinish, setConfirmEarlyFinish] = useState(false);
   const [confidenceSet, setConfidenceSet] = useState<Topic['confidence'] | null>(null);
   const [showManualConfidence, setShowManualConfidence] = useState(false);
-  const [recallScore, setRecallScore] = useState<RecallScore | null>(null);
-  const [nextIntervalBanner, setNextIntervalBanner] = useState<string | null>(null);
-  const [challenge, setChallenge] = useState<RecallChallenge | null>(null);
-  const [challengeBusy, setChallengeBusy] = useState(false);
-  const [showHint, setShowHint] = useState(false);
-  const [recallError, setRecallError] = useState<string | null>(null);
+  const [pickedTopicId, setPickedTopicId] = useState<string>(
+    () => session.topicId ?? course?.topics[0]?.id ?? '',
+  );
 
   const [shieldPrefs, setShieldPrefs] = useState<FocusShieldDevicePrefs>(() => loadFocusShieldPrefs());
   const [shieldCaps, setShieldCaps] = useState<{
@@ -500,48 +485,21 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, remainingMs]);
 
-  const applyPedagogicalEvaluation = (nextRecall: RecallScore | null, nextConfidence: Topic['confidence'] | null) => {
-    if (!session.topicId || !topic) return;
-    const finalConf = nextConfidence ?? confidenceSet ?? topic.confidence;
-    if (nextRecall) {
-      const srsUpdate = computeNextSrsState(topic, nextRecall, finalConf, todayStr());
-      updateTopic(session.courseId, session.topicId, srsUpdate);
-      setNextIntervalBanner(
-        `Próxima revisão ativa agendada para ${srsUpdate.nextReviewDate} (+${srsUpdate.srsIntervalDays}d).`,
-      );
-      reconcileFuturePlan();
-    } else if (nextConfidence) {
-      updateTopic(session.courseId, session.topicId, { confidence: nextConfidence });
-      reconcileFuturePlan();
-    }
-  };
+  const activePracticeTopic = topic ?? course?.topics.find((t) => t.id === pickedTopicId);
 
   const setConfidence = (level: Topic['confidence']) => {
     setConfidenceSet(level);
-    applyPedagogicalEvaluation(recallScore, level);
+    if (!activePracticeTopic) return;
+    updateTopic(session.courseId, activePracticeTopic.id, { confidence: level });
+    reconcileFuturePlan();
   };
 
-  const selectRecall = (score: RecallScore) => {
-    if (!topic) return;
-    const derived = confidenceSet ?? derivedConfidenceFromRecall(score, topic.confidence);
-    setRecallScore(score);
-    setConfidenceSet(derived);
-    applyPedagogicalEvaluation(score, derived);
-  };
-
-  const askUniChallenge = async () => {
-    if (!topic || challengeBusy) return;
-    setChallengeBusy(true);
-    setRecallError(null);
-    setShowHint(false);
-    try {
-      const res = await generateRecallChallenge(topic.title, course?.name);
-      setChallenge(res);
-    } catch (err) {
-      setRecallError(err instanceof Error ? err.message : 'Não foi possível gerar o desafio agora.');
-    } finally {
-      setChallengeBusy(false);
-    }
+  const handlePracticeOutcome = (outcome: PracticeOutcomeSummary) => {
+    setConfidenceSet(outcome.confidence);
+    patch('sessions', session.id, {
+      practiceHits: Math.min(100, outcome.hits),
+      practiceTotal: Math.min(100, outcome.total),
+    });
   };
 
   const progress = budgetMs > 0 ? elapsedMs / budgetMs : 0;
@@ -711,71 +669,35 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
               )}
             </div>
 
-            {session.topicId && topic ? (
-              <div className="space-y-3 text-left">
-                <div className="rounded-2xl border border-line bg-surface p-3.5 text-xs">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="inline-flex items-center gap-1.5 font-semibold text-fg">
-                      <Brain size={14} className="text-accent-ink" /> Recall Ativo (30s)
-                    </span>
-                    {aiConsent && (
-                      <button
-                        type="button"
-                        onClick={() => void askUniChallenge()}
-                        disabled={challengeBusy}
-                        className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1.5 text-xs font-semibold text-accent-ink transition hover:bg-accent/20 disabled:opacity-50"
-                      >
-                        {challengeBusy ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                        {challenge ? 'Outra pergunta' : 'Pergunta do Uni'}
-                      </button>
+            {!topic && course && course.topics.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 text-left">
+                <span className="text-xs font-medium text-muted">Praticar tópico:</span>
+                {course.topics.slice(0, 6).map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setPickedTopicId(t.id)}
+                    className={cx(
+                      'min-h-11 rounded-xl border px-2.5 py-1.5 text-xs font-medium transition',
+                      activePracticeTopic?.id === t.id
+                        ? 'border-accent bg-accent-soft text-accent-ink'
+                        : 'border-line bg-surface-2 text-muted hover:text-fg',
                     )}
-                  </div>
-                  <p className="mt-2 text-xs leading-relaxed text-fg">
-                    {challenge
-                      ? challenge.question
-                      : `Sem olhar para os apontamentos, tenta resumir em 2 frases a ideia-chave de «${topic.title}».`}
-                  </p>
-                  {challenge && (
-                    <div className="mt-2">
-                      <button
-                        type="button"
-                        onClick={() => setShowHint((v) => !v)}
-                        className="min-h-11 text-xs font-medium text-accent-ink hover:underline"
-                      >
-                        {showHint ? 'Esconder pista' : 'Ver critério de resposta'}
-                      </button>
-                      {showHint && <p className="mt-1 text-xs text-muted">{challenge.hint}</p>}
-                    </div>
-                  )}
-                  {recallError && <p className="mt-1.5 text-xs text-danger">{recallError}</p>}
+                  >
+                    {t.title}
+                  </button>
+                ))}
+              </div>
+            )}
 
-                  <div className="mt-3 grid grid-cols-3 gap-1.5" role="group" aria-label="Desempenho no recall ativo">
-                    {recallScores.map((score) => {
-                      const active = recallScore === score;
-                      return (
-                        <button
-                          key={score}
-                          type="button"
-                          onClick={() => selectRecall(score)}
-                          className={cx(
-                            'min-h-11 rounded-xl border px-2 py-2 text-center transition',
-                            active
-                              ? 'border-accent bg-accent-soft text-accent-ink'
-                              : 'border-line bg-surface-2 text-muted hover:text-fg',
-                          )}
-                        >
-                          <span className="block text-xs font-semibold">{RECALL_LABELS[score].label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {recallScore && (
-                    <p className="mt-2 text-xs text-muted">
-                      {RECALL_LABELS[recallScore].hint} · Confiança ajustada para{' '}
-                      <strong className="text-fg">{confidenceSet ?? topic.confidence}/5</strong>.
-                    </p>
-                  )}
-                </div>
+            {activePracticeTopic ? (
+              <div className="space-y-3 text-left">
+                <ActivePracticeDeck
+                  course={course}
+                  topic={activePracticeTopic}
+                  autoPrepare
+                  onOutcome={handlePracticeOutcome}
+                />
 
                 <div className="rounded-2xl border border-line bg-surface-2/60 px-3 py-2 text-center">
                   <button
@@ -783,14 +705,14 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
                     onClick={() => setShowManualConfidence((v) => !v)}
                     className="inline-flex min-h-11 items-center gap-1.5 text-xs font-medium text-muted hover:text-fg"
                   >
-                    Ajustar confiança ({confidenceSet ?? topic.confidence}/5)
+                    Ajustar confiança ({confidenceSet ?? activePracticeTopic.confidence}/5)
                     {showManualConfidence ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                   </button>
                   {showManualConfidence && (
                     <div className="pb-2 pt-1">
                       <div className="flex justify-center gap-2" role="radiogroup" aria-label="Confiança">
                         {levels.map((level) => {
-                          const active = (confidenceSet ?? topic.confidence) >= level;
+                          const active = (confidenceSet ?? activePracticeTopic.confidence) >= level;
                           return (
                             <button
                               key={level}
@@ -810,17 +732,11 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
                         })}
                       </div>
                       <p className="mt-1.5 text-xs text-muted">
-                        {levelText[(confidenceSet ?? topic.confidence) - 1]}
+                        {levelText[(confidenceSet ?? activePracticeTopic.confidence) - 1]}
                       </p>
                     </div>
                   )}
                 </div>
-
-                {nextIntervalBanner && (
-                  <p className="rounded-xl bg-ok/10 px-3 py-2 text-center text-xs font-medium text-ok">
-                    {nextIntervalBanner}
-                  </p>
-                )}
               </div>
             ) : null}
             <Button variant="primary" onClick={handleClose} className="w-full">

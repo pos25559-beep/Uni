@@ -1,11 +1,12 @@
-import { BookOpen, CheckCircle2, Plus } from 'lucide-react';
+import { BookOpen, Brain, CheckCircle2, Plus } from 'lucide-react';
 import { useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { statusLabel } from '../../lib/colors';
 import { todayStr } from '../../lib/selectors';
-import { computeNextSrsState } from '../../lib/spacedRepetition';
+import { computeNextSrsState, estimateTopicRetention } from '../../lib/spacedRepetition';
 import { newId, useStore } from '../../store/useStore';
 import type { Course, Topic, TopicStatus } from '../../types';
+import ActiveReviewModal from '../practice/ActiveReviewModal';
 import { Button, EmptyState, Input, Select } from '../ui';
 import { cx } from '../../lib/uiHelpers';
 import { DeleteButton } from './ConfirmModal';
@@ -19,6 +20,8 @@ export default function TopicsTab({ course }: Props) {
   const updateTopic = useStore((s) => s.updateTopic);
   const patch = useStore((s) => s.patch);
   const [draft, setDraft] = useState('');
+  const [practiceTopicId, setPracticeTopicId] = useState<string | null>(null);
+  const today = todayStr();
 
   const topics = course.topics;
 
@@ -48,8 +51,23 @@ export default function TopicsTab({ course }: Props) {
         />
       ) : (
         <ul className="space-y-2">
-          {topics.map((t) => (
-            <li key={t.id} className="rounded-xl border border-line bg-surface-2/50 p-3">
+          {topics.map((t) => {
+            const ret = estimateTopicRetention(t, today);
+            const retToneClass =
+              ret.state === 'at_risk'
+                ? 'bg-bad/12 text-bad border-bad/25'
+                : ret.state === 'review_soon'
+                  ? 'bg-warn/12 text-warn border-warn/25'
+                  : 'bg-ok/12 text-ok border-ok/25';
+            const retLabel =
+              ret.state === 'at_risk'
+                ? `Em risco · ${ret.retentionPct}%`
+                : ret.state === 'review_soon'
+                  ? `Rever · ${ret.retentionPct}%`
+                  : `Retenção ${ret.retentionPct}%`;
+
+            return (
+              <li key={t.id} className="rounded-xl border border-line bg-surface-2/50 p-3">
               <div className="flex flex-col gap-3 md:flex-row md:items-center">
                 <input
                   aria-label="Título do tópico"
@@ -96,12 +114,35 @@ export default function TopicsTab({ course }: Props) {
                     ))}
                   </div>
 
-                  <span className="w-32 text-xs text-muted tabular">
+                  <span className="text-xs text-muted tabular">
                     {lastStudiedLabel(t.lastStudied)}
                     {t.nextReviewDate ? ` · rev ${t.nextReviewDate.slice(5)}` : ''}
                   </span>
 
-                  <div className="ml-auto flex items-center gap-1">
+                  {(t.lastStudied || t.status !== 'todo') && (
+                    <span
+                      className={cx(
+                        'inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium tabular',
+                        retToneClass,
+                      )}
+                      title={
+                        ret.due
+                          ? 'Revisão devida para consolidar retenção'
+                          : `Estabilidade estimada de ${ret.stabilityDays}d`
+                      }
+                    >
+                      {retLabel}
+                    </span>
+                  )}
+
+                  <div className="ml-auto flex flex-wrap items-center gap-1.5">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => setPracticeTopicId(t.id)}
+                    >
+                      <Brain size={14} /> Praticar
+                    </Button>
                     <Button
                       size="sm"
                       onClick={() => {
@@ -109,7 +150,7 @@ export default function TopicsTab({ course }: Props) {
                           t,
                           t.confidence >= 4 ? 3 : 2,
                           t.confidence,
-                          todayStr(),
+                          today,
                         );
                         updateTopic(course.id, t.id, {
                           ...srs,
@@ -127,7 +168,8 @@ export default function TopicsTab({ course }: Props) {
                 </div>
               </div>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
 
@@ -143,6 +185,13 @@ export default function TopicsTab({ course }: Props) {
           <Plus size={16} /> Adicionar
         </Button>
       </div>
+
+      <ActiveReviewModal
+        open={practiceTopicId !== null}
+        onClose={() => setPracticeTopicId(null)}
+        courseId={course.id}
+        initialTopicId={practiceTopicId ?? undefined}
+      />
     </div>
   );
 }

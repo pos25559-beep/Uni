@@ -5,6 +5,7 @@ import { courseColors } from '../../lib/colors';
 import {
   daysUntil, gradeSummary, readiness, sessionMinutes, toDateStr, topicProgress, upcomingAssessments,
 } from '../../lib/selectors';
+import { estimateTopicRetention, isTopicReviewDue, type RetentionState } from '../../lib/spacedRepetition';
 import type { Assessment, Course, Settings, StudySession } from '../../types';
 
 export type Period = '7d' | '30d' | 'semestre';
@@ -273,4 +274,166 @@ export function heatmap(sessions: StudySession[], now: Date, weeks = 12): Heatma
     columns.push(column);
   }
   return { columns, max, activeDays };
+}
+
+export interface CourseRetentionRow {
+  courseId: string;
+  name: string;
+  fullName: string;
+  color: string;
+  retentionPct: number;
+  hitRatePct: number | null;
+  dueCount: number;
+  studiedCount: number;
+}
+
+export interface FragileTopicRow {
+  courseId: string;
+  courseName: string;
+  color: string;
+  topicId: string;
+  title: string;
+  retentionPct: number;
+  state: RetentionState;
+  due: boolean;
+  hitRatePct: number | null;
+}
+
+export interface FocusQualityStats {
+  trackedCount: number;
+  cleanFocusCount: number;
+  cleanFocusPct: number | null;
+  avgExits: number | null;
+  practiceHits: number;
+  practiceTotal: number;
+  practiceHitRatePct: number | null;
+}
+
+export interface RetentionOverview {
+  avgRetentionPct: number | null;
+  dueCount: number;
+  studiedTopicCount: number;
+  courseRows: CourseRetentionRow[];
+  fragileTopics: FragileTopicRow[];
+  focusQuality: FocusQualityStats;
+}
+
+/** Calcula retenção estimada por cadeira/tópico, fila frágil e limpeza do modo foco. */
+export function retentionOverview(
+  courses: Course[],
+  sessions: StudySession[],
+  dayKey: string,
+): RetentionOverview {
+  const courseRows: CourseRetentionRow[] = [];
+  const fragileTopics: FragileTopicRow[] = [];
+  let totalRetention = 0;
+  let studiedTopicCount = 0;
+  let dueCount = 0;
+  let topicRecallHits = 0;
+  let topicRecallAttempts = 0;
+
+  for (const course of courses) {
+    const color = courseColors[course.color]?.hex ?? '#4a7c59';
+    let courseRetSum = 0;
+    let courseStudied = 0;
+    let courseDue = 0;
+    let courseHits = 0;
+    let courseAttempts = 0;
+
+    for (const topic of course.topics) {
+      const est = estimateTopicRetention(topic, dayKey);
+      const due = isTopicReviewDue(topic, dayKey);
+      if (due) {
+        dueCount += 1;
+        courseDue += 1;
+      }
+
+      const attempts = topic.recallCount ?? 0;
+      const hits =
+        topic.recallSuccessCount ??
+        (topic.lastRecallScore && topic.lastRecallScore >= 2 ? attempts : 0);
+      courseAttempts += attempts;
+      courseHits += hits;
+      topicRecallAttempts += attempts;
+      topicRecallHits += hits;
+
+      if (est.state !== 'unstudied') {
+        totalRetention += est.retentionPct;
+        studiedTopicCount += 1;
+        courseRetSum += est.retentionPct;
+        courseStudied += 1;
+      }
+
+      if (due || est.state === 'at_risk' || est.state === 'review_soon') {
+        fragileTopics.push({
+          courseId: course.id,
+          courseName: course.code || course.name,
+          color,
+          topicId: topic.id,
+          title: topic.title,
+          retentionPct: est.retentionPct,
+          state: est.state,
+          due,
+          hitRatePct: est.hitRatePct,
+        });
+      }
+    }
+
+    if (courseStudied > 0 || courseAttempts > 0) {
+      courseRows.push({
+        courseId: course.id,
+        name: course.code || course.name,
+        fullName: course.name,
+        color,
+        retentionPct: courseStudied > 0 ? Math.round(courseRetSum / courseStudied) : 0,
+        hitRatePct: courseAttempts > 0 ? Math.round((courseHits / courseAttempts) * 100) : null,
+        dueCount: courseDue,
+        studiedCount: courseStudied,
+      });
+    }
+  }
+
+  fragileTopics.sort((a, b) => {
+    if (a.due !== b.due) return a.due ? -1 : 1;
+    return a.retentionPct - b.retentionPct;
+  });
+
+  const doneSessions = sessions.filter((s) => s.done);
+  const trackedFocus = doneSessions.filter(
+    (s) => s.focusDistractions !== undefined || s.focusShieldUsed,
+  );
+  const cleanFocusCount = trackedFocus.filter((s) => (s.focusDistractions ?? 0) === 0).length;
+  const totalExits = trackedFocus.reduce((sum, s) => sum + (s.focusDistractions ?? 0), 0);
+
+  let sessionHits = 0;
+  let sessionTotal = 0;
+  for (const s of doneSessions) {
+    if ((s.practiceTotal ?? 0) > 0) {
+      sessionTotal += s.practiceTotal ?? 0;
+      sessionHits += Math.min(s.practiceTotal ?? 0, s.practiceHits ?? 0);
+    }
+  }
+
+  const practiceHits = sessionTotal > 0 ? sessionHits : topicRecallHits;
+  const practiceTotal = sessionTotal > 0 ? sessionTotal : topicRecallAttempts;
+
+  return {
+    avgRetentionPct: studiedTopicCount > 0 ? Math.round(totalRetention / studiedTopicCount) : null,
+    dueCount,
+    studiedTopicCount,
+    courseRows,
+    fragileTopics,
+    focusQuality: {
+      trackedCount: trackedFocus.length,
+      cleanFocusCount,
+      cleanFocusPct:
+        trackedFocus.length > 0 ? Math.round((cleanFocusCount / trackedFocus.length) * 100) : null,
+      avgExits:
+        trackedFocus.length > 0 ? Number((totalExits / trackedFocus.length).toFixed(1)) : null,
+      practiceHits,
+      practiceTotal,
+      practiceHitRatePct:
+        practiceTotal > 0 ? Math.round((practiceHits / practiceTotal) * 100) : null,
+    },
+  };
 }

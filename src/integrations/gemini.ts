@@ -1153,6 +1153,85 @@ export interface RecallChallenge {
   hint: string;
 }
 
+export interface GeneratedPracticeCardDraft {
+  prompt: string;
+  answer: string;
+  sourceTitle?: string;
+}
+
+/**
+ * Gera um micro-baralho de 3 a 5 cartões de prática ativa fundamentado nos materiais reais
+ * da cadeira (PDFs, excertos extraídos e notas do Diário) para rever após foco ou no SRS.
+ */
+export async function generateMaterialPracticeSet(args: {
+  topicTitle: string;
+  courseName?: string;
+  cardCount?: number;
+  sources?: NotebookSourceInput[];
+  attachments?: ChatAttachment[];
+  diaryContext?: string;
+  existingPrompts?: string[];
+}): Promise<GeneratedPracticeCardDraft[]> {
+  const { customKey, model } = resolveGeminiConfig();
+  const count = Math.max(3, Math.min(5, args.cardCount ?? 4));
+
+  const sourcesBlock = (args.sources ?? [])
+    .filter((s) => s.content.trim())
+    .slice(0, 3)
+    .map((s, i) => `### [Fonte ${i + 1}: ${s.title}]\n${s.content.trim().slice(0, 4500)}`)
+    .join('\n\n');
+
+  const avoidBlock =
+    args.existingPrompts && args.existingPrompts.length > 0
+      ? `\nEvita repetir perguntas já feitas:\n- ${args.existingPrompts.slice(0, 5).join('\n- ')}`
+      : '';
+
+  const prompt = `Cria exatamente ${count} cartões curtos de prática ativa (active recall / estilo pergunta de teste) em português europeu sobre "${args.topicTitle}"${args.courseName ? ` (${args.courseName})` : ''}.
+${args.diaryContext ? `\nContexto real do estudante (Diário / até onde deu a matéria):\n${args.diaryContext}` : ''}
+${sourcesBlock ? `\nCONTEÚDO REAL DOS MATERIAIS DA CADEIRA:\n${sourcesBlock}` : ''}
+${!sourcesBlock && args.attachments && args.attachments.length > 0 ? '\nAnalisa os ficheiros anexados da cadeira e extrai perguntas fiéis à matéria real.' : ''}
+${avoidBlock}
+
+Regras:
+- Perguntas diretas, concretas e verificáveis (1–2 frases), privilegiando exercícios típicos, definições críticas ou armadilhas de exame presentes nos materiais quando houver fontes.
+- Resposta objetiva em 1–3 frases, suficiente para o estudante confirmar se acertou.
+- Em "sourceTitle", coloca o nome exato da fonte/documento usado (ou omite se não houver fontes anexadas).
+Devolve APENAS JSON válido no formato:
+{"cards":[{"prompt":"...","answer":"...","sourceTitle":"opcional"}]}`;
+
+  const contents = buildContentsWithAttachments([{ role: 'user', text: prompt }], args.attachments);
+  const generationConfig: GenerationConfig = {
+    temperature: 0.4,
+    maxOutputTokens: 900,
+    responseMimeType: 'application/json',
+  };
+
+  const rawText = await withQuotaAndFallback('notebook', customKey, () =>
+    customKey
+      ? callDirectRest({ key: customKey, model, contents, generationConfig })
+      : runNativeGenerate({ model, contents, generationConfig }),
+  );
+
+  const match = /\{[\s\S]*\}/.exec(rawText || '{}');
+  const parsed = JSON.parse(match ? match[0] : rawText || '{}') as {
+    cards?: Array<Partial<GeneratedPracticeCardDraft>>;
+  };
+
+  const clean = (parsed.cards ?? [])
+    .map((c) => ({
+      prompt: c.prompt?.trim() ?? '',
+      answer: c.answer?.trim() ?? '',
+      ...(c.sourceTitle?.trim() ? { sourceTitle: c.sourceTitle.trim().slice(0, 90) } : {}),
+    }))
+    .filter((c) => c.prompt.length >= 6 && c.answer.length >= 3)
+    .slice(0, count);
+
+  if (clean.length === 0) {
+    throw new Error('Não foi possível gerar cartões de prática agora.');
+  }
+  return clean;
+}
+
 /** Gera 1 pergunta curta de recall ativo pós-sessão sobre o tópico estudado. */
 export async function generateRecallChallenge(
   topicTitle: string,

@@ -10,6 +10,25 @@ export type CourseColor =
 
 export type TopicStatus = 'todo' | 'learning' | 'review' | 'done';
 
+export interface PracticeCard {
+  id: ID;
+  prompt: string;
+  answer: string;
+  /** Nome do material ou slide que fundamentou o cartão (opcional). */
+  sourceTitle?: string;
+  /** yyyy-MM-dd */
+  createdAt: string;
+  lastScore?: 1 | 2 | 3;
+}
+
+export interface TopicRecallSample {
+  /** yyyy-MM-dd */
+  date: string;
+  score: 1 | 2 | 3;
+  hits?: number;
+  total?: number;
+}
+
 export interface Topic {
   id: ID;
   title: string;
@@ -26,6 +45,14 @@ export interface Topic {
   lastRecallScore?: 1 | 2 | 3;
   /** Total de verificações de recall ativo concluídas neste tópico. */
   recallCount?: number;
+  /** Número de recalls bem-sucedidos (com esforço ou dominei). */
+  recallSuccessCount?: number;
+  /** Sequência atual de recalls sem precisar de «Rever já». */
+  recallStreak?: number;
+  /** Últimas 10 tentativas de prática/recall ativo neste tópico. */
+  recallHistory?: TopicRecallSample[];
+  /** Cartões de prática rápida guardados para o tópico (reutilizáveis offline, máx. 8). */
+  practiceCards?: PracticeCard[];
 }
 
 export interface CourseProfessor {
@@ -126,6 +153,10 @@ export interface StudySession {
   focusAwaySeconds?: number;
   /** Indica se algum nível de Escudo Anti-distração esteve ativo na sessão. */
   focusShieldUsed?: boolean;
+  /** Acertos (com esforço ou dominei) na micro-prática pós-foco. */
+  practiceHits?: number;
+  /** Total de cartões respondidos na micro-prática pós-foco. */
+  practiceTotal?: number;
 }
 
 export interface Task {

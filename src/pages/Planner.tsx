@@ -2,6 +2,7 @@ import { addDays, addWeeks, format, parseISO, startOfWeek } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import {
   AlertTriangle,
+  Brain,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
@@ -16,6 +17,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import WeeklyTutorModal from '../components/assistant/WeeklyTutorModal';
+import ActiveReviewModal from '../components/practice/ActiveReviewModal';
 import {
   AnimatedPage,
   BentoMetricTile,
@@ -35,6 +37,7 @@ import { weekdayShort } from '../lib/colors';
 import { clearActiveFocusSnapshot, loadActiveFocusSnapshot, resolveRecoveredFocusState } from '../lib/focusShield';
 import { hapticTap } from '../lib/nativeBridge';
 import { analyzeTestMode, generatePlan, planSummary, rescheduleOverdueSessions } from '../lib/planner';
+import { getDueReviewQueue } from '../lib/spacedRepetition';
 import { capitalizeFirst, fmtMinutes, formatSessionDisplay, sessionMinutes, todayStr } from '../lib/selectors';
 import { useStore } from '../store/useStore';
 import type { PlannerPreferences, StudySession } from '../types';
@@ -92,9 +95,15 @@ export default function Planner() {
   const [actionsOpen, setActionsOpen] = useState(false);
   const [builderOpen, setBuilderOpen] = useState(false);
   const [tutorOpen, setTutorOpen] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
   const [modal, setModal] = useState<{ session?: StudySession; date: string } | null>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
   const [snapshotNonce, setSnapshotNonce] = useState(0);
+
+  const dueReviewCount = useMemo(
+    () => getDueReviewQueue(courses, today).length,
+    [courses, today],
+  );
 
   const testMode = useMemo(
     () => analyzeTestMode(courses, assessments, today),
@@ -322,8 +331,13 @@ export default function Planner() {
         accentTitle="estudo"
         subtitle={`${fmtMinutes(settings.dailyStudyMinutes)} por dia · ${studyDaysLabel(settings.studyDays)}${plannerPrefs ? ` · blocos ${plannerPrefs.blockMinutes}m (${plannerPrefs.horizonDays}d)` : ''}`}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <TabGuideHelpButton tabKey="plano" />
+            {dueReviewCount > 0 && (
+              <Button variant="secondary" onClick={() => setReviewOpen(true)}>
+                <Brain size={16} /> Rever devidos ({dueReviewCount})
+              </Button>
+            )}
             <Button variant="primary" onClick={onGenerate} disabled={noPlanInputs}>
               <Sparkles size={16} /> Gerar plano
             </Button>
@@ -667,6 +681,13 @@ export default function Planner() {
             },
           },
           {
+            id: 'review-due',
+            label: dueReviewCount > 0 ? `Rever devidos (${dueReviewCount})` : 'Prática & Revisão (SRS)',
+            hint: 'Micro-sessão rápida com os teus materiais',
+            icon: <Brain size={16} />,
+            onSelect: () => setReviewOpen(true),
+          },
+          {
             id: 'checkin',
             label: 'Check-in semanal com Tutor',
             hint: 'Ajusta o plano ao teu ritmo desta semana',
@@ -698,6 +719,8 @@ export default function Planner() {
       )}
 
       <WeeklyTutorModal open={tutorOpen} onClose={() => setTutorOpen(false)} />
+
+      <ActiveReviewModal open={reviewOpen} onClose={() => setReviewOpen(false)} />
 
       <PlanBuilderModal
         open={builderOpen}

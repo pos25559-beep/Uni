@@ -8,11 +8,13 @@ import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/Tab
 import { CourseTimeChart } from '../components/progress/CourseTimeChart';
 import { GradeBullets } from '../components/progress/GradeBullets';
 import { PlannedDoneChart } from '../components/progress/PlannedDoneChart';
-import { PERIODS, periodRange, type Period } from '../components/progress/data';
+import { PERIODS, periodRange, retentionOverview, type Period } from '../components/progress/data';
 import { ReadinessChart } from '../components/progress/ReadinessChart';
+import { RetentionFocusChart } from '../components/progress/RetentionFocusChart';
 import { StreakHeatmap } from '../components/progress/StreakHeatmap';
 import { StudyByDayChart } from '../components/progress/StudyByDayChart';
 import { WeaknessChart } from '../components/progress/WeaknessChart';
+import ActiveReviewModal from '../components/practice/ActiveReviewModal';
 import { Badge, Button, Card, PageHeader, Progress, Ring, SegmentedControl } from '../components/ui';
 import { cx, showToast } from '../lib/uiHelpers';
 import { openUniCheckIn } from '../lib/uniCheckInBus';
@@ -30,6 +32,7 @@ export default function ProgressPage() {
   const [logFilter, setLogFilter] = useState<'all' | StudyLogKind>('all');
   const [collectiblesOpen, setCollectiblesOpen] = useState(false);
   const [showEmptyCharts, setShowEmptyCharts] = useState(false);
+  const [reviewTarget, setReviewTarget] = useState<{ courseId?: string; topicId?: string } | null>(null);
   const courses = useStore((s) => s.courses);
   const assessments = useStore((s) => s.assessments);
   const sessions = useStore((s) => s.sessions);
@@ -70,6 +73,11 @@ export default function ProgressPage() {
   const hasSessions = sessions.length > 0;
   const hasTopics = courses.some((c) => c.topics.length > 0);
   const hasGradesOrAssessments = assessments.length > 0;
+
+  const retention = useMemo(
+    () => retentionOverview(courses, sessions, today),
+    [courses, sessions, today],
+  );
 
   const summary = useMemo(() => {
     const allTopics = courses.flatMap((c) => c.topics);
@@ -119,10 +127,30 @@ export default function ProgressPage() {
               ? `${summary.covered} de ${summary.totalTopics} tópicos concluídos ou revistos`
               : 'Adiciona tópicos nas cadeiras para acompanhar a preparação'}
           </p>
-          <div className="flex flex-wrap gap-4 pt-2 text-xs font-medium">
+          <div className="flex flex-wrap items-center gap-4 pt-2 text-xs font-medium">
             <span className="tabular">Média: <strong>{fmtGrade(summary.avg)}</strong></span>
             <span className="tabular">Estudado: <strong>{fmtMinutes(summary.totalDoneMin)}</strong></span>
             <span className="tabular">Sequência: <strong>{summary.streak}d</strong></span>
+            <span className="tabular">
+              Retenção:{' '}
+              <strong>
+                {retention.avgRetentionPct !== null ? `${retention.avgRetentionPct}%` : '—'}
+              </strong>
+            </span>
+            <span className="tabular">
+              Revisões:{' '}
+              {retention.dueCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setReviewTarget({})}
+                  className="font-bold underline decoration-dotted underline-offset-2 hover:opacity-80"
+                >
+                  {retention.dueCount} devidas
+                </button>
+              ) : (
+                <strong>em dia</strong>
+              )}
+            </span>
           </div>
         </div>
         <Ring value={summary.pct} size={88} stroke={8} color="#157F58">
@@ -267,6 +295,14 @@ export default function ProgressPage() {
             </>
           )}
           {(hasTopics || showEmptyCharts) && <WeaknessChart courses={courses} />}
+          {(hasTopics || hasSessions || showEmptyCharts) && (
+            <RetentionFocusChart
+              courses={courses}
+              sessions={sessions}
+              dayKey={today}
+              onPracticeTopic={(courseId, topicId) => setReviewTarget({ courseId, topicId })}
+            />
+          )}
         </div>
       )}
 
@@ -402,6 +438,13 @@ export default function ProgressPage() {
       </Card>
 
       <UniCollectiblesModal open={collectiblesOpen} onClose={() => setCollectiblesOpen(false)} />
+
+      <ActiveReviewModal
+        open={reviewTarget !== null}
+        onClose={() => setReviewTarget(null)}
+        courseId={reviewTarget?.courseId}
+        initialTopicId={reviewTarget?.topicId}
+      />
     </AnimatedPage>
   );
 }

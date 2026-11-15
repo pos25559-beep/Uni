@@ -171,6 +171,8 @@ service cloud.firestore {
     //   - focusDistractions: number (optional, 0 - 500)
     //   - focusAwaySeconds: number (optional, 0 - 86400)
     //   - focusShieldUsed: bool (optional)
+    //   - practiceHits: number (optional, 0 - 100)
+    //   - practiceTotal: number (optional, 0 - 100)
     //   - userId: string (optional, immutable, must match {userId})
     //   - createdAt: timestamp/string (optional, immutable)
     //   - updatedAt: timestamp/string (optional)
@@ -579,6 +581,7 @@ service cloud.firestore {
           'id', 'courseId', 'topicId', 'assessmentId', 'date', 'start',
           'minutes', 'done', 'actualMinutes', 'notes', 'generated',
           'focusDistractions', 'focusAwaySeconds', 'focusShieldUsed',
+          'practiceHits', 'practiceTotal',
           'userId', 'createdAt', 'updatedAt'
         ]) &&
         data.keys().hasAll(['courseId', 'date', 'minutes', 'done', 'generated']) &&
@@ -596,6 +599,8 @@ service cloud.firestore {
         isValidOptionalNumber(data, 'focusDistractions', 0, 500) &&
         isValidOptionalNumber(data, 'focusAwaySeconds', 0, 86400) &&
         isValidOptionalBool(data, 'focusShieldUsed') &&
+        isValidOptionalNumber(data, 'practiceHits', 0, 100) &&
+        isValidOptionalNumber(data, 'practiceTotal', 0, 100) &&
         (!('userId' in data) || data.userId == userId) &&
         isValidOptionalDateOrTimestamp(data, 'createdAt') &&
         isValidOptionalDateOrTimestamp(data, 'updatedAt');
