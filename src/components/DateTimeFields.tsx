@@ -20,6 +20,7 @@ import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { hapticTap } from '../lib/nativeBridge';
 import { cx } from '../lib/uiHelpers';
+import { useSheetSwipeDismiss } from '../lib/useSheetSwipeDismiss';
 
 const CONTROL_CLS =
   'w-full rounded-[14px] border border-line bg-surface-2/85 px-3.5 text-sm text-fg placeholder:text-muted/75 focus:border-accent focus:bg-surface focus:outline-none disabled:cursor-not-allowed disabled:opacity-55';
@@ -69,6 +70,14 @@ function TopLayerPickerDialog({
   children: ReactNode;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
+
+  useSheetSwipeDismiss({
+    ref: sheetRef,
+    open: open && coords.isMobile,
+    onClose,
+    maxViewportWidth: 640,
+  });
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -106,6 +115,7 @@ function TopLayerPickerDialog({
         className={cx('h-full w-full', coords.isMobile && 'flex items-end justify-center')}
       >
         <div
+          ref={coords.isMobile ? sheetRef : undefined}
           onClick={(e) => e.stopPropagation()}
           style={
             coords.isMobile
@@ -120,24 +130,29 @@ function TopLayerPickerDialog({
           }
           className={cx(
             coords.isMobile
-              ? 'rise max-h-[82dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] border-t border-line bg-surface px-4 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-float'
-              : 'rise max-h-[82vh] overflow-y-auto rounded-[22px] border border-line bg-surface p-3.5 shadow-float',
+              ? 'rise max-h-[82dvh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-[28px] border-t border-line bg-surface px-4 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-float'
+              : 'rise max-h-[82vh] overflow-y-auto overscroll-contain rounded-[22px] border border-line bg-surface p-3.5 shadow-float',
           )}
         >
-          <div className="mb-3">
+          <div
+            data-sheet-handle={coords.isMobile ? '' : undefined}
+            className={cx('mb-3', coords.isMobile && '-mx-4 -mt-3 px-4 pt-3 touch-none')}
+          >
             {coords.isMobile && (
               <div className="mx-auto mb-2.5 h-1.5 w-11 rounded-full bg-line" aria-hidden="true" />
             )}
             <div className="flex items-center justify-between gap-2">
               <p className="font-display text-sm font-bold text-fg">{title}</p>
-              <button
-                type="button"
-                onClick={onClose}
-                aria-label="Fechar seletor"
-                className="flex size-11 -mr-2 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-fg"
-              >
-                <X size={17} />
-              </button>
+              {!coords.isMobile && (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  aria-label="Fechar seletor"
+                  className="flex size-11 -mr-2 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-fg"
+                >
+                  <X size={17} />
+                </button>
+              )}
             </div>
           </div>
           {children}

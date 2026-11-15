@@ -10,9 +10,8 @@ import {
   ShieldCheck,
   Sparkles,
   Target,
-  X,
 } from 'lucide-react';
-import { AnimatePresence, MotionConfig, motion, useDragControls } from 'motion/react';
+import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { auth, onAuthStateChanged, type User } from '../lib/firebase';
@@ -34,6 +33,7 @@ import PostOnboardingHubModal from './onboarding/PostOnboardingHubModal';
 import UniHubInviteOverlay from './onboarding/UniHubInviteOverlay';
 import { ToastViewport } from './ui';
 import { cx } from '../lib/uiHelpers';
+import { useSheetSwipeDismiss } from '../lib/useSheetSwipeDismiss';
 
 const desktopNav = [
   { to: '/', label: 'Hoje', icon: LayoutDashboard, end: true, tour: 'nav-today' },
@@ -95,9 +95,21 @@ export default function AppShell() {
     setMoreOpenPath(resolved ? location.pathname : null);
   };
   const [collectiblesOpen, setCollectiblesOpen] = useState(false);
-  const moreDragControls = useDragControls();
   const moreSheetRef = useRef<HTMLDivElement>(null);
-  const touchSwipeStartY = useRef<number | null>(null);
+  useSheetSwipeDismiss({
+    ref: moreSheetRef,
+    open: moreOpen,
+    onClose: () => setMoreOpen(false),
+    maxViewportWidth: 768,
+  });
+  useEffect(() => {
+    if (!moreOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMoreOpenPath(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [moreOpen]);
   const hubModalOpen = useHubUiStore((s) => s.modalOpen);
   const hubModalStep = useHubUiStore((s) => s.focusStep);
   const closeHubModal = useHubUiStore((s) => s.closeModal);
@@ -486,53 +498,21 @@ export default function AppShell() {
               className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"
             />
             <motion.div
-              ref={moreSheetRef}
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={UNIPEDIA_SPRING}
-              drag="y"
-              dragControls={moreDragControls}
-              dragListener={false}
-              dragConstraints={{ top: 0 }}
-              dragElastic={{ top: 0, bottom: 0.35 }}
-              onDragEnd={(_, info) => {
-                if (info.offset.y > 85 || info.velocity.y > 420) {
-                  void hapticTap();
-                  setMoreOpen(false);
-                }
-              }}
-              onTouchStart={(e) => {
-                const el = moreSheetRef.current;
-                if (el && el.scrollTop <= 0 && e.touches.length === 1) {
-                  touchSwipeStartY.current = e.touches[0].clientY;
-                } else {
-                  touchSwipeStartY.current = null;
-                }
-              }}
-              onTouchEnd={(e) => {
-                const startY = touchSwipeStartY.current;
-                touchSwipeStartY.current = null;
-                if (startY === null || e.changedTouches.length === 0) return;
-                const dy = e.changedTouches[0].clientY - startY;
-                const el = moreSheetRef.current;
-                if (dy > 75 && (!el || el.scrollTop <= 0)) {
-                  void hapticTap();
-                  setMoreOpen(false);
-                }
-              }}
-              className="absolute inset-x-0 bottom-0 max-h-[84dvh] overflow-y-auto rounded-t-[28px] border-t border-line bg-surface px-4 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-float"
+              className="absolute inset-x-0 bottom-0"
             >
               <div
-                onPointerDown={(e) => {
-                  if (!(e.target as HTMLElement).closest('button')) {
-                    moreDragControls.start(e);
-                  }
-                }}
-                className="-mx-4 -mt-3 mb-2 cursor-grab touch-none px-4 pt-3 pb-2 active:cursor-grabbing"
+                ref={moreSheetRef}
+                className="max-h-[84dvh] overflow-y-auto overscroll-contain rounded-t-[28px] border-t border-line bg-surface px-4 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-float"
               >
-                <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-line" aria-hidden="true" />
-                <div className="flex items-center justify-between">
+                <div
+                  data-sheet-handle=""
+                  className="-mx-4 -mt-3 mb-3 cursor-grab touch-none px-4 pt-3 pb-1 active:cursor-grabbing"
+                >
+                  <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-line" aria-hidden="true" />
                   <div className="flex items-center gap-2.5">
                     <UnipediaLogoMark size={32} />
                     <div>
@@ -540,16 +520,7 @@ export default function AppShell() {
                       <p className="text-xs text-muted">{semesterName}</p>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    aria-label="Fechar menu"
-                    onClick={() => setMoreOpen(false)}
-                    className="flex size-11 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-fg"
-                  >
-                    <X size={18} />
-                  </button>
                 </div>
-              </div>
 
               <div className="grid grid-cols-2 gap-2.5">
                 {mobileMoreRoutes.map(({ to, label, hint, icon: Icon }) => (
@@ -611,6 +582,7 @@ export default function AppShell() {
                     <ShieldCheck size={14} /> Privacidade
                   </NavLink>
                 </div>
+              </div>
               </div>
             </motion.div>
           </div>

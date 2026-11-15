@@ -1,6 +1,6 @@
 // Kit de UI partilhado Unipedia v4 ("Estúdio Caderno Vivo Refinado").
 import { ArrowLeft, Check, ChevronDown, ChevronRight, Loader2, X } from 'lucide-react';
-import { AnimatePresence, motion, useDragControls } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { Children, isValidElement, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type {
   ButtonHTMLAttributes,
@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import { courseColors } from '../lib/colors';
 import { hapticTap } from '../lib/nativeBridge';
 import { cx, getToastQueue, subscribeToasts, type ToastItem } from '../lib/uiHelpers';
+import { useSheetSwipeDismiss } from '../lib/useSheetSwipeDismiss';
 import type { Course } from '../types';
 
 export function PageHeader({
@@ -585,6 +586,13 @@ export function Modal({
   const titleId = useId();
   const pressedOutsideRef = useRef(false);
 
+  useSheetSwipeDismiss({
+    ref: dialogRef,
+    open,
+    onClose,
+    maxViewportWidth: 640,
+  });
+
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
@@ -635,22 +643,25 @@ export function Modal({
       }}
       {...({ closedby: 'any' } as Record<string, unknown>)}
       className={cx(
-        'rise m-auto mb-0 w-full max-w-none open:flex max-h-[90dvh] flex-col rounded-t-[26px] border border-line bg-surface p-0 text-fg shadow-float backdrop:bg-black/45 backdrop:backdrop-blur-[2px] sm:mb-auto sm:rounded-[24px]',
+        'rise m-auto mb-0 w-full max-w-none open:flex max-h-[90dvh] flex-col overscroll-contain rounded-t-[26px] border border-line bg-surface p-0 text-fg shadow-float backdrop:bg-black/45 backdrop:backdrop-blur-[2px] sm:mb-auto sm:rounded-[24px]',
         maxWidthClass,
       )}
     >
-      <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
-        <h2 id={titleId} className="font-display text-base font-bold">{title}</h2>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Fechar"
-          className="flex size-11 items-center justify-center rounded-full text-muted transition hover:bg-surface-2 hover:text-fg"
-        >
-          <X size={18} aria-hidden="true" />
-        </button>
+      <div data-sheet-handle="" className="touch-none sm:touch-auto">
+        <div className="mx-auto mt-2.5 h-1.5 w-11 rounded-full bg-line sm:hidden" aria-hidden="true" />
+        <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
+          <h2 id={titleId} className="font-display text-base font-bold">{title}</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fechar"
+            className="hidden size-11 items-center justify-center rounded-full text-muted transition hover:bg-surface-2 hover:text-fg sm:flex"
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
+        </div>
       </div>
-      <div className="space-y-4 overflow-y-auto px-5 py-4">{children}</div>
+      <div className="space-y-4 overflow-y-auto overscroll-contain px-5 py-4">{children}</div>
       {footer && (
         <div className="flex flex-wrap justify-end gap-2 border-t border-line px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:pb-4">
           {footer}
@@ -679,7 +690,9 @@ export function ActionSheet({
     onSelect: () => void;
   }>;
 }) {
-  const dragControls = useDragControls();
+  const sheetRef = useRef<HTMLDivElement>(null);
+  useSheetSwipeDismiss({ ref: sheetRef, open, onClose });
+
   return (
     <AnimatePresence>
       {open && (
@@ -698,55 +711,49 @@ export function ActionSheet({
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: '100%', opacity: 0 }}
             transition={{ type: 'spring', stiffness: 360, damping: 28 }}
-            drag="y"
-            dragControls={dragControls}
-            dragListener={false}
-            dragConstraints={{ top: 0 }}
-            dragElastic={{ top: 0, bottom: 0.35 }}
-            onDragEnd={(_, info) => {
-              if (info.offset.y > 80 || info.velocity.y > 400) {
-                void hapticTap();
-                onClose();
-              }
-            }}
-            className="relative z-10 w-full max-w-md rounded-t-[28px] border border-line bg-surface px-4 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-float sm:rounded-[26px] sm:pb-4"
+            className="relative z-10 w-full max-w-md"
           >
             <div
-              onPointerDown={(e) => dragControls.start(e)}
-              className="-mx-4 -mt-3 mb-2 cursor-grab touch-none px-4 pt-3 pb-1 active:cursor-grabbing sm:cursor-auto sm:touch-auto"
+              ref={sheetRef}
+              className="w-full overscroll-contain rounded-t-[28px] border border-line bg-surface px-4 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-float sm:rounded-[26px] sm:pb-4"
             >
-              <div className="mx-auto mb-2 h-1.5 w-11 rounded-full bg-line sm:hidden" aria-hidden="true" />
-              {title && <p className="px-2 font-display text-sm font-bold text-fg">{title}</p>}
-            </div>
-            <div className="divide-y divide-line overflow-hidden rounded-[20px] border border-line bg-bg">
-              {actions.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    void hapticTap();
-                    onClose();
-                    item.onSelect();
-                  }}
-                  className="flex min-h-[54px] w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-surface-2"
-                >
-                  {item.icon && (
-                    <span className={cx('shrink-0', item.danger ? 'text-coral' : 'text-fg')}>
-                      {item.icon}
+              <div
+                data-sheet-handle=""
+                className="-mx-4 -mt-3 mb-2 cursor-grab touch-none px-4 pt-3 pb-1 active:cursor-grabbing sm:cursor-auto sm:touch-auto"
+              >
+                <div className="mx-auto mb-2 h-1.5 w-11 rounded-full bg-line sm:hidden" aria-hidden="true" />
+                {title && <p className="px-2 font-display text-sm font-bold text-fg">{title}</p>}
+              </div>
+              <div className="divide-y divide-line overflow-hidden rounded-[20px] border border-line bg-bg">
+                {actions.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      void hapticTap();
+                      onClose();
+                      item.onSelect();
+                    }}
+                    className="flex min-h-[54px] w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-surface-2"
+                  >
+                    {item.icon && (
+                      <span className={cx('shrink-0', item.danger ? 'text-coral' : 'text-fg')}>
+                        {item.icon}
+                      </span>
+                    )}
+                    <span className="min-w-0 flex-1">
+                      <span className={cx('block text-sm font-semibold', item.danger ? 'text-coral' : 'text-fg')}>
+                        {item.label}
+                      </span>
+                      {item.hint && <span className="block text-xs text-muted">{item.hint}</span>}
                     </span>
-                  )}
-                  <span className="min-w-0 flex-1">
-                    <span className={cx('block text-sm font-semibold', item.danger ? 'text-coral' : 'text-fg')}>
-                      {item.label}
-                    </span>
-                    {item.hint && <span className="block text-xs text-muted">{item.hint}</span>}
-                  </span>
-                </button>
-              ))}
+                  </button>
+                ))}
+              </div>
+              <Button variant="secondary" className="mt-3 w-full" onClick={onClose}>
+                Cancelar
+              </Button>
             </div>
-            <Button variant="secondary" className="mt-3 w-full" onClick={onClose}>
-              Cancelar
-            </Button>
           </motion.div>
         </div>
       )}
@@ -908,6 +915,14 @@ export function Select({
   }>({ isMobile: true });
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
+
+  useSheetSwipeDismiss({
+    ref: sheetRef,
+    open: open && coords.isMobile,
+    onClose: () => setOpen(false),
+    maxViewportWidth: 640,
+  });
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -1015,6 +1030,7 @@ export function Select({
               )}
             >
             <div
+              ref={coords.isMobile ? sheetRef : undefined}
               onClick={(e) => e.stopPropagation()}
               style={
                 coords.isMobile
@@ -1029,33 +1045,23 @@ export function Select({
               }
               className={cx(
                 coords.isMobile
-                  ? 'rise w-full max-w-lg rounded-t-[28px] border-t border-line bg-surface px-4 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-float'
+                  ? 'rise w-full max-w-lg overscroll-contain rounded-t-[28px] border-t border-line bg-surface px-4 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-float'
                   : 'rise rounded-[22px] border border-line bg-surface p-1.5 shadow-float',
               )}
             >
               {coords.isMobile && (
-                <div className="mb-2.5">
+                <div data-sheet-handle="" className="-mx-4 -mt-3 mb-2.5 px-4 pt-3 pb-1 touch-none">
                   <div className="mx-auto mb-2.5 h-1.5 w-11 rounded-full bg-line" aria-hidden="true" />
-                  <div className="flex items-center justify-between gap-2 px-1">
-                    <p className="font-display text-sm font-bold text-fg">
-                      {ariaLabel || 'Escolher opção'}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setOpen(false)}
-                      aria-label="Fechar opções"
-                      className="flex size-11 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-fg"
-                    >
-                      <X size={17} />
-                    </button>
-                  </div>
+                  <p className="px-1 font-display text-sm font-bold text-fg">
+                    {ariaLabel || 'Escolher opção'}
+                  </p>
                 </div>
               )}
 
               <div
                 role="listbox"
                 className={cx(
-                  'overflow-y-auto',
+                  'overflow-y-auto overscroll-contain',
                   coords.isMobile ? 'max-h-[56dvh] space-y-1' : 'max-h-64 space-y-0.5',
                 )}
               >

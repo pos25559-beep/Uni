@@ -2,7 +2,7 @@ import { OnboardingProvider, useOnboarding } from '@onboardjs/react';
 import type { OnboardingStep } from '@onboardjs/core';
 import { ArrowRight, ChevronLeft, ChevronRight, ExternalLink, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAcademicEmails } from '../../hooks/useGoogleData';
 import { matchCourse } from '../../integrations/clip';
 import {
@@ -27,6 +27,7 @@ import {
 import { readNormalizedScreenshot } from '../../lib/imageUpload';
 import { LEGAL_INFO } from '../../lib/legal';
 import { hapticSuccess, hapticTap, syncNativeTheme } from '../../lib/nativeBridge';
+import { useSheetSwipeDismiss } from '../../lib/useSheetSwipeDismiss';
 import {
   applyImportedScheduleRecords,
   buildInitialCompletedRecords,
@@ -260,6 +261,13 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     Boolean(settings.cloudSyncConsent),
   );
   const [legalPreview, setLegalPreview] = useState<'privacy' | 'terms' | null>(null);
+  const legalSheetRef = useRef<HTMLDivElement>(null);
+  useSheetSwipeDismiss({
+    ref: legalSheetRef,
+    open: Boolean(legalPreview),
+    onClose: () => setLegalPreview(null),
+    maxViewportWidth: 640,
+  });
   const [submitAttempted, setSubmitAttempted] = useState(false);
 
   useEffect(() => {
@@ -1403,21 +1411,29 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
           role="dialog"
           aria-modal="true"
           aria-label={legalPreview === 'privacy' ? 'Política de Privacidade' : 'Termos de Utilização'}
+          onClick={() => setLegalPreview(null)}
           className="fixed inset-0 z-[70] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
         >
-          <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-line bg-surface p-5 shadow-float sm:rounded-3xl sm:p-6">
-            <div className="flex items-center justify-between gap-3 border-b border-line pb-3">
-              <h3 className="font-display text-lg font-bold text-fg">
-                {legalPreview === 'privacy' ? 'Política de Privacidade' : 'Termos de Utilização'}
-              </h3>
-              <button
-                type="button"
-                aria-label="Fechar pré-visualização legal"
-                onClick={() => setLegalPreview(null)}
-                className="flex size-11 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-fg"
-              >
-                <X size={18} />
-              </button>
+          <div
+            ref={legalSheetRef}
+            onClick={(e) => e.stopPropagation()}
+            className="max-h-[85vh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-3xl border border-line bg-surface p-5 shadow-float sm:rounded-3xl sm:p-6"
+          >
+            <div data-sheet-handle="" className="-mx-5 -mt-5 px-5 pt-3 touch-none sm:mx-0 sm:mt-0 sm:p-0 sm:touch-auto">
+              <div className="mx-auto mb-3 h-1.5 w-11 rounded-full bg-line sm:hidden" aria-hidden="true" />
+              <div className="flex items-center justify-between gap-3 border-b border-line pb-3">
+                <h3 className="font-display text-lg font-bold text-fg">
+                  {legalPreview === 'privacy' ? 'Política de Privacidade' : 'Termos de Utilização'}
+                </h3>
+                <button
+                  type="button"
+                  aria-label="Fechar pré-visualização legal"
+                  onClick={() => setLegalPreview(null)}
+                  className="hidden size-11 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-fg sm:flex"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
             <div className="mt-4 space-y-3 text-xs leading-relaxed text-muted sm:text-sm">
               {legalPreview === 'privacy' ? (
