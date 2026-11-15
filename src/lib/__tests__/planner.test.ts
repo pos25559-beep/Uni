@@ -1,5 +1,7 @@
+import { addDays, format } from 'date-fns';
 import { describe, expect, it } from 'vitest';
 import type { Assessment, ClassSlot, Course, Settings, StudySession } from '../../types';
+import { useStore } from '../../store/useStore';
 import { analyzeTestMode, generatePlan, rescheduleOverdueSessions } from '../planner';
 import { formatSessionDisplay } from '../selectors';
 
@@ -185,6 +187,69 @@ describe('planner.generatePlan', () => {
     expect(display.title).toBe('Refazer testes antigos · Plasticidade aplicada');
     expect(display.badge).toBe('Modo Teste');
     expect(display.isPersonalized).toBe(true);
+  });
+
+  it('extrai foco das mensagens antigas do Diário e substitui sessões antigas via store sem Equilíbrio Modo Teste', () => {
+    const store = useStore.getState();
+    store.clearAll();
+
+    const now = new Date();
+    const today = format(now, 'yyyy-MM-dd');
+    const tomorrow = format(addDays(now, 1), 'yyyy-MM-dd');
+    const futureTestDate = format(addDays(now, 5), 'yyyy-MM-dd');
+    const assessment: Assessment = {
+      id: 'a-tep',
+      courseId: 'c1',
+      title: '1.º Teste',
+      kind: 'teste',
+      date: futureTestDate,
+      weight: 40,
+      topicIds: ['t1'],
+      source: 'local',
+    };
+
+    useStore.setState({
+      courses: [baseCourse],
+      assessments: [assessment],
+      settings: { ...baseSettings, dailyStudyMinutes: 120 },
+      sessions: [
+        {
+          id: 'legacy-gen-1',
+          courseId: 'c1',
+          topicId: 't1',
+          assessmentId: 'a-tep',
+          date: tomorrow,
+          start: '18:10',
+          minutes: 50,
+          done: false,
+          generated: true,
+          notes: 'Equilíbrio Modo Teste',
+        },
+      ],
+    });
+
+    const latest = useStore.getState();
+    latest.patch('assessments', 'a-tep', { topicIds: ['t1'] }, { skipReconcile: true });
+    latest.addStudyLog({
+      id: 'log-from-chat',
+      kind: 'exam_prep',
+      date: today,
+      createdAt: `${today}T20:00:00.000Z`,
+      courseId: 'c1',
+      assessmentId: 'a-tep',
+      feeling: 'estavel',
+      messages: [
+        { id: 'u1', role: 'user', text: 'Quero focar em refazer os testes antigos' },
+      ],
+    });
+    latest.reconcileFuturePlan(true);
+
+    const updatedSessions = useStore.getState().sessions;
+    expect(updatedSessions.length).toBeGreaterThan(0);
+    expect(updatedSessions.some((s) => s.notes === 'Equilíbrio Modo Teste')).toBe(false);
+    expect(updatedSessions[0]?.notes).toBe('Refazer testes antigos');
+    const display = formatSessionDisplay(updatedSessions[0]!, baseCourse.topics[0]);
+    expect(display.title).toBe('Refazer testes antigos · Plasticidade aplicada');
   });
 });
 

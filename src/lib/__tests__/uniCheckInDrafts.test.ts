@@ -3,6 +3,7 @@ import type { Course, StudyLogEntry } from '../../types';
 import {
   buildCheckInContextKey,
   buildTurnsFromSavedEntry,
+  buildUnderstandingFromSavedEntry,
   clearCheckInDraft,
   findSavedCheckInEntry,
   loadCheckInDraft,
@@ -145,5 +146,24 @@ describe('uniCheckInDrafts', () => {
     expect(turns[1]?.role).toBe('user');
     expect(turns[1]?.text).toContain('Plasticidade');
     expect(turns[1]?.text).toContain('Revi T01 a T03');
+  });
+
+  it('infere studyFocus de conversas guardadas anteriormente sem campo studyFocus', () => {
+    const legacySaved: StudyLogEntry = {
+      id: 'log-old-messages',
+      kind: 'exam_prep',
+      date: '2026-11-15',
+      createdAt: '2026-11-15T19:55:00.000Z',
+      courseId: 'tep',
+      assessmentId: 'tep-test-1',
+      feeling: 'estavel',
+      messages: [
+        { id: 'm1', role: 'model', text: 'Vamos alinhar o 1.º Teste!' },
+        { id: 'm2', role: 'user', text: 'Quero focar em refazer os testes antigos' },
+      ],
+    };
+
+    const restored = buildUnderstandingFromSavedEntry(legacySaved);
+    expect(restored.studyFocus).toBe('Refazer testes antigos');
   });
 });

@@ -54,6 +54,7 @@ export default function WeeklyTutorModal({
   const settings = useStore((s) => s.settings);
   const academicProfile = useStore((s) => s.academicProfile);
   const weeklyCheckIns = useStore((s) => s.weeklyCheckIns);
+  const studyLogs = useStore((s) => s.studyLogs);
 
   const addWeeklyCheckIn = useStore((s) => s.addWeeklyCheckIn);
   const replaceGeneratedSessions = useStore((s) => s.replaceGeneratedSessions);
@@ -120,6 +121,7 @@ export default function WeeklyTutorModal({
       existing: sessions.filter((s) => !s.generated || s.done || s.date < today),
       difficultCourseIds: hardCourseIds,
       weeklyCheckIns: updatedCheckIns,
+      studyLogs,
       extraActivities: academicProfile.extraActivities,
     });
     replaceGeneratedSessions(today, plan);

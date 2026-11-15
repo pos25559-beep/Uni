@@ -393,42 +393,60 @@ async function commitChunkedOps(ops: BatchOp[]): Promise<void> {
   }
 }
 
+const diffQueues = new Map<CollectionKey, Promise<void>>();
+
 /**
  * Sincroniza em lote a diferença entre uma coleção anterior e a nova no Firestore
  * (ex.: sessões geradas substituídas em `replaceGeneratedSessions` ou fontes `replaceSource`).
+ * Serializada por coleção para evitar corridas entre reconciliações consecutivas.
  */
-export async function syncCollectionDiff<K extends CollectionKey>(
+export function syncCollectionDiff<K extends CollectionKey>(
   key: K,
   prevItems: ReadonlyArray<{ id: ID }>,
   nextItems: ReadonlyArray<Collections[K][number]>,
 ): Promise<void> {
-  const user = auth.currentUser;
-  if (!user || isApplyingRemote) return;
+  const prevChain = diffQueues.get(key) ?? Promise.resolve();
+  const nextChain = prevChain
+    .catch(() => undefined)
+    .then(async () => {
+      const user = auth.currentUser;
+      if (!user || isApplyingRemote) return;
 
-  const nextIds = new Set(nextItems.map((it) => it.id));
-  const prevById = new Map(prevItems.map((it) => [it.id, it]));
-  const ops: BatchOp[] = [];
+      const nextIds = new Set(nextItems.map((it) => it.id));
+      const prevById = new Map(prevItems.map((it) => [it.id, it]));
+      const ops: BatchOp[] = [];
 
-  for (const prev of prevItems) {
-    if (!nextIds.has(prev.id)) {
-      ops.push({ type: 'delete', ref: doc(db, 'users', user.uid, key, prev.id) });
-    }
-  }
+      for (const prev of prevItems) {
+        if (!nextIds.has(prev.id)) {
+          ops.push({ type: 'delete', ref: doc(db, 'users', user.uid, key, prev.id) });
+        }
+      }
 
-  for (const item of nextItems) {
-    const prev = prevById.get(item.id);
-    if (!prev || JSON.stringify(prev) !== JSON.stringify(item)) {
-      ops.push({
-        type: 'set',
-        ref: doc(db, 'users', user.uid, key, item.id),
-        data: stripUndefined(item) as unknown as Record<string, unknown>,
-      });
-    }
-  }
+      for (const item of nextItems) {
+        const prev = prevById.get(item.id);
+        if (!prev || JSON.stringify(prev) !== JSON.stringify(item)) {
+          ops.push({
+            type: 'set',
+            ref: doc(db, 'users', user.uid, key, item.id),
+            data: stripUndefined(item) as unknown as Record<string, unknown>,
+          });
+        }
+      }
 
-  if (ops.length > 0) {
-    await commitChunkedOps(ops);
-  }
+      if (ops.length > 0) {
+        await commitChunkedOps(ops);
+      }
+    })
+    .catch((err) => {
+      if (import.meta.env.DEV) {
+        console.warn(`[Firestore] syncCollectionDiff(${key}) falhou:`, err);
+      }
+      throw err;
+    });
+
+  const safeQueueRef = nextChain.catch(() => undefined);
+  diffQueues.set(key, safeQueueRef);
+  return nextChain;
 }
 
 /** Sincroniza em lote substituições/reconciliações do plano de estudo no Firestore. */

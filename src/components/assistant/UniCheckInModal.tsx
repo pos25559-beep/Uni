@@ -601,7 +601,12 @@ function UniCheckInModalInner({
     const finalTopicIds = [...syncedTopicIds];
 
     if (kind === 'exam_prep' && selectedAssessment) {
-      patchAssessment('assessments', selectedAssessment.id, { topicIds: finalTopicIds });
+      patchAssessment(
+        'assessments',
+        selectedAssessment.id,
+        { topicIds: finalTopicIds },
+        { skipReconcile: true },
+      );
     }
 
     if (kind === 'week') {

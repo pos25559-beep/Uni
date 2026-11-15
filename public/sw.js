@@ -1,5 +1,5 @@
-const CACHE_NAME = 'unipedia-shell-v1';
-const APP_SHELL = ['/', '/manifest.webmanifest', '/favicon.svg', '/icons/icon-192.png'];
+const CACHE_NAME = 'unipedia-shell-v2';
+const APP_SHELL = ['/manifest.webmanifest', '/favicon.svg', '/icons/icon-192.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -28,10 +28,10 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  // Navegação HTML: network-first com fallback offline para a shell da app
+  // Navegação HTML: network-first (sem HTTP cache) com fallback offline para a shell da app
   if (req.mode === 'navigate') {
     event.respondWith(
-      fetch(req)
+      fetch(req, { cache: 'no-store' })
         .then((res) => {
           if (res.ok) {
             const copy = res.clone();

@@ -12,7 +12,7 @@ import {
   Plus,
   Sparkles,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import WeeklyTutorModal from '../components/assistant/WeeklyTutorModal';
 import {
@@ -61,6 +61,7 @@ export default function Planner() {
   const weeklyCheckIns = useStore((s) => s.weeklyCheckIns);
   const studyLogs = useStore((s) => s.studyLogs);
   const replaceGeneratedSessions = useStore((s) => s.replaceGeneratedSessions);
+  const reconcileFuturePlan = useStore((s) => s.reconcileFuturePlan);
   const upsertMany = useStore((s) => s.upsertMany);
   const patch = useStore((s) => s.patch);
   const remove = useStore((s) => s.remove);
@@ -68,6 +69,21 @@ export default function Planner() {
   const navigate = useNavigate();
 
   const today = useMemo(() => todayStr(), []);
+  const legacyReconciledRef = useRef(false);
+
+  useEffect(() => {
+    if (legacyReconciledRef.current || courses.length === 0) return;
+    const hasLegacySystemSession = sessions.some(
+      (s) =>
+        s.generated &&
+        !s.done &&
+        s.date >= today &&
+        (s.notes === 'Equilíbrio Modo Teste' || s.notes === 'Foco Modo Teste'),
+    );
+    if (!hasLegacySystemSession) return;
+    legacyReconciledRef.current = true;
+    reconcileFuturePlan(true);
+  }, [courses.length, sessions, today, reconcileFuturePlan]);
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedDayKey, setSelectedDayKey] = useState(today);
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');

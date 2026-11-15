@@ -3,6 +3,7 @@ import { differenceInCalendarDays, differenceInMinutes, format, parseISO } from 
 import { newId } from '../store/useStore';
 import { computeExtraActivityPenaltyByWeekday } from './academicCredits';
 import { isTopicReviewDue } from './spacedRepetition';
+import { extractStudyFocusPhrase } from './uniCheckInNlu';
 import type {
   Assessment,
   CalendarEvent,
@@ -237,7 +238,17 @@ export function generatePlan(input: PlanInput): StudySession[] {
     assessments.filter((a) => a.grade === undefined).map((a) => a.id),
   );
   for (const log of sortedLogs) {
-    const focus = log.studyFocus?.trim();
+    const focus =
+      log.studyFocus?.trim() ||
+      extractStudyFocusPhrase(
+        [
+          log.studiedSummary,
+          log.notes,
+          ...(log.messages?.filter((m) => m.role === 'user').map((m) => m.text) ?? []),
+        ]
+          .filter(Boolean)
+          .join('. '),
+      );
     if (!focus) continue;
     if (log.kind === 'exam_prep') {
       if (log.assessmentId && openAssessmentIds.has(log.assessmentId) && !examFocusByAssessmentId.has(log.assessmentId)) {

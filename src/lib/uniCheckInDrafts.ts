@@ -1,6 +1,6 @@
 import { format, parseISO, startOfWeek } from 'date-fns';
 import type { Course, StudyLogEntry, StudyLogKind, StudyLogMessage } from '../types';
-import { feelingDisplayLabel, type ParsedCheckInUnderstanding } from './uniCheckInNlu';
+import { extractStudyFocusPhrase, feelingDisplayLabel, type ParsedCheckInUnderstanding } from './uniCheckInNlu';
 
 export const UNI_CHECKIN_DRAFTS_KEY = 'uni-checkin-drafts-v1';
 const MAX_DRAFTS = 20;
@@ -149,6 +149,17 @@ export function buildTurnsFromSavedEntry(
 }
 
 export function buildUnderstandingFromSavedEntry(entry: StudyLogEntry): ParsedCheckInUnderstanding {
+  const inferredFocus =
+    entry.studyFocus?.trim() ||
+    extractStudyFocusPhrase(
+      [
+        entry.studiedSummary,
+        entry.notes,
+        ...(entry.messages?.filter((m) => m.role === 'user').map((m) => m.text) ?? []),
+      ]
+        .filter(Boolean)
+        .join('. '),
+    );
   return {
     kind: entry.kind,
     feeling: entry.feeling,
@@ -156,7 +167,7 @@ export function buildUnderstandingFromSavedEntry(entry: StudyLogEntry): ParsedCh
     rating: entry.rating,
     matchedTopicIds: entry.topicIds ?? [],
     newTopicsToAdd: [],
-    ...(entry.studyFocus ? { studyFocus: entry.studyFocus } : {}),
+    ...(inferredFocus ? { studyFocus: inferredFocus } : {}),
     topicTitle: entry.topicTitle,
     studiedSummary: entry.studiedSummary,
     difficulties: entry.difficulties,

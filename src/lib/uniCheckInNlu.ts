@@ -291,22 +291,29 @@ function matchTopicsAndMaterialsByText(args: {
   };
 }
 
-function extractStudyFocusPhrase(text: string): string | undefined {
+export function extractStudyFocusPhrase(text: string): string | undefined {
   const n = stripDiacritics(text);
-  if (/\b(?:refazer|resolver|fazer|praticar|rever)\b[^.!?\n]{0,30}\b(?:testes?\s+antigos?|provas?\s+antigas?)\b/.test(n) || /\btestes?\s+antigos?\b/.test(n)) {
+  if (!n) return undefined;
+  if (
+    /\b(?:refazer|resolver|fazer|praticar|rever|estudar)\b[^.!?\n]{0,35}\b(?:testes?\s+(?:antigos?|anteriores|passados?)|provas?\s+(?:antigas?|anteriores|passadas?|modelo))\b/.test(n) ||
+    /\b(?:testes?|provas?)\s+(?:antigos?|anteriores|passados?|modelo)\b/.test(n)
+  ) {
     return 'Refazer testes antigos';
   }
-  if (/\b(?:exames?\s+(?:antigos?|anteriores|passados)|provas?\s+anteriores|enunciados?\s+antigos?)\b/.test(n)) {
+  if (
+    /\b(?:exames?\s+(?:antigos?|anteriores|passados?|modelo)|enunciados?\s+(?:antigos?|anteriores)|provas?\s+anteriores)\b/.test(n) ||
+    /\b(?:refazer|resolver|fazer)\b[^.!?\n]{0,25}\bexames?\b/.test(n)
+  ) {
     return 'Resolver exames antigos';
   }
-  if (/\b(?:resolver|fazer|praticar)\b[^.!?\n]{0,25}\b(?:exercicios?|fichas?(?:\s+praticas?)?|problemas?)\b/.test(n)) {
+  if (/\b(?:resolver|fazer|praticar)\b[^.!?\n]{0,25}\b(?:exercicios?(?:\s+de\s+(?:exame|teste))?|fichas?(?:\s+praticas?)?|problemas?)\b/.test(n)) {
     return 'Resolver exercícios práticos';
   }
   if (/\b(?:fazer|rever|preparar)\b[^.!?\n]{0,25}\b(?:resumos?|formulario|apontamentos?|slides?)\b/.test(n)) {
     return 'Rever resumos e slides';
   }
   const custom = text.match(
-    /(?:quero\s+focar(?:-me)?\s+em|focar(?:-me)?\s+em|prefiro\s+focar\s+em|foco\s+(?:principal\s+)?(?:em|para)|vou\s+focar\s+em)\s+([^.;!?\n]{4,70})/i,
+    /(?:quero\s+focar(?:-me)?\s+(?:em|no|na|nos|nas)|focar(?:-me)?\s+(?:em|no|na|nos|nas)|prefiro\s+focar\s+(?:em|no|na)|foco\s+(?:principal\s+)?(?:em|para|no|na)|vou\s+focar\s+(?:em|no|na))\s+([^.;!?\n]{4,70})/i,
   );
   if (custom?.[1]) {
     const trimmedClause = custom[1].split(/\s*(?:,\s*(?:mas|estou|sinto|e\s+(?:estou|sinto))|\s+(?:mas|e\s+estou|e\s+sinto)\b)/i)[0];

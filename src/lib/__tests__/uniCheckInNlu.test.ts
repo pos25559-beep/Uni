@@ -106,5 +106,23 @@ describe('uniCheckInNlu.parseConversationalCheckIn', () => {
       materials: [],
     });
     expect(customFocus.studyFocus).toBe('Derivadas parciais aplicadas');
+
+    const focusNoEm = parseConversationalCheckIn({
+      kind: 'exam_prep',
+      userText: 'Vou focar nos testes antigos',
+      course: sampleCourse,
+      courses: [sampleCourse],
+      materials: [],
+    });
+    expect(focusNoEm.studyFocus).toBe('Refazer testes antigos');
+
+    const exams = parseConversationalCheckIn({
+      kind: 'exam_prep',
+      userText: 'Prefiro resolver exames e provas anteriores',
+      course: sampleCourse,
+      courses: [sampleCourse],
+      materials: [],
+    });
+    expect(exams.studyFocus).toBe('Refazer testes antigos');
   });
 });

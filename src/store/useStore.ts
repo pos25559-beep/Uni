@@ -68,7 +68,12 @@ export interface AppState extends Collections {
   upsert: <K extends Key>(key: K, item: Item<K>) => void;
   upsertMany: <K extends Key>(key: K, items: Item<K>[]) => void;
   /** Atualiza parcialmente um registo existente. */
-  patch: <K extends Key>(key: K, id: ID, changes: Partial<Item<K>>) => void;
+  patch: <K extends Key>(
+    key: K,
+    id: ID,
+    changes: Partial<Item<K>>,
+    opts?: { skipReconcile?: boolean },
+  ) => void;
   remove: (key: Key, id: ID) => void;
   replaceSource: <K extends 'assessments' | 'classes' | 'events'>(
     key: K,
@@ -180,13 +185,13 @@ export const useStore = create<AppState>()(
           return { [key]: [...map.values()] } as Partial<AppState>;
         });
       },
-      patch: (key, id, changes) => {
+      patch: (key, id, changes, opts) => {
         syncPatch(key as any, id, changes).catch(() => {});
         let prevSessions: Collections['sessions'] = [];
         let nextSessions: Collections['sessions'] = [];
         set((s) => {
           const nextList = (s[key] as { id: ID }[]).map((x) => (x.id === id ? { ...x, ...changes } : x));
-          if (key === 'assessments') {
+          if (key === 'assessments' && !opts?.skipReconcile) {
             const updated = { ...s, assessments: nextList as AppState['assessments'] };
             prevSessions = s.sessions;
             nextSessions = maybeReconcileSessions(updated);
@@ -197,7 +202,7 @@ export const useStore = create<AppState>()(
           }
           return { [key]: nextList } as Partial<AppState>;
         });
-        if (key === 'assessments' && prevSessions !== nextSessions) {
+        if (key === 'assessments' && !opts?.skipReconcile && prevSessions !== nextSessions) {
           syncSessionsDiff(prevSessions, nextSessions).catch(() => {});
         }
       },
