@@ -38,8 +38,8 @@ export default function SessionCard({ session, course, topic, assessment, onFocu
   return (
     <article
       className={cx(
-        'overflow-hidden rounded-xl border border-line bg-surface-2/60 p-3 transition',
-        session.done && 'opacity-60',
+        'overflow-hidden rounded-xl border border-line p-3 transition',
+        session.done ? 'border-dashed bg-surface' : 'bg-surface-2/60',
       )}
       style={{ borderLeftWidth: 4, borderLeftColor: color }}
     >

@@ -51,7 +51,7 @@ export default function AgendaView({ items, courseById, today, onEditClass, onDe
               const course = it.courseId ? courseById.get(it.courseId) : undefined;
               const Icon = KIND_META[it.kind].icon;
               return (
-                <li key={it.id} className={cx('flex gap-3 p-3.5', it.done && 'opacity-60')}>
+                <li key={it.id} className={cx('flex gap-3 p-3.5', it.done && 'bg-surface-2/45')}>
                   <div className="w-14 shrink-0 pt-0.5 text-xs tabular text-muted">{timeLabel(it)}</div>
                   <span className={cx('mt-1 h-8 w-1 shrink-0 rounded-full', itemDot(it, course))} />
                   <div className="min-w-0 flex-1">

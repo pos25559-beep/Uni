@@ -301,7 +301,7 @@ export function WeekDayPills({
                 : 'text-muted hover:bg-surface/70 hover:text-fg',
             )}
           >
-            <span className="text-xs font-semibold uppercase tracking-wide opacity-80">
+            <span className="text-xs font-semibold uppercase tracking-wide">
               {d.shortLabel}
             </span>
             <span className="font-mono text-sm font-bold tabular">{d.dayNumber}</span>

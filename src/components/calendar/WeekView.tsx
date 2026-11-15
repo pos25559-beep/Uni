@@ -148,7 +148,7 @@ export default function WeekView({ days, byDay, courseById, today, selected, onS
                   className={cx(
                     'inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-medium',
                     itemTone(it, course),
-                    it.done && 'opacity-50',
+                    it.done && 'line-through',
                   )}
                 >
                   <span className={cx('size-1.5 rounded-full', itemDot(it, course))} />
@@ -207,7 +207,7 @@ export default function WeekView({ days, byDay, courseById, today, selected, onS
                   className={cx(
                     'w-full rounded-2xl p-3 text-left transition active:scale-[0.99]',
                     itemTone(it, course),
-                    it.done && 'opacity-50',
+                    it.done && 'line-through',
                   )}
                 >
                   {content}
@@ -218,7 +218,7 @@ export default function WeekView({ days, byDay, courseById, today, selected, onS
                   className={cx(
                     'rounded-2xl p-3',
                     itemTone(it, course),
-                    it.done && 'opacity-50',
+                    it.done && 'line-through',
                   )}
                 >
                   {content}
@@ -272,7 +272,7 @@ export default function WeekView({ days, byDay, courseById, today, selected, onS
                     <span
                       key={it.id}
                       title={it.title}
-                      className={cx('truncate rounded px-1 py-0.5 text-xs leading-tight', itemTone(it, it.courseId ? courseById.get(it.courseId) : undefined), it.done && 'opacity-50')}
+                      className={cx('truncate rounded px-1 py-0.5 text-xs leading-tight', itemTone(it, it.courseId ? courseById.get(it.courseId) : undefined), it.done && 'line-through')}
                     >
                       {it.start ? `${it.start} ` : ''}{it.title}
                     </span>
@@ -321,7 +321,7 @@ export default function WeekView({ days, byDay, courseById, today, selected, onS
                     const cls = cx(
                       'absolute overflow-hidden rounded-lg px-1.5 py-1 text-left text-xs leading-tight transition',
                       itemTone(item, course),
-                      item.done && 'opacity-50',
+                      item.done && 'line-through',
                       isEditableClass && 'cursor-pointer hover:ring-2 hover:ring-accent/60',
                     );
                     const style = {

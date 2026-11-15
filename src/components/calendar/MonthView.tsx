@@ -45,14 +45,13 @@ export default function MonthView({ days, anchor, byDay, courseById, selected, t
               aria-label={`${format(day, 'd MMMM', { locale: pt })}, ${list.length} itens`}
               className={cx(
                 'flex min-h-14 min-w-0 flex-col gap-1 p-1 text-left transition hover:bg-surface-2 sm:min-h-28 sm:p-1.5',
-                isSel ? 'bg-accent-soft ring-2 ring-inset ring-accent/70' : 'bg-surface',
-                !inMonth && 'opacity-40',
+                isSel ? 'bg-accent-soft ring-2 ring-inset ring-accent/70' : inMonth ? 'bg-surface' : 'bg-surface-2/65',
               )}
             >
               <span
                 className={cx(
                   'grid size-6 shrink-0 place-items-center self-center rounded-full text-xs tabular sm:self-start',
-                  isToday ? 'bg-accent font-semibold text-accent-fg' : 'text-fg',
+                  isToday ? 'bg-accent font-semibold text-accent-fg' : inMonth ? 'text-fg' : 'text-muted',
                 )}
               >
                 {format(day, 'd')}
@@ -76,7 +75,7 @@ export default function MonthView({ days, anchor, byDay, courseById, selected, t
                       className={cx(
                         'flex min-w-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-xs leading-tight',
                         itemTone(it, course),
-                        it.done && 'opacity-50',
+                        it.done && 'line-through',
                       )}
                     >
                       {it.kind === 'avaliacao' && <Icon size={10} className="shrink-0" />}

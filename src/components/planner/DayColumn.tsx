@@ -36,9 +36,9 @@ export default function DayColumn({
   return (
     <div
       className={cx(
-        'flex flex-col rounded-2xl border bg-surface p-3',
+        'flex flex-col rounded-2xl border p-3',
+        isStudyDay ? 'bg-surface' : 'bg-surface-2/65',
         isToday ? 'border-accent ring-1 ring-accent' : 'border-line',
-        !isStudyDay && 'opacity-70',
       )}
     >
       <div className="space-y-1">

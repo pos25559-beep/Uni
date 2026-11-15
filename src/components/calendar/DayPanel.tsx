@@ -57,7 +57,7 @@ export default function DayPanel({ date, items, courseById, onNewEvent }: Props)
             return (
               <li
                 key={it.id}
-                className={cx('flex items-start gap-3 rounded-xl border border-line bg-surface-2/40 p-3', it.done && 'opacity-60')}
+                className={cx('flex items-start gap-3 rounded-xl border border-line p-3', it.done ? 'border-dashed bg-surface' : 'bg-surface-2/40')}
               >
                 <span className={cx('grid size-8 shrink-0 place-items-center rounded-lg', itemTone(it, course))}>
                   <Icon size={15} />

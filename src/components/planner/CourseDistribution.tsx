@@ -25,7 +25,7 @@ export default function CourseDistribution({ rows, courseById }: CourseDistribut
             <div className="mb-1.5 flex items-center justify-between gap-3">
               <CourseChip course={course} />
               <span className="text-xs text-muted tabular">
-                {fmtMinutes(r.done)} <span className="opacity-60">/ {fmtMinutes(r.planned)}</span>
+                {fmtMinutes(r.done)} / {fmtMinutes(r.planned)}
               </span>
             </div>
             <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-surface-2">
