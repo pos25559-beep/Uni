@@ -1,35 +1,61 @@
 # Unipedia
 
-Companheiro académico acolhedor e tátil para estudantes do Ensino Superior e Secundário em Portugal: organiza horário, plano de estudo diário, cadeiras, apontamentos, progresso e o **Uni**, o tutor com personalidade própria movido a Gemini.
+Companheiro académico acolhedor e tátil para estudantes do Ensino Superior e Secundário em Portugal: organiza horário, plano de estudo semanal, blocos de foco com escudo opcional, revisão espaçada com prática real nos apontamentos, progresso e o **Uni**, o tutor com personalidade própria movido a Gemini.
 
-React 19 · Vite · TypeScript · Tailwind v4 · Motion · Capacitor Android · Firebase Auth & Firestore · Zustand · Recharts.
+React 19 · Vite 8 · TypeScript · Tailwind CSS v4 · Motion · Capacitor 8 (Android) · Firebase Auth, Firestore & AI Logic · Zustand · Recharts · Vitest.
 
-## Correr localmente
+**App em produção:** https://campus-erp-84964.web.app
+
+---
+
+## Loop central de estudo
+
+1. **Planear (`Plano` & `Diário do Uni`)**: gera blocos semanais ajustados às datas de avaliação, disponibilidade real e foco declarado nos check-ins de *Aula*, *Dia*, *Semana* ou *Modo Teste*.
+2. **Focar sem distrações (`FocusTimer` + Escudo opcional)**: temporizador em anel com recuperação automática caso o ecrã recarregue, som ambiente (*chuva* / *ruído branco* Web Audio), Wake Lock, ecrã inteiro e, em Android nativo, modo *Não Incomodar* (`ACCESS_NOTIFICATION_POLICY`) e *App Pinning* opcionais.
+3. **Praticar matéria real (`ActivePracticeDeck` & SRS)**: no fim de cada bloco (ou diretamente via `Rever devidos` / botão `Praticar` em cada tópico), gera 3–5 cartões de revisão a partir dos PDFs, slides ou testes carregados + notas recentes do Diário (ou permite criar cartões offline `+ Novo cartão`).
+4. **Medir retenção (`Progresso`)**: calcula retenção estimada por tópico e por cadeira (decaimento SRS + acerto real em prática + sequência de *recall*), destaca tópicos frágeis acionáveis e mede a limpeza das sessões no Modo Foco.
+
+---
+
+## Scripts de desenvolvimento & qualidade
 
 ```bash
 npm install
-npm run dev
+npm run dev          # Servidor local em http://localhost:5173
 ```
 
-Abre em `http://localhost:5173`. Na primeira visita, a Unipedia apresenta o carrossel editorial de boas-vindas (`/bem-vindo`), seguido do ecrã de acesso (`/entrar`) e do onboarding em 4 passos para configurar o curso e o ritmo semanal.
+Portas automáticas de verificação (`npm run check` corre todas em sequência):
+
+```bash
+npm run check        # tsc -b --noEmit + oxlint + ui-guard --strict + vitest + vite build
+npm run test         # Testes unitários Vitest (planner, selectors, SRS, practiceEngine, focusShield, check-ins)
+npm run guard:ui     # Valida regras anti-slop e tipografia mínima (>= 12px) em src/
+npm run a11y:smoke   # Smoke Playwright + axe-core WCAG 2 AA + deteção de overflow em 8 rotas × 3 viewports
+npm run android:sync # Build web + npx cap sync android
+```
+
+---
 
 ## Ecrãs principais
 
 | Ecrã | Para quê |
 |---|---|
-| Bem-vindo (`/bem-vindo`) | Pré-login editorial em 4 slides com benefícios do ecossistema Google e experimentação dos visuais do Uni por área |
-| Entrar (`/entrar`) | Acesso por Email/Palavra-passe, Google opcional ou modo local no dispositivo, com o Uni interativo |
-| Hoje | Saudação com o Uni dinâmico, resumo do dia, mosaico de destaques pastel, caderno pautado de foco, bloco post-it de tarefas, agenda e postal de correio académico (`.eml` ou Gmail) |
-| Cadeiras | Pastas coloridas por disciplina, matéria por tópicos, notas, avisos e regras |
-| Plano | Blocos de estudo diários em tira semanal (`SEG`–`DOM`) com temporizador de foco |
-| Tutor | Chat em *streaming* e multimodal (texto, fotos e PDFs) com o **Uni Nativo** (Firebase AI Logic `gemini-4-hydrogen` / `gemini-2.5-flash` + App Check, 15 msgs + 3 cadernos/dia sem precisar de chave), 3 personalidades (`Amigo`, `Exigente`, `Anti-stress`) e **Caderno do Uni** com citações |
-| Materiais | Biblioteca local e atalhos para Drive, OneDrive, Gemini Notebook, PDFs e apontamentos offline |
-| Calendário | Aulas, avaliações e prazos |
-| Progresso | Horas por dia, sequência (*streak*) e prontidão para provas |
-| Definições | Conta (`/entrar`), tema (`Sistema / Claro / Escuro`), acessório e personalidade do Uni, Uni Nativo / Avançado (AI Studio opcional), Gemini Notebook e centro RGPD |
+| Bem-vindo (`/bem-vindo`) | Carrossel editorial com benefícios do ecossistema, pré-visualização de paletas e visuais do Uni |
+| Entrar (`/entrar`) | Acesso por Email/Palavra-passe, Google Sign-In opcional ou modo 100% local no dispositivo |
+| Hoje (`/`) | Saudação com o Uni e estado diário, pulso da semana, cartão **Foco de hoje**, bloco **Notas & Tarefas**, baralho de pastas das cadeiras, agenda, avisos académicos (`.eml` / Gmail) e check-ins do **Diário do Uni** |
+| Cadeiras (`/cadeiras`, `/cadeiras/:id`) | Pastas por disciplina com 5 separadores (*Visão & Regras*, *Matéria & Notas*, *Materiais*, *Horário*, *Tarefas*), etiqueta de retenção estimada por tópico e botão `Praticar` |
+| Plano (`/plano`) | Tira semanal (`SEG`–`DOM`), criador de plano personalizado, `FocusTimer` com Escudo Anti-distração, atalho `Rever devidos (N)` e check-in semanal |
+| Tutor (`/assistente`) | Chat em *streaming* multimodal (texto, imagens e PDFs) com `gemini-3.8-flash` (fallback `gemini-3.5-flash-lite` / `gemini-3.1-flash-lite`) via **Firebase AI Logic**, 3 personalidades e anexos colapsáveis |
+| Materiais (`/materiais`) | Biblioteca local e atalhos para Google Drive, OneDrive, NotebookLM, PDFs e apontamentos offline usados na prática ativa |
+| Calendário (`/calendario`) | Horário de aulas, eventos e avaliações sincronizáveis |
+| Progresso (`/progresso`) | Anel de progresso geral, retenção média, revisões devidas, coleção de Unies, gráficos de estudo/prontidão, **Retenção & Qualidade de Foco** e histórico do Diário do Uni |
+| Definições (`/definicoes`) | Perfil académico, paletas do caderno, notificações locais, integrações, chave Gemini opcional e centro RGPD (`/privacidade`, `/termos`, `/eliminar-conta`) |
 
-## Privacidade & Autenticação
+---
 
-- **Modo Local (por omissão)**: tudo fica guardado no dispositivo (`localStorage` / WebView Android), sem rastreadores publicitários nem dados fictícios de demonstração — incluindo acesso ao **Uni Nativo** dentro da quota diária gratuita (15 mensagens + 3 gerações de caderno/dia).
-- **Conta & Cloud Opcional (`/entrar`)**: fluxo principal por **Email e Palavra-passe** ou **Google Sign-In** no Firebase Auth + Cloud Firestore (`/users/{userId}` sob regras estritas em [firestore.rules](firestore.rules)). Ao iniciar sessão com conta Google, Drive, Calendário e Email são associados automaticamente sem fluxos repetidos; para testes offline de avisos é possível importar ficheiros `.eml` reais diretamente no cartão **Correio Académico**.
-- **Ativação do Uni Nativo no Firebase**: para chamadas reais em produção sem chave pessoal, ativar **Firebase AI Logic** (`GoogleAIBackend`), **Firebase App Check** e registar o Web App ID no projeto `campus-erp-84964`. Para uso ilimitado, os utilizadores podem colar opcionalmente uma chave própria do Google AI Studio em **Definições → Uni · Tutor IA → Avançado**.
+## Privacidade, Segurança & Firebase
+
+- **Modo Local (por omissão)**: os dados permanecem no dispositivo (`localStorage` / WebView Android), sem rastreadores publicitários nem analytics comportamental.
+- **Conta & Cloud Opcional (`/entrar`)**: sincronização em `/users/{uid}` no Cloud Firestore sob validação estrita em [firestore.rules](firestore.rules) (incluindo limites de campos para sessões de foco, cartões de prática e histórico do Diário).
+- **IA com consentimento explícito**: as chamadas ao Gemini só acontecem quando `aiConsent` está ativo — nativamente via **Firebase AI Logic** com **Firebase App Check** (com quota diária conservadora) ou usando uma chave pessoal opcional do Google AI Studio em **Definições → Uni · Tutor IA → Avançado**.
+- **Android Focus Shield (`FocusShieldPlugin`)**: opcional e inteiramente local; utiliza apenas APIs oficiais do Android (*Do Not Disturb* via `ACCESS_NOTIFICATION_POLICY` restaurado automaticamente ao terminar/fechar a app, e *Lock Task / App Pinning* do sistema), sem serviços de Acessibilidade nem VPN local.
