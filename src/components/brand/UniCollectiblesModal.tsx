@@ -28,6 +28,7 @@ export default function UniCollectiblesModal({ open, onClose }: Props) {
   const courses = useStore((s) => s.courses);
   const tasks = useStore((s) => s.tasks);
   const weeklyCheckIns = useStore((s) => s.weeklyCheckIns);
+  const studyLogs = useStore((s) => s.studyLogs);
   const academicProfile = useStore((s) => s.academicProfile);
   const activeSkin = useStore((s) => s.settings.uniSkin ?? 'classic');
   const activePet: UniPetId = useStore((s) => s.settings.uniPet ?? 'cat');
@@ -63,6 +64,7 @@ export default function UniCollectiblesModal({ open, onClose }: Props) {
     sessions,
     tasks,
     weeklyCheckIns,
+    studyLogs,
     today,
     dailyHugs,
   });

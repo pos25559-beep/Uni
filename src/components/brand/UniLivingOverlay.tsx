@@ -42,6 +42,7 @@ export default function UniLivingOverlay() {
   const courses = useStore((s) => s.courses);
   const tasks = useStore((s) => s.tasks);
   const weeklyCheckIns = useStore((s) => s.weeklyCheckIns);
+  const studyLogs = useStore((s) => s.studyLogs);
   const academicProfile = useStore((s) => s.academicProfile);
   const settings = useStore((s) => s.settings);
   const focusTimerOpen = useHubUiStore((s) => s.focusTimerOpen);
@@ -166,6 +167,7 @@ export default function UniLivingOverlay() {
     sessions,
     tasks,
     weeklyCheckIns,
+    studyLogs,
     today,
   });
   const pendingTodayCount = sessions.filter((s) => s.date === today && !s.done).length;

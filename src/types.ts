@@ -308,6 +308,20 @@ export interface NotificationPreferences {
   assessments: boolean;
   /** Avisos antes das aulas com indicação de sala. */
   classReminders: boolean;
+  /** Pergunta pós-aula do Uni (como foi a aula e que matéria deu). */
+  postClassCheckIn?: boolean;
+  /** Atraso em minutos após o fim da aula para perguntar como foi. */
+  postClassDelayMinutes?: 5 | 10 | 15;
+  /** Check-in do Uni no final do dia (como foi o dia e o estudo). */
+  eveningCheckIn?: boolean;
+  /** Hora (17–22) para o balanço de fim de dia. */
+  eveningHour?: number;
+  /** Balanço semanal do Uni ao domingo. */
+  sundayReview?: boolean;
+  /** Hora (15–21) para o balanço de domingo. */
+  sundayHour?: number;
+  /** Alinhamento Modo Teste (< 10 dias: até que matéria sai, o que já estudou, como se sente). */
+  examPrepCheckIn?: boolean;
   /** Minutos de antecedência para avisos de aula. */
   classBeforeMinutes: 15 | 30;
   /** Hora preferida (0–23) para o empurrão diário de streak/SRS. */
@@ -317,7 +331,33 @@ export interface NotificationPreferences {
   /** Fim das horas de silêncio em "HH:MM" (ex.: "08:30"). */
   quietEnd: string;
   /** Limite máximo de notificações por dia para evitar fadiga. */
-  maxDailyNudges: 1 | 2 | 3;
+  maxDailyNudges: 1 | 2 | 3 | 4 | 6;
+}
+
+export type StudyLogKind = 'class' | 'day' | 'week' | 'exam_prep';
+
+export interface StudyLogEntry {
+  id: ID;
+  kind: StudyLogKind;
+  /** yyyy-MM-dd */
+  date: string;
+  createdAt: string;
+  courseId?: ID;
+  classSlotId?: ID;
+  assessmentId?: ID;
+  /** Avaliação rápida: ex. 'clara' | 'mais_ou_menos' | 'dificil' | 'faltei' | 'produtivo' | 'cansado' | 'confiante' | 'ansioso'... */
+  feeling: string;
+  /** Energia ou confiança 1–5 declarada no momento */
+  rating?: 1 | 2 | 3 | 4 | 5;
+  /** Matéria dada na aula ou tópico principal */
+  topicTitle?: string;
+  /** IDs de tópicos alinhados (ex.: até que matéria sai no Modo Teste) */
+  topicIds?: ID[];
+  /** Resumo do que já estudou ou avançou */
+  studiedSummary?: string;
+  /** Dificuldades ou dúvidas declaradas */
+  difficulties?: string;
+  notes?: string;
 }
 
 export interface CompletedCourseRecord {

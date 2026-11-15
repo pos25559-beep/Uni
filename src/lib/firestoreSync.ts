@@ -25,6 +25,7 @@ import type {
   Course,
   ID,
   Settings,
+  StudyLogEntry,
   WeeklyCheckIn,
 } from '../types';
 
@@ -156,6 +157,31 @@ function sanitizeWeeklyCheckIn(checkIn: WeeklyCheckIn): Record<string, unknown> 
   });
 }
 
+function sanitizeStudyLog(log: StudyLogEntry): Record<string, unknown> {
+  return stripUndefined({
+    id: log.id.slice(0, 100),
+    kind: log.kind,
+    date: log.date.slice(0, 35),
+    createdAt: log.createdAt,
+    feeling: (log.feeling || 'normal').slice(0, 40),
+    ...(typeof log.rating === 'number'
+      ? { rating: Math.max(1, Math.min(5, Math.round(log.rating))) }
+      : {}),
+    ...(log.courseId ? { courseId: log.courseId.slice(0, 100) } : {}),
+    ...(log.classSlotId ? { classSlotId: log.classSlotId.slice(0, 100) } : {}),
+    ...(log.assessmentId ? { assessmentId: log.assessmentId.slice(0, 100) } : {}),
+    ...(log.topicTitle?.trim() ? { topicTitle: log.topicTitle.trim().slice(0, 250) } : {}),
+    ...(Array.isArray(log.topicIds) && log.topicIds.length > 0
+      ? { topicIds: log.topicIds.map((t) => String(t).slice(0, 100)).slice(0, 100) }
+      : {}),
+    ...(log.studiedSummary?.trim()
+      ? { studiedSummary: log.studiedSummary.trim().slice(0, 1000) }
+      : {}),
+    ...(log.difficulties?.trim() ? { difficulties: log.difficulties.trim().slice(0, 1000) } : {}),
+    ...(log.notes?.trim() ? { notes: log.notes.trim().slice(0, 4000) } : {}),
+  });
+}
+
 /**
  * Inicia a escuta em tempo real de todas as coleções do utilizador autenticado no Firestore.
  * Suporta múltiplos utilizadores com isolamento por `uid` (`/users/{uid}`).
@@ -254,6 +280,22 @@ export function initFirestoreSync() {
       }
     });
     activeUnsubscribers.push(unsubCheckIns);
+
+    // 3b. Escuta do Diário / Logs do Uni (`/users/{uid}/studyLogs`)
+    const studyLogsRef = collection(db, 'users', uid, 'studyLogs');
+    const unsubStudyLogs = onSnapshot(studyLogsRef, (snapshot) => {
+      const items = snapshot.docs
+        .map((d) => ({ id: d.id, ...(d.data() as Omit<StudyLogEntry, 'id'>) }))
+        .sort((a, b) => (b.createdAt || b.date || '').localeCompare(a.createdAt || a.date || ''));
+
+      isApplyingRemote = true;
+      try {
+        useStore.setState({ studyLogs: items });
+      } finally {
+        isApplyingRemote = false;
+      }
+    });
+    activeUnsubscribers.push(unsubStudyLogs);
 
     // 4. Escuta de cada coleção principal do aluno
     for (const colKey of COLLECTIONS) {
@@ -414,6 +456,21 @@ export async function syncWeeklyCheckIn(checkIn: WeeklyCheckIn) {
   await setDoc(ref, sanitizeWeeklyCheckIn(checkIn), { merge: true });
 }
 
+/** Sincroniza um registo do Diário do Uni (`/users/{uid}/studyLogs`). */
+export async function syncStudyLog(log: StudyLogEntry) {
+  const user = auth.currentUser;
+  if (!user || isApplyingRemote) return;
+  const ref = doc(db, 'users', user.uid, 'studyLogs', log.id);
+  await setDoc(ref, sanitizeStudyLog(log), { merge: true });
+}
+
+/** Remove um registo do Diário do Uni no Firestore. */
+export async function deleteStudyLogFromCloud(logId: ID) {
+  const user = auth.currentUser;
+  if (!user || isApplyingRemote) return;
+  await deleteDoc(doc(db, 'users', user.uid, 'studyLogs', logId));
+}
+
 /** Substitui/sincroniza em lote um conjunto de cadeiras geradas pelo onboarding curricular. */
 export async function syncCourseBatch(courses: Course[]) {
   const user = auth.currentUser;
@@ -459,6 +516,7 @@ export async function deleteCurrentAccountAndCloudData(): Promise<void> {
       ...COLLECTIONS,
       'conversations',
       'weeklyCheckIns',
+      'studyLogs',
       'profile',
     ] as const;
 
@@ -559,6 +617,13 @@ export async function migrateLocalDataToCloud(): Promise<void> {
     batch.set(
       doc(db, 'users', user.uid, 'weeklyCheckIns', checkIn.id),
       sanitizeWeeklyCheckIn(checkIn),
+      { merge: true },
+    );
+  }
+  for (const log of state.studyLogs) {
+    batch.set(
+      doc(db, 'users', user.uid, 'studyLogs', log.id),
+      sanitizeStudyLog(log),
       { merge: true },
     );
   }

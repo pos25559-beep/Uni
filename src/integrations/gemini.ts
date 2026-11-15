@@ -768,7 +768,7 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 
 /** Resumo em texto simples do estado da app, enviado ao modelo. */
 export function buildStudyContext(state: AppState): string {
-  const { courses, assessments, sessions, tasks, settings, academicProfile, weeklyCheckIns } = state;
+  const { courses, assessments, sessions, tasks, settings, academicProfile, weeklyCheckIns, studyLogs } = state;
   const today = todayStr();
   const lines: string[] = [];
 
@@ -873,7 +873,17 @@ export function buildStudyContext(state: AppState): string {
     const days = daysUntil(a.date);
     const when = days === 0 ? 'hoje' : days === 1 ? 'amanhã' : `em ${days} dias (${format(parseISO(a.date), 'd MMM', { locale: pt })})`;
     const ready = Math.round(readiness(a, course) * 100);
-    lines.push(`- ${course?.shortName ?? 'Geral'} – ${a.title} (${a.kind}) ${when}; peso ${a.weight}%; preparação ${ready}%.`);
+    const coveredTitles =
+      course && a.topicIds.length > 0
+        ? course.topics
+            .filter((t) => a.topicIds.includes(t.id))
+            .map((t) => t.title)
+        : [];
+    const scopeInfo =
+      coveredTitles.length > 0
+        ? `; matéria que sai: ${coveredTitles.join(', ')}`
+        : '';
+    lines.push(`- ${course?.shortName ?? 'Geral'} – ${a.title} (${a.kind}) ${when}; peso ${a.weight}%; preparação ${ready}%${scopeInfo}.`);
   }
 
   if (weeklyCheckIns && weeklyCheckIns.length > 0) {
@@ -891,6 +901,33 @@ export function buildStudyContext(state: AppState): string {
     }
     if (latest.notes.trim()) {
       lines.push(`- Notas do aluno: ${latest.notes.trim()}`);
+    }
+  }
+
+  if (studyLogs && studyLogs.length > 0) {
+    const kindTag = {
+      class: 'Pós-aula',
+      day: 'Fim do dia',
+      week: 'Domingo',
+      exam_prep: 'Modo Teste',
+    } as const;
+    lines.push('', 'DIÁRIO RECENTE (AULAS, ESTUDO DIÁRIO & MODO TESTE):');
+    for (const log of studyLogs.slice(0, 8)) {
+      const course = log.courseId ? courses.find((c) => c.id === log.courseId) : undefined;
+      const resolvedTopics =
+        course && log.topicIds && log.topicIds.length > 0
+          ? course.topics.filter((t) => log.topicIds!.includes(t.id)).map((t) => t.title)
+          : [];
+      const parts = [
+        `[${kindTag[log.kind]} · ${log.date}${course ? ` · ${course.shortName}` : ''}]`,
+        `estado=${log.feeling}${log.rating ? ` (${log.rating}/5)` : ''}`,
+      ];
+      if (log.topicTitle) parts.push(`matéria dada="${log.topicTitle}"`);
+      if (resolvedTopics.length > 0) parts.push(`tópicos marcados=[${resolvedTopics.join(', ')}]`);
+      if (log.studiedSummary) parts.push(`já estudou="${log.studiedSummary}"`);
+      if (log.difficulties) parts.push(`dificuldades="${log.difficulties}"`);
+      if (log.notes) parts.push(`nota="${log.notes}"`);
+      lines.push(`- ${parts.join(' · ')}`);
     }
   }
 

@@ -1,6 +1,6 @@
 import { isNonAcademicDocument, isPreEntryDriveFile, matchesCourse } from './courseAliases';
 import { defaultSettings, emptyCollections } from './seed';
-import type { AcademicProfile, Collections, Course, Material, WeeklyCheckIn } from '../types';
+import type { AcademicProfile, Collections, Course, Material, StudyLogEntry, WeeklyCheckIn } from '../types';
 
 const LEGACY_PERSONAL_IDS = [
   '1v3KSXUxC6E62ekhx4zawYbcF3YEHre1B',
@@ -93,6 +93,7 @@ export function rehydrateStoreState(
     academicProfile?: AcademicProfile;
     settings?: { userName?: string; semesterName?: string };
     weeklyCheckIns?: WeeklyCheckIn[];
+    studyLogs?: StudyLogEntry[];
   } | undefined,
 ): void {
   if (!state) return;
@@ -102,6 +103,9 @@ export function rehydrateStoreState(
   }
   if (!Array.isArray(state.weeklyCheckIns)) {
     state.weeklyCheckIns = [];
+  }
+  if (!Array.isArray(state.studyLogs)) {
+    state.studyLogs = [];
   }
 
   const courses = Array.isArray(state.courses) ? state.courses : [];
@@ -140,6 +144,7 @@ export function migrateStoreState(persistedState: unknown, version: number) {
       ...emptyCollections(),
       academicProfile: emptyAcademicProfile(),
       weeklyCheckIns: [],
+      studyLogs: [],
     };
   }
 

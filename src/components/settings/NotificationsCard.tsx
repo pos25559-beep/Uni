@@ -1,4 +1,4 @@
-import { Bell, BellOff, Flame, GraduationCap, Clock, Sparkles } from 'lucide-react';
+import { Bell, BellOff, BookOpenCheck, CalendarHeart, Flame, GraduationCap, Clock, Moon, Sparkles } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Switch, showToast } from '../ui';
 import {
@@ -23,6 +23,8 @@ export default function NotificationsCard({ hideHeader = false }: { hideHeader?:
   const assessments = useStore((s) => s.assessments);
   const classes = useStore((s) => s.classes);
   const sessions = useStore((s) => s.sessions);
+  const studyLogs = useStore((s) => s.studyLogs);
+  const weeklyCheckIns = useStore((s) => s.weeklyCheckIns);
   const updateSettings = useStore((s) => s.updateSettings);
 
   const prefs = useMemo(
@@ -43,8 +45,8 @@ export default function NotificationsCard({ hideHeader = false }: { hideHeader?:
   }, []);
 
   const plannerInput = useMemo(
-    () => ({ courses, assessments, classes, sessions, settings }),
-    [courses, assessments, classes, sessions, settings],
+    () => ({ courses, assessments, classes, sessions, studyLogs, weeklyCheckIns, settings }),
+    [courses, assessments, classes, sessions, studyLogs, weeklyCheckIns, settings],
   );
 
   const scheduledPreview = useMemo(() => planSmartNotifications(plannerInput), [plannerInput]);
@@ -190,6 +192,54 @@ export default function NotificationsCard({ hideHeader = false }: { hideHeader?:
               label="Avisos antes das aulas"
             />
           </label>
+
+          <label className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3.5 py-2.5">
+            <span className="flex items-center gap-2.5 text-sm font-medium text-fg">
+              <BookOpenCheck size={16} className="text-forest" />
+              <span>Pergunta pós-aula</span>
+            </span>
+            <Switch
+              checked={prefs.postClassCheckIn ?? true}
+              onCheckedChange={(v) => patchPrefs({ postClassCheckIn: v })}
+              label="Pergunta pós-aula sobre a matéria dada"
+            />
+          </label>
+
+          <label className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3.5 py-2.5">
+            <span className="flex items-center gap-2.5 text-sm font-medium text-fg">
+              <Moon size={16} className="text-coral" />
+              <span>Fim do dia (diário)</span>
+            </span>
+            <Switch
+              checked={prefs.eveningCheckIn ?? true}
+              onCheckedChange={(v) => patchPrefs({ eveningCheckIn: v })}
+              label="Balanço do final do dia"
+            />
+          </label>
+
+          <label className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3.5 py-2.5">
+            <span className="flex items-center gap-2.5 text-sm font-medium text-fg">
+              <CalendarHeart size={16} className="text-cobalt" />
+              <span>Balanço de domingo</span>
+            </span>
+            <Switch
+              checked={prefs.sundayReview ?? true}
+              onCheckedChange={(v) => patchPrefs({ sundayReview: v })}
+              label="Balanço semanal ao domingo"
+            />
+          </label>
+
+          <label className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3.5 py-2.5">
+            <span className="flex items-center gap-2.5 text-sm font-medium text-fg">
+              <GraduationCap size={16} className="text-coral" />
+              <span>Alinhamento Modo Teste</span>
+            </span>
+            <Switch
+              checked={prefs.examPrepCheckIn ?? true}
+              onCheckedChange={(v) => patchPrefs({ examPrepCheckIn: v })}
+              label="Perguntar até que matéria sai em Modo Teste"
+            />
+          </label>
         </div>
 
         {/* Cadência e silêncio */}
@@ -230,12 +280,48 @@ export default function NotificationsCard({ hideHeader = false }: { hideHeader?:
               value={prefs.maxDailyNudges}
               onChange={(e) => {
                 const v = Number(e.target.value);
-                patchPrefs({ maxDailyNudges: v === 1 ? 1 : v === 3 ? 3 : 2 });
+                patchPrefs({
+                  maxDailyNudges:
+                    v === 1 || v === 2 || v === 3 || v === 4 || v === 6 ? v : 4,
+                });
               }}
             >
               <option value={1}>1 aviso/dia</option>
               <option value={2}>2 avisos/dia</option>
               <option value={3}>3 avisos/dia</option>
+              <option value={4}>4 avisos/dia</option>
+              <option value={6}>6 avisos/dia</option>
+            </select>
+          </label>
+
+          <label className="space-y-1 text-xs">
+            <span className="font-semibold text-muted">Após a aula</span>
+            <select
+              className="w-full rounded-xl border border-line bg-surface px-2.5 py-2 text-sm text-fg"
+              value={prefs.postClassDelayMinutes ?? 10}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                patchPrefs({ postClassDelayMinutes: v === 5 ? 5 : v === 15 ? 15 : 10 });
+              }}
+            >
+              <option value={5}>5 min depois</option>
+              <option value={10}>10 min depois</option>
+              <option value={15}>15 min depois</option>
+            </select>
+          </label>
+
+          <label className="space-y-1 text-xs">
+            <span className="font-semibold text-muted">Hora fim do dia</span>
+            <select
+              className="w-full rounded-xl border border-line bg-surface px-2.5 py-2 text-sm text-fg"
+              value={prefs.eveningHour ?? 20}
+              onChange={(e) => patchPrefs({ eveningHour: Number(e.target.value) })}
+            >
+              {[18, 19, 20, 21, 22].map((h) => (
+                <option key={h} value={h}>
+                  {String(h).padStart(2, '0')}:30
+                </option>
+              ))}
             </select>
           </label>
 

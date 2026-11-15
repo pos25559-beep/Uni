@@ -20,13 +20,14 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
-import WeeklyTutorModal from '../components/assistant/WeeklyTutorModal';
 import UniCollectiblesModal from '../components/brand/UniCollectiblesModal';
 import { UniBuddy, UniPetBuddy } from '../components/brand/UnipediaMarks';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import AcademicGmailWidget from '../components/home/AcademicGmailWidget';
 import { getUniCollectibleStates, readCollectibleTelemetry } from '../lib/uniCollectibles';
+import { openUniCheckIn } from '../lib/uniCheckInBus';
 import { pickActiveInAppNudge } from '../lib/uniNotifications';
+import type { StudyLogKind } from '../types';
 import {
   AgendaRibbonCard,
   HighlightShapesGrid,
@@ -137,6 +138,7 @@ export default function Dashboard() {
   const settings = useStore((s) => s.settings);
   const academicProfile = useStore((s) => s.academicProfile);
   const weeklyCheckIns = useStore((s) => s.weeklyCheckIns);
+  const studyLogs = useStore((s) => s.studyLogs);
   const patch = useStore((s) => s.patch);
   const upsert = useStore((s) => s.upsert);
   const updateSettings = useStore((s) => s.updateSettings);
@@ -155,7 +157,6 @@ export default function Dashboard() {
 
   const [scope, setScope] = useState<'today' | 'week'>('today');
   const [draft, setDraft] = useState('');
-  const [tutorOpen, setTutorOpen] = useState(false);
   const [uniBubbleOpen, setUniBubbleOpen] = useState(false);
   const [collectiblesOpen, setCollectiblesOpen] = useState(false);
   const [undoSession, setUndoSession] = useState<StudySession | null>(null);
@@ -243,12 +244,31 @@ export default function Dashboard() {
         assessments,
         classes,
         sessions,
+        studyLogs,
+        weeklyCheckIns,
         settings,
         now,
       }),
-    [courses, assessments, classes, sessions, settings, now],
+    [courses, assessments, classes, sessions, studyLogs, weeklyCheckIns, settings, now],
   );
   const visibleNudge = inAppNudge && inAppNudge.key !== dismissedNudgeKey ? inAppNudge : null;
+
+  const handleOpenNudgeRoute = (route: string) => {
+    if (route.startsWith('/?uniLog=')) {
+      const qs = new URLSearchParams(route.slice(2));
+      const logKind = qs.get('uniLog');
+      openUniCheckIn({
+        kind: (logKind === 'class' || logKind === 'day' || logKind === 'week' || logKind === 'exam_prep'
+          ? logKind
+          : 'day') as StudyLogKind,
+        courseId: qs.get('courseId') || undefined,
+        classSlotId: qs.get('classSlotId') || undefined,
+        assessmentId: qs.get('assessmentId') || undefined,
+      });
+      return;
+    }
+    navigate(route);
+  };
 
   const applySessionToggle = (s: StudySession, becomingDone: boolean) => {
     void hapticTap();
@@ -401,9 +421,9 @@ export default function Dashboard() {
             <Button
               variant="secondary"
               iconOnly
-              onClick={() => setTutorOpen(true)}
-              aria-label="Abrir check-in com o Uni"
-              title="Check-in semanal"
+              onClick={() => openUniCheckIn({ kind: 'day' })}
+              aria-label="Abrir diário e check-in com o Uni"
+              title="Diário & Check-in do Uni"
             >
               <MessageSquare size={18} />
             </Button>
@@ -446,7 +466,7 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="flex items-center justify-end gap-2">
-            <Button size="sm" variant="primary" onClick={() => navigate(visibleNudge.route)}>
+            <Button size="sm" variant="primary" onClick={() => handleOpenNudgeRoute(visibleNudge.route)}>
               {visibleNudge.ctaLabel}
             </Button>
             <button
@@ -929,7 +949,6 @@ export default function Dashboard() {
       )}
       </StaggerContainer>
 
-      <WeeklyTutorModal open={tutorOpen} onClose={() => setTutorOpen(false)} />
       <UniCollectiblesModal open={collectiblesOpen} onClose={() => setCollectiblesOpen(false)} />
 
       <Modal

@@ -19,10 +19,13 @@ import { auth, onAuthStateChanged, type User } from '../lib/firebase';
 import { hapticTap, syncNativeTheme } from '../lib/nativeBridge';
 import { initNotificationListeners, syncScheduledUniNotifications } from '../lib/notificationBridge';
 import { getUniCollectibleStates, readCollectibleTelemetry } from '../lib/uniCollectibles';
+import { UNI_CHECKIN_EVENT, type UniCheckInRequest } from '../lib/uniCheckInBus';
 import { googleService } from '../services/googleService';
 import { useHubUiStore } from '../store/useHubUiStore';
 import { useStore } from '../store/useStore';
+import type { StudyLogKind } from '../types';
 import AuthStatus from './auth/AuthStatus';
+import UniCheckInModal from './assistant/UniCheckInModal';
 import UniCollectiblesModal from './brand/UniCollectiblesModal';
 import UniLivingOverlay from './brand/UniLivingOverlay';
 import { UnipediaLogoMark } from './brand/UnipediaMarks';
@@ -78,6 +81,7 @@ export default function AppShell() {
   const courses = useStore((s) => s.courses);
   const fullSettings = useStore((s) => s.settings);
   const weeklyCheckIns = useStore((s) => s.weeklyCheckIns);
+  const studyLogs = useStore((s) => s.studyLogs);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -108,6 +112,48 @@ export default function AppShell() {
     !isBypassRoute && !needsLoginGate && !academicProfile?.onboardingCompleted;
 
   const isMoreRouteActive = mobileMoreRoutes.some((r) => location.pathname.startsWith(r.to));
+  const [checkInModal, setCheckInModal] = useState<(UniCheckInRequest & { open: boolean })>({
+    open: false,
+    kind: 'day',
+  });
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const logKind = params.get('uniLog');
+    if (logKind === 'class' || logKind === 'day' || logKind === 'week' || logKind === 'exam_prep') {
+      setCheckInModal({
+        open: true,
+        kind: logKind as StudyLogKind,
+        courseId: params.get('courseId') || undefined,
+        classSlotId: params.get('classSlotId') || undefined,
+        assessmentId: params.get('assessmentId') || undefined,
+      });
+      params.delete('uniLog');
+      params.delete('courseId');
+      params.delete('classSlotId');
+      params.delete('assessmentId');
+      const nextSearch = params.toString();
+      navigate(
+        { pathname: location.pathname, search: nextSearch ? `?${nextSearch}` : '' },
+        { replace: true },
+      );
+    }
+  }, [location.pathname, location.search, navigate]);
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<UniCheckInRequest>).detail ?? {};
+      setCheckInModal({
+        open: true,
+        kind: detail.kind ?? 'day',
+        courseId: detail.courseId,
+        classSlotId: detail.classSlotId,
+        assessmentId: detail.assessmentId,
+      });
+    };
+    window.addEventListener(UNI_CHECKIN_EVENT, handler);
+    return () => window.removeEventListener(UNI_CHECKIN_EVENT, handler);
+  }, []);
 
   const collectibleCounts = useMemo(() => {
     const items = getUniCollectibleStates(
@@ -193,11 +239,13 @@ export default function AppShell() {
         assessments,
         classes,
         sessions,
+        studyLogs,
+        weeklyCheckIns,
         settings: fullSettings,
       });
     }, 450);
     return () => window.clearTimeout(timer);
-  }, [courses, assessments, classes, sessions, fullSettings]);
+  }, [courses, assessments, classes, sessions, studyLogs, weeklyCheckIns, fullSettings]);
 
   if (!isBypassRoute && !guestMode && !authReady) {
     return (
@@ -557,6 +605,16 @@ export default function AppShell() {
       <UniCollectiblesModal
         open={collectiblesOpen}
         onClose={() => setCollectiblesOpen(false)}
+      />
+
+      {/* Diário & Check-in Guiado do Uni (Pós-aula, Fim do dia, Domingo, Modo Teste) */}
+      <UniCheckInModal
+        open={checkInModal.open}
+        onClose={() => setCheckInModal((prev) => ({ ...prev, open: false }))}
+        initialKind={checkInModal.kind}
+        initialCourseId={checkInModal.courseId}
+        initialClassSlotId={checkInModal.classSlotId}
+        initialAssessmentId={checkInModal.assessmentId}
       />
 
       {/* Companheiros discretos apenas nas abas principais */}

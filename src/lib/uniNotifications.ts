@@ -14,11 +14,21 @@ import type {
   Course,
   NotificationPreferences,
   Settings,
+  StudyLogEntry,
   StudySession,
   Topic,
+  WeeklyCheckIn,
 } from '../types';
 
-export type UniNotificationKind = 'streak' | 'srs' | 'assessment' | 'class';
+export type UniNotificationKind =
+  | 'streak'
+  | 'srs'
+  | 'assessment'
+  | 'class'
+  | 'post_class'
+  | 'evening'
+  | 'sunday'
+  | 'exam_prep';
 
 export interface ScheduledUniNotification {
   id: number;
@@ -45,6 +55,8 @@ export interface NotificationPlannerInput {
   assessments: Assessment[];
   classes: ClassSlot[];
   sessions: StudySession[];
+  studyLogs?: StudyLogEntry[];
+  weeklyCheckIns?: WeeklyCheckIn[];
   settings: Partial<Settings>;
   now?: Date;
   horizonHours?: number;
@@ -56,22 +68,50 @@ export const DEFAULT_NOTIFICATION_PREFS: NotificationPreferences = {
   srsDue: true,
   assessments: true,
   classReminders: true,
+  postClassCheckIn: true,
+  postClassDelayMinutes: 10,
+  eveningCheckIn: true,
+  eveningHour: 20,
+  sundayReview: true,
+  sundayHour: 18,
+  examPrepCheckIn: true,
   classBeforeMinutes: 15,
   preferredHour: 19,
   quietStart: '22:30',
   quietEnd: '08:30',
-  maxDailyNudges: 2,
+  maxDailyNudges: 4,
 };
 
 export function resolveNotificationPrefs(
   prefs?: Partial<NotificationPreferences>,
 ): NotificationPreferences {
+  const maxRaw = prefs?.maxDailyNudges;
+  const maxDailyNudges: NotificationPreferences['maxDailyNudges'] =
+    maxRaw === 1 || maxRaw === 2 || maxRaw === 3 || maxRaw === 4 || maxRaw === 6
+      ? maxRaw
+      : DEFAULT_NOTIFICATION_PREFS.maxDailyNudges;
+  const delayRaw = prefs?.postClassDelayMinutes;
+  const postClassDelayMinutes: 5 | 10 | 15 =
+    delayRaw === 5 || delayRaw === 15 ? delayRaw : 10;
+
   return {
     ...DEFAULT_NOTIFICATION_PREFS,
     ...(prefs ?? {}),
+    postClassCheckIn: prefs?.postClassCheckIn ?? DEFAULT_NOTIFICATION_PREFS.postClassCheckIn,
+    postClassDelayMinutes,
+    eveningCheckIn: prefs?.eveningCheckIn ?? DEFAULT_NOTIFICATION_PREFS.eveningCheckIn,
+    eveningHour:
+      typeof prefs?.eveningHour === 'number' && Number.isFinite(prefs.eveningHour)
+        ? Math.max(17, Math.min(22, Math.round(prefs.eveningHour)))
+        : DEFAULT_NOTIFICATION_PREFS.eveningHour,
+    sundayReview: prefs?.sundayReview ?? DEFAULT_NOTIFICATION_PREFS.sundayReview,
+    sundayHour:
+      typeof prefs?.sundayHour === 'number' && Number.isFinite(prefs.sundayHour)
+        ? Math.max(15, Math.min(21, Math.round(prefs.sundayHour)))
+        : DEFAULT_NOTIFICATION_PREFS.sundayHour,
+    examPrepCheckIn: prefs?.examPrepCheckIn ?? DEFAULT_NOTIFICATION_PREFS.examPrepCheckIn,
     classBeforeMinutes: prefs?.classBeforeMinutes === 30 ? 30 : 15,
-    maxDailyNudges:
-      prefs?.maxDailyNudges === 1 || prefs?.maxDailyNudges === 3 ? prefs.maxDailyNudges : 2,
+    maxDailyNudges,
     preferredHour:
       typeof prefs?.preferredHour === 'number' && Number.isFinite(prefs.preferredHour)
         ? Math.max(7, Math.min(22, Math.round(prefs.preferredHour)))
@@ -99,6 +139,12 @@ export function parseTimeMinutes(hhmm: string, fallbackMinutes = 0): number {
   const m = Number(match[2]);
   if (h < 0 || h > 23 || m < 0 || m > 59) return fallbackMinutes;
   return h * 60 + m;
+}
+
+function calendarDaysUntilDate(examAt: Date, now: Date): number {
+  const startExam = new Date(examAt.getFullYear(), examAt.getMonth(), examAt.getDate()).getTime();
+  const startNow = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  return Math.round((startExam - startNow) / (24 * 3600 * 1000));
 }
 
 function parseAssessmentDateTime(iso: string): Date | null {
@@ -265,6 +311,115 @@ function formatClassCopy(
     title: `${courseName} começa em ${minsBefore} min`,
     body: `${c.type} às ${c.start}${room}.`,
   };
+}
+
+function formatPostClassCopy(
+  c: ClassSlot,
+  courseName: string,
+  persona: Persona,
+  tone: AppTone,
+): { title: string; body: string } {
+  if (tone === 'serio') {
+    return {
+      title: `Registo pós-aula · ${courseName}`,
+      body: `Como decorreu ${c.type} (${c.end}) e que matéria foi abordada?`,
+    };
+  }
+  if (persona === 'exigente') {
+    return {
+      title: `Fim de ${c.type} de ${courseName}: o que ficou dado?`,
+      body: 'Anota em 10s a matéria dada e eventuais dúvidas para alinhar o plano.',
+    };
+  }
+  return {
+    title: `Como foi a aula de ${courseName}?`,
+    body: `Terminou ${c.type} às ${c.end}. Conta ao Uni que matéria deu hoje!`,
+  };
+}
+
+function formatEveningCopy(persona: Persona, tone: AppTone): { title: string; body: string } {
+  if (tone === 'serio') {
+    return {
+      title: 'Balanço diário de estudo',
+      body: 'Regista como correu o dia para calibrar o plano de amanhã.',
+    };
+  }
+  if (persona === 'calmo') {
+    return {
+      title: 'Como foi o teu dia hoje?',
+      body: '15 segundos com o Uni para fechar o dia leve e ajustar amanhã.',
+    };
+  }
+  return {
+    title: 'Como correu o dia e o estudo hoje?',
+    body: 'Regista no Diário do Uni, ganha energia no Ninho e alinha amanhã.',
+  };
+}
+
+function formatSundayCopy(tone: AppTone): { title: string; body: string } {
+  if (tone === 'serio') {
+    return {
+      title: 'Revisão semanal de domingo',
+      body: 'Revê matéria compreendida, dificuldades e prioridades da próxima semana.',
+    };
+  }
+  return {
+    title: 'Balanço de domingo com o Uni',
+    body: 'Como foi a semana? Alinha o que ficou pendente antes de começar segunda.',
+  };
+}
+
+function formatExamPrepCopy(
+  a: Assessment,
+  courseName: string,
+  daysLeft: number,
+  tone: AppTone,
+): { title: string; body: string } {
+  const when = daysLeft === 0 ? 'hoje' : daysLeft === 1 ? 'amanhã' : `em ${daysLeft}d`;
+  if (tone === 'serio') {
+    return {
+      title: `Modo Teste (${courseName} · ${when})`,
+      body: `Confirma até que matéria sai em "${a.title}", o que já estudaste e como te sentes.`,
+    };
+  }
+  return {
+    title: `Modo Teste: até que matéria sai em ${courseName}?`,
+    body: `${a.title} (${when}) — diz ao Uni o que já estudaste e como te sentes.`,
+  };
+}
+
+function startOfWeekMondayYmd(d: Date): string {
+  const copy = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const day = copy.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  copy.setDate(copy.getDate() + diff);
+  return toLocalYmd(copy);
+}
+
+function hasLoggedPostClass(logs: StudyLogEntry[], classSlotId: string, ymd: string): boolean {
+  return logs.some(
+    (l) => l.kind === 'class' && l.date === ymd && l.classSlotId === classSlotId,
+  );
+}
+
+function hasLoggedDay(logs: StudyLogEntry[], ymd: string): boolean {
+  return logs.some((l) => l.kind === 'day' && l.date === ymd);
+}
+
+function hasLoggedWeek(logs: StudyLogEntry[], weeklyCheckIns: WeeklyCheckIn[], refDate: Date): boolean {
+  const weekKey = startOfWeekMondayYmd(refDate);
+  if (weeklyCheckIns.some((w) => w.weekOf >= weekKey)) return true;
+  return logs.some((l) => l.kind === 'week' && l.date >= weekKey);
+}
+
+function hasRecentExamPrep(logs: StudyLogEntry[], assessmentId: string, now: Date): boolean {
+  const cutoffMs = now.getTime() - 48 * 3600 * 1000;
+  return logs.some(
+    (l) =>
+      l.kind === 'exam_prep' &&
+      l.assessmentId === assessmentId &&
+      new Date(l.createdAt).getTime() >= cutoffMs,
+  );
 }
 
 interface CandidateNotification {
@@ -448,13 +603,170 @@ export function planSmartNotifications(input: NotificationPlannerInput): Schedul
         candidates.push({
           key: `class-${c.id}-${ymd}`,
           kind: 'class',
-          priority: 80,
+          priority: 86,
           title: copy.title,
           body: copy.body,
           rawFireAt: fireAt,
           latestValidAt: classStart,
           route: '/calendario',
           courseId: c.courseId,
+        });
+      }
+    }
+  }
+
+  const logs = input.studyLogs ?? [];
+  const checkIns = input.weeklyCheckIns ?? [];
+
+  // 5) Notificação pós-aula: como foi a aula e que matéria deu
+  if (prefs.postClassCheckIn) {
+    const delayMins = prefs.postClassDelayMinutes ?? 10;
+    const dayOffsets = [0, 1, 2];
+    for (const offset of dayOffsets) {
+      const dayDate = addDaysLocal(now, offset);
+      const weekday = dayDate.getDay();
+      const ymd = toLocalYmd(dayDate);
+
+      for (const c of input.classes) {
+        if (c.weekday !== weekday) continue;
+        if (offset === 0 && hasLoggedPostClass(logs, c.id, ymd)) continue;
+        const endMins = parseTimeMinutes(c.end, -1);
+        if (endMins < 0) continue;
+
+        const classEnd = new Date(
+          dayDate.getFullYear(),
+          dayDate.getMonth(),
+          dayDate.getDate(),
+          Math.floor(endMins / 60),
+          endMins % 60,
+          0,
+          0,
+        );
+        const fireAt = new Date(classEnd.getTime() + delayMins * 60 * 1000);
+        if (fireAt.getTime() <= now.getTime() + 60 * 1000 || fireAt.getTime() > horizonEnd.getTime()) {
+          continue;
+        }
+
+        const course = courseMap.get(c.courseId);
+        const courseName = course?.code || course?.shortName || course?.name || 'Aula';
+        const copy = formatPostClassCopy(c, courseName, persona, tone);
+
+        candidates.push({
+          key: `post-class-${c.id}-${ymd}`,
+          kind: 'post_class',
+          priority: 83,
+          title: copy.title,
+          body: copy.body,
+          rawFireAt: fireAt,
+          route: `/?uniLog=class&courseId=${encodeURIComponent(c.courseId)}&classSlotId=${encodeURIComponent(c.id)}`,
+          courseId: c.courseId,
+        });
+      }
+    }
+  }
+
+  // 6) Balanço do final do dia (como foi o dia e o estudo)
+  if (prefs.eveningCheckIn) {
+    const eveningHour = prefs.eveningHour ?? 20;
+    for (const offset of [0, 1]) {
+      const dayDate = addDaysLocal(now, offset);
+      const ymd = toLocalYmd(dayDate);
+      if (offset === 0 && hasLoggedDay(logs, ymd)) continue;
+
+      const fireAt = new Date(
+        dayDate.getFullYear(),
+        dayDate.getMonth(),
+        dayDate.getDate(),
+        eveningHour,
+        30,
+        0,
+        0,
+      );
+      if (fireAt.getTime() <= now.getTime() + 60 * 1000 || fireAt.getTime() > horizonEnd.getTime()) {
+        continue;
+      }
+      const copy = formatEveningCopy(persona, tone);
+      candidates.push({
+        key: `evening-${ymd}`,
+        kind: 'evening',
+        priority: 78,
+        title: copy.title,
+        body: copy.body,
+        rawFireAt: fireAt,
+        route: '/?uniLog=day',
+      });
+    }
+  }
+
+  // 7) Balanço semanal de domingo
+  if (prefs.sundayReview) {
+    const sundayHour = prefs.sundayHour ?? 18;
+    for (const offset of [0, 1, 2]) {
+      const dayDate = addDaysLocal(now, offset);
+      if (dayDate.getDay() !== 0) continue;
+      if (hasLoggedWeek(logs, checkIns, dayDate)) continue;
+
+      const ymd = toLocalYmd(dayDate);
+      const fireAt = new Date(
+        dayDate.getFullYear(),
+        dayDate.getMonth(),
+        dayDate.getDate(),
+        sundayHour,
+        30,
+        0,
+        0,
+      );
+      if (fireAt.getTime() <= now.getTime() + 60 * 1000 || fireAt.getTime() > horizonEnd.getTime()) {
+        continue;
+      }
+      const copy = formatSundayCopy(tone);
+      candidates.push({
+        key: `sunday-${ymd}`,
+        kind: 'sunday',
+        priority: 82,
+        title: copy.title,
+        body: copy.body,
+        rawFireAt: fireAt,
+        route: '/?uniLog=week',
+      });
+    }
+  }
+
+  // 8) Modo Teste (< 10 dias): perguntar até que matéria sai, o que já estudou e como se sente
+  if (prefs.examPrepCheckIn) {
+    const urgent = input.assessments
+      .filter((a) => {
+        if (a.grade !== undefined) return false;
+        const examAt = parseAssessmentDateTime(a.date);
+        if (!examAt || examAt.getTime() <= now.getTime()) return false;
+        const days = calendarDaysUntilDate(examAt, now);
+        return days >= 0 && days <= 10;
+      })
+      .sort((a, b) => a.date.localeCompare(b.date));
+    const targetAssessment = urgent.find(
+      (a) => a.topicIds.length === 0 || !hasRecentExamPrep(logs, a.id, now),
+    );
+    if (targetAssessment) {
+      const examAt = parseAssessmentDateTime(targetAssessment.date);
+      const candidateTime = new Date(now.getTime() + 2 * 3600 * 1000);
+      if (
+        candidateTime.getTime() <= horizonEnd.getTime() &&
+        (!examAt || candidateTime.getTime() < examAt.getTime() - 3 * 3600 * 1000)
+      ) {
+        const course = courseMap.get(targetAssessment.courseId);
+        const courseName = course?.code || course?.shortName || course?.name || 'Cadeira';
+        const daysLeft = examAt ? Math.max(0, calendarDaysUntilDate(examAt, now)) : 0;
+        const copy = formatExamPrepCopy(targetAssessment, courseName, daysLeft, tone);
+        candidates.push({
+          key: `exam-prep-${targetAssessment.id}-${todayYmd}`,
+          kind: 'exam_prep',
+          priority: 88,
+          title: copy.title,
+          body: copy.body,
+          rawFireAt: candidateTime,
+          ...(examAt ? { latestValidAt: examAt } : {}),
+          route: `/?uniLog=exam_prep&assessmentId=${encodeURIComponent(targetAssessment.id)}&courseId=${encodeURIComponent(targetAssessment.courseId)}`,
+          courseId: targetAssessment.courseId,
         });
       }
     }
@@ -568,11 +880,13 @@ export function pickActiveInAppNudge(input: NotificationPlannerInput): InAppUniN
   const persona = resolvePersona(input.settings);
   const tone = resolveTone(input.settings);
   const courseMap = new Map(input.courses.map((c) => [c.id, c]));
+  const logs = input.studyLogs ?? [];
+  const checkIns = input.weeklyCheckIns ?? [];
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  const weekday = now.getDay();
 
   // 1) Aula a começar nos próximos 60 minutos
   if (prefs.classReminders) {
-    const nowMins = now.getHours() * 60 + now.getMinutes();
-    const weekday = now.getDay();
     for (const cl of input.classes) {
       if (cl.weekday !== weekday) continue;
       const startMins = parseTimeMinutes(cl.start, -1);
@@ -593,7 +907,88 @@ export function pickActiveInAppNudge(input: NotificationPlannerInput): InAppUniN
     }
   }
 
-  // 2) Sequência em risco se já passou das 15h sem estudo concluído hoje
+  // 2) Pergunta pós-aula se terminou nos últimos 180 minutos e ainda não foi registada
+  if (prefs.postClassCheckIn) {
+    for (const cl of input.classes) {
+      if (cl.weekday !== weekday) continue;
+      if (hasLoggedPostClass(logs, cl.id, todayYmd)) continue;
+      const endMins = parseTimeMinutes(cl.end, -1);
+      const minsSinceEnd = nowMins - endMins;
+      const delay = prefs.postClassDelayMinutes ?? 10;
+      if (endMins >= 0 && minsSinceEnd >= delay && minsSinceEnd <= 180) {
+        const course = courseMap.get(cl.courseId);
+        const courseName = course?.code || course?.shortName || course?.name || 'Aula';
+        const copy = formatPostClassCopy(cl, courseName, persona, tone);
+        return {
+          key: `inapp-postclass-${cl.id}-${todayYmd}`,
+          kind: 'post_class',
+          title: copy.title,
+          body: copy.body,
+          ctaLabel: 'Registar aula',
+          route: `/?uniLog=class&courseId=${encodeURIComponent(cl.courseId)}&classSlotId=${encodeURIComponent(cl.id)}`,
+        };
+      }
+    }
+  }
+
+  // 3) Modo Teste: alinhar até que matéria sai, o que já estudou e como se sente
+  if (prefs.examPrepCheckIn) {
+    const urgent = input.assessments
+      .filter((a) => {
+        if (a.grade !== undefined) return false;
+        const examAt = parseAssessmentDateTime(a.date);
+        if (!examAt || examAt.getTime() < now.getTime()) return false;
+        const d = calendarDaysUntilDate(examAt, now);
+        return d >= 0 && d <= 10;
+      })
+      .sort((a, b) => a.date.localeCompare(b.date));
+    const needsPrep = urgent.find(
+      (a) => a.topicIds.length === 0 || !hasRecentExamPrep(logs, a.id, now),
+    );
+    if (needsPrep) {
+      const course = courseMap.get(needsPrep.courseId);
+      const courseName = course?.code || course?.shortName || course?.name || 'Cadeira';
+      const examAt = parseAssessmentDateTime(needsPrep.date);
+      const daysLeft = examAt ? Math.max(0, calendarDaysUntilDate(examAt, now)) : 0;
+      const copy = formatExamPrepCopy(needsPrep, courseName, daysLeft, tone);
+      return {
+        key: `inapp-examprep-${needsPrep.id}-${todayYmd}`,
+        kind: 'exam_prep',
+        title: copy.title,
+        body: copy.body,
+        ctaLabel: 'Alinhar matéria',
+        route: `/?uniLog=exam_prep&assessmentId=${encodeURIComponent(needsPrep.id)}&courseId=${encodeURIComponent(needsPrep.courseId)}`,
+      };
+    }
+  }
+
+  // 4) Balanço semanal de domingo
+  if (prefs.sundayReview && weekday === 0 && now.getHours() >= 15 && !hasLoggedWeek(logs, checkIns, now)) {
+    const copy = formatSundayCopy(tone);
+    return {
+      key: `inapp-sunday-${todayYmd}`,
+      kind: 'sunday',
+      title: copy.title,
+      body: copy.body,
+      ctaLabel: 'Balanço semanal',
+      route: '/?uniLog=week',
+    };
+  }
+
+  // 5) Check-in de fim do dia
+  if (prefs.eveningCheckIn && now.getHours() >= (prefs.eveningHour ?? 20) && !hasLoggedDay(logs, todayYmd)) {
+    const copy = formatEveningCopy(persona, tone);
+    return {
+      key: `inapp-evening-${todayYmd}`,
+      kind: 'evening',
+      title: copy.title,
+      body: copy.body,
+      ctaLabel: 'Fechar o dia',
+      route: '/?uniLog=day',
+    };
+  }
+
+  // 6) Sequência em risco se já passou das 15h sem estudo concluído hoje
   const streak = studyStreak(input.sessions);
   const minutesToday = minutesStudiedOnDay(input.sessions, todayYmd);
   if (prefs.streakSaver && streak >= 2 && minutesToday === 0 && now.getHours() >= 15) {
@@ -608,7 +1003,7 @@ export function pickActiveInAppNudge(input: NotificationPlannerInput): InAppUniN
     };
   }
 
-  // 3) Revisões espaçadas (SRS) em atraso ou para hoje
+  // 7) Revisões espaçadas (SRS) em atraso ou para hoje
   const dueCount = collectTopics(input.courses).filter((t) => isTopicReviewDue(t, todayYmd)).length;
   if (prefs.srsDue && dueCount >= 1) {
     const copy = formatSrsCopy(dueCount, persona, tone);

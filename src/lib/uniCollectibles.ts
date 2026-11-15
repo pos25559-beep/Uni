@@ -1,6 +1,7 @@
 import { sessionMinutes, studyStreak } from './selectors';
 import type {
   Course,
+  StudyLogEntry,
   StudySession,
   Task,
   UniPetId,
@@ -412,6 +413,7 @@ export function computeUniCompanionState(args: {
   sessions: StudySession[];
   tasks: Task[];
   weeklyCheckIns: WeeklyCheckIn[];
+  studyLogs?: StudyLogEntry[];
   today: string;
   dailyHugs?: number;
 }): UniCompanionState {
@@ -423,12 +425,14 @@ export function computeUniCompanionState(args: {
     (t) => t.done && (!t.due || t.due === today),
   ).length;
   const hasTodayCheckIn = weeklyCheckIns.some((w) => w.createdAt.slice(0, 10) === today);
+  const todayLogsCount = (args.studyLogs ?? []).filter((l) => l.date === today).length;
   const dailyHugs = Math.max(0, Math.min(MAX_DAILY_HUGS, args.dailyHugs ?? readDailyPetCareCount(today)));
 
   const rawEnergy =
     doneTodaySessions * 20 +
     Math.min(2, doneTodayTasks) * 8 +
     (hasTodayCheckIn ? 10 : 0) +
+    Math.min(3, todayLogsCount) * 4 +
     dailyHugs * 3;
   const dailyEnergy = Math.min(DAILY_ENERGY_GOAL, rawEnergy);
   const adventureDone = dailyEnergy >= DAILY_ENERGY_GOAL;

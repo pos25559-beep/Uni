@@ -30,7 +30,7 @@ import UniCollectiblesModal from '../components/brand/UniCollectiblesModal';
 import { UniBuddy } from '../components/brand/UnipediaMarks';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import GeminiKeyGuideModal from '../components/settings/GeminiKeyGuideModal';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ActionSheet, Badge, Button, Modal, PillSelect, SegmentedControl, cx, showToast } from '../components/ui';
 import {
   buildDocumentContext,
@@ -100,11 +100,13 @@ function getKnownCourseHintsFromStore() {
 
 export default function Assistant() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [mobileComposerToolsOpen, setMobileComposerToolsOpen] = useState(false);
   const courses = useStore((s) => s.courses);
   const materials = useStore((s) => s.materials);
+  const studyLogs = useStore((s) => s.studyLogs);
   const academicProfile = useStore((s) => s.academicProfile);
   const uniPreference = useStore((s) => s.settings.uniAccessory);
   const uniPersona = useStore((s) => s.settings.uniPersona ?? 'amigo');
@@ -218,6 +220,40 @@ export default function Assistant() {
       : uniPersona === 'exigente'
         ? 'curious'
         : 'happy';
+
+  const [pendingSeedPrompt, setPendingSeedPrompt] = useState<string | null>(() => {
+    const st = location.state as { prefillPrompt?: string } | null;
+    return st?.prefillPrompt?.trim() || null;
+  });
+
+  useEffect(() => {
+    const st = location.state as { prefillPrompt?: string; courseId?: string } | null;
+    if (st?.courseId) setActiveCourseId(st.courseId);
+    if (st?.prefillPrompt?.trim()) {
+      setPendingSeedPrompt(st.prefillPrompt.trim());
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.pathname, location.state, navigate]);
+
+  const recentLogSuggestion = useMemo(() => {
+    const latestExam = studyLogs.find((l) => l.kind === 'exam_prep');
+    if (latestExam) {
+      const c = courses.find((x) => x.id === latestExam.courseId);
+      return c
+        ? `Revê comigo a matéria alinhada de ${c.shortName} para o teste`
+        : 'Revê comigo a matéria do meu próximo teste';
+    }
+    const hardClass = studyLogs.find(
+      (l) => l.kind === 'class' && (l.feeling === 'dificil' || l.feeling === 'mais_ou_menos'),
+    );
+    if (hardClass) {
+      const c = courses.find((x) => x.id === hardClass.courseId);
+      return hardClass.topicTitle
+        ? `Explica passo a passo «${hardClass.topicTitle}»${c ? ` (${c.shortName})` : ''}`
+        : `Ajuda-me a rever a última aula${c ? ` de ${c.shortName}` : ''}`;
+    }
+    return null;
+  }, [studyLogs, courses]);
 
   // Materiais filtrados pela cadeira selecionada
   const availableMaterials = useMemo(() => {
@@ -999,6 +1035,7 @@ export default function Assistant() {
 
             <div className="mt-4 flex flex-wrap justify-center gap-2 sm:mt-5">
               {[
+                ...(recentLogSuggestion ? [recentLogSuggestion] : []),
                 'O que devo estudar hoje?',
                 'Cria um plano até ao próximo teste',
                 'Faz-me um quiz rápido',
@@ -1314,6 +1351,37 @@ export default function Assistant() {
                 </button>
               </span>
             ))}
+          </div>
+        )}
+
+        {pendingSeedPrompt && (
+          <div className="mb-2 flex items-center justify-between gap-2 rounded-2xl border border-accent/40 bg-accent-soft/65 px-3.5 py-2.5 text-xs">
+            <div className="min-w-0 flex-1">
+              <p className="font-bold text-accent-ink dark:text-accent">Resumo do Diário do Uni pronto</p>
+              <p className="line-clamp-2 text-fg">{pendingSeedPrompt}</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <Button
+                size="sm"
+                variant="primary"
+                disabled={loading}
+                onClick={() => {
+                  const text = pendingSeedPrompt;
+                  setPendingSeedPrompt(null);
+                  void send(text);
+                }}
+              >
+                Enviar
+              </Button>
+              <button
+                type="button"
+                aria-label="Dispensar sugestão do diário"
+                onClick={() => setPendingSeedPrompt(null)}
+                className="grid size-8 place-items-center rounded-full text-muted hover:bg-surface hover:text-fg"
+              >
+                <X size={14} />
+              </button>
+            </div>
           </div>
         )}
 

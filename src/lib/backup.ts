@@ -7,6 +7,7 @@ import type {
   Course,
   Material,
   Settings,
+  StudyLogEntry,
   StudySession,
   Task,
   WeeklyCheckIn,
@@ -38,6 +39,7 @@ export function buildBackupPayload(s: AppState) {
     },
     academicProfile: s.academicProfile,
     weeklyCheckIns: s.weeklyCheckIns,
+    studyLogs: s.studyLogs,
     settings: { ...s.settings, geminiApiKey: '' },
   };
 }
@@ -82,6 +84,12 @@ export function applyBackupJson(rawText: string, st: AppState): number {
   if (Array.isArray(parsed.weeklyCheckIns)) {
     for (const ci of pickItems<WeeklyCheckIn>(parsed.weeklyCheckIns)) {
       st.addWeeklyCheckIn(ci);
+    }
+  }
+
+  if (Array.isArray(parsed.studyLogs)) {
+    for (const log of pickItems<StudyLogEntry>(parsed.studyLogs)) {
+      st.addStudyLog(log);
     }
   }
 

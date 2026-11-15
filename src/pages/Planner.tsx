@@ -27,6 +27,7 @@ import FocusTimer from '../components/planner/FocusTimer';
 import PlanBuilderModal from '../components/planner/PlanBuilderModal';
 import SessionModal from '../components/planner/SessionModal';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
+import { openUniCheckIn } from '../lib/uniCheckInBus';
 import {
   ActionSheet,
   Badge,
@@ -67,6 +68,7 @@ export default function Planner() {
   const settings = useStore((s) => s.settings);
   const academicProfile = useStore((s) => s.academicProfile);
   const weeklyCheckIns = useStore((s) => s.weeklyCheckIns);
+  const studyLogs = useStore((s) => s.studyLogs);
   const replaceGeneratedSessions = useStore((s) => s.replaceGeneratedSessions);
   const upsertMany = useStore((s) => s.upsertMany);
   const patch = useStore((s) => s.patch);
@@ -172,6 +174,7 @@ export default function Planner() {
       existing: sessions.filter((s) => !s.generated || s.done || s.date < today),
       difficultCourseIds: academicProfile.difficultCourseIds,
       weeklyCheckIns,
+      studyLogs,
       extraActivities: academicProfile.extraActivities,
       preferredPeriod: plannerPrefs?.preferredPeriod,
       blockMinutes: plannerPrefs?.blockMinutes,
@@ -343,9 +346,24 @@ export default function Planner() {
               </p>
             </div>
           </div>
-          <Button size="sm" variant="primary" onClick={generate}>
-            <Sparkles size={14} /> Recalcular
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() =>
+                openUniCheckIn({
+                  kind: 'exam_prep',
+                  assessmentId: testMode.urgentAssessments[0]?.assessment.id,
+                  courseId: testMode.urgentAssessments[0]?.course.id,
+                })
+              }
+            >
+              Alinhar matéria c/ Uni
+            </Button>
+            <Button size="sm" variant="primary" onClick={generate}>
+              <Sparkles size={14} /> Recalcular
+            </Button>
+          </div>
         </div>
       )}
 
@@ -623,6 +641,7 @@ export default function Planner() {
         settings={settings}
         difficultCourseIds={academicProfile.difficultCourseIds}
         weeklyCheckIns={weeklyCheckIns}
+        studyLogs={studyLogs}
         extraActivities={academicProfile.extraActivities}
         today={today}
         overdueCount={overdue.length}

@@ -51,10 +51,12 @@ import {
   planSharedSemesterImport,
 } from '../src/lib/semesterShare';
 import { computeNextSrsState, isTopicReviewDue } from '../src/lib/spacedRepetition';
+import { buildStudyContext } from '../src/integrations/gemini';
 import {
   DEFAULT_NOTIFICATION_PREFS,
   clampOutOfQuietHours,
   isWithinQuietHours,
+  pickActiveInAppNudge,
   planSmartNotifications,
 } from '../src/lib/uniNotifications';
 import {
@@ -89,6 +91,7 @@ import type {
   ClassSlot,
   Course,
   Material,
+  StudyLogEntry,
   Topic,
 } from '../src/types';
 
@@ -1379,7 +1382,7 @@ test('planSmartNotifications respeita opt-in, cancela streak após estudo hoje, 
     ],
     settings: {
       ...defaultSettings,
-      notifications: { ...DEFAULT_NOTIFICATION_PREFS, enabled: true, maxDailyNudges: 3 },
+      notifications: { ...DEFAULT_NOTIFICATION_PREFS, enabled: true, maxDailyNudges: 6 },
     },
     now: nowMorning,
     horizonHours: 30,
@@ -1400,7 +1403,7 @@ test('planSmartNotifications respeita opt-in, cancela streak após estudo hoje, 
     settings: {
       ...defaultSettings,
       appTone: 'serio',
-      notifications: { ...DEFAULT_NOTIFICATION_PREFS, enabled: true, maxDailyNudges: 3 },
+      notifications: { ...DEFAULT_NOTIFICATION_PREFS, enabled: true, maxDailyNudges: 6 },
     },
     now: nowMorning,
     horizonHours: 30,
@@ -2009,4 +2012,225 @@ test('UniLivingOverlay nómada alterna ancoras e varia cores entre visitantes', 
   });
   assert.equal(peers.length, 2);
   assert.notEqual(peers[0], peers[1], 'Visitante secundario deve ter cor distinta da principal');
+});
+
+test('planSmartNotifications agenda pos-aula, fim do dia, domingo, modo teste e suprime apos registo', () => {
+  const course: Course = {
+    id: 'c-tep',
+    code: 'TEP',
+    name: 'Tecnologias de Energias e Processos',
+    shortName: 'TEP',
+    ects: 6,
+    color: 'emerald',
+    targetGrade: 14,
+    topics: [],
+  };
+  const classSlot: ClassSlot = {
+    id: 'cl-sat',
+    courseId: 'c-tep',
+    type: 'TP',
+    weekday: 6, // Sábado 2026-11-14
+    start: '11:00',
+    end: '13:00',
+    room: 'Ed 8',
+    source: 'local',
+  };
+  const examInFiveDays: Assessment = {
+    id: 'a-exam5',
+    courseId: 'c-tep',
+    kind: 'teste',
+    title: '1.º Teste TEP',
+    date: '2026-11-19T14:00:00',
+    weight: 50,
+    topicIds: [],
+    source: 'local',
+  };
+  const nowMorning = new Date(2026, 10, 14, 9, 0, 0);
+
+  const scheduled = planSmartNotifications({
+    courses: [course],
+    assessments: [examInFiveDays],
+    classes: [classSlot],
+    sessions: [],
+    studyLogs: [],
+    weeklyCheckIns: [],
+    settings: {
+      ...defaultSettings,
+      notifications: { ...DEFAULT_NOTIFICATION_PREFS, enabled: true, maxDailyNudges: 6 },
+    },
+    now: nowMorning,
+    horizonHours: 48,
+  });
+
+  assert.ok(scheduled.some((n) => n.key === 'post-class-cl-sat-2026-11-14' && n.route.includes('uniLog=class')));
+  assert.ok(scheduled.some((n) => n.key === 'evening-2026-11-14' && n.route === '/?uniLog=day'));
+  assert.ok(scheduled.some((n) => n.key === 'sunday-2026-11-15' && n.route === '/?uniLog=week'));
+  assert.ok(scheduled.some((n) => n.key === 'exam-prep-a-exam5-2026-11-14' && n.route.includes('uniLog=exam_prep')));
+
+  // Após registar pós-aula, fim do dia e modo teste, esses avisos de hoje desaparecem
+  const logsAfter: StudyLogEntry[] = [
+    {
+      id: 'log-1',
+      kind: 'class',
+      date: '2026-11-14',
+      courseId: 'c-tep',
+      classSlotId: 'cl-sat',
+      feeling: 'clara',
+      topicTitle: 'Plasticidade',
+      createdAt: '2026-11-14T13:15:00Z',
+    },
+    {
+      id: 'log-2',
+      kind: 'day',
+      date: '2026-11-14',
+      feeling: 'produtivo',
+      rating: 4,
+      createdAt: '2026-11-14T20:35:00Z',
+    },
+    {
+      id: 'log-3',
+      kind: 'exam_prep',
+      date: '2026-11-14',
+      courseId: 'c-tep',
+      assessmentId: 'a-exam5',
+      feeling: 'estavel',
+      createdAt: '2026-11-14T11:30:00Z',
+    },
+  ];
+  const scheduledAfterLogs = planSmartNotifications({
+    courses: [course],
+    assessments: [{ ...examInFiveDays, topicIds: ['t-1'] }],
+    classes: [classSlot],
+    sessions: [],
+    studyLogs: logsAfter,
+    weeklyCheckIns: [],
+    settings: {
+      ...defaultSettings,
+      notifications: { ...DEFAULT_NOTIFICATION_PREFS, enabled: true, maxDailyNudges: 6 },
+    },
+    now: nowMorning,
+    horizonHours: 48,
+  });
+
+  assert.equal(scheduledAfterLogs.some((n) => n.key === 'post-class-cl-sat-2026-11-14'), false);
+  assert.equal(scheduledAfterLogs.some((n) => n.key === 'evening-2026-11-14'), false);
+  assert.equal(scheduledAfterLogs.some((n) => n.key === 'exam-prep-a-exam5-2026-11-14'), false);
+
+  // Nudge in-app pós-aula aparece quando a aula terminou há pouco e ainda não houve registo
+  const afternoonAfterClass = new Date(2026, 10, 14, 13, 30, 0);
+  const inAppPostClass = pickActiveInAppNudge({
+    courses: [course],
+    assessments: [examInFiveDays],
+    classes: [classSlot],
+    sessions: [],
+    studyLogs: [],
+    weeklyCheckIns: [],
+    settings: defaultSettings,
+    now: afternoonAfterClass,
+  });
+  assert.ok(inAppPostClass?.route.includes('uniLog=class'));
+});
+
+test('generatePlan prioriza cadeira/topico dificil em registo pos-aula com Reforco pos-aula', () => {
+  const hardCourse: Course = {
+    id: 'c-hard',
+    code: 'MS2',
+    name: 'Mecânica dos Sólidos II',
+    shortName: 'MS2',
+    ects: 6,
+    color: 'amber',
+    targetGrade: 14,
+    topics: [{ id: 't-vm', title: 'Critério de Von Mises', status: 'learning', confidence: 2 }],
+  };
+  const easyCourse: Course = {
+    id: 'c-easy',
+    code: 'FAB',
+    name: 'Fabrico Aditivo',
+    shortName: 'FAB',
+    ects: 3,
+    color: 'sky',
+    targetGrade: 15,
+    topics: [{ id: 't-fdm', title: 'FDM', status: 'review', confidence: 4 }],
+  };
+  const difficultClassLog: StudyLogEntry = {
+    id: 'log-hard',
+    kind: 'class',
+    date: '2026-11-14',
+    courseId: 'c-hard',
+    topicTitle: 'Critério de Von Mises',
+    topicIds: ['t-vm'],
+    feeling: 'dificil',
+    difficulties: 'Sinal do tensor',
+    createdAt: '2026-11-14T15:00:00Z',
+  };
+
+  const sessions = generatePlan({
+    courses: [hardCourse, easyCourse],
+    assessments: [],
+    classes: [],
+    events: [],
+    existing: [],
+    settings: { ...defaultSettings, dailyStudyMinutes: 120, studyDays: [1, 2, 3, 4, 5, 6] },
+    studyLogs: [difficultClassLog],
+    from: '2026-11-15',
+    days: 3,
+  });
+
+  const hardSessions = sessions.filter((s) => s.courseId === 'c-hard');
+  assert.ok(hardSessions.length > 0);
+  assert.ok(
+    hardSessions.some((s) => (s.notes ?? '').includes('Reforço pós-aula')),
+    'Deve assinalar reforco pos-aula na cadeira dificil',
+  );
+});
+
+test('buildStudyContext inclui materia que sai do teste e secao DIARIO RECENTE', () => {
+  const ctx = buildStudyContext({
+    courses: [
+      {
+        id: 'c1',
+        code: 'TEP',
+        name: 'Tecnologias de Produção',
+        shortName: 'TEP',
+        ects: 6,
+        color: 'emerald',
+        targetGrade: 15,
+        topics: [{ id: 't1', title: 'Forjamento', status: 'learning', confidence: 3 }],
+      },
+    ],
+    assessments: [
+      {
+        id: 'a1',
+        courseId: 'c1',
+        kind: 'teste',
+        title: '1.º Teste',
+        date: '2099-05-10T10:00:00',
+        weight: 40,
+        topicIds: ['t1'],
+        source: 'local',
+      },
+    ],
+    classes: [],
+    sessions: [],
+    tasks: [],
+    materials: [],
+    events: [],
+    settings: defaultSettings,
+    studyLogs: [
+      {
+        id: 'sl1',
+        kind: 'exam_prep',
+        date: '2026-11-14',
+        courseId: 'c1',
+        assessmentId: 'a1',
+        feeling: 'ansioso',
+        studiedSummary: 'Faltam exercicios de forjamento',
+        createdAt: '2026-11-14T19:00:00Z',
+      },
+    ],
+  });
+
+  assert.ok(ctx.includes('matéria que sai: Forjamento'));
+  assert.ok(ctx.includes('DIÁRIO RECENTE (AULAS, ESTUDO DIÁRIO & MODO TESTE):'));
+  assert.ok(ctx.includes('Faltam exercicios de forjamento'));
 });

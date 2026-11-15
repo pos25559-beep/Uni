@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { defaultSettings, emptyCollections } from '../lib/seed';
 import {
+  deleteStudyLogFromCloud,
   syncAcademicProfile,
   syncCollectionDiff,
   syncCourseBatch,
@@ -9,6 +10,7 @@ import {
   syncRemove,
   syncSessionsDiff,
   syncSettings,
+  syncStudyLog,
   syncUpsert,
   syncWeeklyCheckIn,
 } from '../lib/firestoreSync';
@@ -21,6 +23,7 @@ import type {
   IntegrationStatus,
   Settings,
   Source,
+  StudyLogEntry,
   Topic,
   WeeklyCheckIn,
 } from '../types';
@@ -59,6 +62,7 @@ export interface AppState extends Collections {
   integrations: Record<IntegrationKey, IntegrationStatus>;
   academicProfile: AcademicProfile;
   weeklyCheckIns: WeeklyCheckIn[];
+  studyLogs: StudyLogEntry[];
 
   /** Cria ou atualiza (por id) um registo numa coleção. */
   upsert: <K extends Key>(key: K, item: Item<K>) => void;
@@ -75,11 +79,19 @@ export interface AppState extends Collections {
   /** Regenera sessões futuras pendentes se já existir um plano gerado ativo (ou quando `force = true`). */
   reconcileFuturePlan: (force?: boolean) => void;
   updateTopic: (courseId: ID, topicId: ID, changes: Partial<Topic>) => void;
+  /** Garante que um tópico dado em aula / Modo Teste existe na cadeira (criando ou atualizando confiança/estado). */
+  ensureCourseTopic: (
+    courseId: ID,
+    title: string,
+    opts?: { status?: Topic['status']; confidence?: Topic['confidence']; lastStudied?: string },
+  ) => Topic | null;
   updateSettings: (changes: Partial<Settings>) => void;
   setIntegration: (key: IntegrationKey, status: Partial<IntegrationStatus>) => void;
   cleanupMismatchedMaterials: () => number;
   saveAcademicProfile: (changes: Partial<AcademicProfile>) => void;
   addWeeklyCheckIn: (checkIn: WeeklyCheckIn) => void;
+  addStudyLog: (entry: StudyLogEntry) => void;
+  removeStudyLog: (id: ID) => void;
   applyCurriculumCourses: (profile: AcademicProfile) => void;
   clearAll: () => void;
 }
@@ -87,7 +99,10 @@ export interface AppState extends Collections {
 export const newId = (): ID => crypto.randomUUID();
 
 function maybeReconcileSessions(
-  s: Pick<AppState, 'courses' | 'assessments' | 'classes' | 'events' | 'settings' | 'sessions' | 'academicProfile' | 'weeklyCheckIns'>,
+  s: Pick<
+    AppState,
+    'courses' | 'assessments' | 'classes' | 'events' | 'settings' | 'sessions' | 'academicProfile' | 'weeklyCheckIns' | 'studyLogs'
+  >,
   force = false,
 ): AppState['sessions'] {
   const today = todayStr();
@@ -98,6 +113,7 @@ function maybeReconcileSessions(
   }
   const now = new Date();
   const preserved = s.sessions.filter((x) => !x.generated || x.done || x.date < today);
+  const prefs = s.settings.plannerPrefs;
   const nextPlan = generatePlan({
     courses: s.courses,
     assessments: s.assessments,
@@ -106,10 +122,16 @@ function maybeReconcileSessions(
     settings: s.settings,
     from: today,
     nowMinutes: now.getHours() * 60 + now.getMinutes(),
-    days: 14,
+    days: prefs?.horizonDays ?? 14,
+    preferredPeriod: prefs?.preferredPeriod ?? 'auto',
+    blockMinutes: prefs?.blockMinutes,
+    strategy: prefs?.strategy,
+    boostCourseIds: prefs?.boostCourseIds,
+    pausedCourseIds: prefs?.pausedCourseIds,
     existing: preserved,
     difficultCourseIds: s.academicProfile.difficultCourseIds,
     weeklyCheckIns: s.weeklyCheckIns,
+    studyLogs: s.studyLogs,
     extraActivities: s.academicProfile.extraActivities,
   });
   return [...preserved, ...nextPlan];
@@ -117,12 +139,13 @@ function maybeReconcileSessions(
 
 export const useStore = create<AppState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ...emptyData(),
       settings: defaultSettings,
       integrations: defaultIntegrations,
       academicProfile: defaultAcademicProfile,
       weeklyCheckIns: [],
+      studyLogs: [],
 
       upsert: (key, item) => {
         syncUpsert(key as any, item).catch(() => {});
@@ -270,6 +293,43 @@ export const useStore = create<AppState>()(
           syncSessionsDiff(prevSessions, nextSessions).catch(() => {});
         }
       },
+      ensureCourseTopic: (courseId, rawTitle, opts) => {
+        const cleanTitle = rawTitle.trim().slice(0, 140);
+        if (!cleanTitle) return null;
+        const course = get().courses.find((c) => c.id === courseId);
+        if (!course) return null;
+        const lower = cleanTitle.toLowerCase();
+        const existing = course.topics.find((t) => t.title.trim().toLowerCase() === lower);
+        if (existing) {
+          const patchFields: Partial<Topic> = {};
+          if (opts?.status && existing.status === 'todo') patchFields.status = opts.status;
+          if (opts?.confidence && opts.confidence !== existing.confidence) {
+            patchFields.confidence = opts.confidence;
+          }
+          if (opts?.lastStudied) patchFields.lastStudied = opts.lastStudied;
+          if (Object.keys(patchFields).length > 0) {
+            get().updateTopic(courseId, existing.id, patchFields);
+            return { ...existing, ...patchFields };
+          }
+          return existing;
+        }
+        const created: Topic = {
+          id: newId(),
+          title: cleanTitle,
+          status: opts?.status ?? 'learning',
+          confidence: opts?.confidence ?? 3,
+          ...(opts?.lastStudied ? { lastStudied: opts.lastStudied } : {}),
+        };
+        set((s) => {
+          const nextCourses = s.courses.map((c) =>
+            c.id === courseId ? { ...c, topics: [...c.topics, created] } : c,
+          );
+          const updatedCourse = nextCourses.find((c) => c.id === courseId);
+          if (updatedCourse) syncUpsert('courses', updatedCourse).catch(() => {});
+          return { courses: nextCourses };
+        });
+        return created;
+      },
       updateSettings: (changes) => {
         syncSettings(changes).catch(() => {});
         return set((s) => ({ settings: { ...s.settings, ...changes } }));
@@ -316,6 +376,33 @@ export const useStore = create<AppState>()(
             academicProfile: nextProfile,
           };
         }),
+      addStudyLog: (entry) => {
+        syncStudyLog(entry).catch(() => {});
+        set((s) => {
+          const filtered = s.studyLogs.filter((l) => {
+            if (l.id === entry.id) return false;
+            if (entry.kind === 'class' && entry.classSlotId) {
+              return !(l.kind === 'class' && l.classSlotId === entry.classSlotId && l.date === entry.date);
+            }
+            if (entry.kind === 'day') {
+              return !(l.kind === 'day' && l.date === entry.date);
+            }
+            if (entry.kind === 'exam_prep' && entry.assessmentId) {
+              return !(l.kind === 'exam_prep' && l.assessmentId === entry.assessmentId && l.date === entry.date);
+            }
+            return true;
+          });
+          return {
+            studyLogs: [entry, ...filtered].slice(0, 120),
+          };
+        });
+      },
+      removeStudyLog: (id) => {
+        deleteStudyLogFromCloud(id).catch(() => {});
+        set((s) => ({
+          studyLogs: s.studyLogs.filter((l) => l.id !== id),
+        }));
+      },
       applyCurriculumCourses: (profile) =>
         set((s) => {
           const built = buildActiveCoursesFromCurriculum(
@@ -345,11 +432,11 @@ export const useStore = create<AppState>()(
             academicProfile: nextProfile,
           };
         }),
-      clearAll: () => set({ ...emptyData() }),
+      clearAll: () => set({ ...emptyData(), weeklyCheckIns: [], studyLogs: [] }),
     }),
     {
       name: 'uni-erp-v5',
-      version: 7,
+      version: 8,
       onRehydrateStorage: () => (state) => {
         rehydrateStoreState(state);
       },

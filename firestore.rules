@@ -75,6 +75,26 @@ service cloud.firestore {
     //   - createdAt: timestamp/string (optional, immutable)
     //   - updatedAt: timestamp/string (optional)
     //
+    // Collection: users/{userId}/studyLogs/{logId}
+    // Document ID: logId (string, max 100 chars)
+    // Fields:
+    //   - id: string (optional, immutable, 1 - 100 chars)
+    //   - kind: string (required, 'class'|'day'|'week'|'exam_prep')
+    //   - date: string/timestamp (required, date or timestamp, max 35 chars)
+    //   - createdAt: timestamp/string (required, immutable, date or timestamp, max 35 chars)
+    //   - updatedAt: timestamp/string (optional, date or timestamp, max 35 chars)
+    //   - userId: string (optional, immutable, must match {userId})
+    //   - courseId: string (optional, 1 - 100 chars)
+    //   - classSlotId: string (optional, 1 - 100 chars)
+    //   - assessmentId: string (optional, 1 - 100 chars)
+    //   - feeling: string (required, 1 - 40 chars)
+    //   - rating: number (optional, 1 - 5)
+    //   - topicTitle: string (optional, 0 - 250 chars)
+    //   - topicIds: list of strings (optional, max 100 items)
+    //   - studiedSummary: string (optional, 0 - 1000 chars)
+    //   - difficulties: string (optional, 0 - 1000 chars)
+    //   - notes: string (optional, 0 - 4000 chars)
+    //
     // Collection: users/{userId}/courses/{courseId}
     // Document ID: courseId (string, max 100 chars)
     // Fields:
@@ -726,6 +746,32 @@ service cloud.firestore {
         isValidOptionalDateOrTimestamp(data, 'updatedAt');
     }
 
+    // Validates study log entry document (/users/{userId}/studyLogs/{logId})
+    function isValidStudyLog(data, userId) {
+      return data.keys().hasOnly([
+          'id', 'kind', 'date', 'createdAt', 'updatedAt', 'userId',
+          'courseId', 'classSlotId', 'assessmentId', 'feeling', 'rating',
+          'topicTitle', 'topicIds', 'studiedSummary', 'difficulties', 'notes'
+        ]) &&
+        data.keys().hasAll(['kind', 'date', 'feeling', 'createdAt']) &&
+        isValidOptionalString(data, 'id', 1, 100) &&
+        data.kind is string && data.kind in ['class', 'day', 'week', 'exam_prep'] &&
+        isValidDateOrTimestamp(data.date) &&
+        data.feeling is string && data.feeling.size() > 0 && data.feeling.size() <= 40 &&
+        isValidOptionalNumber(data, 'rating', 1, 5) &&
+        isValidOptionalString(data, 'courseId', 1, 100) &&
+        isValidOptionalString(data, 'classSlotId', 1, 100) &&
+        isValidOptionalString(data, 'assessmentId', 1, 100) &&
+        isValidOptionalString(data, 'topicTitle', 0, 250) &&
+        (!('topicIds' in data) || (data.topicIds is list && data.topicIds.size() <= 100)) &&
+        isValidOptionalString(data, 'studiedSummary', 0, 1000) &&
+        isValidOptionalString(data, 'difficulties', 0, 1000) &&
+        isValidOptionalString(data, 'notes', 0, 4000) &&
+        (!('userId' in data) || data.userId == userId) &&
+        isValidDateOrTimestamp(data.createdAt) &&
+        isValidOptionalDateOrTimestamp(data, 'updatedAt');
+    }
+
     // Validates shared Portuguese curriculum document (/curricula/{curriculumId})
     function isValidCurriculum(data) {
       return data.keys().hasOnly([
@@ -853,6 +899,14 @@ service cloud.firestore {
         allow read: if isOwner(userId);
         allow create: if isOwner(userId) && isValidWeeklyCheckIn(request.resource.data, userId);
         allow update: if isOwner(userId) && isValidWeeklyCheckIn(request.resource.data, userId) && areImmutableFieldsUnchanged(['id', 'userId', 'createdAt']);
+        allow delete: if isOwner(userId);
+      }
+
+      // Study Logs Subcollection
+      match /studyLogs/{logId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidStudyLog(request.resource.data, userId);
+        allow update: if isOwner(userId) && isValidStudyLog(request.resource.data, userId) && areImmutableFieldsUnchanged(['id', 'userId', 'createdAt']);
         allow delete: if isOwner(userId);
       }
 

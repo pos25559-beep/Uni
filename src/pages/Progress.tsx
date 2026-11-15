@@ -1,4 +1,4 @@
-import { ArrowRight, BarChart3, Lock, Sparkles } from 'lucide-react';
+import { ArrowRight, BarChart3, BookOpenCheck, Lock, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import UniCollectiblesModal from '../components/brand/UniCollectiblesModal';
@@ -13,7 +13,9 @@ import { ReadinessChart } from '../components/progress/ReadinessChart';
 import { StreakHeatmap } from '../components/progress/StreakHeatmap';
 import { StudyByDayChart } from '../components/progress/StudyByDayChart';
 import { WeaknessChart } from '../components/progress/WeaknessChart';
-import { Badge, Button, PageHeader, Progress, Ring, SegmentedControl, cx, showToast } from '../components/ui';
+import { Badge, Button, Card, PageHeader, Progress, Ring, SegmentedControl, cx, showToast } from '../components/ui';
+import { openUniCheckIn } from '../lib/uniCheckInBus';
+import type { StudyLogKind } from '../types';
 import {
   computeUniCompanionState,
   getUniCollectibleStates,
@@ -24,6 +26,7 @@ import { useStore } from '../store/useStore';
 
 export default function ProgressPage() {
   const [period, setPeriod] = useState<Period>('30d');
+  const [logFilter, setLogFilter] = useState<'all' | StudyLogKind>('all');
   const [collectiblesOpen, setCollectiblesOpen] = useState(false);
   const [showEmptyCharts, setShowEmptyCharts] = useState(false);
   const courses = useStore((s) => s.courses);
@@ -31,6 +34,8 @@ export default function ProgressPage() {
   const sessions = useStore((s) => s.sessions);
   const settings = useStore((s) => s.settings);
   const weeklyCheckIns = useStore((s) => s.weeklyCheckIns);
+  const studyLogs = useStore((s) => s.studyLogs);
+  const removeStudyLog = useStore((s) => s.removeStudyLog);
   const tasks = useStore((s) => s.tasks);
   const updateSettings = useStore((s) => s.updateSettings);
 
@@ -44,9 +49,10 @@ export default function ProgressPage() {
         sessions,
         tasks,
         weeklyCheckIns,
+        studyLogs,
         today,
       }),
-    [sessions, tasks, weeklyCheckIns, today],
+    [sessions, tasks, weeklyCheckIns, studyLogs, today],
   );
   const range = useMemo(() => periodRange(period, settings, now), [period, settings, now]);
 
@@ -270,6 +276,129 @@ export default function ProgressPage() {
           </Button>
         </div>
       ) : null}
+
+      {/* Diário & Check-ins do Uni (Pós-aula, Fim do dia, Domingos e Modo Teste) */}
+      <Card
+        title="Diário & Alinhamento do Uni"
+        action={
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={() => openUniCheckIn({ kind: logFilter === 'all' ? 'day' : logFilter })}
+          >
+            <Plus size={14} /> Novo registo
+          </Button>
+        }
+      >
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-1.5">
+            {(
+              [
+                { id: 'all', label: `Todos (${studyLogs.length})` },
+                { id: 'class', label: 'Pós-aula' },
+                { id: 'day', label: 'Fim do dia' },
+                { id: 'week', label: 'Domingos' },
+                { id: 'exam_prep', label: 'Modo Teste' },
+              ] as const
+            ).map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setLogFilter(f.id)}
+                className={cx(
+                  'min-h-[38px] rounded-full border px-3 py-1 text-xs font-semibold transition',
+                  logFilter === f.id
+                    ? 'border-accent bg-accent text-accent-fg'
+                    : 'border-line bg-surface-2/60 text-muted hover:text-fg',
+                )}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          {(() => {
+            const visibleLogs =
+              logFilter === 'all' ? studyLogs : studyLogs.filter((l) => l.kind === logFilter);
+            if (visibleLogs.length === 0) {
+              return (
+                <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-line p-5 text-center">
+                  <BookOpenCheck size={20} className="text-muted" />
+                  <p className="text-xs text-muted">
+                    Ainda não tens registos neste filtro. Regista como correu a última aula, o dia de estudo ou o alinhamento de um teste.
+                  </p>
+                </div>
+              );
+            }
+            const kindBadges: Record<StudyLogKind, string> = {
+              class: 'Pós-aula',
+              day: 'Fim do dia',
+              week: 'Domingo',
+              exam_prep: 'Modo Teste',
+            };
+            return (
+              <ul className="space-y-2.5">
+                {visibleLogs.slice(0, 20).map((log) => {
+                  const course = log.courseId ? courses.find((c) => c.id === log.courseId) : undefined;
+                  const topicNames =
+                    course && log.topicIds && log.topicIds.length > 0
+                      ? course.topics.filter((t) => log.topicIds!.includes(t.id)).map((t) => t.title)
+                      : [];
+                  return (
+                    <li
+                      key={log.id}
+                      className="flex items-start justify-between gap-3 rounded-2xl border border-line bg-surface-2/40 p-3.5"
+                    >
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <Badge tone={log.kind === 'exam_prep' ? 'warn' : 'accent'}>
+                            {kindBadges[log.kind]}
+                          </Badge>
+                          {course && <Badge tone="neutral">{course.shortName}</Badge>}
+                          <span className="text-xs font-medium text-muted">{log.date}</span>
+                          <span className="rounded-full bg-surface px-2 py-0.5 text-xs font-semibold text-fg">
+                            {log.feeling}
+                            {log.rating ? ` · ${log.rating}/5` : ''}
+                          </span>
+                        </div>
+                        {log.topicTitle && (
+                          <p className="text-xs text-fg">
+                            <strong className="font-semibold">Matéria:</strong> {log.topicTitle}
+                          </p>
+                        )}
+                        {topicNames.length > 0 && (
+                          <p className="text-xs text-fg">
+                            <strong className="font-semibold">Tópicos alinhados:</strong>{' '}
+                            {topicNames.join(', ')}
+                          </p>
+                        )}
+                        {log.studiedSummary && (
+                          <p className="text-xs text-muted">{log.studiedSummary}</p>
+                        )}
+                        {log.difficulties && (
+                          <p className="text-xs text-coral">Dúvidas: {log.difficulties}</p>
+                        )}
+                        {log.notes && <p className="text-xs text-muted">{log.notes}</p>}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          removeStudyLog(log.id);
+                          showToast('Registo removido do diário.', 'neutral');
+                        }}
+                        aria-label="Apagar registo do diário"
+                        className="grid size-9 shrink-0 place-items-center rounded-full text-muted transition hover:bg-surface hover:text-danger"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            );
+          })()}
+        </div>
+      </Card>
 
       <UniCollectiblesModal open={collectiblesOpen} onClose={() => setCollectiblesOpen(false)} />
     </AnimatedPage>

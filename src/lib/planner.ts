@@ -13,6 +13,7 @@ import type {
   PlannerDayPeriod,
   PlannerStrategy,
   Settings,
+  StudyLogEntry,
   StudySession,
   TestModeStatus,
   Topic,
@@ -41,6 +42,8 @@ export interface PlanInput {
   difficultCourseIds?: ID[];
   /** Check-ins semanais do tutor para reforçar tópicos difíceis recentes. */
   weeklyCheckIns?: WeeklyCheckIn[];
+  /** Registos recentes do Diário do Uni (pós-aula, fim do dia, domingo, Modo Teste). */
+  studyLogs?: StudyLogEntry[];
   /** Atividades extracurriculares que reduzem a margem disponível em dias específicos. */
   extraActivities?: ExtraActivity[];
   /** Período preferido do dia para encaixar blocos livres. */
@@ -174,6 +177,7 @@ export function generatePlan(input: PlanInput): StudySession[] {
     existing = [],
     difficultCourseIds = [],
     weeklyCheckIns = [],
+    studyLogs = [],
     extraActivities = [],
     preferredPeriod = 'auto',
     blockMinutes = BLOCK,
@@ -209,14 +213,47 @@ export function generatePlan(input: PlanInput): StudySession[] {
 
   const latestCheckIn = weeklyCheckIns[0];
   const difficultCheckInCourseSet = new Set(latestCheckIn?.hardCourseIds ?? []);
+  const recentLogs = studyLogs.filter((l) => {
+    try {
+      const diff = differenceInCalendarDays(start, parseDay(l.date));
+      return diff >= -1 && diff <= 7;
+    } catch {
+      return false;
+    }
+  });
+  const postClassHardCourseSet = new Set<ID>();
+  const examAnxiousCourseSet = new Set<ID>();
+  const logHighlightedTopicIds = new Set<ID>();
+  const logTopicHints: string[] = [];
+  let recentTiredDay = false;
+
+  for (const log of recentLogs) {
+    if (log.kind === 'class' && (log.feeling === 'dificil' || log.feeling === 'faltei')) {
+      if (log.courseId) postClassHardCourseSet.add(log.courseId);
+      if (log.topicTitle?.trim()) logTopicHints.push(log.topicTitle.trim().toLowerCase());
+      if (log.difficulties?.trim()) logTopicHints.push(log.difficulties.trim().toLowerCase());
+      for (const tid of log.topicIds ?? []) logHighlightedTopicIds.add(tid);
+    }
+    if (log.kind === 'exam_prep' && (log.feeling === 'ansioso' || log.feeling === 'atrasado')) {
+      if (log.courseId) examAnxiousCourseSet.add(log.courseId);
+      for (const tid of log.topicIds ?? []) logHighlightedTopicIds.add(tid);
+    }
+    if (log.kind === 'day' && (log.feeling === 'cansado' || (log.rating !== undefined && log.rating <= 2))) {
+      const diff = Math.abs(differenceInCalendarDays(start, parseDay(log.date)));
+      if (diff <= 1) recentTiredDay = true;
+    }
+  }
+
   const checkInTopicHints = [
     ...(latestCheckIn?.classDifficulties ?? []),
     ...(latestCheckIn?.pendingNextWeek ?? []),
+    ...logTopicHints,
   ]
     .map((s) => s.toLowerCase().trim())
     .filter(Boolean);
 
-  const isTopicHighlightedByCheckIn = (topicTitle: string) => {
+  const isTopicHighlightedByCheckIn = (topicTitle: string, topicId?: ID) => {
+    if (topicId && logHighlightedTopicIds.has(topicId)) return true;
     if (checkInTopicHints.length === 0) return false;
     const lower = topicTitle.toLowerCase();
     return checkInTopicHints.some((hint) => lower.includes(hint) || hint.includes(lower));
@@ -229,7 +266,7 @@ export function generatePlan(input: PlanInput): StudySession[] {
       const studied = existing
         .filter((s) => s.done && s.topicId === t.id)
         .reduce((sum, s) => sum + sessionMinutes(s), 0);
-      const checkInExtra = isTopicHighlightedByCheckIn(t.title) ? 35 : 0;
+      const checkInExtra = isTopicHighlightedByCheckIn(t.title, t.id) ? 35 : 0;
       const estimate = effortBase[t.status] * (1.3 - t.confidence * 0.1) + checkInExtra;
       effort.set(t.id, Math.max(0, Math.round(estimate) - studied));
     }
@@ -440,7 +477,11 @@ export function generatePlan(input: PlanInput): StudySession[] {
             ? rawTimeFactor * (it.daysLeft <= 14 ? 1.55 : 0.8)
             : rawTimeFactor;
         const weightFactor = 0.5 + it.assessment.weight / 100;
-        const isDifficult = difficultSet.has(it.courseId) || difficultCheckInCourseSet.has(it.courseId);
+        const isDifficult =
+          difficultSet.has(it.courseId) ||
+          difficultCheckInCourseSet.has(it.courseId) ||
+          postClassHardCourseSet.has(it.courseId) ||
+          examAnxiousCourseSet.has(it.courseId);
         const difficultyFactor = isDifficult ? 1.35 : 1.0;
         const boostFactor = boostSet.has(it.courseId) ? 1.5 : 1.0;
 
@@ -466,7 +507,7 @@ export function generatePlan(input: PlanInput): StudySession[] {
         for (const t of it.topics) {
           if ((effort.get(t.id) ?? 0) <= 0) continue;
           if (preferConsolidated && t.status === 'todo') continue;
-          const checkInBoost = isTopicHighlightedByCheckIn(t.title) ? 0.35 : 0;
+          const checkInBoost = isTopicHighlightedByCheckIn(t.title, t.id) ? 0.35 : 0;
           const recallPenalty = t.lastRecallScore === 1 ? 0.25 : 0;
           const needFactor = (needBase[t.status] + checkInBoost + recallPenalty) * (1.2 - t.confidence * 0.15);
           const score = timeFactor * weightFactor * difficultyFactor * boostFactor * modeFactor * needFactor;
@@ -476,7 +517,11 @@ export function generatePlan(input: PlanInput): StudySession[] {
       if (!best) break;
       const eff = effort.get(best.topic.id) ?? 0;
       const lowConfidence = best.topic.confidence <= 2 || best.topic.lastRecallScore === 1;
-      const targetCap = lowConfidence ? adaptiveLowCap : targetBlock;
+      const postClassFlagged =
+        postClassHardCourseSet.has(best.item.courseId) ||
+        logHighlightedTopicIds.has(best.topic.id);
+      const tiredModeration = recentTiredDay && i <= 1 ? Math.min(targetBlock, 35) : targetBlock;
+      const targetCap = lowConfidence ? adaptiveLowCap : tiredModeration;
       const want = Math.min(targetCap, Math.max(MIN_BLOCK, eff));
       const minutes = Math.min(want, remaining);
       add({
@@ -486,11 +531,13 @@ export function generatePlan(input: PlanInput): StudySession[] {
         minutes,
         ...(urgentCourseIdsToday.has(best.item.courseId)
           ? { notes: singleTestMode ? 'Foco Modo Teste' : 'Equilíbrio Modo Teste' }
-          : boostSet.has(best.item.courseId)
-            ? { notes: 'Reforço escolhido' }
-            : lowConfidence
-              ? { notes: 'Bloco focado curto (reforço)' }
-              : {}),
+          : postClassFlagged
+            ? { notes: 'Reforço pós-aula' }
+            : boostSet.has(best.item.courseId)
+              ? { notes: 'Reforço escolhido' }
+              : lowConfidence
+                ? { notes: 'Bloco focado curto (reforço)' }
+                : {}),
       });
       effort.set(best.topic.id, Math.max(0, eff - minutes));
     }
@@ -512,10 +559,16 @@ export function generatePlan(input: PlanInput): StudySession[] {
           });
           const topic = sortedTopics[0];
           const difficultyBoost =
-            difficultSet.has(c.id) || difficultCheckInCourseSet.has(c.id) ? 1.4 : 1.0;
+            difficultSet.has(c.id) ||
+            difficultCheckInCourseSet.has(c.id) ||
+            postClassHardCourseSet.has(c.id)
+              ? 1.4
+              : 1.0;
           const chosenBoost = boostSet.has(c.id) ? 1.5 : 1.0;
           const loadPenalty = 1 + (starterMinutesByCourse.get(c.id) ?? 0) / 60;
-          const topicBonus = topic ? 1.2 - topic.confidence * 0.1 : 1.0;
+          const topicBonus = topic
+            ? (1.2 - topic.confidence * 0.1) * (isTopicHighlightedByCheckIn(topic.title, topic.id) ? 1.25 : 1)
+            : 1.0;
           const score = (difficultyBoost * chosenBoost * topicBonus) / loadPenalty;
           if (!picked || score > picked.score) {
             picked = { course: c, topic, score };
@@ -523,16 +576,22 @@ export function generatePlan(input: PlanInput): StudySession[] {
         }
         if (!picked) break;
         const lowConf = picked.topic ? picked.topic.confidence <= 2 : false;
-        const targetMinutes = lowConf ? adaptiveLowCap : targetBlock;
+        const targetMinutes = lowConf
+          ? adaptiveLowCap
+          : recentTiredDay && i <= 1
+            ? Math.min(targetBlock, 35)
+            : targetBlock;
         const minutes = Math.min(targetMinutes, remaining);
         if (minutes < MIN_BLOCK) break;
         add({
           courseId: picked.course.id,
           ...(picked.topic ? { topicId: picked.topic.id } : {}),
           minutes,
-          notes: boostSet.has(picked.course.id)
-            ? 'Reforço · consolidação'
-            : 'Arranque contínuo · consolidação',
+          notes: postClassHardCourseSet.has(picked.course.id)
+            ? 'Reforço pós-aula · consolidação'
+            : boostSet.has(picked.course.id)
+              ? 'Reforço · consolidação'
+              : 'Arranque contínuo · consolidação',
         });
         starterMinutesByCourse.set(
           picked.course.id,

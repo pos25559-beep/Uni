@@ -14,6 +14,7 @@ import type {
   PlannerPreferences,
   PlannerStrategy,
   Settings,
+  StudyLogEntry,
   StudySession,
   WeeklyCheckIn,
 } from '../../types';
@@ -60,6 +61,7 @@ interface Props {
   settings: Settings;
   difficultCourseIds?: ID[];
   weeklyCheckIns: WeeklyCheckIn[];
+  studyLogs?: StudyLogEntry[];
   extraActivities?: ExtraActivity[];
   today: string;
   overdueCount: number;
@@ -83,6 +85,7 @@ export default function PlanBuilderModal({
   settings,
   difficultCourseIds,
   weeklyCheckIns,
+  studyLogs = [],
   extraActivities,
   today,
   overdueCount,
@@ -150,6 +153,7 @@ export default function PlanBuilderModal({
       existing: sessions.filter((s) => !s.generated || s.done || s.date < today),
       difficultCourseIds,
       weeklyCheckIns,
+      studyLogs,
       extraActivities,
       preferredPeriod,
       blockMinutes,
@@ -170,6 +174,7 @@ export default function PlanBuilderModal({
     sessions,
     difficultCourseIds,
     weeklyCheckIns,
+    studyLogs,
     extraActivities,
     preferredPeriod,
     blockMinutes,
