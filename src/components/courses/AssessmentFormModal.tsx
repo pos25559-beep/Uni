@@ -4,7 +4,7 @@ import type { FormEvent } from 'react';
 import { kindLabel } from '../../lib/colors';
 import { newId, useStore } from '../../store/useStore';
 import type { Assessment, AssessmentKind, Course } from '../../types';
-import { Button, Field, Input, Modal, Select, Textarea } from '../ui';
+import { Button, DateTimeField, Field, Input, Modal, Select, Textarea } from '../ui';
 import { fromDatetimeLocal, toDatetimeLocal } from './helpers';
 
 interface Props {
@@ -83,7 +83,7 @@ export default function AssessmentFormModal({ course, assessment, onClose }: Pro
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Teste 1" />
           </Field>
           <Field label="Data e hora *">
-            <Input type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} />
+            <DateTimeField aria-label="Data e hora da avaliação" value={date} onChange={setDate} />
           </Field>
           <Field label="Local">
             <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Anf. III" />

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { kindLabel } from '../../lib/colors';
 import { newId, useStore } from '../../store/useStore';
 import type { AssessmentKind } from '../../types';
-import { Button, Field, Input, Modal, Select } from '../ui';
+import { Button, DateTimeField, Field, Input, Modal, Select } from '../ui';
 import { cx } from '../../lib/uiHelpers';
 
 type Mode = 'evento' | 'avaliacao';
@@ -108,10 +108,10 @@ export default function NewEventModal({ defaultDate, onClose }: Props) {
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Início">
-              <Input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} />
+              <DateTimeField aria-label="Data e hora de início" value={start} onChange={setStart} />
             </Field>
             <Field label="Fim">
-              <Input type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} />
+              <DateTimeField aria-label="Data e hora de fim" value={end} onChange={setEnd} />
             </Field>
           </div>
           <Field label="Local" hint="Opcional">
@@ -150,7 +150,7 @@ export default function NewEventModal({ defaultDate, onClose }: Props) {
             </Field>
           </div>
           <Field label="Data e hora">
-            <Input type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} />
+            <DateTimeField aria-label="Data e hora da avaliação" value={date} onChange={setDate} />
           </Field>
         </>
       )}

@@ -241,16 +241,19 @@ export function Progress({
   value,
   color = 'bg-accent',
   className,
+  label = 'Progresso',
 }: {
   value: number;
   color?: string;
   className?: string;
+  label?: string;
 }) {
   const pct = Math.round(Math.min(1, Math.max(0, value)) * 100);
   return (
     <div
       className={cx('h-2 w-full overflow-hidden rounded-full bg-surface-2', className)}
       role="progressbar"
+      aria-label={label}
       aria-valuenow={pct}
       aria-valuemin={0}
       aria-valuemax={100}
@@ -1254,3 +1257,5 @@ export function Textarea({
     />
   );
 }
+
+export { DateField, DateTimeField, TimeField } from './DateTimeFields';

@@ -415,7 +415,7 @@ export default function AppShell() {
               onClick={() => void hapticTap()}
               className={({ isActive }) =>
                 cx(
-                  'relative flex min-h-[48px] flex-col items-center justify-center gap-0.5 rounded-[22px] px-1 py-1 text-[11px] font-semibold transition-colors',
+                  'relative flex min-h-[48px] flex-col items-center justify-center gap-0.5 rounded-[22px] px-0.5 py-1 text-xs font-semibold tracking-tight transition-colors',
                   isActive
                     ? 'text-[#141312]'
                     : center
@@ -456,7 +456,7 @@ export default function AppShell() {
               setMoreOpen((v) => !v);
             }}
             className={cx(
-              'relative flex min-h-[48px] flex-col items-center justify-center gap-0.5 rounded-[22px] px-1 py-1 text-[11px] font-semibold transition-colors',
+              'relative flex min-h-[48px] flex-col items-center justify-center gap-0.5 rounded-[22px] px-0.5 py-1 text-xs font-semibold tracking-tight transition-colors',
               moreOpen || isMoreRouteActive
                 ? 'text-[#141312]'
                 : 'text-[#FAF8F2]/65 hover:text-[#FAF8F2]',

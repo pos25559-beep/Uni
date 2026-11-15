@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import { weekdayLong } from '../../lib/colors';
 import { newId, useStore } from '../../store/useStore';
 import type { ClassSlot, ClassType, Course } from '../../types';
-import { Button, Field, Input, Modal, Select } from '../ui';
+import { Button, Field, Input, Modal, Select, TimeField } from '../ui';
 import { weekOrder } from './helpers';
 
 interface Props {
@@ -83,10 +83,10 @@ export default function ClassFormModal({ course, initialSlot, onClose }: Props) 
             </Select>
           </Field>
           <Field label="Início">
-            <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} />
+            <TimeField aria-label="Hora de início" value={start} onChange={setStart} />
           </Field>
           <Field label="Fim">
-            <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
+            <TimeField aria-label="Hora de fim" value={end} onChange={setEnd} />
           </Field>
           <Field label="Sala">
             <Input value={room} onChange={(e) => setRoom(e.target.value)} placeholder="B2.04" />

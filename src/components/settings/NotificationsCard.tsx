@@ -1,6 +1,6 @@
 import { Bell, BellOff, BookOpenCheck, CalendarHeart, Flame, GraduationCap, Clock, Moon, Sparkles } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Card, Select, Switch } from '../ui';
+import { Button, Card, Select, Switch, TimeField } from '../ui';
 import { showToast } from '../../lib/uiHelpers';
 import {
   getUniNotificationPermission,
@@ -326,25 +326,23 @@ export default function NotificationsCard({ hideHeader = false }: { hideHeader?:
             </Select>
           </div>
 
-          <label className="space-y-1 text-xs">
+          <div className="space-y-1 text-xs">
             <span className="block font-semibold text-muted">Silêncio desde</span>
-            <input
-              type="time"
-              className="min-h-11 w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm text-fg"
+            <TimeField
+              aria-label="Silêncio desde"
               value={prefs.quietStart}
-              onChange={(e) => patchPrefs({ quietStart: e.target.value })}
+              onChange={(val) => patchPrefs({ quietStart: val })}
             />
-          </label>
+          </div>
 
-          <label className="space-y-1 text-xs">
-            <span className="font-semibold text-muted">Silêncio até</span>
-            <input
-              type="time"
-              className="w-full rounded-xl border border-line bg-surface px-2.5 py-1.5 text-sm text-fg"
+          <div className="space-y-1 text-xs">
+            <span className="block font-semibold text-muted">Silêncio até</span>
+            <TimeField
+              aria-label="Silêncio até"
               value={prefs.quietEnd}
-              onChange={(e) => patchPrefs({ quietEnd: e.target.value })}
+              onChange={(val) => patchPrefs({ quietEnd: val })}
             />
-          </label>
+          </div>
 
           <div className="flex items-end">
             <Button

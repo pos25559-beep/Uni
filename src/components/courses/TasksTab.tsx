@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { newId, useStore } from '../../store/useStore';
 import type { Course, Task } from '../../types';
-import { Badge, Button, EmptyState, Input } from '../ui';
+import { Badge, Button, DateField, EmptyState, Input } from '../ui';
 import { cx } from '../../lib/uiHelpers';
 import { DeleteButton } from './ConfirmModal';
 import { dueLabel, fmtShortDate } from './helpers';
@@ -52,7 +52,7 @@ export default function TasksTab({ course }: Props) {
     <div className="space-y-4">
       <form onSubmit={add} className="flex flex-col gap-2 sm:flex-row" noValidate>
         <Input aria-label="Nova tarefa" placeholder="Nova tarefa…" value={title} onChange={(e) => setTitle(e.target.value)} className="flex-1" />
-        <Input aria-label="Data de entrega" type="date" value={due} onChange={(e) => setDue(e.target.value)} className="sm:w-44" />
+        <DateField aria-label="Data de entrega" clearable placeholder="Data de entrega" value={due} onChange={setDue} className="sm:w-44" />
         <Button type="submit" variant="primary" disabled={!title.trim()}>
           <Plus size={16} /> Adicionar
         </Button>

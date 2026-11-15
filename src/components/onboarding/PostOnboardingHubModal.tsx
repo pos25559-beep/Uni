@@ -41,7 +41,7 @@ import SmartScheduleImportModal from '../courses/SmartScheduleImportModal';
 import CloudPicker from '../materials/CloudPicker';
 import DeviceImportModal from '../materials/DeviceImportModal';
 import ClipImportModal from '../settings/ClipImportModal';
-import { Button, Field, Input, Modal, Select } from '../ui';
+import { Button, DateTimeField, Field, Input, Modal, Select } from '../ui';
 import { cx, showToast } from '../../lib/uiHelpers';
 
 interface Props {
@@ -404,10 +404,10 @@ export default function PostOnboardingHubModal({
                     </Select>
                   </Field>
                   <Field label="Data e hora">
-                    <Input
-                      type="datetime-local"
+                    <DateTimeField
+                      aria-label="Data e hora da avaliação"
                       value={examDate}
-                      onChange={(e) => setExamDate(e.target.value)}
+                      onChange={setExamDate}
                     />
                   </Field>
                 </div>

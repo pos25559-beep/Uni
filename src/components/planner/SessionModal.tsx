@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { newId, useStore } from '../../store/useStore';
 import type { Course, StudySession } from '../../types';
-import { Button, Field, Input, Modal, Select } from '../ui';
+import { Button, DateField, Field, Input, Modal, Select, TimeField } from '../ui';
 
 interface SessionModalProps {
   courses: Course[];
@@ -92,10 +92,10 @@ export default function SessionModal({ courses, session, defaultDate, onClose }:
       )}
       <div className="grid grid-cols-2 gap-3">
         <Field label="Data">
-          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <DateField aria-label="Data da sessão" value={date} onChange={setDate} />
         </Field>
         <Field label="Início">
-          <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} />
+          <TimeField aria-label="Hora de início da sessão" value={start} onChange={setStart} />
         </Field>
       </div>
       <Field label="Duração (minutos)" hint={minutesText && !minutesOk ? 'Indica entre 5 e 480 minutos.' : undefined}>

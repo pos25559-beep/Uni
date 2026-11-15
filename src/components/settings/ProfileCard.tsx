@@ -5,7 +5,7 @@ import { fmtMinutes } from '../../lib/selectors';
 import { weekdayShort } from '../../lib/colors';
 import { UNI_ACCESSORIES, UNI_PERSONAS } from '../../lib/uniAccessories';
 import { UniBuddy } from '../brand/UnipediaMarks';
-import { Button, Card, Field, Input } from '../ui';
+import { Button, Card, DateField, Field, Input } from '../ui';
 import { cx } from '../../lib/uiHelpers';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -95,20 +95,20 @@ export default function ProfileCard() {
           />
         </Field>
         <Field label="Início do semestre">
-          <Input
-            type="date"
+          <DateField
+            aria-label="Início do semestre"
             value={settings.semesterStart}
-            onChange={(e) => e.target.value && updateSettings({ semesterStart: e.target.value })}
+            onChange={(val) => val && updateSettings({ semesterStart: val })}
           />
         </Field>
         <Field
           label="Fim do semestre"
           hint={endBeforeStart ? <span className="text-warn">O fim é anterior ao início.</span> : undefined}
         >
-          <Input
-            type="date"
+          <DateField
+            aria-label="Fim do semestre"
             value={settings.semesterEnd}
-            onChange={(e) => e.target.value && updateSettings({ semesterEnd: e.target.value })}
+            onChange={(val) => val && updateSettings({ semesterEnd: val })}
           />
         </Field>
         <Field

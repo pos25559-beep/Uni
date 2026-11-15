@@ -31,7 +31,7 @@ export const fmtAssessmentDate = (iso: string) =>
 /** "3 dez" para datas simples. */
 export const fmtShortDate = (iso: string) => format(parseISO(iso), 'd MMM', { locale: pt });
 
-/** Valor para <input type="datetime-local">. */
+/** Valor no formato YYYY-MM-DDTHH:mm (DateTimeField). */
 export const toDatetimeLocal = (iso: string) => iso.slice(0, 16);
 
 /** Converte o valor de datetime-local para ISO sem fuso (yyyy-MM-ddTHH:mm:ss). */
