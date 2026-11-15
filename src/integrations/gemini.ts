@@ -26,6 +26,11 @@ import {
 } from '../lib/selectors';
 import type { UniAccessoryId, UniPersonaMode } from '../lib/uniAccessories';
 import {
+  extractUniCheckInSyncBlock,
+  mergeParsedUnderstandingWithAi,
+  type ParsedCheckInUnderstanding,
+} from '../lib/uniCheckInNlu';
+import {
   parseHistoryJsonText,
   parseScheduleJsonText,
   type ExtractedHistoryItem,
@@ -1324,4 +1329,72 @@ ${clean.slice(0, 6000)}
     : await runNativeGenerate({ model, contents, generationConfig });
 
   return parseScheduleJsonText(rawJson);
+}
+
+/**
+ * Conduz um turno conversacional curto no Diário/Check-in do Uni para extrair matéria (ex.: "cai até ao slide 8"),
+ * estado emocional e resumo de estudo em linguagem natural.
+ */
+export async function converseCheckInWithGemini(args: {
+  messages: { role: 'user' | 'model'; text: string }[];
+  baseUnderstanding: ParsedCheckInUnderstanding;
+  courseName?: string;
+  courseTopics: { id: string; title: string }[];
+  courseMaterials: string[];
+  assessmentTitle?: string;
+  persona?: UniPersonaMode;
+  signal?: AbortSignal;
+}): Promise<{
+  reply: string;
+  understanding: ParsedCheckInUnderstanding;
+}> {
+  const personaHint =
+    args.persona === 'exigente'
+      ? 'Sê direto, energético e prático.'
+      : args.persona === 'calmo'
+        ? 'Sê sereno, acolhedor e tranquilo.'
+        : 'Sê próximo, humano e empático como um colega atento.';
+
+  const topicsList =
+    args.courseTopics.length > 0
+      ? args.courseTopics.map((t) => `- [${t.id}] ${t.title}`).join('\n')
+      : '(sem tópicos listados ainda)';
+  const matsList =
+    args.courseMaterials.length > 0
+      ? args.courseMaterials.slice(0, 28).map((m) => `- ${m}`).join('\n')
+      : '(sem apontamentos anexados)';
+
+  const system = `És o Uni num mini-chat humano de check-in com um estudante universitário em Portugal. ${personaHint}
+Modo de conversa: ${args.baseUnderstanding.kind} (${args.courseName ?? 'geral'}${args.assessmentTitle ? ` · ${args.assessmentTitle}` : ''}).
+Responde em 2 a 3 frases curtas, humanas e naturais em português de Portugal, confirmando exatamente o que entendeste (matéria até que slide/aula, dúvidas, cansaço ou ansiedade) e perguntando se quer ajustar algo antes de confirmar. NÃO uses listas longas nem questionários formais.
+
+Tópicos existentes na cadeira:
+${topicsList}
+
+Apontamentos disponíveis na biblioteca desta cadeira (usa para perceber intervalos como "até ao slide 8" ou "até T08"):
+${matsList}
+
+No FINAL da tua resposta, inclui exatamente um bloco técnico invisível ao utilizador:
+<uni-checkin-sync>{"feeling":"clara|mais_ou_menos|dificil|faltei|produtivo|normal|cansado|confiante|estavel|pressionado|atrasado|ansioso","scopeLabel":"opcional ex: Até Slide 8","topicTitle":"opcional","matchedTopicIds":["ids existentes aplicáveis"],"newTopics":["títulos novos a adicionar caso faltem"],"studiedSummary":"opcional","difficulties":"opcional","rating":4}</uni-checkin-sync>`;
+
+  const raw = await askGemini({
+    messages: args.messages,
+    system,
+    signal: args.signal,
+  });
+
+  const { visibleReply, sync } = extractUniCheckInSyncBlock(raw);
+  const understanding = mergeParsedUnderstandingWithAi(
+    args.baseUnderstanding,
+    sync,
+    args.courseTopics.length > 0
+      ? ({ topics: args.courseTopics } as unknown as AppState['courses'][number])
+      : undefined,
+  );
+  return {
+    reply:
+      visibleReply ||
+      'Percebi tudo! Alinhei esse resumo e o estado no teu plano — confirma abaixo quando estiver bom.',
+    understanding,
+  };
 }

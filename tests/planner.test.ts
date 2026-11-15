@@ -53,6 +53,10 @@ import {
 import { computeNextSrsState, isTopicReviewDue } from '../src/lib/spacedRepetition';
 import { buildStudyContext } from '../src/integrations/gemini';
 import {
+  extractUniCheckInSyncBlock,
+  parseConversationalCheckIn,
+} from '../src/lib/uniCheckInNlu';
+import {
   DEFAULT_NOTIFICATION_PREFS,
   clampOutOfQuietHours,
   isWithinQuietHours,
@@ -2233,4 +2237,78 @@ test('buildStudyContext inclui materia que sai do teste e secao DIARIO RECENTE',
   assert.ok(ctx.includes('matéria que sai: Forjamento'));
   assert.ok(ctx.includes('DIÁRIO RECENTE (AULAS, ESTUDO DIÁRIO & MODO TESTE):'));
   assert.ok(ctx.includes('Faltam exercicios de forjamento'));
+});
+
+test('parseConversationalCheckIn entende "cai ate ao slide 8", topicos de aula e bloco sync IA', () => {
+  const tepCourse: Course = {
+    id: 'c-tep',
+    code: 'TEP',
+    name: 'Tecnologias de Produção',
+    shortName: 'TEP',
+    ects: 6,
+    color: 'emerald',
+    targetGrade: 14,
+    topics: [
+      { id: 't-elast', title: 'Aula T02 - Revisão Elasticidade', status: 'review', confidence: 4 },
+      { id: 't-forj', title: 'Aula T09 - Forjamento', status: 'todo', confidence: 2 },
+    ],
+  };
+  const materials: Material[] = [
+    { id: 'm0', courseId: 'c-tep', title: 'Aula T00 - Funcionamento Pt+Ing.pdf', kind: 'gdrive', addedAt: '2026-10-01' },
+    { id: 'm3', courseId: 'c-tep', title: 'Aula T03a - Critérios de Plasticidade.pdf', kind: 'gdrive', addedAt: '2026-10-02' },
+    { id: 'm5', courseId: 'c-tep', title: 'Aula T05 - Aspetos Fenomenológicos.pdf', kind: 'gdrive', addedAt: '2026-10-03' },
+    { id: 'm8', courseId: 'c-tep', title: 'Aula T08 - Método do Limite Superior.pdf', kind: 'gdrive', addedAt: '2026-10-04' },
+    { id: 'm9', courseId: 'c-tep', title: 'Aula T09 - Forjamento.pdf', kind: 'gdrive', addedAt: '2026-10-05' },
+  ];
+  const assessment: Assessment = {
+    id: 'a-tep-1',
+    courseId: 'c-tep',
+    kind: 'teste',
+    title: '1.º Teste',
+    date: '2026-11-20T14:00:00',
+    weight: 40,
+    topicIds: [],
+    source: 'local',
+  };
+
+  const examParsed = parseConversationalCheckIn({
+    kind: 'exam_prep',
+    userText: 'A matéria do teste cai até ao slide 8, já estudei a T02 e estou ansioso',
+    course: tepCourse,
+    courses: [tepCourse],
+    materials,
+    assessment,
+  });
+
+  assert.equal(examParsed.feeling, 'ansioso');
+  assert.equal(examParsed.scopeLabel, 'Até slide 8');
+  assert.ok(examParsed.matchedTopicIds.includes('t-elast'), 'Deve incluir topico <= 8');
+  assert.equal(examParsed.matchedTopicIds.includes('t-forj'), false, 'Nao deve incluir Aula T09 (> slide 8)');
+  assert.ok(
+    examParsed.newTopicsToAdd.some((t) => t.includes('Aula T08')),
+    'Deve importar automaticamente Aula T08 dos apontamentos',
+  );
+  assert.equal(
+    examParsed.newTopicsToAdd.some((t) => t.includes('Funcionamento')),
+    false,
+    'Nao deve criar topico para T00 Funcionamento',
+  );
+
+  const classParsed = parseConversationalCheckIn({
+    kind: 'class',
+    userText: 'Hoje demos Critério de Von Mises, fiquei com dúvidas nos sinais do tensor',
+    course: tepCourse,
+    courses: [tepCourse],
+    materials,
+  });
+  assert.equal(classParsed.feeling, 'mais_ou_menos');
+  assert.ok(classParsed.topicTitle?.includes('Critério de Von Mises'));
+  assert.ok(classParsed.difficulties?.includes('tensor'));
+
+  const aiParsed = extractUniCheckInSyncBlock(
+    'Boa! Fica já alinhado até T08.\n<uni-checkin-sync>{"feeling":"ansioso","scopeLabel":"Até Slide 8","newTopics":["Aula T08"]}</uni-checkin-sync>',
+  );
+  assert.equal(aiParsed.visibleReply, 'Boa! Fica já alinhado até T08.');
+  assert.equal(aiParsed.sync?.feeling, 'ansioso');
+  assert.equal(aiParsed.sync?.scopeLabel, 'Até Slide 8');
 });

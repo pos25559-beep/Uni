@@ -4,6 +4,7 @@ import {
   CalendarDays,
   Check,
   ChevronDown,
+  ChevronUp,
   FileText,
   FolderOpen,
   Menu,
@@ -143,6 +144,7 @@ export default function Assistant() {
   }, [hasCustomKey, quotaTick]);
   const [confirmDeleteConv, setConfirmDeleteConv] = useState(false);
   const [showActions, setShowActions] = useState(false);
+  const [materialsStripMode, setMaterialsStripMode] = useState<'compact' | 'collapsed' | 'expanded'>('compact');
   const [tutorOpen, setTutorOpen] = useState(false);
   const [keyGuideOpen, setKeyGuideOpen] = useState(false);
   const [collectiblesOpen, setCollectiblesOpen] = useState(false);
@@ -309,6 +311,13 @@ export default function Assistant() {
       );
       return removing ? prev.filter((x) => x !== id) : [...prev, id];
     });
+  };
+
+  const clearAttachedMaterials = () => {
+    if (selectedMaterialIds.length === 0) return;
+    setDismissedAutoMaterialIds((prev) => [...new Set([...prev, ...selectedMaterialIds])]);
+    setSelectedMaterialIds([]);
+    setMaterialsStripMode('compact');
   };
 
   const handleCreateConversation = async (opts?: {
@@ -1321,36 +1330,128 @@ export default function Assistant() {
         </div>
 
         {(activeCourse || attachedMaterials.length > 0) && (
-          <div className="flex flex-wrap gap-1.5">
-            {activeCourse && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent-ink md:hidden">
-                <span className="max-w-[140px] truncate">{activeCourse.shortName || activeCourse.name}</span>
+          <div className="space-y-1.5">
+            {materialsStripMode === 'collapsed' && attachedMaterials.length > 0 ? (
+              <div className="flex items-center justify-between gap-2 rounded-2xl border border-line/80 bg-surface-2/60 px-2.5 py-1.5 text-xs">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  {activeCourse && (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 font-medium text-accent-ink md:hidden">
+                      <span className="max-w-[90px] truncate">{activeCourse.shortName || activeCourse.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => setActiveCourseId('all')}
+                        aria-label="Limpar filtro de cadeira"
+                        className="hover:text-danger"
+                      >
+                        <X size={11} />
+                      </button>
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setMaterialsStripMode('compact')}
+                    aria-label="Expandir apontamentos anexados"
+                    className="inline-flex min-h-[30px] items-center gap-1.5 truncate font-semibold text-fg hover:text-accent-ink"
+                  >
+                    <Paperclip size={12} className="shrink-0 text-accent" />
+                    <span className="truncate">{attachedMaterials.length} apontamento(s) anexado(s)</span>
+                    <ChevronDown size={13} className="shrink-0 text-muted" />
+                  </button>
+                </div>
                 <button
                   type="button"
-                  onClick={() => setActiveCourseId('all')}
-                  aria-label="Limpar filtro de cadeira"
-                  className="hover:text-danger"
+                  onClick={clearAttachedMaterials}
+                  aria-label="Limpar todos os apontamentos anexados"
+                  className="min-h-[30px] shrink-0 rounded-full px-2 text-xs font-medium text-muted hover:bg-surface hover:text-danger"
                 >
-                  <X size={12} />
+                  Limpar
                 </button>
-              </span>
+              </div>
+            ) : (
+              <>
+                {attachedMaterials.length > 1 && (
+                  <div className="flex items-center justify-between gap-2 px-0.5 text-xs">
+                    <span className="font-medium text-muted">
+                      {attachedMaterials.length} apontamentos ativos
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setMaterialsStripMode((m) => (m === 'expanded' ? 'compact' : 'expanded'))
+                        }
+                        className="inline-flex min-h-[28px] items-center gap-1 rounded-full px-2 font-medium text-muted hover:bg-surface-2 hover:text-fg"
+                      >
+                        {materialsStripMode === 'expanded' ? (
+                          <>
+                            <ChevronUp size={12} /> 1 linha
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown size={12} /> Ver lista
+                          </>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMaterialsStripMode('collapsed')}
+                        aria-label="Diminuir barra de apontamentos"
+                        className="inline-flex min-h-[28px] items-center gap-1 rounded-full bg-surface-2 px-2.5 font-semibold text-fg hover:bg-surface-2/80"
+                      >
+                        Diminuir
+                      </button>
+                      <button
+                        type="button"
+                        onClick={clearAttachedMaterials}
+                        aria-label="Limpar todos os apontamentos"
+                        className="min-h-[28px] rounded-full px-2 text-muted hover:text-danger"
+                      >
+                        Limpar
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div
+                  className={cx(
+                    'flex gap-1.5',
+                    materialsStripMode === 'expanded'
+                      ? 'max-h-28 flex-wrap overflow-y-auto pr-1'
+                      : 'flex-nowrap items-center overflow-x-auto pb-0.5 no-scrollbar',
+                  )}
+                >
+                  {activeCourse && (
+                    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent-ink md:hidden">
+                      <span className="max-w-[140px] truncate">{activeCourse.shortName || activeCourse.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => setActiveCourseId('all')}
+                        aria-label="Limpar filtro de cadeira"
+                        className="hover:text-danger"
+                      >
+                        <X size={12} />
+                      </button>
+                    </span>
+                  )}
+                  {attachedMaterials.map((m) => (
+                    <span
+                      key={m.id}
+                      className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-surface-2 px-3 py-1 text-xs text-muted"
+                    >
+                      <span className="max-w-[140px] truncate">{m.title}</span>
+                      <button
+                        type="button"
+                        onClick={() => toggleMaterial(m.id)}
+                        aria-label={`Remover ${m.title}`}
+                        className="hover:text-danger"
+                      >
+                        <X size={12} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </>
             )}
-            {attachedMaterials.map((m) => (
-              <span
-                key={m.id}
-                className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-3 py-1 text-xs text-muted"
-              >
-                <span className="max-w-[140px] truncate">{m.title}</span>
-                <button
-                  type="button"
-                  onClick={() => toggleMaterial(m.id)}
-                  aria-label={`Remover ${m.title}`}
-                  className="hover:text-danger"
-                >
-                  <X size={12} />
-                </button>
-              </span>
-            ))}
           </div>
         )}
 
