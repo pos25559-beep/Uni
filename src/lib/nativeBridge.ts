@@ -25,6 +25,86 @@ interface ThemeChromePlugin {
 
 const ThemeChrome = registerPlugin<ThemeChromePlugin>('ThemeChrome');
 
+export interface NativeFocusShieldCapabilities {
+  dndSupported: boolean;
+  dndGranted: boolean;
+  screenPinningSupported: boolean;
+  inLockTask: boolean;
+  dndActiveByApp: boolean;
+  interruptionFilter: number;
+}
+
+interface FocusShieldPlugin {
+  getCapabilities(): Promise<NativeFocusShieldCapabilities>;
+  openDndSettings(): Promise<void>;
+  activate(options: { dnd: boolean; screenPinning: boolean }): Promise<{
+    dndActivated: boolean;
+    pinningRequested: boolean;
+  }>;
+  deactivate(options: { restoreDnd: boolean; stopPinning: boolean }): Promise<void>;
+}
+
+const FocusShield = registerPlugin<FocusShieldPlugin>('FocusShield');
+
+export function isNativeAndroid(): boolean {
+  return Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android';
+}
+
+const WEB_DEFAULT_CAPABILITIES: NativeFocusShieldCapabilities = {
+  dndSupported: false,
+  dndGranted: false,
+  screenPinningSupported: false,
+  inLockTask: false,
+  dndActiveByApp: false,
+  interruptionFilter: 0,
+};
+
+export async function getNativeFocusShieldCapabilities(): Promise<NativeFocusShieldCapabilities> {
+  if (!isNativeAndroid()) return WEB_DEFAULT_CAPABILITIES;
+  try {
+    return await FocusShield.getCapabilities();
+  } catch {
+    return WEB_DEFAULT_CAPABILITIES;
+  }
+}
+
+export async function openAndroidDndSettings(): Promise<boolean> {
+  if (!isNativeAndroid()) return false;
+  try {
+    await FocusShield.openDndSettings();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function activateNativeFocusShield(options: {
+  dnd: boolean;
+  screenPinning: boolean;
+}): Promise<{ dndActivated: boolean; pinningRequested: boolean }> {
+  if (!isNativeAndroid()) return { dndActivated: false, pinningRequested: false };
+  try {
+    return await FocusShield.activate(options);
+  } catch {
+    return { dndActivated: false, pinningRequested: false };
+  }
+}
+
+export async function deactivateNativeFocusShield(options?: {
+  restoreDnd?: boolean;
+  stopPinning?: boolean;
+}): Promise<void> {
+  if (!isNativeAndroid()) return;
+  try {
+    await FocusShield.deactivate({
+      restoreDnd: options?.restoreDnd ?? true,
+      stopPinning: options?.stopPinning ?? true,
+    });
+  } catch {
+    // Ignora caso o plugin ou lock task já tenham sido encerrados pelo SO.
+  }
+}
+
 /** Resolve se o tema efetivo deve ser escuro dado o modo escolhido pelo utilizador. */
 export function resolveIsDark(pref: ThemePreference): boolean {
   if (pref === 'dark') return true;

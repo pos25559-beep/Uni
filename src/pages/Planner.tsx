@@ -9,6 +9,7 @@ import {
   Flame,
   MessageSquare,
   MoreHorizontal,
+  Play,
   Plus,
   Sparkles,
 } from 'lucide-react';
@@ -31,6 +32,7 @@ import { openUniCheckIn } from '../lib/uniCheckInBus';
 import { ActionSheet, Badge, Button, Card, CourseChip, EmptyState, PageHeader, SegmentedControl } from '../components/ui';
 import { showToast } from '../lib/uiHelpers';
 import { weekdayShort } from '../lib/colors';
+import { clearActiveFocusSnapshot, loadActiveFocusSnapshot, resolveRecoveredFocusState } from '../lib/focusShield';
 import { hapticTap } from '../lib/nativeBridge';
 import { analyzeTestMode, generatePlan, planSummary, rescheduleOverdueSessions } from '../lib/planner';
 import { capitalizeFirst, fmtMinutes, formatSessionDisplay, sessionMinutes, todayStr } from '../lib/selectors';
@@ -92,6 +94,7 @@ export default function Planner() {
   const [tutorOpen, setTutorOpen] = useState(false);
   const [modal, setModal] = useState<{ session?: StudySession; date: string } | null>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
+  const [snapshotNonce, setSnapshotNonce] = useState(0);
 
   const testMode = useMemo(
     () => analyzeTestMode(courses, assessments, today),
@@ -163,6 +166,22 @@ export default function Planner() {
   const noPlanInputs = courses.length === 0;
   const starterOnlyMode = courses.length > 0 && !assessments.some((a) => a.grade === undefined);
   const focusSession = focusId ? sessions.find((s) => s.id === focusId) : undefined;
+  const recoverableFocus = useMemo(() => {
+    void snapshotNonce;
+    if (focusId) return null;
+    const snap = loadActiveFocusSnapshot();
+    if (!snap) return null;
+    const match = sessions.find((s) => s.id === snap.sessionId && !s.done);
+    if (!match) return null;
+    const state = resolveRecoveredFocusState(snap);
+    return {
+      session: match,
+      course: courseById.get(match.courseId),
+      topic: match.topicId ? topicById.get(match.topicId) : undefined,
+      elapsedMinutes: Math.max(0, Math.round(state.accumulatedMs / 60_000)),
+      plannedMinutes: Math.round(state.budgetMs / 60_000),
+    };
+  }, [courseById, focusId, sessions, snapshotNonce, topicById]);
 
   const plannerPrefs = settings.plannerPrefs;
 
@@ -382,6 +401,38 @@ export default function Planner() {
           <Button size="sm" variant="secondary" onClick={() => navigate('/cadeiras')}>
             Adicionar provas
           </Button>
+        </div>
+      )}
+
+      {recoverableFocus && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[22px] border border-accent/35 bg-accent-soft px-4 py-3 text-fg shadow-[var(--shadow-card)]">
+          <div className="min-w-0 flex-1 text-xs leading-relaxed">
+            <p className="font-bold text-accent-ink">Bloco de foco em curso</p>
+            <p className="mt-0.5 truncate text-fg">
+              {recoverableFocus.course ? `${recoverableFocus.course.shortName} · ` : ''}
+              {formatSessionDisplay(recoverableFocus.session, recoverableFocus.topic).title} (
+              {recoverableFocus.elapsedMinutes} de {recoverableFocus.plannedMinutes} min)
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => setFocusId(recoverableFocus.session.id)}
+            >
+              <Play size={14} /> Retomar foco
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                clearActiveFocusSnapshot(recoverableFocus.session.id);
+                setSnapshotNonce((n) => n + 1);
+              }}
+            >
+              Descartar
+            </Button>
+          </div>
         </div>
       )}
 
@@ -639,7 +690,10 @@ export default function Planner() {
           session={focusSession}
           course={courseById.get(focusSession.courseId)}
           topic={focusSession.topicId ? topicById.get(focusSession.topicId) : undefined}
-          onClose={() => setFocusId(null)}
+          onClose={() => {
+            setFocusId(null);
+            setSnapshotNonce((n) => n + 1);
+          }}
         />
       )}
 

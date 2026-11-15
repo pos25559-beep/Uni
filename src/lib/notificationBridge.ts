@@ -1,5 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { useHubUiStore } from '../store/useHubUiStore';
 import {
   buildSampleUniNotification,
   planSmartNotifications,
@@ -187,6 +188,7 @@ export async function syncScheduledUniNotifications(
     const delay = new Date(item.fireAt).getTime() - nowMs;
     if (delay < 1000 || delay > maxDelayMs) continue;
     const timer = window.setTimeout(() => {
+      if (useHubUiStore.getState().focusShieldRunning) return;
       markFired(item.key);
       void dispatchWebNotification(item);
     }, delay);

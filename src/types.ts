@@ -120,6 +120,12 @@ export interface StudySession {
   notes?: string;
   /** true = criada pelo gerador de plano (pode ser substituída ao regenerar). */
   generated: boolean;
+  /** N.º de saídas do ecrã/separador durante o Modo Foco (opcional). */
+  focusDistractions?: number;
+  /** Segundos acumulados fora do ecrã durante o Modo Foco (opcional). */
+  focusAwaySeconds?: number;
+  /** Indica se algum nível de Escudo Anti-distração esteve ativo na sessão. */
+  focusShieldUsed?: boolean;
 }
 
 export interface Task {
