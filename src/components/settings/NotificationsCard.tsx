@@ -1,5 +1,6 @@
 import { Bell, BellOff, BookOpenCheck, CalendarHeart, Flame, GraduationCap, Clock, Moon, Sparkles } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button, Card, Select, Switch, TimeField } from '../ui';
 import { showToast } from '../../lib/uiHelpers';
 import {
@@ -19,6 +20,7 @@ import type { NotificationPreferences } from '../../types';
 const HOURS = [9, 12, 16, 18, 19, 20, 21];
 
 export default function NotificationsCard({ hideHeader = false }: { hideHeader?: boolean } = {}) {
+  const { t } = useTranslation('settings');
   const settings = useStore((s) => s.settings);
   const courses = useStore((s) => s.courses);
   const assessments = useStore((s) => s.assessments);
@@ -65,7 +67,7 @@ export default function NotificationsCard({ hideHeader = false }: { hideHeader?:
   const handleMasterToggle = async (enabled: boolean) => {
     if (!enabled) {
       patchPrefs({ enabled: false });
-      showToast('Lembretes inteligentes desativados.', 'neutral');
+      showToast(t('notif.off'), 'neutral');
       return;
     }
 
@@ -74,7 +76,7 @@ export default function NotificationsCard({ hideHeader = false }: { hideHeader?:
     if (perm === 'denied') {
       patchPrefs({ enabled: false });
       showToast(
-        'Permissão bloqueada no dispositivo. Podes ativar nas definições do browser ou Android.',
+        t('notif.blocked'),
         'danger',
       );
       return;
@@ -83,8 +85,8 @@ export default function NotificationsCard({ hideHeader = false }: { hideHeader?:
     patchPrefs({ enabled: true });
     showToast(
       perm === 'granted'
-        ? 'Lembretes inteligentes do Uni ativados!'
-        : 'Preferências guardadas! Vais receber avisos discretos dentro da app.',
+        ? t('notif.on')
+        : t('notif.savedInApp'),
     );
   };
 
@@ -95,7 +97,7 @@ export default function NotificationsCard({ hideHeader = false }: { hideHeader?:
       const nextPerm = await getUniNotificationPermission();
       setPermState(nextPerm);
       if (res.delivered === 'native' || res.delivered === 'web') {
-        showToast(`Notificação enviada: "${res.notification.title}"`);
+        showToast(t('notif.sent', { title: res.notification.title }));
       } else {
         showToast(`${res.notification.title} — ${res.notification.body}`, 'neutral');
       }
@@ -108,12 +110,12 @@ export default function NotificationsCard({ hideHeader = false }: { hideHeader?:
 
   return (
     <Card
-      title={hideHeader ? undefined : 'Lembretes inteligentes do Uni'}
+      title={hideHeader ? undefined : t('notif.title')}
       className={isMinimal ? undefined : 'rounded-[26px] border-line/70'}
     >
       <div className="space-y-4">
         <p className="text-xs text-muted">
-          Protege a tua sequência, revisões SRS, provas e aulas — sem spam.
+          {t('notif.intro')}
         </p>
         <div
           className={
@@ -127,20 +129,20 @@ export default function NotificationsCard({ hideHeader = false }: { hideHeader?:
               {prefs.enabled ? <Bell size={18} /> : <BellOff size={18} />}
             </span>
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-fg">Ativar notificações adaptativas</p>
+              <p className="text-sm font-semibold text-fg">{t('notif.master')}</p>
               <p className="text-xs text-muted">
                 {permState === 'denied'
-                  ? 'Bloqueadas no navegador/Android — usa apenas avisos discretos na app.'
+                  ? t('notif.deniedHint')
                   : prefs.enabled
-                    ? `Ativo · máximo ${prefs.maxDailyNudges}/dia · silêncio ${prefs.quietStart}–${prefs.quietEnd}`
-                    : 'Opt-in: só agenda lembretes quando ligas este interruptor.'}
+                    ? t('notif.activeHint', { max: prefs.maxDailyNudges, start: prefs.quietStart, end: prefs.quietEnd })
+                    : t('notif.optIn')}
               </p>
             </div>
           </div>
           <Switch
             checked={prefs.enabled}
             onCheckedChange={(v) => void handleMasterToggle(v)}
-            label="Ativar notificações adaptativas do Uni"
+            label={t('notif.masterAria')}
           />
         </div>
 
@@ -149,96 +151,96 @@ export default function NotificationsCard({ hideHeader = false }: { hideHeader?:
           <label className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3.5 py-2.5">
             <span className="flex items-center gap-2.5 text-sm font-medium text-fg">
               <Flame size={16} className="text-coral" />
-              <span>Sequência diária</span>
+              <span>{t('notif.cat.streak')}</span>
             </span>
             <Switch
               checked={prefs.streakSaver}
               onCheckedChange={(v) => patchPrefs({ streakSaver: v })}
-              label="Proteção de sequência diária"
+              label={t('notif.cat.streakAria')}
             />
           </label>
 
           <label className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3.5 py-2.5">
             <span className="flex items-center gap-2.5 text-sm font-medium text-fg">
               <Sparkles size={16} className="text-forest" />
-              <span>Revisões SRS do dia</span>
+              <span>{t('notif.cat.srs')}</span>
             </span>
             <Switch
               checked={prefs.srsDue}
               onCheckedChange={(v) => patchPrefs({ srsDue: v })}
-              label="Resumo de revisões espaçadas"
+              label={t('notif.cat.srsAria')}
             />
           </label>
 
           <label className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3.5 py-2.5">
             <span className="flex items-center gap-2.5 text-sm font-medium text-fg">
               <GraduationCap size={16} className="text-cobalt" />
-              <span>Testes e exames</span>
+              <span>{t('notif.cat.exams')}</span>
             </span>
             <Switch
               checked={prefs.assessments}
               onCheckedChange={(v) => patchPrefs({ assessments: v })}
-              label="Contagem decrescente de provas"
+              label={t('notif.cat.examsAria')}
             />
           </label>
 
           <label className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3.5 py-2.5">
             <span className="flex items-center gap-2.5 text-sm font-medium text-fg">
               <Clock size={16} className="text-honey-ink" />
-              <span>Aulas com sala</span>
+              <span>{t('notif.cat.classes')}</span>
             </span>
             <Switch
               checked={prefs.classReminders}
               onCheckedChange={(v) => patchPrefs({ classReminders: v })}
-              label="Avisos antes das aulas"
+              label={t('notif.cat.classesAria')}
             />
           </label>
 
           <label className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3.5 py-2.5">
             <span className="flex items-center gap-2.5 text-sm font-medium text-fg">
               <BookOpenCheck size={16} className="text-forest" />
-              <span>Pergunta pós-aula</span>
+              <span>{t('notif.cat.postClass')}</span>
             </span>
             <Switch
               checked={prefs.postClassCheckIn ?? true}
               onCheckedChange={(v) => patchPrefs({ postClassCheckIn: v })}
-              label="Pergunta pós-aula sobre a matéria dada"
+              label={t('notif.cat.postClassAria')}
             />
           </label>
 
           <label className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3.5 py-2.5">
             <span className="flex items-center gap-2.5 text-sm font-medium text-fg">
               <Moon size={16} className="text-coral" />
-              <span>Fim do dia (diário)</span>
+              <span>{t('notif.cat.evening')}</span>
             </span>
             <Switch
               checked={prefs.eveningCheckIn ?? true}
               onCheckedChange={(v) => patchPrefs({ eveningCheckIn: v })}
-              label="Balanço do final do dia"
+              label={t('notif.cat.eveningAria')}
             />
           </label>
 
           <label className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3.5 py-2.5">
             <span className="flex items-center gap-2.5 text-sm font-medium text-fg">
               <CalendarHeart size={16} className="text-cobalt" />
-              <span>Balanço de domingo</span>
+              <span>{t('notif.cat.sunday')}</span>
             </span>
             <Switch
               checked={prefs.sundayReview ?? true}
               onCheckedChange={(v) => patchPrefs({ sundayReview: v })}
-              label="Balanço semanal ao domingo"
+              label={t('notif.cat.sundayAria')}
             />
           </label>
 
           <label className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3.5 py-2.5">
             <span className="flex items-center gap-2.5 text-sm font-medium text-fg">
               <GraduationCap size={16} className="text-coral" />
-              <span>Alinhamento Modo Teste</span>
+              <span>{t('notif.cat.examPrep')}</span>
             </span>
             <Switch
               checked={prefs.examPrepCheckIn ?? true}
               onCheckedChange={(v) => patchPrefs({ examPrepCheckIn: v })}
-              label="Perguntar até que matéria sai em Modo Teste"
+              label={t('notif.cat.examPrepAria')}
             />
           </label>
         </div>
@@ -246,9 +248,9 @@ export default function NotificationsCard({ hideHeader = false }: { hideHeader?:
         {/* Cadência e silêncio */}
         <div className="grid gap-3 rounded-2xl border border-line/75 bg-surface-2/40 p-3.5 sm:grid-cols-3">
           <div className="space-y-1 text-xs">
-            <span className="block font-semibold text-muted">Hora do empurrão diário</span>
+            <span className="block font-semibold text-muted">{t('notif.field.hour')}</span>
             <Select
-              aria-label="Hora do empurrão diário"
+              aria-label={t('notif.field.hour')}
               value={prefs.preferredHour}
               onChange={(e) => patchPrefs({ preferredHour: Number(e.target.value) })}
             >
@@ -261,23 +263,23 @@ export default function NotificationsCard({ hideHeader = false }: { hideHeader?:
           </div>
 
           <div className="space-y-1 text-xs">
-            <span className="block font-semibold text-muted">Antes da aula</span>
+            <span className="block font-semibold text-muted">{t('notif.field.before')}</span>
             <Select
-              aria-label="Antes da aula"
+              aria-label={t('notif.field.before')}
               value={prefs.classBeforeMinutes}
               onChange={(e) =>
                 patchPrefs({ classBeforeMinutes: Number(e.target.value) === 30 ? 30 : 15 })
               }
             >
-              <option value={15}>15 minutos antes</option>
-              <option value={30}>30 minutos antes</option>
+              <option value={15}>{t('notif.minBefore', { count: 15 })}</option>
+              <option value={30}>{t('notif.minBefore', { count: 30 })}</option>
             </Select>
           </div>
 
           <div className="space-y-1 text-xs">
-            <span className="block font-semibold text-muted">Máximo por dia</span>
+            <span className="block font-semibold text-muted">{t('notif.field.max')}</span>
             <Select
-              aria-label="Máximo por dia"
+              aria-label={t('notif.field.max')}
               value={prefs.maxDailyNudges}
               onChange={(e) => {
                 const v = Number(e.target.value);
@@ -287,34 +289,34 @@ export default function NotificationsCard({ hideHeader = false }: { hideHeader?:
                 });
               }}
             >
-              <option value={1}>1 aviso/dia</option>
-              <option value={2}>2 avisos/dia</option>
-              <option value={3}>3 avisos/dia</option>
-              <option value={4}>4 avisos/dia</option>
-              <option value={6}>6 avisos/dia</option>
+              <option value={1}>{t('notif.perDay', { count: 1 })}</option>
+              <option value={2}>{t('notif.perDay', { count: 2 })}</option>
+              <option value={3}>{t('notif.perDay', { count: 3 })}</option>
+              <option value={4}>{t('notif.perDay', { count: 4 })}</option>
+              <option value={6}>{t('notif.perDay', { count: 6 })}</option>
             </Select>
           </div>
 
           <div className="space-y-1 text-xs">
-            <span className="block font-semibold text-muted">Após a aula</span>
+            <span className="block font-semibold text-muted">{t('notif.field.after')}</span>
             <Select
-              aria-label="Após a aula"
+              aria-label={t('notif.field.after')}
               value={prefs.postClassDelayMinutes ?? 10}
               onChange={(e) => {
                 const v = Number(e.target.value);
                 patchPrefs({ postClassDelayMinutes: v === 5 ? 5 : v === 15 ? 15 : 10 });
               }}
             >
-              <option value={5}>5 min depois</option>
-              <option value={10}>10 min depois</option>
-              <option value={15}>15 min depois</option>
+              <option value={5}>{t('notif.minAfter', { count: 5 })}</option>
+              <option value={10}>{t('notif.minAfter', { count: 10 })}</option>
+              <option value={15}>{t('notif.minAfter', { count: 15 })}</option>
             </Select>
           </div>
 
           <div className="space-y-1 text-xs">
-            <span className="block font-semibold text-muted">Hora fim do dia</span>
+            <span className="block font-semibold text-muted">{t('notif.field.eveningHour')}</span>
             <Select
-              aria-label="Hora fim do dia"
+              aria-label={t('notif.field.eveningHour')}
               value={prefs.eveningHour ?? 20}
               onChange={(e) => patchPrefs({ eveningHour: Number(e.target.value) })}
             >
@@ -327,18 +329,18 @@ export default function NotificationsCard({ hideHeader = false }: { hideHeader?:
           </div>
 
           <div className="space-y-1 text-xs">
-            <span className="block font-semibold text-muted">Silêncio desde</span>
+            <span className="block font-semibold text-muted">{t('notif.field.quietFrom')}</span>
             <TimeField
-              aria-label="Silêncio desde"
+              aria-label={t('notif.field.quietFrom')}
               value={prefs.quietStart}
               onChange={(val) => patchPrefs({ quietStart: val })}
             />
           </div>
 
           <div className="space-y-1 text-xs">
-            <span className="block font-semibold text-muted">Silêncio até</span>
+            <span className="block font-semibold text-muted">{t('notif.field.quietTo')}</span>
             <TimeField
-              aria-label="Silêncio até"
+              aria-label={t('notif.field.quietTo')}
               value={prefs.quietEnd}
               onChange={(val) => patchPrefs({ quietEnd: val })}
             />
@@ -353,7 +355,7 @@ export default function NotificationsCard({ hideHeader = false }: { hideHeader?:
               disabled={testing}
             >
               <Bell size={15} />
-              Testar notificação agora
+              {t('notif.test')}
             </Button>
           </div>
         </div>
@@ -367,11 +369,11 @@ export default function NotificationsCard({ hideHeader = false }: { hideHeader?:
           }
         >
           <div className="flex items-center justify-between gap-2 text-xs font-semibold uppercase tracking-wide opacity-75">
-            <span>Pré-visualização ao vivo</span>
+            <span>{t('notif.preview')}</span>
             <span>
               {prefs.enabled
-                ? `${scheduledPreview.length} agendada(s) nas próximas 72h`
-                : 'Exemplo imediato'}
+                ? t('notif.scheduled', { count: scheduledPreview.length })
+                : t('notif.example')}
             </span>
           </div>
           <p className="mt-1 text-sm font-semibold text-fg">{samplePreview.title}</p>

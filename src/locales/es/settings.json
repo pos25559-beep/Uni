@@ -127,6 +127,54 @@
     "installHint": "Accede sin conexión y como app dedicada en tu dispositivo.",
     "installBtn": "Instalar Unipedia"
   },
+  "notif": {
+    "off": "Recordatorios inteligentes desactivados.",
+    "blocked": "Permiso bloqueado en el dispositivo. Puedes activarlo en los ajustes del navegador o de Android.",
+    "on": "¡Recordatorios inteligentes de Uni activados!",
+    "savedInApp": "¡Preferencias guardadas! Recibirás avisos discretos dentro de la app.",
+    "sent": "Notificación enviada: \"{{title}}\"",
+    "title": "Recordatorios inteligentes de Uni",
+    "intro": "Protege tu racha, repasos SRS, exámenes y clases, sin spam.",
+    "master": "Activar notificaciones adaptativas",
+    "deniedHint": "Bloqueadas en el navegador/Android: solo avisos discretos en la app.",
+    "activeHint": "Activo · máximo {{max}}/día · silencio {{start}}–{{end}}",
+    "optIn": "Opt-in: solo programa recordatorios cuando activas este interruptor.",
+    "masterAria": "Activar notificaciones adaptativas de Uni",
+    "cat": {
+      "streak": "Racha diaria",
+      "streakAria": "Protección de la racha diaria",
+      "srs": "Repasos SRS del día",
+      "srsAria": "Resumen de repasos espaciados",
+      "exams": "Exámenes",
+      "examsAria": "Cuenta atrás de exámenes",
+      "classes": "Clases con aula",
+      "classesAria": "Avisos antes de clase",
+      "postClass": "Pregunta tras la clase",
+      "postClassAria": "Pregunta tras la clase sobre lo visto",
+      "evening": "Fin del día (diario)",
+      "eveningAria": "Balance del final del día",
+      "sunday": "Balance del domingo",
+      "sundayAria": "Balance semanal del domingo",
+      "examPrep": "Alineación Modo Examen",
+      "examPrepAria": "Preguntar qué temario entra en Modo Examen"
+    },
+    "field": {
+      "hour": "Hora del aviso diario",
+      "before": "Antes de clase",
+      "max": "Máximo por día",
+      "after": "Después de clase",
+      "eveningHour": "Hora de fin del día",
+      "quietFrom": "Silencio desde",
+      "quietTo": "Silencio hasta"
+    },
+    "minBefore": "{{count}} minutos antes",
+    "perDay": "{{count}} aviso(s)/día",
+    "minAfter": "{{count}} min después",
+    "test": "Probar notificación ahora",
+    "preview": "Vista previa en directo",
+    "scheduled": "{{count}} programada(s) en las próximas 72 h",
+    "example": "Ejemplo inmediato"
+  },
   "gemini": {
     "keyLocalOnly": "La clave se guarda solo en este dispositivo. Nunca se envía a tu cuenta de Unipedia ni a otros dispositivos."
   }

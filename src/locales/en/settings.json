@@ -127,6 +127,54 @@
     "installHint": "Use offline and as a dedicated app on your device.",
     "installBtn": "Install Unipedia"
   },
+  "notif": {
+    "off": "Smart reminders turned off.",
+    "blocked": "Permission blocked on this device. You can enable it in your browser or Android settings.",
+    "on": "Uni's smart reminders are on!",
+    "savedInApp": "Preferences saved! You'll get subtle notices inside the app.",
+    "sent": "Notification sent: \"{{title}}\"",
+    "title": "Uni's smart reminders",
+    "intro": "Protect your streak, SRS reviews, exams and classes — no spam.",
+    "master": "Turn on adaptive notifications",
+    "deniedHint": "Blocked in the browser/Android — only subtle in-app notices.",
+    "activeHint": "On · max {{max}}/day · quiet {{start}}–{{end}}",
+    "optIn": "Opt-in: reminders are only scheduled when you turn this on.",
+    "masterAria": "Turn on Uni's adaptive notifications",
+    "cat": {
+      "streak": "Daily streak",
+      "streakAria": "Daily streak protection",
+      "srs": "Today's SRS reviews",
+      "srsAria": "Spaced review summary",
+      "exams": "Tests and exams",
+      "examsAria": "Exam countdown",
+      "classes": "Classes with room",
+      "classesAria": "Reminders before class",
+      "postClass": "After-class question",
+      "postClassAria": "After-class question about what was covered",
+      "evening": "End of day (journal)",
+      "eveningAria": "End-of-day check-in",
+      "sunday": "Sunday review",
+      "sundayAria": "Weekly review on Sunday",
+      "examPrep": "Test Mode alignment",
+      "examPrepAria": "Ask which material is covered in Test Mode"
+    },
+    "field": {
+      "hour": "Daily nudge time",
+      "before": "Before class",
+      "max": "Maximum per day",
+      "after": "After class",
+      "eveningHour": "End-of-day time",
+      "quietFrom": "Quiet from",
+      "quietTo": "Quiet until"
+    },
+    "minBefore": "{{count}} minutes before",
+    "perDay": "{{count}} nudge(s)/day",
+    "minAfter": "{{count}} min after",
+    "test": "Test notification now",
+    "preview": "Live preview",
+    "scheduled": "{{count}} scheduled in the next 72h",
+    "example": "Instant example"
+  },
   "gemini": {
     "keyLocalOnly": "Your key is stored on this device only. It is never sent to your Unipedia account or other devices."
   }

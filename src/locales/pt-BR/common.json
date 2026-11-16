@@ -63,5 +63,96 @@
     "openTitle": "O que faz esta aba? (Guia do Uni)",
     "closeAria": "Fechar guia desta aba",
     "sectionAria": "Guia rápido: {{title}}"
+  },
+  "quota": {
+    "chatLimit": "Você atingiu o limite diário de {{limit}} mensagens gratuitas com o Uni.",
+    "notebookLimit": "Você atingiu o limite diário de {{limit}} gerações no Caderno do Uni.",
+    "recallLimit": "Você atingiu o limite diário de {{limit}} avaliações de Recall gratuitas com o Uni.",
+    "renewHint": "A cota renova à meia-noite — se precisar estudar intensivamente agora, cole uma chave pessoal em Configurações → Tutor → Avançado.",
+    "voiceNeedsKey": "A Voz em tempo real requer sua chave Gemini pessoal em Configurações → Tutor → Avançado."
+  },
+  "auth": {
+    "greet1": "Pronto para organizar o seu semestre!",
+    "greet2": "Aqui os prazos não pegam ninguém de surpresa.",
+    "greet3": "Psiu: seu caderno fica guardado com segurança.",
+    "greet4": "Toque em mim sempre que precisar de ajuda para estudar!",
+    "peek": "Prometo que não estou espiando sua senha!",
+    "err": {
+      "invalid": "E-mail ou senha incorretos. Confira os dados ou crie uma conta nova.",
+      "inUse": "Este e-mail já tem conta. Tente entrar na aba \"Entrar\".",
+      "weak": "Escolha uma senha com pelo menos 6 caracteres.",
+      "tooMany": "Muitas tentativas seguidas. Aguarde um pouco ou redefina sua senha.",
+      "notAllowed": "Este método de login precisa estar ativo no Firebase Auth (tente novamente ou use o link mágico por e-mail).",
+      "generic": "Não foi possível entrar agora. Tente novamente.",
+      "email": "Insira um e-mail válido.",
+      "consent": "Confirme a idade mínima e a Política de Privacidade para criar a conta.",
+      "password": "Insira uma senha com pelo menos 6 caracteres.",
+      "resetNeedsEmail": "Digite primeiro seu e-mail acima para receber o link de redefinição."
+    },
+    "toast": {
+      "linkSignedIn": "Login feito pelo link do e-mail!",
+      "signedIn": "Login feito!",
+      "created": "Conta criada! Vamos configurar seu curso.",
+      "google": "Bem-vindo! Conta Google e serviços conectados.",
+      "signedOut": "Você saiu da conta."
+    },
+    "info": {
+      "magicSent": "Enviamos um link mágico para {{email}}. Abra esse e-mail neste dispositivo para entrar sem senha.",
+      "resetSent": "Enviamos um e-mail para redefinir a senha. Confira também o spam."
+    },
+    "header": {
+      "title": "Sua conta",
+      "subtitle": "Entre ou gerencie seu acesso"
+    },
+    "nav": {
+      "home": "Início",
+      "privacy": "Privacidade"
+    },
+    "hero": {
+      "badge": "Oi! Eu sou o Uni",
+      "title": "Seu semestre",
+      "titleAccent": "sempre em dia",
+      "body": "Organize disciplinas, horários e sessões de estudo em uma só conta ou comece já no seu celular.",
+      "uniAria": "Interagir com o Uni, o companheiro de estudo",
+      "closeBubble": "Fechar mensagem do Uni"
+    },
+    "account": {
+      "student": "Estudante",
+      "active": "Sessão ativa",
+      "synced": "Sincronizada",
+      "goToday": "Ir para o meu dia",
+      "signOut": "Sair"
+    },
+    "tabs": {
+      "signin": "Entrar",
+      "signup": "Criar conta"
+    },
+    "form": {
+      "nameLabel": "Como quer ser chamado?",
+      "namePlaceholder": "Seu primeiro nome",
+      "emailPlaceholder": "nome@email.com",
+      "magicBanner": "Entrada direta por link no e-mail (sem senha)",
+      "usePassword": "Usar senha",
+      "passwordLabel": "Senha",
+      "passwordPlaceholder": "Mínimo 6 caracteres",
+      "hidePassword": "Ocultar senha",
+      "showPassword": "Mostrar senha",
+      "forgot": "Esqueci minha senha",
+      "ageBefore": "Confirmo ter pelo menos",
+      "years": "{{age}} anos",
+      "ageAfter": "(ou autorização) e aceito a",
+      "privacy": "Privacidade",
+      "and": "e os",
+      "terms": "Termos",
+      "confirmMagic": "Confirmar e-mail do link",
+      "sendMagic": "Enviar link de acesso para o e-mail",
+      "createMine": "Criar minha conta",
+      "google": "Continuar com Google"
+    },
+    "footer": {
+      "magicLink": "Link sem senha",
+      "localOnly": "Usar só neste celular",
+      "acceptBefore": "Ao continuar você aceita a"
+    }
   }
 }

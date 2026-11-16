@@ -192,8 +192,8 @@ export default function Assistant() {
     if (latestExam) {
       const c = courses.find((x) => x.id === latestExam.courseId);
       return c
-        ? `Revê comigo a matéria alinhada de ${c.shortName} para o teste`
-        : 'Revê comigo a matéria do meu próximo teste';
+        ? t('page.sugExamCourse', { course: c.shortName })
+        : t('page.sugExam');
     }
     const hardClass = studyLogs.find(
       (l) => l.kind === 'class' && (l.feeling === 'dificil' || l.feeling === 'mais_ou_menos'),
@@ -201,11 +201,11 @@ export default function Assistant() {
     if (hardClass) {
       const c = courses.find((x) => x.id === hardClass.courseId);
       return hardClass.topicTitle
-        ? `Explica passo a passo «${hardClass.topicTitle}»${c ? ` (${c.shortName})` : ''}`
-        : `Ajuda-me a rever a última aula${c ? ` de ${c.shortName}` : ''}`;
+        ? t('page.sugExplain', { topic: hardClass.topicTitle, course: c ? ` (${c.shortName})` : '' })
+        : t('page.sugLastClass', { course: c ? ` (${c.shortName})` : '' });
     }
     return null;
-  }, [studyLogs, courses]);
+  }, [studyLogs, courses, t]);
 
   const handleClearAttachedMaterials = () => {
     clearAttachedMaterials();
@@ -224,7 +224,7 @@ export default function Assistant() {
             <button
               type="button"
               onClick={() => setConvsModalMode('list')}
-              aria-label={`Conversas (${conversations.length})`}
+              aria-label={t('page.conversations', { count: conversations.length })}
               className="relative grid size-11 shrink-0 place-items-center rounded-full text-fg transition hover:bg-surface-2"
             >
               <Menu size={20} />
@@ -243,7 +243,7 @@ export default function Assistant() {
               aria-label={
                 currentConv && messages.length > 0
                   ? currentConv.title
-                  : `Uni ${personas.find((p) => p.id === uniPersona)?.label ?? 'Amigo'} — estilo e opções`
+                  : t('page.styleOptions', { persona: personas.find((p) => p.id === uniPersona)?.label ?? 'Amigo' })
               }
               className="flex min-h-[44px] min-w-0 items-center gap-1.5 rounded-full px-2 text-left transition hover:bg-surface-2"
             >
@@ -270,8 +270,8 @@ export default function Assistant() {
             <button
               type="button"
               onClick={() => setConvsModalMode('new')}
-              aria-label="Nova conversa"
-              title="Nova conversa"
+              aria-label={t('page.newConv')}
+              title={t('page.newConv')}
               className="grid size-10 place-items-center rounded-full text-fg transition hover:bg-surface-2"
             >
               <SquarePen size={18} />
@@ -279,8 +279,8 @@ export default function Assistant() {
             <button
               type="button"
               onClick={() => setMenuOpen(true)}
-              aria-label="Mais opções do Tutor"
-              title="Opções"
+              aria-label={t('page.moreOptions')}
+              title={t('page.options')}
               className="grid size-10 place-items-center rounded-full text-muted transition hover:bg-surface-2 hover:text-fg"
             >
               <MoreHorizontal size={19} />
@@ -302,7 +302,7 @@ export default function Assistant() {
                 onClick={() => setKeyGuideOpen(true)}
                 className="min-h-[38px] rounded-full border border-line bg-surface-2 px-3 text-xs font-medium tabular text-muted"
               >
-                {quota.bypassed ? 'Ilimitado' : `${quota.chatRemaining}/${quota.chatLimit} msgs`}
+                {quota.bypassed ? t('page.unlimited') : `${quota.chatRemaining}/${quota.chatLimit} msgs`}
               </button>
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
@@ -324,7 +324,7 @@ export default function Assistant() {
                 }}
                 className="flex min-h-[38px] items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg"
               >
-                <BookOpenCheck size={13} /> Diário
+                <BookOpenCheck size={13} /> {t('page.journal')}
               </button>
               <button
                 type="button"
@@ -347,16 +347,16 @@ export default function Assistant() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="min-w-0">
             <p className="text-xs font-medium tracking-wide text-muted">
-              O teu companheiro de estudo
+              {t('page.companion')}
             </p>
             <h1 className="truncate font-display text-2xl font-bold leading-tight tracking-tight text-fg">
-              Conversa com o{' '}
+              {t('page.talkWith')}{' '}
               <span className="font-serif font-medium italic text-accent-ink">Uni</span>
             </h1>
             <p className="truncate text-xs font-medium text-muted">
-              {user ? 'Sincronizado na tua conta' : 'Neste dispositivo'} ·{' '}
+              {user ? t('page.synced') : t('page.thisDevice')} ·{' '}
               {quota.bypassed
-                ? 'Ilimitado'
+                ? t('page.unlimited')
                 : `${quota.chatRemaining}/${quota.chatLimit} msgs`}
             </p>
           </div>
@@ -366,29 +366,29 @@ export default function Assistant() {
               size="sm"
               variant="primary"
               onClick={() => setConvsModalMode('new')}
-              aria-label="Nova conversa"
-              title="Nova conversa"
+              aria-label={t('page.newConv')}
+              title={t('page.newConv')}
               className="min-h-[44px] px-3.5"
             >
               <Plus size={16} />
-              <span>Nova conversa</span>
+              <span>{t('page.newConv')}</span>
             </Button>
             <Button
               size="sm"
               variant="secondary"
               onClick={() => setConvsModalMode('list')}
-              aria-label={`Conversas (${conversations.length})`}
+              aria-label={t('page.conversations', { count: conversations.length })}
               className="min-h-[44px] px-3.5 text-xs"
             >
               <FolderOpen size={15} />
-              <span>Conversas ({conversations.length})</span>
+              <span>{t('page.conversations', { count: conversations.length })}</span>
             </Button>
             <Button
               variant="secondary"
               iconOnly
               onClick={() => setMenuOpen(true)}
-              aria-label="Mais opções do Tutor"
-              title="Opções"
+              aria-label={t('page.moreOptions')}
+              title={t('page.options')}
             >
               <MoreHorizontal size={18} />
             </Button>
@@ -410,7 +410,7 @@ export default function Assistant() {
                 )}
               >
                 <Sparkles size={13} className="text-accent-ink dark:text-accent" />
-                <span>Caderno</span>
+                <span>{t('page.notebook')}</span>
               </button>
 
               <button
@@ -419,7 +419,7 @@ export default function Assistant() {
                 className="flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 py-1.5 text-xs font-semibold text-fg transition hover:bg-surface-2"
               >
                 <BookOpenCheck size={13} className="text-accent-ink dark:text-accent" />
-                <span>Diário</span>
+                <span>{t('page.journal')}</span>
               </button>
 
               <button
@@ -442,19 +442,19 @@ export default function Assistant() {
               <button
                 type="button"
                 onClick={() => setKeyGuideOpen(true)}
-                title="Ver como passar das 15 mensagens diárias com chave gratuita"
+                title={t('page.unlockTitle')}
                 className="min-h-[40px] rounded-full border border-line bg-surface px-3 py-1 text-xs font-medium tabular text-muted transition hover:border-accent hover:text-fg"
               >
                 {quota.bypassed
-                  ? 'Chave própria · Ilimitado'
-                  : `${quota.chatRemaining}/${quota.chatLimit} msgs · Desbloquear`}
+                  ? t('page.ownKey')
+                  : t('page.msgsUnlock', { remaining: quota.chatRemaining, limit: quota.chatLimit })}
               </button>
             </div>
           </div>
 
           {messages.length === 0 && (
             <div className="flex flex-wrap items-center gap-1.5 pb-0.5">
-              {[{ id: 'all', label: 'Todos assuntos' }, ...TUTOR_SUBJECTS].map((subj) => {
+              {[{ id: 'all', label: t('page.allSubjects') }, ...TUTOR_SUBJECTS].map((subj) => {
                 const active = activeSubject === subj.id;
                 return (
                   <button
@@ -508,8 +508,8 @@ export default function Assistant() {
                       <button
                         type="button"
                         onClick={() => setConfirmDeleteConv(true)}
-                        aria-label={`Apagar conversa ${c.title}`}
-                        title="Apagar esta conversa"
+                        aria-label={t('page.deleteConv', { title: c.title })}
+                        title={t('page.deleteThis')}
                         className="mr-1 grid size-9 place-items-center rounded-full text-ink-cta-fg/80 transition hover:bg-white/15 hover:text-ink-cta-fg"
                       >
                         <Trash2 size={13} />
@@ -530,7 +530,7 @@ export default function Assistant() {
           actions={
             !hasCustomKey ? (
               <Button size="sm" variant="primary" onClick={() => setKeyGuideOpen(true)}>
-                Como pôr chave grátis (&gt;15 msgs)
+                {t('page.keyHowTo')}
               </Button>
             ) : undefined
           }
@@ -556,8 +556,8 @@ export default function Assistant() {
                   }
                   ariaLabel={
                     courseUniAgent
-                      ? `${courseUniAgent.name} — tocar para ver o que este Uni sabe`
-                      : 'Uni — tocar para abrir a coleção de estilos'
+                      ? t('page.agentAria', { name: courseUniAgent.name })
+                      : t('page.uniAria')
                   }
                 />
               </div>
@@ -568,11 +568,11 @@ export default function Assistant() {
             )}
 
             <h2 className="mt-4 font-display text-2xl font-bold leading-tight tracking-tight text-fg sm:mt-5 sm:text-3xl">
-              Olá{firstName ? `, ${firstName}` : ''}!{' '}
+              {t('page.hello', { name: firstName ? `, ${firstName}` : '' })}{' '}
               <span className="block sm:inline">
-                {courseUniAgent ? `Aqui é ${courseUniAgent.name}` : 'No que estás'}{' '}
+                {courseUniAgent ? t('page.hereIs', { name: courseUniAgent.name }) : t('page.whatOn')}{' '}
                 <span className={cx(!isMinimal && 'font-serif font-medium italic text-accent-ink dark:text-accent')}>
-                  {courseUniAgent ? `(${activeCourse?.shortName})` : 'a pensar'}
+                  {courseUniAgent ? `(${activeCourse?.shortName})` : t('page.thinking')}
                 </span>
                 {courseUniAgent ? '.' : '?'}
               </span>
@@ -583,7 +583,7 @@ export default function Assistant() {
                     stage: getStageInfo(courseUniAgent.stage, appLang).localizedLabel,
                     mastery: courseUniAgent.mastery,
                   })
-                : 'Explica matéria, gera planos até ao próximo teste ou revê os teus apontamentos.'}
+                : t('page.introGeneric')}
             </p>
             {courseUniAgent && (
               <button
@@ -598,7 +598,7 @@ export default function Assistant() {
 
             {/* Seletor discreto de assunto inline no mobile sem roubar espaço ao chat */}
             <div className="mt-4 flex max-w-full items-center gap-1.5 overflow-x-auto pb-0.5 md:hidden">
-              {[{ id: 'all', label: 'Todos' }, ...TUTOR_SUBJECTS].map((subj) => {
+              {[{ id: 'all', label: t('page.all') }, ...TUTOR_SUBJECTS].map((subj) => {
                 const active = activeSubject === subj.id;
                 return (
                   <button
@@ -627,9 +627,9 @@ export default function Assistant() {
             <div className="mt-4 flex flex-wrap justify-center gap-2 sm:mt-5">
               {[
                 ...(recentLogSuggestion ? [recentLogSuggestion] : []),
-                'O que devo estudar hoje?',
-                'Cria um plano até ao próximo teste',
-                'Faz-me um quiz rápido',
+                t('page.starter1'),
+                t('page.starter2'),
+                t('page.starter3'),
               ].map((starter) => (
                 <button
                   key={starter}
@@ -690,18 +690,18 @@ export default function Assistant() {
                     const res = commitScheduleSyncToStore(current);
                     const parts: string[] = [];
                     if (res.assessmentsCount > 0) {
-                      parts.push(`${res.assessmentsCount} avaliação(ões)`);
+                      parts.push(t('page.syncAssessments', { count: res.assessmentsCount }));
                     }
                     if (res.classesCount > 0) {
-                      parts.push(`${res.classesCount} aula(s)`);
+                      parts.push(t('page.syncClasses', { count: res.classesCount }));
                     }
                     if (res.createdCoursesCount > 0) {
-                      parts.push(`${res.createdCoursesCount} cadeira(s)`);
+                      parts.push(t('page.syncCourses', { count: res.createdCoursesCount }));
                     }
                     const summary =
                       parts.length > 0
-                        ? `Atualizado: ${parts.join(', ')} no Calendário e Plano.`
-                        : 'Nada novo para adicionar — tudo já existia na app.';
+                        ? t('page.syncUpdated', { parts: parts.join(', ') })
+                        : t('page.syncNothing');
                     updatePendingSyncForMsg(m.id, {
                       ...current,
                       applied: true,
@@ -719,7 +719,7 @@ export default function Assistant() {
                   >
                     <span className="inline-flex items-center gap-2 text-xs text-fg">
                       <CalendarDays size={14} className="text-accent" />
-                      Queres guardar estas datas no Calendário e Plano?
+                      {t('page.syncAsk')}
                     </span>
                     <Button
                       size="sm"
@@ -729,14 +729,14 @@ export default function Assistant() {
                       className="gap-1.5"
                     >
                       <CalendarDays size={13} />
-                      Sincronizar com a app
+                      {t('page.syncBtn')}
                     </Button>
                   </div>
                 )
               )}
               <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-line/70 pt-2 text-xs text-muted">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span>Sugestão do Uni · Valida sempre com a sebenta</span>
+                  <span>{t('page.suggestion')}</span>
                   {m.sourceDocTitles && m.sourceDocTitles.length > 0 && (
                     <span className="inline-flex items-center gap-1 text-fg">
                       <FileText size={12} className="text-accent" />
@@ -747,7 +747,7 @@ export default function Assistant() {
                 <div className="flex flex-wrap items-center gap-1.5">
                   {flaggedWrongIds[m.id] ? (
                     <span className="inline-flex min-h-11 items-center gap-1 px-2 text-xs font-medium text-coral">
-                      <Flag size={12} /> Marcado para revisão
+                      <Flag size={12} /> {t('page.flagged')}
                     </span>
                   ) : (
                     <button
@@ -755,11 +755,11 @@ export default function Assistant() {
                       onClick={() => {
                         setFlaggedWrongIds((prev) => ({ ...prev, [m.id]: true }));
                         recordWrongAnswerFeedback();
-                        showToast('Obrigado pelo aviso. Se for uma falha de memória, podes editar o Caderno do Uni.');
+                        showToast(t('page.thanksFlag'));
                       }}
                       className="inline-flex min-h-11 items-center gap-1 rounded-full px-2.5 text-xs font-medium text-muted transition hover:bg-coral-soft hover:text-coral"
                     >
-                      <Flag size={12} /> Isto está errado
+                      <Flag size={12} /> {t('page.wrong')}
                     </button>
                   )}
                   {flaggedWrongIds[m.id] && courseUniAgent && (
@@ -768,7 +768,7 @@ export default function Assistant() {
                       onClick={() => setCourseUniMemoryOpen(true)}
                       className="inline-flex min-h-11 items-center gap-1 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg hover:border-accent"
                     >
-                      Corrigir caderno
+                      {t('page.fixNotebook')}
                     </button>
                   )}
                 </div>
@@ -782,7 +782,7 @@ export default function Assistant() {
             <Markdown text={streamingText} />
             <div className="mt-2 flex items-center gap-1.5 text-xs text-accent-ink">
               <Sparkles size={12} className="animate-pulse" />
-              <span>O Uni está a escrever…</span>
+              <span>{t('page.writing')}</span>
             </div>
           </div>
         )}
@@ -793,7 +793,7 @@ export default function Assistant() {
             className="rise flex w-fit items-center gap-2.5 rounded-3xl rounded-bl-md bg-surface px-4 py-2.5 text-sm text-muted shadow-card"
           >
             <UniBuddy mood="thinking" accessory={uniAccessory} size={30} interactive={false} />
-            <span>O Uni está a pensar…</span>
+            <span>{t('page.thinkingNow')}</span>
           </div>
         )}
 
@@ -804,15 +804,15 @@ export default function Assistant() {
           >
             <span className="break-words">{error}</span>
             <div className="flex flex-wrap items-center gap-1.5">
-              {error.includes('limite diário') && (
+              {!quota.bypassed && quota.chatRemaining <= 0 && (
                 <Button size="sm" variant="primary" onClick={() => setKeyGuideOpen(true)}>
-                  Usar chave grátis
+                  {t('page.useFreeKey')}
                 </Button>
               )}
               {hasCustomKey && (
                 <>
                   <Button size="sm" variant="primary" onClick={() => setKeyGuideOpen(true)}>
-                    Gerir chave
+                    {t('page.manageKey')}
                   </Button>
                   <Button
                     size="sm"
@@ -824,13 +824,13 @@ export default function Assistant() {
                     }}
                     disabled={loading}
                   >
-                    Voltar ao Uni Nativo (grátis)
+                    {t('page.backNative')}
                   </Button>
                 </>
               )}
               <Button size="sm" variant="secondary" onClick={retry} disabled={loading}>
                 <RotateCcw size={14} />
-                Tentar de novo
+                {t('page.retry')}
               </Button>
             </div>
           </div>
@@ -845,18 +845,18 @@ export default function Assistant() {
           <div className="min-w-0 flex-1 space-y-0.5">
             <div className="flex items-center gap-1.5 font-semibold">
               <Sparkles size={14} className="shrink-0 text-accent" />
-              <span className="truncate">Ativar o Uni</span>
-              <Badge tone="accent" className="hidden sm:inline-flex">Incluído</Badge>
+              <span className="truncate">{t('page.enableUni')}</span>
+              <Badge tone="accent" className="hidden sm:inline-flex">{t('page.included')}</Badge>
             </div>
             <p className="hidden opacity-80 sm:block">
-              Pronto a usar com 1 toque (até {quota.chatLimit} mensagens/dia). Aceita apenas o envio das tuas perguntas para o Tutor responder.
+              {t('page.consentLong', { limit: quota.chatLimit })}
             </p>
             <p className="truncate text-xs opacity-80 sm:hidden">
-              Até {quota.chatLimit} msgs/dia incluídas
+              {t('page.consentShort', { limit: quota.chatLimit })}
             </p>
           </div>
           <Button size="sm" variant="primary" onClick={() => updateSettings({ aiConsent: true })}>
-            Ativar Uni
+            {t('page.enableBtn')}
           </Button>
         </div>
       )}
@@ -865,9 +865,9 @@ export default function Assistant() {
       {driveAuthNeeded && (
         <div className="mt-2 flex shrink-0 flex-wrap items-center justify-between gap-2.5 rounded-2xl border border-line bg-surface-2/90 px-3.5 py-2.5 text-xs text-fg">
           <div className="min-w-0 flex-1 space-y-0.5">
-            <div className="font-semibold">Autoriza o Google Drive para o Uni ler os PDFs anexados</div>
+            <div className="font-semibold">{t('page.driveTitle')}</div>
             <p className="text-xs text-muted">
-              A sessão do Google Drive expirou neste dispositivo — liga em 1 toque para extrair texto e fórmulas reais dos teus apontamentos.
+              {t('page.driveBody')}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-1">
@@ -880,20 +880,20 @@ export default function Assistant() {
                 try {
                   await googleService.connectPersonalAccount(false);
                   setDriveAuthNeeded(false);
-                  showToast('Google Drive autorizado. Envia ou repete a pergunta para ler o PDF.');
+                  showToast(t('page.driveOk'));
                 } catch (e) {
-                  showToast((e as Error)?.message || 'Não foi possível autorizar o Google Drive.');
+                  showToast((e as Error)?.message || t('page.driveFail'));
                 } finally {
                   setAuthorizingDrive(false);
                 }
               }}
             >
-              {authorizingDrive ? 'A ligar…' : 'Autorizar Drive'}
+              {authorizingDrive ? t('page.connecting') : t('page.authorizeDrive')}
             </Button>
             <button
               type="button"
               onClick={() => setDriveAuthNeeded(false)}
-              aria-label="Dispensar aviso do Google Drive"
+              aria-label={t('page.dismissDrive')}
               className="-mr-1.5 grid size-11 place-items-center rounded-full text-muted hover:bg-surface hover:text-fg"
             >
               <X size={15} />
@@ -912,10 +912,10 @@ export default function Assistant() {
               onChange={setActiveCourseId}
               placement="up"
               icon={<BookOpen size={14} />}
-              ariaLabel="Contexto da cadeira"
+              ariaLabel={t('page.courseContext')}
               className="min-w-0 [&>button]:max-w-[210px] [&>button]:px-3"
               options={[
-                { value: 'all', label: 'Todas as cadeiras', shortLabel: 'Todas', hint: 'Vista geral do semestre' },
+                { value: 'all', label: t('page.allCoursesOpt'), shortLabel: t('page.allShort'), hint: t('page.semesterOverview') },
                 ...courses.map((c) => ({
                   value: c.id,
                   label: c.shortName || c.name,
@@ -927,7 +927,7 @@ export default function Assistant() {
             <button
               type="button"
               onClick={() => setShowDocPicker(true)}
-              aria-label="Anexar apontamentos"
+              aria-label={t('page.attachNotes')}
               className={cx(
                 'flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition',
                 attachedMaterials.length > 0
@@ -938,8 +938,8 @@ export default function Assistant() {
               <FileText size={14} />
               <span>
                 {attachedMaterials.length === 0
-                  ? 'Anexar apontamentos'
-                  : `${attachedMaterials.length} anexado(s)`}
+                  ? t('page.attachNotes')
+                  : t('page.attachedN', { count: attachedMaterials.length })}
               </span>
             </button>
           </div>
@@ -949,7 +949,7 @@ export default function Assistant() {
             aria-expanded={showActions}
             className="min-h-[44px] shrink-0 whitespace-nowrap px-2 text-xs font-medium text-muted hover:text-fg"
           >
-            {showActions ? 'Ocultar sugestões' : 'Mostrar sugestões'}
+            {showActions ? t('page.hideSug') : t('page.showSug')}
           </button>
         </div>
 
@@ -964,7 +964,7 @@ export default function Assistant() {
                       <button
                         type="button"
                         onClick={() => setActiveCourseId('all')}
-                        aria-label="Limpar filtro de cadeira"
+                        aria-label={t('page.clearCourse')}
                         className="hover:text-danger"
                       >
                         <X size={11} />
@@ -974,21 +974,21 @@ export default function Assistant() {
                   <button
                     type="button"
                     onClick={() => setMaterialsStripMode('compact')}
-                    aria-label="Expandir apontamentos anexados"
+                    aria-label={t('page.expandNotes')}
                     className="inline-flex min-h-[30px] items-center gap-1.5 truncate font-semibold text-fg hover:text-accent-ink"
                   >
                     <Paperclip size={12} className="shrink-0 text-accent" />
-                    <span className="truncate">{attachedMaterials.length} apontamento(s) anexado(s)</span>
+                    <span className="truncate">{t('page.notesAttachedN', { count: attachedMaterials.length })}</span>
                     <ChevronDown size={13} className="shrink-0 text-muted" />
                   </button>
                 </div>
                 <button
                   type="button"
                   onClick={handleClearAttachedMaterials}
-                  aria-label="Limpar todos os apontamentos anexados"
+                  aria-label={t('page.clearAllAttached')}
                   className="min-h-[30px] shrink-0 rounded-full px-2 text-xs font-medium text-muted hover:bg-surface hover:text-danger"
                 >
-                  Limpar
+                  {t('page.clear')}
                 </button>
               </div>
             ) : (
@@ -996,7 +996,7 @@ export default function Assistant() {
                 {attachedMaterials.length > 1 && (
                   <div className="flex items-center justify-between gap-2 px-0.5 text-xs">
                     <span className="font-medium text-muted">
-                      {attachedMaterials.length} apontamentos ativos
+                      {t('page.activeNotes', { count: attachedMaterials.length })}
                     </span>
                     <div className="flex items-center gap-1">
                       <button
@@ -1008,29 +1008,29 @@ export default function Assistant() {
                       >
                         {materialsStripMode === 'expanded' ? (
                           <>
-                            <ChevronUp size={12} /> 1 linha
+                            <ChevronUp size={12} /> {t('page.oneLine')}
                           </>
                         ) : (
                           <>
-                            <ChevronDown size={12} /> Ver lista
+                            <ChevronDown size={12} /> {t('page.seeList')}
                           </>
                         )}
                       </button>
                       <button
                         type="button"
                         onClick={() => setMaterialsStripMode('collapsed')}
-                        aria-label="Diminuir barra de apontamentos"
+                        aria-label={t('page.shrinkBar')}
                         className="inline-flex min-h-[28px] items-center gap-1 rounded-full bg-surface-2 px-2.5 font-semibold text-fg hover:bg-surface-2/80"
                       >
-                        Diminuir
+                        {t('page.shrink')}
                       </button>
                       <button
                         type="button"
                         onClick={handleClearAttachedMaterials}
-                        aria-label="Limpar todos os apontamentos"
+                        aria-label={t('page.clearAllNotes')}
                         className="min-h-[28px] rounded-full px-2 text-muted hover:text-danger"
                       >
-                        Limpar
+                        {t('page.clear')}
                       </button>
                     </div>
                   </div>
@@ -1050,7 +1050,7 @@ export default function Assistant() {
                       <button
                         type="button"
                         onClick={() => setActiveCourseId('all')}
-                        aria-label="Limpar filtro de cadeira"
+                        aria-label={t('page.clearCourse')}
                         className="hover:text-danger"
                       >
                         <X size={12} />
@@ -1066,7 +1066,7 @@ export default function Assistant() {
                       <button
                         type="button"
                         onClick={() => toggleMaterial(m.id)}
-                        aria-label={`Remover ${m.title}`}
+                        aria-label={t('page.remove', { title: m.title })}
                         className="hover:text-danger"
                       >
                         <X size={12} />
@@ -1082,7 +1082,7 @@ export default function Assistant() {
         {pendingSeedPrompt && (
           <div className="mb-2 flex items-center justify-between gap-2 rounded-2xl border border-accent/40 bg-accent-soft/65 px-3.5 py-2.5 text-xs">
             <div className="min-w-0 flex-1">
-              <p className="font-bold text-accent-ink dark:text-accent">Resumo do Diário do Uni pronto</p>
+              <p className="font-bold text-accent-ink dark:text-accent">{t('page.seedReady')}</p>
               <p className="line-clamp-2 text-fg">{pendingSeedPrompt}</p>
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
@@ -1097,11 +1097,11 @@ export default function Assistant() {
                   void send(text);
                 }}
               >
-                Enviar
+                {t('page.send')}
               </Button>
               <button
                 type="button"
-                aria-label="Dispensar sugestão do diário"
+                aria-label={t('page.dismissSeed')}
                 onClick={dismissPendingSeedPrompt}
                 className="-mr-1.5 grid size-11 place-items-center rounded-full text-muted hover:bg-surface hover:text-fg"
               >
@@ -1118,13 +1118,13 @@ export default function Assistant() {
           onSend={send}
           onStop={stop}
           hidePaperclipOnMobile
-          placeholder={aiConsent ? 'Pergunta ao Uni…' : 'Ativa o Uni acima para começares a conversar…'}
+          placeholder={aiConsent ? t('page.askUni') : t('page.enableAbove')}
           leadingSlot={
             <button
               type="button"
               onClick={() => setMobileComposerToolsOpen((v) => !v)}
               aria-expanded={mobileComposerToolsOpen}
-              aria-label="Anexar e ferramentas do Tutor"
+              aria-label={t('page.composerTools')}
               className={cx(
                 'grid size-11 shrink-0 place-items-center rounded-full transition md:hidden',
                 mobileComposerToolsOpen
@@ -1147,21 +1147,21 @@ export default function Assistant() {
                     setMobileComposerToolsOpen(false);
                     openFilePicker();
                   }}
-                  aria-label="Anexar foto ou PDF de apontamentos"
+                  aria-label={t('page.attachPhotoPdf')}
                   className="flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg"
                 >
                   <Paperclip size={13} />
-                  <span>Foto / PDF</span>
+                  <span>{t('page.photoPdf')}</span>
                 </button>
                 <PillSelect
                   value={activeCourseId}
                   onChange={setActiveCourseId}
                   placement="up"
                   icon={<BookOpen size={13} />}
-                  ariaLabel="Contexto da cadeira"
+                  ariaLabel={t('page.courseContext')}
                   className="min-w-0 [&>button]:min-h-11 [&>button]:max-w-[140px] [&>button]:px-2.5"
                   options={[
-                    { value: 'all', label: 'Todas as cadeiras', shortLabel: 'Todas', hint: 'Vista geral do semestre' },
+                    { value: 'all', label: t('page.allCoursesOpt'), shortLabel: t('page.allShort'), hint: t('page.semesterOverview') },
                     ...courses.map((c) => ({
                       value: c.id,
                       label: c.shortName || c.name,
@@ -1179,7 +1179,7 @@ export default function Assistant() {
                   className="flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg"
                 >
                   <FileText size={13} />
-                  <span>Apontamentos</span>
+                  <span>{t('page.notes')}</span>
                 </button>
                 <button
                   type="button"
@@ -1190,7 +1190,7 @@ export default function Assistant() {
                   className="flex min-h-11 items-center gap-1 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg"
                 >
                   <Sparkles size={13} />
-                  <span>{showActions ? 'Ocultar' : 'Sugestões'}</span>
+                  <span>{showActions ? t('page.hide') : t('page.suggestions')}</span>
                 </button>
                 <button
                   type="button"
@@ -1200,7 +1200,7 @@ export default function Assistant() {
                   }}
                   className="flex min-h-11 items-center gap-1 rounded-full bg-pastel-butter/80 px-3 text-xs font-semibold text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]"
                 >
-                  <span>Caderno</span>
+                  <span>{t('page.notebook')}</span>
                 </button>
                 <button
                   type="button"
@@ -1211,7 +1211,7 @@ export default function Assistant() {
                   className="flex min-h-11 items-center gap-1 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg"
                 >
                   <BookOpenCheck size={13} />
-                  <span>Diário</span>
+                  <span>{t('page.journal')}</span>
                 </button>
               </div>
             ) : null

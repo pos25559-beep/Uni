@@ -1,5 +1,4 @@
 import { addDays, addWeeks, format, parseISO, startOfWeek } from 'date-fns';
-import { pt } from 'date-fns/locale';
 import {
   AlertTriangle,
   Brain,
@@ -16,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { resolveDateFnsLocale } from '../lib/grading';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import WeeklyTutorModal from '../components/assistant/WeeklyTutorModal';
 import ActiveReviewModal from '../components/practice/ActiveReviewModal';
@@ -57,7 +57,8 @@ function studyDaysLabel(days: number[]): string {
 }
 
 export default function Planner() {
-  const { t } = useTranslation('plan');
+  const { t, i18n } = useTranslation('plan');
+  const dfLocale = resolveDateFnsLocale(i18n.language);
   const courses = useStore((s) => s.courses);
   const assessments = useStore((s) => s.assessments);
   const classes = useStore((s) => s.classes);
@@ -224,7 +225,7 @@ export default function Planner() {
     replaceGeneratedSessions(today, plan);
     setBuilderOpen(false);
     celebrateStationery();
-    showToast(`Plano gerado com ${plan.length} sessões`, 'ok');
+    showToast(t('ui.toastGenerated', { count: plan.length }), 'ok');
   };
 
   const applyCustomPlan = ({
@@ -265,7 +266,7 @@ export default function Planner() {
     }
     setBuilderOpen(false);
     celebrateStationery();
-    showToast(`Plano aplicado · ${plan.length} sessões criadas`, 'ok');
+    showToast(t('ui.toastApplied', { count: plan.length }), 'ok');
   };
 
   const onGenerate = () => setBuilderOpen(true);
@@ -273,7 +274,7 @@ export default function Planner() {
   const moveAllToToday = () => {
     void hapticTap();
     upsertMany('sessions', overdue.map((s) => ({ ...s, date: today })));
-    showToast('Sessões movidas para hoje', 'ok');
+    showToast(t('ui.movedToday'), 'ok');
   };
 
   const rescheduleOverdueSmart = () => {
@@ -294,16 +295,16 @@ export default function Planner() {
       upsertMany('sessions', updated);
       showToast(
         unscheduledCount > 0
-          ? `${updated.length} sessões reagendadas · ${unscheduledCount} mantêm-se em atraso`
-          : `${updated.length} sessões distribuídas pelos próximos dias livres`,
+          ? t('ui.rescheduledPartial', { count: updated.length, left: unscheduledCount })
+          : t('ui.rescheduledAll', { count: updated.length }),
         'ok',
       );
     } else {
-      showToast('Sem margem livre nos próximos dias — podes mover para hoje ou aumentar a meta.', 'neutral');
+      showToast(t('ui.noRoom'), 'neutral');
     }
   };
 
-  const weekLabel = `${format(weekDays[0], 'd MMM', { locale: pt })} – ${format(weekDays[6], 'd MMM yyyy', { locale: pt })}`;
+  const weekLabel = `${format(weekDays[0], 'd MMM', { locale: dfLocale })} – ${format(weekDays[6], 'd MMM yyyy', { locale: dfLocale })}`;
 
   const pillDays = useMemo(
     () =>
@@ -353,8 +354,8 @@ export default function Planner() {
               variant="secondary"
               iconOnly
               onClick={() => setActionsOpen(true)}
-              aria-label="Mais ações do plano"
-              title="Mais ações"
+              aria-label={t('ui.moreActionsAria')}
+              title={t('ui.moreActions')}
             >
               <MoreHorizontal size={18} />
             </Button>
@@ -389,8 +390,8 @@ export default function Planner() {
               </div>
                 <p className="mt-1 text-xs opacity-75">
                   {testMode.mode === 'single_test'
-                    ? `${plannerPrefs?.exclusiveTestFocus ? 'Foco exclusivo' : 'Prioridade com manutenção leve'} em ${testMode.urgentAssessments[0].course.shortName} (${testMode.urgentAssessments[0].assessment.title} em ${testMode.urgentAssessments[0].daysLeft}d).`
-                    : `Equilíbrio entre ${testMode.urgentAssessments.map((u) => `${u.course.shortName} (${u.daysLeft}d)`).join(' · ')}.`}
+                    ? t('ui.testSingle', { focus: plannerPrefs?.exclusiveTestFocus ? t('ui.focusExclusive') : t('ui.focusPriority'), course: testMode.urgentAssessments[0].course.shortName, test: testMode.urgentAssessments[0].assessment.title, days: testMode.urgentAssessments[0].daysLeft })
+                    : t('ui.testBalance', { list: testMode.urgentAssessments.map((u) => `${u.course.shortName} (${u.daysLeft}d)`).join(' · ') })}
                 </p>
             </div>
           </div>
@@ -442,7 +443,7 @@ export default function Planner() {
               variant="primary"
               onClick={() => setFocusId(recoverableFocus.session.id)}
             >
-              <Play size={14} /> Retomar foco
+              <Play size={14} /> {t('ui.resumeFocus')}
             </Button>
             <Button
               size="sm"
@@ -452,7 +453,7 @@ export default function Planner() {
                 setSnapshotNonce((n) => n + 1);
               }}
             >
-              Descartar
+              {t('ui.discard')}
             </Button>
           </div>
         </div>
@@ -461,21 +462,21 @@ export default function Planner() {
       {sessions.length === 0 ? (
         <EmptyState
           icon={<CalendarDays size={28} />}
-          title={noPlanInputs ? 'Ainda não tens cadeiras ativas' : 'Ainda não há plano de estudo'}
+          title={noPlanInputs ? t('ui.emptyNoCourses') : t('ui.emptyNoPlan')}
           hint={
             noPlanInputs
-              ? 'Adiciona as tuas cadeiras (mesmo sem datas de provas ainda) para gerar o plano inicial.'
-              : 'Gera já um plano automático para os próximos 14 dias ou cria sessões manuais.'
+              ? t('ui.emptyNoCoursesHint')
+              : t('ui.emptyNoPlanHint')
           }
           action={
             noPlanInputs ? (
               <Button variant="primary" onClick={() => navigate('/cadeiras')}>
-                Ir para as cadeiras
+                {t('ui.goCourses')}
               </Button>
             ) : (
               <div className="flex flex-wrap items-center justify-center gap-2">
                 <Button variant="secondary" onClick={() => setModal({ date: today })} disabled={courses.length === 0}>
-                  <Plus size={16} /> Nova sessão
+                  <Plus size={16} /> {t('ui.newSession')}
                 </Button>
                 <Button variant="primary" onClick={onGenerate}>
                   <Sparkles size={16} /> Gerar plano
@@ -489,14 +490,14 @@ export default function Planner() {
           {overdue.length > 0 && (
             <Card
               className="border-warn/40"
-              title={`Em atraso (${overdue.length})`}
+              title={t('ui.overdueTitle', { count: overdue.length })}
               action={
                 <div className="flex flex-wrap items-center gap-1.5">
                   <Button size="sm" variant="primary" onClick={rescheduleOverdueSmart}>
-                    <Sparkles size={13} /> Reagendar inteligentes
+                    <Sparkles size={13} /> {t('ui.smartReschedule')}
                   </Button>
                   <Button size="sm" variant="secondary" onClick={moveAllToToday}>
-                    Mover para hoje
+                    {t('ui.moveToday')}
                   </Button>
                 </div>
               }
@@ -510,7 +511,7 @@ export default function Planner() {
                         <div className="flex flex-wrap items-center gap-2">
                           <CourseChip course={courseById.get(s.courseId)} />
                           <span className="text-xs tabular text-muted">
-                            {format(parseISO(s.date), 'EEE d MMM', { locale: pt })}
+                            {format(parseISO(s.date), 'EEE d MMM', { locale: dfLocale })}
                           </span>
                         </div>
                         <p className="mt-1 truncate text-sm font-medium">
@@ -520,10 +521,10 @@ export default function Planner() {
                       </div>
                       <div className="flex items-center gap-2">
                         <Button size="sm" onClick={() => patch('sessions', s.id, { date: today })}>
-                          Mover para hoje
+                          {t('ui.moveToday')}
                         </Button>
                         <Button size="sm" variant="ghost" onClick={() => remove('sessions', s.id)}>
-                          Descartar
+                          {t('ui.discard')}
                         </Button>
                       </div>
                     </li>
@@ -540,7 +541,7 @@ export default function Planner() {
                   size="sm"
                   iconOnly
                   variant="ghost"
-                  aria-label="Semana anterior"
+                  aria-label={t('ui.prevWeek')}
                   onClick={() => setWeekOffset((w) => w - 1)}
                 >
                   <ChevronLeft size={16} />
@@ -550,14 +551,14 @@ export default function Planner() {
                   size="sm"
                   iconOnly
                   variant="ghost"
-                  aria-label="Semana seguinte"
+                  aria-label={t('ui.nextWeek')}
                   onClick={() => setWeekOffset((w) => w + 1)}
                 >
                   <ChevronRight size={16} />
                 </Button>
                 {weekOffset !== 0 && (
                   <Button size="sm" variant="secondary" onClick={() => { setWeekOffset(0); setSelectedDayKey(today); }}>
-                    Hoje
+                    {t('ui.today')}
                   </Button>
                 )}
               </div>
@@ -568,8 +569,8 @@ export default function Planner() {
                   value={viewMode}
                   onChange={(v) => setViewMode(v as 'day' | 'week')}
                   items={[
-                    { id: 'day', label: 'Dia' },
-                    { id: 'week', label: 'Semana' },
+                    { id: 'day', label: t('ui.day') },
+                    { id: 'week', label: t('ui.week') },
                   ]}
                 />
               </div>
@@ -630,40 +631,40 @@ export default function Planner() {
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <BentoMetricTile
               tone="sage"
-              label="Planeado"
+              label={t('ui.planned')}
               value={fmtMinutes(stats.planned)}
-              hint={`${weekSessions.length} sessões na semana`}
+              hint={t('ui.sessionsWeek', { count: weekSessions.length })}
               icon={<Clock size={15} />}
             />
             <BentoMetricTile
               tone="mint"
-              label="Concluído"
+              label={t('ui.done')}
               value={fmtMinutes(stats.done)}
-              hint={`${stats.pct}% da semana`}
+              hint={t('ui.pctWeek', { pct: stats.pct })}
             />
             <BentoMetricTile
               tone="butter"
-              label="Meta diária"
+              label={t('ui.dailyGoal')}
               value={fmtMinutes(settings.dailyStudyMinutes)}
               hint={studyDaysLabel(settings.studyDays)}
             />
             <BentoMetricTile
               tone={overdue.length > 0 ? 'peach' : 'sky'}
-              label="Em atraso"
+              label={t('ui.overdue')}
               value={overdue.length}
-              hint={overdue.length > 0 ? 'por reagendar' : 'tudo em dia'}
+              hint={overdue.length > 0 ? t('ui.toReschedule') : t('ui.allGood')}
               icon={<AlertTriangle size={15} className={overdue.length > 0 ? 'text-coral' : undefined} />}
             />
           </div>
 
-          <Card title="Distribuição por cadeira">
+          <Card title={t('ui.distribution')}>
             {distribution.length > 0 ? (
               <CourseDistribution rows={distribution} courseById={courseById} />
             ) : (
               <EmptyState
                 icon={<CalendarDays size={24} />}
-                title="Sem sessões nesta semana"
-                hint="Gera um plano ou adiciona uma sessão para ver a distribuição por cadeira."
+                title={t('ui.noWeekSessions')}
+                hint={t('ui.noWeekSessionsHint')}
               />
             )}
           </Card>
@@ -673,16 +674,16 @@ export default function Planner() {
       <ActionSheet
         open={actionsOpen}
         onClose={() => setActionsOpen(false)}
-        title="Ações do plano"
+        title={t('ui.actionsTitle')}
         actions={[
           {
             id: 'new',
-            label: 'Nova sessão manual',
-            hint: `Adicionar bloco em ${format(selectedDate, 'd MMM', { locale: pt })}`,
+            label: t('ui.newManual'),
+            hint: t('ui.addBlockOn', { date: format(selectedDate, 'd MMM', { locale: dfLocale }) }),
             icon: <Plus size={16} />,
             onSelect: () => {
               if (courses.length === 0) {
-                showToast('Adiciona primeiro uma cadeira', 'neutral');
+                showToast(t('ui.addCourseFirst'), 'neutral');
                 return;
               }
               setModal({ date: activeDayKey });
@@ -690,15 +691,15 @@ export default function Planner() {
           },
           {
             id: 'review-due',
-            label: dueReviewCount > 0 ? `Rever devidos (${dueReviewCount})` : 'Prática & Revisão (SRS)',
-            hint: 'Micro-sessão rápida com os teus materiais',
+            label: dueReviewCount > 0 ? t('ui.reviewDueN', { count: dueReviewCount }) : t('ui.practiceReview'),
+            hint: t('ui.practiceHint'),
             icon: <Brain size={16} />,
             onSelect: () => setReviewOpen(true),
           },
           {
             id: 'checkin',
-            label: 'Check-in semanal com Tutor',
-            hint: 'Ajusta o plano ao teu ritmo desta semana',
+            label: t('ui.weeklyCheckin'),
+            hint: t('ui.weeklyCheckinHint'),
             icon: <MessageSquare size={16} />,
             onSelect: () => setTutorOpen(true),
           },

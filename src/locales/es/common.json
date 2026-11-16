@@ -63,5 +63,96 @@
     "openTitle": "¿Qué hace esta pestaña? (Guía de Uni)",
     "closeAria": "Cerrar guía de esta pestaña",
     "sectionAria": "Guía rápida: {{title}}"
+  },
+  "quota": {
+    "chatLimit": "Has alcanzado el límite diario de {{limit}} mensajes gratuitos con Uni.",
+    "notebookLimit": "Has alcanzado el límite diario de {{limit}} generaciones en el Cuaderno de Uni.",
+    "recallLimit": "Has alcanzado el límite diario de {{limit}} evaluaciones de Recall gratuitas con Uni.",
+    "renewHint": "La cuota se renueva a medianoche. Si necesitas estudiar a fondo ahora, pega una clave personal en Ajustes → Tutor → Avanzado.",
+    "voiceNeedsKey": "La Voz en tiempo real requiere tu clave personal de Gemini en Ajustes → Tutor → Avanzado."
+  },
+  "auth": {
+    "greet1": "¡Listo para organizar tu semestre!",
+    "greet2": "Aquí los plazos no pillan a nadie por sorpresa.",
+    "greet3": "Pssst: tu cuaderno se guarda de forma segura.",
+    "greet4": "¡Tócame cuando necesites ayuda para estudiar!",
+    "peek": "¡Prometo que no estoy mirando tu contraseña!",
+    "err": {
+      "invalid": "Correo o contraseña incorrectos. Revisa los datos o crea una cuenta nueva.",
+      "inUse": "Este correo ya tiene cuenta. Prueba en la pestaña \"Entrar\".",
+      "weak": "Elige una contraseña de al menos 6 caracteres.",
+      "tooMany": "Demasiados intentos seguidos. Espera un poco o restablece tu contraseña.",
+      "notAllowed": "Este método de acceso debe estar activo en Firebase Auth (inténtalo de nuevo o usa el enlace mágico por correo).",
+      "generic": "No se ha podido entrar ahora. Inténtalo de nuevo.",
+      "email": "Introduce un correo válido.",
+      "consent": "Confirma la edad mínima y la Política de Privacidad para crear la cuenta.",
+      "password": "Introduce una contraseña de al menos 6 caracteres.",
+      "resetNeedsEmail": "Escribe primero tu correo arriba para recibir el enlace de restablecimiento."
+    },
+    "toast": {
+      "linkSignedIn": "¡Sesión iniciada con el enlace del correo!",
+      "signedIn": "¡Sesión iniciada!",
+      "created": "¡Cuenta creada! Vamos a configurar tu carrera.",
+      "google": "¡Bienvenido! Cuenta de Google y servicios conectados.",
+      "signedOut": "Sesión cerrada."
+    },
+    "info": {
+      "magicSent": "Hemos enviado un enlace mágico a {{email}}. Ábrelo en este dispositivo para entrar sin contraseña.",
+      "resetSent": "Hemos enviado un correo para restablecer la contraseña. Revisa también el spam."
+    },
+    "header": {
+      "title": "Tu cuenta",
+      "subtitle": "Inicia sesión o gestiona tu acceso"
+    },
+    "nav": {
+      "home": "Inicio",
+      "privacy": "Privacidad"
+    },
+    "hero": {
+      "badge": "¡Hola! Soy Uni",
+      "title": "Tu semestre",
+      "titleAccent": "siempre al día",
+      "body": "Organiza asignaturas, horarios y sesiones de estudio en una sola cuenta o empieza ya en tu móvil.",
+      "uniAria": "Interactuar con Uni, tu compañero de estudio",
+      "closeBubble": "Cerrar mensaje de Uni"
+    },
+    "account": {
+      "student": "Estudiante",
+      "active": "Sesión activa",
+      "synced": "Sincronizada",
+      "goToday": "Ir a mi día",
+      "signOut": "Salir"
+    },
+    "tabs": {
+      "signin": "Entrar",
+      "signup": "Crear cuenta"
+    },
+    "form": {
+      "nameLabel": "¿Cómo quieres que te llamemos?",
+      "namePlaceholder": "Tu nombre",
+      "emailPlaceholder": "nombre@correo.com",
+      "magicBanner": "Acceso directo con enlace por correo (sin contraseña)",
+      "usePassword": "Usar contraseña",
+      "passwordLabel": "Contraseña",
+      "passwordPlaceholder": "Mínimo 6 caracteres",
+      "hidePassword": "Ocultar contraseña",
+      "showPassword": "Mostrar contraseña",
+      "forgot": "He olvidado mi contraseña",
+      "ageBefore": "Confirmo tener al menos",
+      "years": "{{age}} años",
+      "ageAfter": "(o autorización) y acepto la",
+      "privacy": "Privacidad",
+      "and": "y los",
+      "terms": "Términos",
+      "confirmMagic": "Confirmar correo del enlace",
+      "sendMagic": "Enviar enlace de acceso al correo",
+      "createMine": "Crear mi cuenta",
+      "google": "Continuar con Google"
+    },
+    "footer": {
+      "magicLink": "Enlace sin contraseña",
+      "localOnly": "Usar solo en este móvil",
+      "acceptBefore": "Al continuar aceptas la"
+    }
   }
 }

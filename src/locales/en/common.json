@@ -63,5 +63,96 @@
     "openTitle": "What does this tab do? (Uni Guide)",
     "closeAria": "Close guide",
     "sectionAria": "Quick guide: {{title}}"
+  },
+  "quota": {
+    "chatLimit": "You've reached the daily limit of {{limit}} free messages with Uni.",
+    "notebookLimit": "You've reached the daily limit of {{limit}} Uni Notebook generations.",
+    "recallLimit": "You've reached the daily limit of {{limit}} free Recall reviews with Uni.",
+    "renewHint": "Your quota resets at midnight. If you need to study intensively now, paste a personal key in Settings → Tutor → Advanced.",
+    "voiceNeedsKey": "Live Voice requires your personal Gemini key in Settings → Tutor → Advanced."
+  },
+  "auth": {
+    "greet1": "Ready to organise your semester!",
+    "greet2": "Here, deadlines never catch anyone by surprise.",
+    "greet3": "Pssst: your notebook is stored safely.",
+    "greet4": "Tap me whenever you need help studying!",
+    "peek": "I promise I'm not peeking at your password!",
+    "err": {
+      "invalid": "Incorrect email or password. Check your details or create a new account.",
+      "inUse": "This email already has an account. Try the \"Sign in\" tab.",
+      "weak": "Choose a password with at least 6 characters.",
+      "tooMany": "Too many attempts in a row. Wait a moment or reset your password.",
+      "notAllowed": "This sign-in method must be enabled in Firebase Auth (try again or use the magic email link).",
+      "generic": "Couldn't sign in right now. Please try again.",
+      "email": "Enter a valid email.",
+      "consent": "Confirm the minimum age and the Privacy Policy to create an account.",
+      "password": "Enter a password with at least 6 characters.",
+      "resetNeedsEmail": "Type your email above first to receive the reset link."
+    },
+    "toast": {
+      "linkSignedIn": "Signed in with the email link!",
+      "signedIn": "Signed in!",
+      "created": "Account created! Let's set up your degree.",
+      "google": "Welcome! Google account and services connected.",
+      "signedOut": "Signed out."
+    },
+    "info": {
+      "magicSent": "We sent a magic link to {{email}}. Open it on this device to sign in without a password.",
+      "resetSent": "We sent a password reset email. Check your spam folder too."
+    },
+    "header": {
+      "title": "Your account",
+      "subtitle": "Sign in or manage your access"
+    },
+    "nav": {
+      "home": "Home",
+      "privacy": "Privacy"
+    },
+    "hero": {
+      "badge": "Hi! I'm Uni",
+      "title": "Your semester",
+      "titleAccent": "always on track",
+      "body": "Organise courses, timetables and study sessions in one account, or start right away on your phone.",
+      "uniAria": "Interact with Uni, your study buddy",
+      "closeBubble": "Close Uni's message"
+    },
+    "account": {
+      "student": "Student",
+      "active": "Signed in",
+      "synced": "Synced",
+      "goToday": "Go to my day",
+      "signOut": "Sign out"
+    },
+    "tabs": {
+      "signin": "Sign in",
+      "signup": "Create account"
+    },
+    "form": {
+      "nameLabel": "What should we call you?",
+      "namePlaceholder": "Your first name",
+      "emailPlaceholder": "name@email.com",
+      "magicBanner": "Direct sign-in with an email link (no password)",
+      "usePassword": "Use password",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "At least 6 characters",
+      "hidePassword": "Hide password",
+      "showPassword": "Show password",
+      "forgot": "Forgot password",
+      "ageBefore": "I confirm I am at least",
+      "years": "{{age}} years old",
+      "ageAfter": "(or have permission) and accept the",
+      "privacy": "Privacy Policy",
+      "and": "and the",
+      "terms": "Terms",
+      "confirmMagic": "Confirm link email",
+      "sendMagic": "Email me a sign-in link",
+      "createMine": "Create my account",
+      "google": "Continue with Google"
+    },
+    "footer": {
+      "magicLink": "Passwordless link",
+      "localOnly": "Use on this phone only",
+      "acceptBefore": "By continuing you accept the"
+    }
   }
 }
