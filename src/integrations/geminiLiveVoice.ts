@@ -16,6 +16,11 @@ import type { AppLanguage, Course } from '../types';
 import { buildStudyContext, SYSTEM_PROMPT } from './gemini';
 
 export const LIVE_VOICE_MODEL = 'gemini-3.8-live';
+const LIVE_VOICE_CANDIDATE_MODELS = [
+  LIVE_VOICE_MODEL,
+  'gemini-2.5-flash-native-audio-preview-12-2025',
+  'gemini-2.0-flash-live-001',
+] as const;
 const INPUT_SAMPLE_RATE = 16000;
 const OUTPUT_SAMPLE_RATE = 24000;
 const SILENCE_TIMEOUT_MS = 60_000;
@@ -244,7 +249,11 @@ export async function startUniLiveVoiceSession(
       await audioCtx.resume();
     }
 
-    const ai = new GoogleGenAI({ apiKey: trimmedKey });
+    const ai = new GoogleGenAI({
+      apiKey: trimmedKey,
+      apiVersion: 'v1beta',
+      httpOptions: { apiVersion: 'v1beta' },
+    });
     const studyContext = buildStudyContext(useStore.getState());
     const systemText = `${SYSTEM_PROMPT(studyContext, undefined, {
       persona: args.persona,
@@ -256,132 +265,161 @@ export async function startUniLiveVoiceSession(
       courseName: args.activeCourse?.shortName || args.activeCourse?.name,
     })}\n\nMODO VOZ EM TEMPO REAL: responde de forma natural, calorosa, objetiva e breve (2 a 4 frases por turno) para facilitar a audição.`;
 
-    session = await ai.live.connect({
-      model: LIVE_VOICE_MODEL,
-      config: {
-        responseModalities: [Modality.AUDIO],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: {
-              voiceName: PERSONA_PREBUILT_VOICES[args.persona] ?? 'Aoede',
+    let connected = false;
+    let lastConnectErr: unknown = null;
+
+    for (const candidateModel of LIVE_VOICE_CANDIDATE_MODELS) {
+      if (closed) break;
+      const is38Model = candidateModel.startsWith('gemini-3.8');
+      const toolsForModel = is38Model
+        ? UNI_TOOL_DECLARATIONS
+        : UNI_TOOL_DECLARATIONS.map((decl) => {
+            const copy = { ...decl };
+            delete copy.behavior;
+            return copy;
+          });
+
+      try {
+        session = await ai.live.connect({
+          model: candidateModel,
+          config: {
+            responseModalities: [Modality.AUDIO],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: {
+                  voiceName: PERSONA_PREBUILT_VOICES[args.persona] ?? 'Aoede',
+                },
+              },
+            },
+            systemInstruction: systemText,
+            tools: [{ functionDeclarations: toolsForModel }],
+            inputAudioTranscription: {},
+            outputAudioTranscription: {},
+          },
+          callbacks: {
+            onopen: () => {
+              if (closed) return;
+              args.onStatusChange('listening');
+              resetSilenceTimer();
+            },
+            onmessage: (message: LiveServerMessage) => {
+              if (closed) return;
+              resetSilenceTimer();
+
+              if (message.serverContent?.interrupted) {
+                stopQueuedOutputAudio();
+                args.onStatusChange(muted ? 'sleeping' : 'listening');
+              }
+
+              const inText = message.serverContent?.inputTranscription?.text?.trim();
+              if (inText) {
+                args.onTranscript({
+                  id: `u-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                  role: 'user',
+                  text: inText,
+                });
+              }
+
+              const outText = message.serverContent?.outputTranscription?.text?.trim();
+              if (outText) {
+                args.onTranscript({
+                  id: `m-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                  role: 'model',
+                  text: outText,
+                });
+              }
+
+              const parts = message.serverContent?.modelTurn?.parts ?? [];
+              for (const part of parts) {
+                const inline = part.inlineData;
+                if (inline?.data && inline.mimeType?.startsWith('audio/pcm')) {
+                  schedulePcmPlayback(inline.data);
+                }
+              }
+
+              if (message.serverContent?.turnComplete && activeSources.size === 0) {
+                args.onStatusChange(muted ? 'sleeping' : 'listening');
+              }
+
+              const fnCalls = message.toolCall?.functionCalls ?? [];
+              if (fnCalls.length > 0 && session) {
+                args.onStatusChange('thinking');
+                void (async () => {
+                  const responses = [];
+                  const ctx = buildToolContext();
+                  for (const fc of fnCalls) {
+                    const rawName = fc.name ?? '';
+                    if (!isUniToolName(rawName)) {
+                      responses.push({
+                        id: fc.id,
+                        name: rawName,
+                        response: { ok: false, error: 'Ferramenta desconhecida.' },
+                      });
+                      continue;
+                    }
+                    const callArgs = (fc.args ?? {}) as Record<string, unknown>;
+                    if (requiresStudentConfirmation(rawName)) {
+                      const proposal = buildUniToolProposal(
+                        { id: fc.id, name: rawName, args: callArgs },
+                        ctx,
+                      );
+                      if (proposal) {
+                        args.onToolProposal(proposal);
+                      }
+                      responses.push({
+                        id: fc.id,
+                        name: rawName,
+                        response: {
+                          ok: true,
+                          status: 'awaiting_student_confirmation',
+                          message: 'Proposta apresentada no ecrã para confirmação explícita do estudante.',
+                        },
+                      });
+                    } else {
+                      const result = await executeReadOnlyOrRecallUniTool(
+                        { id: fc.id, name: rawName, args: callArgs },
+                        ctx,
+                      );
+                      responses.push({
+                        id: fc.id,
+                        name: rawName,
+                        response: result,
+                      });
+                    }
+                  }
+                  if (!closed && session && responses.length > 0) {
+                    session.sendToolResponse({ functionResponses: responses });
+                  }
+                })();
+              }
+            },
+            onerror: (err: ErrorEvent) => {
+              if (closed || !connected) return;
+              args.onStatusChange('error');
+              args.onError(err?.message || 'Erro na ligação de voz em tempo real.');
+              cleanup();
+            },
+            onclose: () => {
+              if (!closed && connected) {
+                cleanup();
+              }
             },
           },
-        },
-        systemInstruction: systemText,
-        tools: [{ functionDeclarations: UNI_TOOL_DECLARATIONS }],
-        inputAudioTranscription: {},
-        outputAudioTranscription: {},
-      },
-      callbacks: {
-        onopen: () => {
-          if (closed) return;
-          args.onStatusChange('listening');
-          resetSilenceTimer();
-        },
-        onmessage: (message: LiveServerMessage) => {
-          if (closed) return;
-          resetSilenceTimer();
+        });
+        connected = true;
+        args.onStatusChange('listening');
+        resetSilenceTimer();
+        break;
+      } catch (connectErr) {
+        lastConnectErr = connectErr;
+      }
+    }
 
-          if (message.serverContent?.interrupted) {
-            stopQueuedOutputAudio();
-            args.onStatusChange(muted ? 'sleeping' : 'listening');
-          }
-
-          const inText = message.serverContent?.inputTranscription?.text?.trim();
-          if (inText) {
-            args.onTranscript({
-              id: `u-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-              role: 'user',
-              text: inText,
-            });
-          }
-
-          const outText = message.serverContent?.outputTranscription?.text?.trim();
-          if (outText) {
-            args.onTranscript({
-              id: `m-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-              role: 'model',
-              text: outText,
-            });
-          }
-
-          const parts = message.serverContent?.modelTurn?.parts ?? [];
-          for (const part of parts) {
-            const inline = part.inlineData;
-            if (inline?.data && inline.mimeType?.startsWith('audio/pcm')) {
-              schedulePcmPlayback(inline.data);
-            }
-          }
-
-          if (message.serverContent?.turnComplete && activeSources.size === 0) {
-            args.onStatusChange(muted ? 'sleeping' : 'listening');
-          }
-
-          const fnCalls = message.toolCall?.functionCalls ?? [];
-          if (fnCalls.length > 0 && session) {
-            args.onStatusChange('thinking');
-            void (async () => {
-              const responses = [];
-              const ctx = buildToolContext();
-              for (const fc of fnCalls) {
-                const rawName = fc.name ?? '';
-                if (!isUniToolName(rawName)) {
-                  responses.push({
-                    id: fc.id,
-                    name: rawName,
-                    response: { ok: false, error: 'Ferramenta desconhecida.' },
-                  });
-                  continue;
-                }
-                const callArgs = (fc.args ?? {}) as Record<string, unknown>;
-                if (requiresStudentConfirmation(rawName)) {
-                  const proposal = buildUniToolProposal(
-                    { id: fc.id, name: rawName, args: callArgs },
-                    ctx,
-                  );
-                  if (proposal) {
-                    args.onToolProposal(proposal);
-                  }
-                  responses.push({
-                    id: fc.id,
-                    name: rawName,
-                    response: {
-                      ok: true,
-                      status: 'awaiting_student_confirmation',
-                      message: 'Proposta apresentada no ecrã para confirmação explícita do estudante.',
-                    },
-                  });
-                } else {
-                  const result = await executeReadOnlyOrRecallUniTool(
-                    { id: fc.id, name: rawName, args: callArgs },
-                    ctx,
-                  );
-                  responses.push({
-                    id: fc.id,
-                    name: rawName,
-                    response: result,
-                  });
-                }
-              }
-              if (!closed && session && responses.length > 0) {
-                session.sendToolResponse({ functionResponses: responses });
-              }
-            })();
-          }
-        },
-        onerror: (err: ErrorEvent) => {
-          if (closed) return;
-          args.onStatusChange('error');
-          args.onError(err?.message || 'Erro na ligação de voz em tempo real.');
-          cleanup();
-        },
-        onclose: () => {
-          if (!closed) {
-            cleanup();
-          }
-        },
-      },
-    });
+    if (!connected || !session) {
+      throw lastConnectErr instanceof Error
+        ? lastConnectErr
+        : new Error('Não foi possível estabelecer a sessão Live Audio.');
+    }
 
     sourceNode = audioCtx.createMediaStreamSource(stream);
     processor = audioCtx.createScriptProcessor(4096, 1, 1);
