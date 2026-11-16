@@ -10,8 +10,121 @@
   "languageHint": "Cada Uni de asignatura puede usar un idioma distinto.",
   "gradingScaleLabel": "Escala de calificaciones",
   "gradingScaleHint": "Las gráficas y el Modo Examen normalizan automáticamente las notas a porcentaje.",
-  "dailyMinutesLabel": "Minutos de estudio al día",
+  "dailyMinutesLabel": "Tiempo de estudio al día (minutos)",
   "studyDaysLabel": "Días de estudio",
   "uniPersonaLabel": "Personalidad predeterminada de Uni",
-  "saveBtn": "Guardar cambios"
+  "saveBtn": "Guardar cambios",
+  "sections": {
+    "estudo": {
+      "title": "Perfil y estudio",
+      "subtitle": "Nombre, fechas del cuatrimestre, meta diaria y estilo de Uni"
+    },
+    "notificacoes": {
+      "title": "Recordatorios inteligentes de Uni",
+      "subtitle": "Racha diaria, repaso espaciado, exámenes y clases"
+    },
+    "ligacoes": {
+      "title": "Fuentes de datos",
+      "subtitle": "Conecta solo los servicios que quieras usar en Unipedia"
+    },
+    "tutor": {
+      "title": "Uni · Tutor IA",
+      "subtitle": "Tutor nativo, consentimiento de IA y opciones avanzadas",
+      "consentGroup": "Autorización de Uni",
+      "consentTitle": "Usar Uni con IA (Gemini)",
+      "consentDesc": "Permite que Uni responda a tus dudas y procese los archivos que adjuntes.",
+      "consentAria": "Autorizar a Uni a usar Gemini"
+    },
+    "dados": {
+      "title": "Datos y copias de seguridad",
+      "subtitle": "Exporta, restaura o limpia tus datos de forma segura"
+    }
+  },
+  "hero": {
+    "defaultName": "Estudiante",
+    "cloudActive": "Nube activa",
+    "localOnly": "Solo en este dispositivo",
+    "localOnlyShort": "En este dispositivo",
+    "completeProfileHint": "Configura tu carrera y ritmo abajo",
+    "editProfileUni": "Editar perfil y Uni",
+    "editProfileMinimal": "Editar perfil y paleta",
+    "sync": "Sincronizar",
+    "syncAria": "Sincronizar ahora",
+    "signOut": "Salir",
+    "signOutAria": "Cerrar sesión",
+    "signInToSync": "Iniciar sesión para sincronizar",
+    "syncedToast": "¡Datos sincronizados con la nube!",
+    "syncErrorToast": "Error al sincronizar ahora. Inténtalo más tarde.",
+    "loggedOutToast": "Sesión cerrada."
+  },
+  "appearance": {
+    "title": "Apariencia del cuaderno",
+    "paletteHint": "Paleta actual: {{name}}",
+    "themes": {
+      "system": "Sistema",
+      "light": "Claro",
+      "dark": "Oscuro"
+    },
+    "toneTitle": "Estilo visual de la app",
+    "toneVibrant": "Expresivo",
+    "toneMinimal": "Sobrio y Minimal",
+    "toneVibrantHint": "Expresivo activo: tonos pastel cálidos, animaciones táctiles y Unis vivos.",
+    "toneMinimalHint": "Sobrio y Minimal activo: superficies neutras, sin animaciones ni mascotas.",
+    "paletteTitle": "Paleta de colores"
+  },
+  "groups": {
+    "studyTitle": "Cuaderno y Estudio",
+    "semesterRowTitle": "Cuatrimestre, meta y Uni",
+    "perDaySuffix": "{{time}}/día",
+    "remindersRowTitle": "Recordatorios inteligentes de Uni",
+    "remindersOn": "Activos · máx {{max}}/día · silencio {{start}}–{{end}}",
+    "remindersOff": "Desactivados · racha, SRS, exámenes y clases",
+    "remindersActiveBadge": "Activo",
+    "remindersOptInBadge": "Opt-in",
+    "curriculumRowTitle": "Carrera e historial académico",
+    "curriculumSubtitleEmpty": "Elegir facultad o universidad",
+    "tourRowTitle": "Repetir guía rápida",
+    "tourSubtitle": "Vuelve a ver los puntos clave de la pantalla Hoy",
+    "connectionsTitle": "Conexiones y Uni",
+    "connectionsRowTitle": "Conexiones e importación",
+    "connectionsRowSubtitle": "Calendario, correo, Drive, carpeta local y horarios (.ics)",
+    "connectedBadge": "Conectado",
+    "tutorRowTitle": "Uni · Tutor IA",
+    "tutorKeyConnected": "Clave personal conectada · Límite ampliado",
+    "tutorNativeIncluded": "Uni Nativo · Respuestas diarias incluidas",
+    "activeBadge": "Activo",
+    "pausedBadge": "En pausa",
+    "privacyTitle": "Privacidad y Datos",
+    "backupRowTitle": "Exportar copia y gestionar datos",
+    "backupRowSubtitle": "Copia JSON, datos de ejemplo y limpieza local",
+    "privacyPolicyRowTitle": "Política de Privacidad",
+    "privacyPolicyRowSubtitle": "Cómo protegemos tus datos",
+    "termsRowTitle": "Términos de Uso"
+  },
+  "dangerZone": {
+    "title": "Zona de peligro",
+    "body": "Elimina permanentemente los datos de este dispositivo y, si tienes cuenta, borra también tu cuenta en la nube.",
+    "cta": "Eliminar cuenta y datos"
+  },
+  "profileCard": {
+    "namePlaceholder": "¿Cómo prefieres que te llamemos?",
+    "semesterNameLabel": "Nombre del cuatrimestre",
+    "semesterPlaceholder": "Ej.: 2026/27 · 1.º Cuatrimestre",
+    "semesterStart": "Inicio del cuatrimestre",
+    "semesterEnd": "Fin del cuatrimestre",
+    "endBeforeStart": "El fin es anterior al inicio.",
+    "dailyMinutesHint": "Equivale a {{time}} por día.",
+    "uniStyle": "Estilo de Uni",
+    "uniStyleHint": "Cambia el gorro o accesorio automáticamente según la asignatura o fija tu favorito.",
+    "autoPerCourse": "Automático por asignatura",
+    "companionsLabel": "Unis discretos en pantalla",
+    "companionsPaused": "En pausa porque el estilo Sobrio y Minimal está activo.",
+    "companionsHint": "Compañeros tímidos en las esquinas que se esconden al escribir o hacer scroll.",
+    "companionsAll": "Hasta 2",
+    "companionsSolo": "Solo 1",
+    "companionsOff": "Desactivado",
+    "installTitle": "Instalar app Unipedia",
+    "installHint": "Accede sin conexión y como app dedicada en tu dispositivo.",
+    "installBtn": "Instalar Unipedia"
+  }
 }

@@ -30,5 +30,105 @@
   "talkWithUni": "Chat with Uni",
   "taskAdded": "Task added",
   "goalDone": "Today's target completed!",
-  "defaultSubtitle": "let's study"
+  "defaultSubtitle": "let's study",
+  "uniAria": "Chat with Uni",
+  "closeSuggestionAria": "Close Uni suggestion",
+  "openCheckInAria": "Open Uni check-in & study log",
+  "openCheckInTitle": "Uni Check-in & Journal",
+  "openSettingsAria": "Open settings",
+  "dismissNudgeAria": "Dismiss reminder",
+  "todayFocus": {
+    "title": "Today's focus",
+    "openPlan": "Open plan",
+    "emptyTitle": "Free day to organize your ideas",
+    "emptyMinimalHint": "Create a weekly plan with short study blocks per course.",
+    "emptyVibrantHint": "Build a weekly study plan with short blocks and Uni will stay beside each session.",
+    "emptyCta": "Generate plan now"
+  },
+  "tasksPad": {
+    "title": "Notes & Tasks",
+    "pendingOne": "1 pending",
+    "pendingMany": "{{count}} pending",
+    "placeholder": "Write a task and press Enter…",
+    "ariaLabel": "New task"
+  },
+  "agendaCard": {
+    "title": "Today's schedule",
+    "emptyTitle": "No fixed classes or events today",
+    "emptyHint": "Use the free afternoon to move ahead at your own pace.",
+    "allDayLabel": "Day",
+    "allDayLongLabel": "All day",
+    "nowLabel": "Now"
+  },
+  "summaryMetrics": {
+    "week": "Week",
+    "sessions": "Sessions",
+    "exams": "Exams",
+    "todayProgress": "Today's progress",
+    "weekGoal": "Weekly target",
+    "addCoursesBtn": "Add courses",
+    "createPlanBtn": "Create study plan"
+  },
+  "folders": {
+    "heading": "Your folders",
+    "seeAll": "See all →",
+    "topicsStudied": "{{done}}/{{total}} topics studied ({{pct}}%)",
+    "emptyTopics": "Ready to organize topics and notes",
+    "openFolder": "Open folder",
+    "courseFallback": "Study"
+  },
+  "restBanner": {
+    "nextPlan": "Scheduled rest day · next plan ({{date}})",
+    "blockOne": "1 block",
+    "blockMany": "{{count}} blocks",
+    "seeAllBlocks": "See all {{count}} blocks in plan"
+  },
+  "firstSteps": {
+    "ariaLabel": "First setup steps",
+    "title": "First steps · {{flow}}",
+    "connected": "{{ready}}/{{total}} linked",
+    "badgeComplete": "Finish",
+    "body": "Connect schedules, exams, study folders, and Gemini to keep your plan tuned.",
+    "cta": "Complete setup",
+    "dismissAria": "Dismiss First steps card",
+    "dismissTitle": "Dismiss",
+    "chips": {
+      "schedule": "Schedule",
+      "assessments": "Exams",
+      "driveHd": "Drive / PC",
+      "uniNotebook": "Uni Notebook"
+    }
+  },
+  "topAlert": {
+    "prepAt": " — readiness at {{pct}}",
+    "fallbackCourse": "course"
+  },
+  "rows": {
+    "anyTime": "Anytime",
+    "partial": "Partial",
+    "weightPct": "· weight {{weight}}%",
+    "markUndone": "Mark as pending",
+    "markDone": "Mark as done",
+    "priorityHigh": "High priority",
+    "priorityMedium": "Medium priority",
+    "priorityLow": "Low priority",
+    "todayWord": "today",
+    "tomorrowWord": "tomorrow",
+    "yesterdayWord": "yesterday",
+    "inDays": "in {{count}} days",
+    "daysAgo": "{{count}} days ago",
+    "prepAria": "Readiness for {{title}}",
+    "completeAria": "Complete: {{title}}"
+  },
+  "undoModal": {
+    "title": "Reopen this session?",
+    "body": "Session {{title}} is marked as done ({{minutes}}). Are you sure you want to reopen it as pending?",
+    "confirm": "Yes, reopen session"
+  },
+  "uniTips": {
+    "nextExam": "You have {{title}}{{course}} {{when}}. Want me to prepare a quick plan or review sheet?",
+    "sessionsLeft": "{{count}} sessions left to hit today's goal. Let's go!",
+    "noSessions": "No sessions planned today — add your courses or chat with me in Tutor!"
+  },
+  "sessionFallback": "Free study"
 }

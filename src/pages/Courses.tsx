@@ -11,13 +11,14 @@ import { AnimatedPage, FolderCardDeck, StaggerContainer, StaggerItem } from '../
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import ClipImportModal from '../components/settings/ClipImportModal';
 import { Button, EmptyState, PageHeader, SegmentedControl } from '../components/ui';
+import { normalizeAppLanguage } from '../lib/grading';
 import { fmtGrade, gradeSummary, semesterAverage, upcomingAssessments } from '../lib/selectors';
 import { useStore } from '../store/useStore';
 import type { Assessment, Course } from '../types';
 
 export default function Courses() {
   const { t, i18n } = useTranslation('courses');
-  const appLang = i18n.language?.startsWith('en') ? ('en' as const) : ('pt-PT' as const);
+  const appLang = normalizeAppLanguage(i18n.language);
   const navigate = useNavigate();
   const courses = useStore((s) => s.courses);
   const assessments = useStore((s) => s.assessments);
@@ -49,7 +50,7 @@ export default function Courses() {
         eyebrow={t('eyebrow')}
         title={t('title')}
         accentTitle={t('accentTitle')}
-        subtitle={`${courses.length} ${courses.length === 1 ? (appLang === 'en' ? 'course' : 'cadeira') : (appLang === 'en' ? 'courses' : 'cadeiras')} · ${totalEcts} ECTS · ${appLang === 'en' ? 'avg' : 'média'} ${fmtGrade(average, gradingScale, appLang)}`}
+        subtitle={`${courses.length} ${courses.length === 1 ? t('unitOne') : t('unitMany')} · ${totalEcts} ECTS · ${t('avgShort')} ${fmtGrade(average, gradingScale, appLang)}`}
         actions={
           <div className="flex items-center gap-2">
             <TabGuideHelpButton tabKey="cadeiras" />
@@ -70,10 +71,10 @@ export default function Courses() {
           courses.length === 0 ? (
             <>
               <Button size="sm" variant="primary" onClick={() => setSmartImport('photo')}>
-                <Camera size={14} /> Foto do horário (IA)
+                <Camera size={14} /> {t('empty.photoBannerBtn')}
               </Button>
               <Button size="sm" variant="secondary" onClick={() => setSmartImport('gcal')}>
-                <CalendarDays size={14} /> Google Calendar
+                <CalendarDays size={14} /> {t('empty.gcalBannerBtn')}
               </Button>
             </>
           ) : undefined
@@ -83,21 +84,21 @@ export default function Courses() {
       {courses.length === 0 ? (
         <EmptyState
           icon={<GraduationCap size={28} />}
-          title="Ainda não tens cadeiras"
-          hint="Cria à mão, envia uma foto do horário ou agenda para o Uni extrair tudo, ou lê aulas e testes direto do Google Calendar."
+          title={t('empty.title')}
+          hint={t('empty.hint')}
           action={
             <div className="flex flex-wrap items-center justify-center gap-2">
               <Button variant="primary" onClick={() => setSmartImport('photo')}>
-                <Camera size={16} /> Foto da agenda / horário
+                <Camera size={16} /> {t('empty.photoBtn')}
               </Button>
               <Button variant="secondary" onClick={() => setSmartImport('gcal')}>
-                <CalendarDays size={16} /> Extrair Google Calendar
+                <CalendarDays size={16} /> {t('empty.gcalBtn')}
               </Button>
               <Button variant="secondary" onClick={() => setImportOpen(true)}>
-                <Upload size={16} /> Horário (.ics / Portal)
+                <Upload size={16} /> {t('empty.icsBtn')}
               </Button>
               <Button variant="ghost" onClick={() => setForm('new')}>
-                <Plus size={16} /> Criar à mão
+                <Plus size={16} /> {t('empty.manualBtn')}
               </Button>
             </div>
           }
@@ -111,12 +112,12 @@ export default function Courses() {
                 value={view}
                 onChange={(id) => setView(id as 'deck' | 'grid')}
                 items={[
-                  { id: 'deck', label: 'Pastas', icon: <Layers size={14} />, count: courses.length },
-                  { id: 'grid', label: 'Grelha', icon: <LayoutGrid size={14} /> },
+                  { id: 'deck', label: t('views.deck'), icon: <Layers size={14} />, count: courses.length },
+                  { id: 'grid', label: t('views.grid'), icon: <LayoutGrid size={14} /> },
                 ]}
               />
               <span className="hidden text-xs font-medium text-muted sm:inline">
-                Toca numa pasta para abrir notas, tópicos e exames
+                {t('views.deckHint')}
               </span>
             </div>
           </StaggerItem>
@@ -131,8 +132,8 @@ export default function Courses() {
           ) : (
             <StaggerItem>
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="font-display text-base font-bold">Todas as cadeiras</h2>
-                <span className="text-xs text-muted">{totalEcts} ECTS no total</span>
+                <h2 className="font-display text-base font-bold">{t('views.allCourses')}</h2>
+                <span className="text-xs text-muted">{t('ectsTotal', { ects: totalEcts })}</span>
               </div>
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {courses.map((c) => (

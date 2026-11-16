@@ -185,6 +185,56 @@ export const UNI_ACCESSORIES: UniAccessoryMeta[] = [
   },
 ];
 
+const ACCESSORY_LOCALIZED_COPY: Record<
+  UniAccessoryId,
+  Record<'pt-BR' | 'es' | 'en', { label: string; shortLabel: string; tagline: string }>
+> = {
+  default: {
+    'pt-BR': { label: 'Clássico', shortLabel: 'Clássico', tagline: 'Marcador coral do caderno' },
+    es: { label: 'Clásico', shortLabel: 'Clásico', tagline: 'Marcapáginas coral del cuaderno' },
+    en: { label: 'Classic', shortLabel: 'Classic', tagline: 'Coral notebook bookmark' },
+  },
+  math: {
+    'pt-BR': { label: 'Matemática', shortLabel: 'Mat', tagline: 'Chapéu π e óculos geométricos' },
+    es: { label: 'Matemáticas', shortLabel: 'Mates', tagline: 'Gorro π y gafas geométricas' },
+    en: { label: 'Mathematics', shortLabel: 'Math', tagline: 'π cap and geometric glasses' },
+  },
+  tech: {
+    'pt-BR': { label: 'Engenharia & TI', shortLabel: 'Tech', tagline: 'Fones de foco' },
+    es: { label: 'Ingeniería y TI', shortLabel: 'Tech', tagline: 'Auriculares de enfoque' },
+    en: { label: 'Engineering & IT', shortLabel: 'Tech', tagline: 'Focus headphones' },
+  },
+  health: {
+    'pt-BR': { label: 'Saúde & Bio', shortLabel: 'Saúde', tagline: 'Estetoscópio e broto' },
+    es: { label: 'Salud y Bio', shortLabel: 'Salud', tagline: 'Estetoscopio y brote' },
+    en: { label: 'Health & Bio', shortLabel: 'Health', tagline: 'Stethoscope & sprout' },
+  },
+  arts: {
+    'pt-BR': { label: 'Artes & Design', shortLabel: 'Artes', tagline: 'Boina de ateliê' },
+    es: { label: 'Artes y Diseño', shortLabel: 'Artes', tagline: 'Boina de estudio' },
+    en: { label: 'Arts & Design', shortLabel: 'Arts', tagline: 'Studio beret' },
+  },
+  science: {
+    'pt-BR': { label: 'Ciências & Lab', shortLabel: 'Lab', tagline: 'Óculos de laboratório' },
+    es: { label: 'Ciencias y Lab', shortLabel: 'Lab', tagline: 'Gafas de laboratorio' },
+    en: { label: 'Science & Lab', shortLabel: 'Lab', tagline: 'Safety lab goggles' },
+  },
+  humanities: {
+    'pt-BR': { label: 'Letras & Direito', shortLabel: 'Letras', tagline: 'Óculos clássicos de leitura' },
+    es: { label: 'Letras y Derecho', shortLabel: 'Letras', tagline: 'Gafas clásicas de lectura' },
+    en: { label: 'Humanities & Law', shortLabel: 'Arts & Law', tagline: 'Classic reading glasses' },
+  },
+};
+
+export function getLocalizedAccessories(lang: AppLanguage | string = 'pt-PT'): UniAccessoryMeta[] {
+  const normalized = normalizeAppLanguage(lang);
+  if (normalized === 'pt-PT') return UNI_ACCESSORIES;
+  return UNI_ACCESSORIES.map((acc) => {
+    const localized = ACCESSORY_LOCALIZED_COPY[acc.id]?.[normalized];
+    return localized ? { ...acc, ...localized } : acc;
+  });
+}
+
 const RULES: Array<{ id: UniAccessoryId; re: RegExp }> = [
   {
     id: 'math',

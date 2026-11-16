@@ -27,6 +27,8 @@ import type {
   Topic,
   WeeklyCheckIn,
 } from '../types';
+import { setAppLanguage } from '../i18n';
+import { normalizeAppLanguage } from '../lib/grading';
 import { buildActiveCoursesFromCurriculum } from '../lib/portugalCurriculum';
 import { generatePlan } from '../lib/planner';
 import { todayStr } from '../lib/selectors';
@@ -337,8 +339,14 @@ export const useStore = create<AppState>()(
         return created;
       },
       updateSettings: (changes) => {
-        syncSettings(changes).catch(() => {});
-        return set((s) => ({ settings: { ...s.settings, ...changes } }));
+        let nextChanges = changes;
+        if (changes.language !== undefined) {
+          const normalizedLang = normalizeAppLanguage(changes.language);
+          nextChanges = { ...changes, language: normalizedLang };
+          setAppLanguage(normalizedLang);
+        }
+        syncSettings(nextChanges).catch(() => {});
+        return set((s) => ({ settings: { ...s.settings, ...nextChanges } }));
       },
       setIntegration: (key, status) =>
         set((s) => ({

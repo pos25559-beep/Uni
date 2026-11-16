@@ -30,5 +30,105 @@
   "talkWithUni": "Falar com o Uni",
   "taskAdded": "Tarefa adicionada",
   "goalDone": "Objetivo de hoje concluído!",
-  "defaultSubtitle": "bora estudar"
+  "defaultSubtitle": "bora estudar",
+  "uniAria": "Falar com o Uni",
+  "closeSuggestionAria": "Fechar sugestão do Uni",
+  "openCheckInAria": "Abrir diário e check-in com o Uni",
+  "openCheckInTitle": "Diário & Check-in do Uni",
+  "openSettingsAria": "Abrir definições",
+  "dismissNudgeAria": "Dispensar lembrete",
+  "todayFocus": {
+    "title": "Foco de hoje",
+    "openPlan": "Abrir plano",
+    "emptyTitle": "Dia livre para pôr ideias em ordem",
+    "emptyMinimalHint": "Cria um plano semanal com blocos curtos por cadeira.",
+    "emptyVibrantHint": "Cria um plano semanal com blocos curtos e o Uni acompanha cada sessão contigo.",
+    "emptyCta": "Gerar plano agora"
+  },
+  "tasksPad": {
+    "title": "Notas & Tarefas",
+    "pendingOne": "1 pendente",
+    "pendingMany": "{{count}} pendentes",
+    "placeholder": "Escreve uma tarefa e prime Enter…",
+    "ariaLabel": "Nova tarefa"
+  },
+  "agendaCard": {
+    "title": "Agenda de hoje",
+    "emptyTitle": "Sem aulas ou blocos fixos hoje",
+    "emptyHint": "Aproveita a tarde livre para avançar ao teu ritmo.",
+    "allDayLabel": "Dia",
+    "allDayLongLabel": "Dia inteiro",
+    "nowLabel": "Agora"
+  },
+  "summaryMetrics": {
+    "week": "Semana",
+    "sessions": "Sessões",
+    "exams": "Provas",
+    "todayProgress": "Progresso de hoje",
+    "weekGoal": "Meta semanal",
+    "addCoursesBtn": "Adicionar cadeiras",
+    "createPlanBtn": "Criar plano de estudo"
+  },
+  "folders": {
+    "heading": "As tuas pastas",
+    "seeAll": "Ver todas →",
+    "topicsStudied": "{{done}}/{{total}} tópicos estudados ({{pct}}%)",
+    "emptyTopics": "Pronta para organizar tópicos e apontamentos",
+    "openFolder": "Abrir pasta",
+    "courseFallback": "Estudo"
+  },
+  "restBanner": {
+    "nextPlan": "Dia de descanso programado · próximo plano ({{date}})",
+    "blockOne": "1 bloco",
+    "blockMany": "{{count}} blocos",
+    "seeAllBlocks": "Ver todos os {{count}} blocos no plano"
+  },
+  "firstSteps": {
+    "ariaLabel": "Primeiros passos da tua configuração",
+    "title": "Primeiros passos · {{flow}}",
+    "connected": "{{ready}}/{{total}} ligadas",
+    "badgeComplete": "Completar",
+    "body": "Liga horários, provas, pastas de estudo e o Gemini para um plano sempre afinado.",
+    "cta": "Completar passos",
+    "dismissAria": "Dispensar cartão de Primeiros passos",
+    "dismissTitle": "Dispensar",
+    "chips": {
+      "schedule": "Horário",
+      "assessments": "Provas",
+      "driveHd": "Drive / PC",
+      "uniNotebook": "Caderno do Uni"
+    }
+  },
+  "topAlert": {
+    "prepAt": " — preparação a {{pct}}",
+    "fallbackCourse": "cadeira"
+  },
+  "rows": {
+    "anyTime": "Qualquer hora",
+    "partial": "Parcial",
+    "weightPct": "· peso {{weight}}%",
+    "markUndone": "Marcar como por concluir",
+    "markDone": "Marcar como concluída",
+    "priorityHigh": "Prioridade alta",
+    "priorityMedium": "Prioridade média",
+    "priorityLow": "Prioridade baixa",
+    "todayWord": "hoje",
+    "tomorrowWord": "amanhã",
+    "yesterdayWord": "ontem",
+    "inDays": "em {{count}} dias",
+    "daysAgo": "há {{count}} dias",
+    "prepAria": "Preparação para {{title}}",
+    "completeAria": "Concluir: {{title}}"
+  },
+  "undoModal": {
+    "title": "Reabrir esta sessão?",
+    "body": "A sessão {{title}} está marcada como concluída ({{minutes}}). Queres mesmo reabri-la como por concluir?",
+    "confirm": "Sim, reabrir sessão"
+  },
+  "uniTips": {
+    "nextExam": "Tens {{title}}{{course}} {{when}}. Queres que prepare um plano ou resumo rápido?",
+    "sessionsLeft": "Faltam {{count}} sessões para fechares a meta de hoje. Vamos a isso!",
+    "noSessions": "Sem sessões marcadas para hoje — adiciona as tuas cadeiras ou conversa comigo no Tutor!"
+  },
+  "sessionFallback": "Estudo livre"
 }

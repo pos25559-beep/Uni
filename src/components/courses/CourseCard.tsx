@@ -1,8 +1,8 @@
 import { CalendarClock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { courseColors, kindLabel } from '../../lib/colors';
-import { GRADE_SCALES } from '../../lib/grading';
+import { courseColors } from '../../lib/colors';
+import { GRADE_SCALES, normalizeAppLanguage } from '../../lib/grading';
 import { fmtGrade, topicProgress, type GradeSummary } from '../../lib/selectors';
 import { useStore } from '../../store/useStore';
 import type { AppLanguage, Assessment, Course, GradingScale } from '../../types';
@@ -17,36 +17,40 @@ interface Props {
 }
 
 /** Estado do objetivo: no caminho certo, precisa de X, ou fora de alcance. */
-function trackBadge(
-  course: Course,
-  summary: GradeSummary,
-  scale: GradingScale,
-  lang: AppLanguage,
-) {
+function TrackBadge({
+  course,
+  summary,
+  scale,
+  lang,
+}: {
+  course: Course;
+  summary: GradeSummary;
+  scale: GradingScale;
+  lang: AppLanguage;
+}) {
+  const { t } = useTranslation('courses');
   const { current, needed } = summary;
   const maxGrade = GRADE_SCALES[scale]?.max ?? 20;
   if (current !== null && current >= course.targetGrade) {
-    return <Badge tone="ok">{lang === 'en' ? 'On target' : 'No objetivo'}</Badge>;
+    return <Badge tone="ok">{t('track.onTarget')}</Badge>;
   }
   if (needed === null) {
-    return <Badge tone="danger">{lang === 'en' ? 'Target missed' : 'Objetivo não atingido'}</Badge>;
+    return <Badge tone="danger">{t('track.targetMissed')}</Badge>;
   }
-  if (needed <= 0) return <Badge tone="ok">{lang === 'en' ? 'On target' : 'No objetivo'}</Badge>;
+  if (needed <= 0) return <Badge tone="ok">{t('track.onTarget')}</Badge>;
   if (needed > maxGrade) {
-    return <Badge tone="danger">{lang === 'en' ? 'Target out of reach' : 'Objetivo fora de alcance'}</Badge>;
+    return <Badge tone="danger">{t('track.outOfReach')}</Badge>;
   }
   return (
     <Badge tone="warn">
-      {lang === 'en'
-        ? `Needs ${fmtGrade(needed, scale, lang)} remaining`
-        : `Precisa de ${fmtGrade(needed, scale, lang)} no que falta`}
+      {t('track.needsRemaining', { grade: fmtGrade(needed, scale, lang) })}
     </Badge>
   );
 }
 
 export default function CourseCard({ course, summary, next }: Props) {
   const { t, i18n } = useTranslation('courses');
-  const appLang: AppLanguage = i18n.language?.startsWith('en') ? 'en' : 'pt-PT';
+  const appLang: AppLanguage = normalizeAppLanguage(i18n.language);
   const gradingScale = useStore((s) => s.settings.gradingScale) ?? 'pt20';
   const progress = topicProgress(course);
   const colors = courseColors[course.color];
@@ -68,7 +72,7 @@ export default function CourseCard({ course, summary, next }: Props) {
           <div className="min-w-0">
             <h2 className="truncate font-display text-base font-bold tracking-tight group-hover:text-accent">{course.name}</h2>
             <p className="mt-0.5 truncate text-xs text-muted">
-              {course.teacher || (appLang === 'en' ? 'No instructor set' : 'Sem docente atribuído')}
+              {course.teacher || t('noInstructor')}
             </p>
           </div>
           <Ring value={progress} size={56} stroke={5} color={colors.hex}>
@@ -91,16 +95,19 @@ export default function CourseCard({ course, summary, next }: Props) {
           </div>
         </div>
 
-        <div>{trackBadge(course, summary, gradingScale, appLang)}</div>
+        <div>
+          <TrackBadge course={course} summary={summary} scale={gradingScale} lang={appLang} />
+        </div>
 
         <div className="mt-auto flex items-center gap-2 border-t border-line pt-3 text-xs text-muted">
           <CalendarClock size={14} className="shrink-0" />
           {next ? (
             <span className="truncate">
-              Próxima: {kindLabel[next.kind]} · {next.title} · <span className="font-medium text-fg">{dueLabel(next.date)}</span>
+              {t('nextPrefix')} {t(`kinds.${next.kind}`)} · {next.title} ·{' '}
+              <span className="font-medium text-fg">{dueLabel(next.date, appLang)}</span>
             </span>
           ) : (
-            <span>Sem avaliações agendadas</span>
+            <span>{t('noAssessments')}</span>
           )}
         </div>
       </div>

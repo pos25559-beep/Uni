@@ -1,4 +1,7 @@
 {
+  "docTitle": "Unipedia — Study calmly, move forward with clarity.",
+  "defaultSemester": "Current semester",
+  "loadingPage": "Opening page…",
   "nav": {
     "today": "Today",
     "courses": "Courses",
@@ -47,5 +50,18 @@
     "uniTutor": "Uni Tutor",
     "uniNotebook": "Uni Notebook",
     "externalNotebook": "External notebook"
+  },
+  "footer": {
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "data": "Data"
+  },
+  "guide": {
+    "button": "Guide",
+    "gotIt": "Got it",
+    "openAria": "Open Uni guide for this tab",
+    "openTitle": "What does this tab do? (Uni Guide)",
+    "closeAria": "Close guide",
+    "sectionAria": "Quick guide: {{title}}"
   }
 }

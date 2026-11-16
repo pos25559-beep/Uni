@@ -1,7 +1,8 @@
 import { Check, HelpCircle, Sparkles, X } from 'lucide-react';
 import { useEffect, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { create } from 'zustand';
-import { TAB_GUIDES, type AppTabKey } from '../../lib/tabGuides';
+import { getLocalizedTabGuide, type AppTabKey } from '../../lib/tabGuides';
 import { resolveUniAccessory } from '../../lib/uniAccessories';
 import { useStore } from '../../store/useStore';
 import { UniBuddy } from '../brand/UnipediaMarks';
@@ -31,6 +32,7 @@ export function TabGuideBanner({
   isEmpty?: boolean;
   actions?: ReactNode;
 }) {
+  const { t, i18n } = useTranslation('common');
   const openTab = useTabGuideOverlay((s) => s.openTab);
   const closeTab = useTabGuideOverlay((s) => s.closeTab);
   const courses = useStore((s) => s.courses);
@@ -50,13 +52,13 @@ export function TabGuideBanner({
 
   if (openTab !== tabKey) return null;
 
-  const spec = TAB_GUIDES[tabKey];
+  const spec = getLocalizedTabGuide(tabKey, i18n.language);
   const accessory = resolveUniAccessory(uniPreference, degreeName, courses[0]?.name);
   const body = isEmpty && spec.emptySummary ? spec.emptySummary : spec.summary;
 
   return (
     <section
-      aria-label={`Guia rápido da aba ${spec.title}`}
+      aria-label={t('guide.sectionAria', { title: spec.title })}
       className={cx(
         'relative overflow-hidden rounded-[26px] border p-4 shadow-card transition sm:p-5',
         spec.tintClass,
@@ -65,7 +67,7 @@ export function TabGuideBanner({
       <button
         type="button"
         onClick={closeTab}
-        aria-label="Fechar guia desta aba"
+        aria-label={t('guide.closeAria')}
         className="absolute top-2.5 right-2.5 flex size-11 items-center justify-center rounded-full text-muted transition hover:bg-black/5 hover:text-fg dark:hover:bg-white/10"
       >
         <X size={16} />
@@ -103,7 +105,7 @@ export function TabGuideBanner({
           <div className="flex flex-wrap items-center gap-2 pt-2">
             {actions}
             <Button size="sm" variant="secondary" onClick={closeTab}>
-              <Check size={14} /> Entendido
+              <Check size={14} /> {t('guide.gotIt')}
             </Button>
           </div>
         </div>
@@ -114,6 +116,7 @@ export function TabGuideBanner({
 
 /** Botão discreto no cabeçalho da página para abrir/fechar o guia do Uni desta aba. */
 export function TabGuideHelpButton({ tabKey }: { tabKey: AppTabKey }) {
+  const { t } = useTranslation('common');
   const openTab = useTabGuideOverlay((s) => s.openTab);
   const toggleTab = useTabGuideOverlay((s) => s.toggleTab);
   const isOpen = openTab === tabKey;
@@ -123,12 +126,12 @@ export function TabGuideHelpButton({ tabKey }: { tabKey: AppTabKey }) {
       size="sm"
       variant={isOpen ? 'secondary' : 'ghost'}
       onClick={() => toggleTab(tabKey)}
-      aria-label="Abrir guia do Uni para esta aba"
+      aria-label={t('guide.openAria')}
       aria-expanded={isOpen}
-      title="O que faz esta aba? (Guia do Uni)"
+      title={t('guide.openTitle')}
     >
       <HelpCircle size={15} />
-      <span className="hidden sm:inline">Guia</span>
+      <span className="hidden sm:inline">{t('guide.button')}</span>
     </Button>
   );
 }

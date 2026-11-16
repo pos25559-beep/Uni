@@ -127,6 +127,7 @@ export function initAppI18n(initialLanguage: AppLanguage = 'pt-PT') {
   }
   if (typeof document !== 'undefined') {
     document.documentElement.lang = normalized;
+    document.title = resources[normalized].common.docTitle;
   }
   return i18n;
 }
@@ -138,6 +139,7 @@ export function setAppLanguage(language: AppLanguage | string) {
   }
   if (typeof document !== 'undefined') {
     document.documentElement.lang = normalized;
+    document.title = resources[normalized].common.docTitle;
   }
 }
 

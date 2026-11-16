@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { I18N_NAMESPACES, resources, SUPPORTED_LANGUAGES } from '../../i18n';
+import i18n, { I18N_NAMESPACES, initAppI18n, resources, SUPPORTED_LANGUAGES } from '../../i18n';
 import {
   defaultGradingScaleForLanguage,
   formatGradeByScale,
@@ -10,7 +10,9 @@ import {
   resolveIntlLocale,
 } from '../grading';
 import { defaultScaleForUniversity, getUniversitiesByCountry } from '../portugalCurriculum';
-import { getLocalizedPersonas, suggestFormForCourse } from '../uniAccessories';
+import { formatSessionDisplay } from '../selectors';
+import { getLocalizedAccessories, getLocalizedPersonas, suggestFormForCourse } from '../uniAccessories';
+import { useStore } from '../../store/useStore';
 
 function flattenKeys(obj: Record<string, unknown>, prefix = ''): string[] {
   const keys: string[] = [];
@@ -103,5 +105,30 @@ describe('i18n parity, regional vocabulary, curriculum packs, and grading scales
     expect(suggestFormForCourse({ name: 'Engenharia de Software', shortName: 'ES' })).toBe('estrela');
     expect(suggestFormForCourse({ name: 'Fisiologia Humana', shortName: 'FH' })).toBe('gota');
     expect(suggestFormForCourse({ name: 'Química Orgânica', shortName: 'QO' })).toBe('folha');
+  });
+
+  it('persists pt-PT, pt-BR, es, and en in useStore and syncs i18n.language without reverting', () => {
+    initAppI18n('pt-PT');
+    for (const lang of SUPPORTED_LANGUAGES) {
+      useStore.getState().updateSettings({ language: lang });
+      expect(useStore.getState().settings.language).toBe(lang);
+      expect(i18n.language).toBe(lang);
+      expect(getLocalizedAccessories(lang).length).toBeGreaterThan(0);
+    }
+    const sampleSession = {
+      id: 's1',
+      courseId: 'c1',
+      date: '2026-11-16',
+      minutes: 50,
+      done: false,
+      notes: 'Refazer testes antigos',
+      generated: true,
+    };
+    const topic = { title: 'Plasticidade aplicada' };
+    expect(formatSessionDisplay(sampleSession, topic, 'pt-PT').title).toBe('Refazer testes antigos · Plasticidade aplicada');
+    expect(formatSessionDisplay(sampleSession, topic, 'pt-BR').title).toBe('Refazer provas antigas · Plasticidade aplicada');
+    expect(formatSessionDisplay(sampleSession, topic, 'es').title).toBe('Hacer exámenes anteriores · Plasticidade aplicada');
+    expect(formatSessionDisplay(sampleSession, topic, 'en').title).toBe('Redo past tests · Plasticidade aplicada');
+    useStore.getState().updateSettings({ language: 'pt-PT' });
   });
 });

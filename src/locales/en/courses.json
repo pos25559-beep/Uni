@@ -7,6 +7,42 @@
   "courseNotFound": "Course not found",
   "backToCourses": "Back to courses",
   "subtitleFallback": "Course details",
+  "unitOne": "course",
+  "unitMany": "courses",
+  "avgShort": "avg",
+  "ectsTotal": "{{ects}} credits total",
+  "noInstructor": "No instructor set",
+  "nextPrefix": "Next:",
+  "noAssessments": "No assessments scheduled",
+  "track": {
+    "onTarget": "On target",
+    "targetMissed": "Target missed",
+    "outOfReach": "Target out of reach",
+    "needsRemaining": "Needs {{grade}} remaining"
+  },
+  "empty": {
+    "title": "No courses yet",
+    "hint": "Add one manually, upload a photo of your timetable for Uni to extract everything, or sync classes and exams from Google Calendar.",
+    "photoBtn": "Schedule photo",
+    "gcalBtn": "Import Google Calendar",
+    "icsBtn": "Schedule (.ics / Portal)",
+    "manualBtn": "Create manually",
+    "photoBannerBtn": "Timetable photo (AI)",
+    "gcalBannerBtn": "Google Calendar"
+  },
+  "views": {
+    "deck": "Folders",
+    "grid": "Grid",
+    "deckHint": "Tap a folder to open grades, syllabus, and exams",
+    "allCourses": "All courses"
+  },
+  "kinds": {
+    "exame": "Final Exam",
+    "teste": "Test",
+    "trabalho": "Assignment",
+    "projeto": "Project",
+    "quiz": "Quiz"
+  },
   "tabs": {
     "overview": "Overview & Rules",
     "topics": "Syllabus & Grades",

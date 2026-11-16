@@ -69,6 +69,14 @@ const SETTINGS_KEYS: Array<keyof Settings> = [
   'tourCompleted',
   'language',
   'gradingScale',
+  'uniAccessory',
+  'uniPersona',
+  'uniSkin',
+  'uniPet',
+  'uniLiveCompanions',
+  'themePalette',
+  'appTone',
+  'hasSeenWelcome',
 ];
 
 const OPTIONAL_EMAIL_OR_URL_KEYS = new Set<string>([
@@ -80,6 +88,8 @@ const OPTIONAL_EMAIL_OR_URL_KEYS = new Set<string>([
 
 let activeUnsubscribers: (() => void)[] = [];
 let isApplyingRemote = false;
+let pendingSettingsWrites = 0;
+let lastLocalLanguage: { value: Settings['language']; at: number } | null = null;
 
 export function isRemoteSyncing() {
   return isApplyingRemote;
@@ -329,8 +339,18 @@ export function initFirestoreSync() {
 
     // 1. Escuta do documento de Definições/Utilizador
     const unsubSettings = onSnapshot(userDocRef, (snap) => {
+      if (snap.metadata.hasPendingWrites || pendingSettingsWrites > 0) return;
       if (snap.exists()) {
-        const data = snap.data() as Partial<Settings>;
+        const data = { ...(snap.data() as Partial<Settings>) };
+        if (
+          lastLocalLanguage &&
+          Date.now() - lastLocalLanguage.at < 15000 &&
+          data.language &&
+          data.language !== lastLocalLanguage.value
+        ) {
+          data.language = lastLocalLanguage.value;
+          void syncSettings({ language: lastLocalLanguage.value }).catch(() => {});
+        }
         isApplyingRemote = true;
         try {
           useStore.getState().updateSettings(data);
@@ -598,10 +618,18 @@ export async function syncRemove(key: CollectionKey, id: ID) {
 export async function syncSettings(changes: Partial<Settings>) {
   const user = auth.currentUser;
   if (!user || isApplyingRemote) return;
+  if (changes.language !== undefined) {
+    lastLocalLanguage = { value: changes.language, at: Date.now() };
+  }
   const payload = sanitizeSettingsPayload(changes, true);
   if (Object.keys(payload).length === 0) return;
   const userDocRef = doc(db, 'users', user.uid);
-  await setDoc(userDocRef, payload, { merge: true });
+  pendingSettingsWrites += 1;
+  try {
+    await setDoc(userDocRef, payload, { merge: true });
+  } finally {
+    pendingSettingsWrites = Math.max(0, pendingSettingsWrites - 1);
+  }
 }
 
 /** Sincroniza o percurso académico / histórico do aluno autenticado. */

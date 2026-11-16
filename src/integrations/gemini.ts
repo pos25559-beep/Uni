@@ -1215,12 +1215,16 @@ export const SYSTEM_PROMPT = (
         ? '- App tone (Minimal & Focused): structured, sober, concise, zero hype.'
         : targetLang === 'es'
           ? '- Tono de la app (Minimalista): directo, estructurado y sobrio, sin exclamaciones innecesarias.'
-          : '- Tom da app (Sério & Minimalista): direto, estruturado, sóbrio e profissional, sem exclamações excessivas.'
+          : targetLang === 'pt-BR'
+            ? '- Tom do app (Sério & Minimalista): direto, estruturado, sóbrio e objetivo, sem exclamações em excesso.'
+            : '- Tom da app (Sério & Minimalista): direto, estruturado, sóbrio e profissional, sem exclamações excessivas.'
       : targetLang === 'en'
         ? '- Concise, grounded, encouraging tone without filler.'
         : targetLang === 'es'
           ? '- Tono natural y breve, concreto y alentador sin exageraciones.'
-          : '- Tom natural e conciso, concreto e encorajador sem exageros.';
+          : targetLang === 'pt-BR'
+            ? '- Tom natural e direto, concreto e encorajador sem exageros.'
+            : '- Tom natural e conciso, concreto e encorajador sem exageros.';
 
   const languageDirective =
     targetLang === 'en'
@@ -1235,7 +1239,11 @@ export const SYSTEM_PROMPT = (
     agent && agent.stage >= 3
       ? targetLang === 'en'
         ? '- Specialist/Master stage unlocked: include exam-grade edge cases, past-test rigor, and cross-topic links while keeping your archetype tone.'
-        : '- Estágio Especialista/Mestre desbloqueado: inclui rigor de nível exame/teste, casos-limite e ligações entre tópicos sem perder o teu tom.'
+        : targetLang === 'es'
+          ? '- Nivel Especialista/Maestro desbloqueado: incluye rigor de examen, casos límite y conexiones entre temas manteniendo tu tono.'
+          : targetLang === 'pt-BR'
+            ? '- Estágio Especialista/Mestre desbloqueado: traga rigor de prova, casos-limite e conexões entre tópicos mantendo o seu tom.'
+            : '- Estágio Especialista/Mestre desbloqueado: inclui rigor de nível exame/teste, casos-limite e ligações entre tópicos sem perder o teu tom.'
       : '';
 
   const layer2Personality = agent
@@ -1761,15 +1769,23 @@ export async function generateUniRecallQuestion(args: {
   examMode?: boolean;
 }): Promise<UniRecallPromptResult> {
   const { customKey, model } = resolveGeminiConfig();
-  const targetLang: 'pt-PT' | 'en' = args.agent.language?.toLowerCase().startsWith('en') ? 'en' : 'pt-PT';
+  const targetLang: AppLanguage = normalizeAppLanguage(args.agent.language);
   const examMode = args.examMode ?? args.agent.stage >= 3;
   const sheetContext = (args.sheets ?? [])
     .slice(0, 2)
     .map((s) => `[${s.title}]\n${s.summary.slice(0, 1200)}`)
     .join('\n\n');
+  const weakPrefix =
+    targetLang === 'en'
+      ? 'Recorded weak spots'
+      : targetLang === 'es'
+        ? 'Puntos débiles registrados'
+        : targetLang === 'pt-BR'
+          ? 'Pontos fracos registrados'
+          : 'Pontos fracos registados';
   const weakHint =
     args.agent.notebook.weakSpots.length > 0
-      ? `${targetLang === 'en' ? 'Recorded weak spots' : 'Pontos fracos registados'}: ${args.agent.notebook.weakSpots
+      ? `${weakPrefix}: ${args.agent.notebook.weakSpots
           .slice(0, 3)
           .map((w) => `${w.topic} (${w.note})`)
           .join('; ')}.`
@@ -1784,7 +1800,23 @@ ${weakHint}
 ${sheetContext ? `\nCourse sheets:\n${sheetContext}` : ''}
 Return ONLY valid JSON:
 {"question":"1-2 concise sentences in your archetype voice","hint":"short 1-sentence hint if requested"}`
-      : `És «${args.agent.name}», Uni especialista de ${args.courseName ?? 'cadeira'}. ${PERSONA_INSTRUCTIONS_BY_LANG['pt-PT'][args.agent.personaId]}
+      : targetLang === 'es'
+        ? `Eres «${args.agent.name}», Uni especialista de ${args.courseName ?? 'esta asignatura'}. ${PERSONA_INSTRUCTIONS_BY_LANG.es[args.agent.personaId]}
+Pide al estudiante un recuerdo activo de 2 frases sobre «${args.topicTitle}» sin mirar apuntes.
+${examMode ? 'Modo Examen de Especialista activo: formula una pregunta exigente tipo examen (condición, excepción o aplicación).' : ''}
+${weakHint}
+${sheetContext ? `\nMaterial real de la asignatura:\n${sheetContext}` : ''}
+Devuelve SOLO JSON válido en español:
+{"question":"pregunta corta y concreta en 1–2 frases en tu tono","hint":"pista breve en 1 frase si pide ayuda"}`
+        : targetLang === 'pt-BR'
+          ? `Você é «${args.agent.name}», Uni especialista de ${args.courseName ?? 'disciplina'}. ${PERSONA_INSTRUCTIONS_BY_LANG['pt-BR'][args.agent.personaId]}
+Peça ao estudante um recall ativo de 2 frases sobre «${args.topicTitle}» sem consultar anotações.
+${examMode ? 'Modo Prova de Especialista ativo: faça uma pergunta exigente estilo prova (testando condição, exceção ou aplicação).' : ''}
+${weakHint}
+${sheetContext ? `\nMaterial real da disciplina:\n${sheetContext}` : ''}
+Devolva APENAS JSON válido em português do Brasil:
+{"question":"pergunta curta e concreta em 1–2 frases no tom do seu arquétipo","hint":"dica curta em 1 frase caso o aluno peça ajuda"}`
+          : `És «${args.agent.name}», Uni especialista de ${args.courseName ?? 'cadeira'}. ${PERSONA_INSTRUCTIONS_BY_LANG['pt-PT'][args.agent.personaId]}
 Pede ao estudante um recall ativo de 2 frases sobre «${args.topicTitle}» sem consultar apontamentos.
 ${examMode ? 'Modo Exame de Especialista ativo: formula uma pergunta exigente estilo teste/exame (testando condição, exceção ou aplicação).' : ''}
 ${weakHint}
@@ -1807,17 +1839,25 @@ Devolve APENAS JSON válido:
 
   const match = /\{[\s\S]*\}/.exec(rawText || '{}');
   const parsed = JSON.parse(match ? match[0] : rawText || '{}') as Partial<UniRecallPromptResult>;
+  const fallbackQ =
+    targetLang === 'en'
+      ? `In 2 sentences from memory, explain the core idea of "${args.topicTitle}".`
+      : targetLang === 'es'
+        ? `Explica en 2 frases, sin mirar apuntes, la idea esencial de «${args.topicTitle}».`
+        : targetLang === 'pt-BR'
+          ? `Explique em 2 frases, sem consultar anotações, a ideia central de «${args.topicTitle}».`
+          : `Explica-me em 2 frases, sem olhar para a sebenta, a ideia essencial de «${args.topicTitle}».`;
+  const fallbackHint =
+    targetLang === 'en'
+      ? 'Include a concise definition and one condition where it applies.'
+      : targetLang === 'es'
+        ? 'Incluye la definición breve y un caso donde se aplique (o falle).'
+        : targetLang === 'pt-BR'
+          ? 'Pense em uma definição curta e em um caso onde ela se aplica (ou falha).'
+          : 'Pensa numa definição curta e num caso em que se aplica (ou falha).';
   return {
-    question:
-      parsed.question?.trim() ||
-      (targetLang === 'en'
-        ? `In 2 sentences from memory, explain the core idea of "${args.topicTitle}".`
-        : `Explica-me em 2 frases, sem olhar para a sebenta, a ideia essencial de «${args.topicTitle}».`),
-    hint:
-      parsed.hint?.trim() ||
-      (targetLang === 'en'
-        ? 'Include a concise definition and one condition where it applies.'
-        : 'Pensa numa definição curta e num caso em que se aplica (ou falha).'),
+    question: parsed.question?.trim() || fallbackQ,
+    hint: parsed.hint?.trim() || fallbackHint,
   };
 }
 
@@ -1838,10 +1878,11 @@ export async function evaluateUniRecall(args: {
   sheets?: TopicSheetRecord[];
 }): Promise<UniRecallEvaluationResult> {
   const { customKey, model } = resolveGeminiConfig();
-  const targetLang: 'pt-PT' | 'en' = args.agent.language?.toLowerCase().startsWith('en') ? 'en' : 'pt-PT';
+  const targetLang: AppLanguage = normalizeAppLanguage(args.agent.language);
+  const sourceWord = targetLang === 'en' ? 'Source' : 'Fonte';
   const sheetContext = (args.sheets ?? [])
     .slice(0, 2)
-    .map((s) => `[${targetLang === 'en' ? 'Source' : 'Fonte'}: ${s.title}]\n${s.summary.slice(0, 1600)}`)
+    .map((s) => `[${sourceWord}: ${s.title}]\n${s.summary.slice(0, 1600)}`)
     .join('\n\n');
 
   const prompt =
@@ -1860,7 +1901,37 @@ Strict SRS rubric:
 
 Return ONLY valid JSON:
 {"score":1|2|3,"feedback":"2-3 concrete sentences in your archetype voice (cite [Source: ...] if applicable)","weakNote":"if score<3, short note of mistake (max 100 chars), else empty string","strengthNote":"if score==3, short strength (max 90 chars), else empty string"}`
-      : `És «${args.agent.name}», Uni especialista de ${args.courseName ?? 'cadeira'}. ${PERSONA_INSTRUCTIONS_BY_LANG['pt-PT'][args.agent.personaId]}
+      : targetLang === 'es'
+        ? `Eres «${args.agent.name}», Uni especialista de ${args.courseName ?? 'esta asignatura'}. ${PERSONA_INSTRUCTIONS_BY_LANG.es[args.agent.personaId]}
+Evalúa la respuesta de recuerdo activo del estudiante en español natural.
+Tema: ${args.topicTitle}
+Pregunta: ${args.question}
+Respuesta del estudiante: ${args.studentAnswer}
+${sheetContext ? `\nReferencia de las fichas:\n${sheetContext}` : ''}
+
+Criterio estricto de puntuación para repetición espaciada:
+- 1 ("Fallé"): error conceptual grave o respuesta vacía/muy imprecisa.
+- 2 ("A medias"): captó la idea general pero falló un detalle, condición o aplicación.
+- 3 ("Dominado"): explicación correcta, clara y precisa para el nivel de la asignatura.
+
+Devuelve SOLO JSON válido:
+{"score":1|2|3,"feedback":"2 a 3 frases concretas en tu tono para corregir o validar (cita [Fonte: ...] si aplica)","weakNote":"si score<3, nota breve del fallo u omisión (máx 100 chars), si no cadena vacía","strengthNote":"si score==3, punto fuerte corto (máx 90 chars), si no cadena vacía"}`
+        : targetLang === 'pt-BR'
+          ? `Você é «${args.agent.name}», Uni especialista de ${args.courseName ?? 'disciplina'}. ${PERSONA_INSTRUCTIONS_BY_LANG['pt-BR'][args.agent.personaId]}
+Avalie a resposta de recall ativo do estudante em português do Brasil.
+Tópico: ${args.topicTitle}
+Pergunta feita: ${args.question}
+Resposta do estudante: ${args.studentAnswer}
+${sheetContext ? `\nReferência das fichas:\n${sheetContext}` : ''}
+
+Critério estrito de score para repetição espaçada:
+- 1 ("Errei"): erro conceitual grave ou resposta vazia/muito imprecisa.
+- 2 ("Lembrei ±"): acertou a ideia geral mas falhou em um detalhe, condição ou aplicação.
+- 3 ("Dominei"): explicação correta, clara e precisa para o nível da disciplina.
+
+Devolva APENAS JSON válido:
+{"score":1|2|3,"feedback":"2 a 3 frases concretas no tom do seu arquétipo corrigindo ou validando (cite [Fonte: ...] se aplicável)","weakNote":"se score<3, nota curta do erro ou omissão (máx 100 chars), senão string vazia","strengthNote":"se score==3, ponto forte curto (máx 90 chars), senão string vazia"}`
+          : `És «${args.agent.name}», Uni especialista de ${args.courseName ?? 'cadeira'}. ${PERSONA_INSTRUCTIONS_BY_LANG['pt-PT'][args.agent.personaId]}
 Avalia a resposta de recall ativo do estudante em português europeu (pt-PT).
 Tópico: ${args.topicTitle}
 Pergunta feita: ${args.question}
@@ -1896,15 +1967,23 @@ Devolve APENAS JSON válido:
     strengthNote?: string;
   };
   const score = parsed.score === 1 || parsed.score === 2 || parsed.score === 3 ? parsed.score : 2;
-  const feedback =
-    parsed.feedback?.trim() ||
-    (score === 3
-      ? targetLang === 'en'
-        ? 'Clean, accurate answer — strong retention!'
-        : 'Resposta limpa e sólida. Boa retenção!'
-      : targetLang === 'en'
-        ? 'Almost there — double check the key condition in your sheet before the next review.'
-        : 'Quase lá — revê a condição principal na ficha antes da próxima revisão.');
+  const fallbackOk =
+    targetLang === 'en'
+      ? 'Clean, accurate answer — strong retention!'
+      : targetLang === 'es'
+        ? '¡Respuesta limpia y precisa, gran retención!'
+        : targetLang === 'pt-BR'
+          ? 'Resposta limpa e firme! Boa retenção.'
+          : 'Resposta limpa e sólida. Boa retenção!';
+  const fallbackPartial =
+    targetLang === 'en'
+      ? 'Almost there — double check the key condition in your sheet before the next review.'
+      : targetLang === 'es'
+        ? 'Casi lo tienes — repasa la condición clave en tu ficha antes del próximo repaso.'
+        : targetLang === 'pt-BR'
+          ? 'Quase lá — revise a condição principal na ficha antes da próxima revisão.'
+          : 'Quase lá — revê a condição principal na ficha antes da próxima revisão.';
+  const feedback = parsed.feedback?.trim() || (score === 3 ? fallbackOk : fallbackPartial);
   const weakNote = parsed.weakNote?.trim();
   const strengthNote = parsed.strengthNote?.trim();
 
@@ -1927,7 +2006,7 @@ export async function generateUniExpeditionQuestions(args: {
   forDate: string;
 }): Promise<UniAgentExpedition> {
   const { customKey, model } = resolveGeminiConfig();
-  const targetLang: 'pt-PT' | 'en' = args.agent.language?.toLowerCase().startsWith('en') ? 'en' : 'pt-PT';
+  const targetLang: AppLanguage = normalizeAppLanguage(args.agent.language);
   const topics = args.candidateTopics.slice(0, 3);
   const sheetContext = (args.sheets ?? [])
     .slice(0, 4)
@@ -1942,7 +2021,21 @@ ${topics.map((t, i) => `${i + 1}. ${t.title}`).join('\n') || `- Core concepts of
 ${sheetContext ? `\nSaved course sheets:\n${sheetContext}` : ''}
 Return ONLY valid JSON:
 {"questions":[{"topicTitle":"exact topic name","q":"short active-recall question in your voice","hint":"1-sentence hint","sourceRef":"sheet title or Syllabus"}]}`
-      : `És «${args.agent.name}», Uni especialista de ${args.courseName}. ${PERSONA_INSTRUCTIONS_BY_LANG['pt-PT'][args.agent.personaId]}
+      : targetLang === 'es'
+        ? `Eres «${args.agent.name}», Uni especialista de ${args.courseName}. ${PERSONA_INSTRUCTIONS_BY_LANG.es[args.agent.personaId]}
+Prepara ${topics.length || 2} preguntas breves de expedición para el repaso espaciado de mañana (${args.forDate}) sobre estos temas:
+${topics.map((t, i) => `${i + 1}. ${t.title}`).join('\n') || `- Ideas clave de ${args.courseName}`}
+${sheetContext ? `\nFichas reales de la asignatura:\n${sheetContext}` : ''}
+Devuelve SOLO JSON válido:
+{"questions":[{"topicTitle":"nombre exacto del tema","q":"pregunta corta de recuerdo activo en tu tono","hint":"pista corta en 1 frase","sourceRef":"título de ficha o Temario"}]}`
+        : targetLang === 'pt-BR'
+          ? `Você é «${args.agent.name}», Uni especialista de ${args.courseName}. ${PERSONA_INSTRUCTIONS_BY_LANG['pt-BR'][args.agent.personaId]}
+Prepare ${topics.length || 2} perguntas curtas de expedição para a revisão espaçada de amanhã (${args.forDate}) sobre estes tópicos:
+${topics.map((t, i) => `${i + 1}. ${t.title}`).join('\n') || `- Ideias centrais de ${args.courseName}`}
+${sheetContext ? `\nFichas reais da disciplina:\n${sheetContext}` : ''}
+Devolva APENAS JSON válido:
+{"questions":[{"topicTitle":"nome exato do tópico","q":"pergunta curta de recall no seu tom","hint":"dica curta em 1 frase","sourceRef":"nome da ficha ou Ementa"}]}`
+          : `És «${args.agent.name}», Uni especialista de ${args.courseName}. ${PERSONA_INSTRUCTIONS_BY_LANG['pt-PT'][args.agent.personaId]}
 Prepara ${topics.length || 2} perguntas curtas de expedição para a revisão espaçada de amanhã (${args.forDate}) sobre estes tópicos:
 ${topics.map((t, i) => `${i + 1}. ${t.title}`).join('\n') || `- Ideias centrais de ${args.courseName}`}
 ${sheetContext ? `\nFichas reais da cadeira:\n${sheetContext}` : ''}
@@ -1967,6 +2060,15 @@ Devolve APENAS JSON válido:
     questions?: Array<{ topicTitle?: string; q?: string; hint?: string; sourceRef?: string }>;
   };
 
+  const fallbackHint =
+    targetLang === 'en'
+      ? 'Recall the key definition first.'
+      : targetLang === 'es'
+        ? 'Empieza por la definición principal.'
+        : targetLang === 'pt-BR'
+          ? 'Comece pela definição principal.'
+          : 'Começa pela definição principal.';
+
   const rawQuestions = Array.isArray(parsed.questions) ? parsed.questions.slice(0, 3) : [];
   const questions: UniExpeditionQuestion[] = rawQuestions
     .filter((item) => item?.q?.trim())
@@ -1982,9 +2084,7 @@ Devolve APENAS JSON válido:
         ...(matchedTopic?.id ? { topicId: matchedTopic.id } : {}),
         topicTitle: (matchedTopic?.title || item.topicTitle || args.courseName).slice(0, 120),
         q: String(item.q).trim().slice(0, 500),
-        hint:
-          String(item.hint || '').trim().slice(0, 260) ||
-          (targetLang === 'en' ? 'Recall the key definition first.' : 'Começa pela definição principal.'),
+        hint: String(item.hint || '').trim().slice(0, 260) || fallbackHint,
         sourceRef:
           String(item.sourceRef || '').trim().slice(0, 120) ||
           (args.sheets?.[0]?.title ?? args.courseName),
@@ -1999,8 +2099,19 @@ Devolve APENAS JSON válido:
       q:
         targetLang === 'en'
           ? `Summarize the core rule of "${topics[0].title}" in 2 sentences from memory.`
-          : `Resume em 2 frases sem apontamentos a regra principal de «${topics[0].title}».`,
-      hint: targetLang === 'en' ? 'Name the main condition and one example.' : 'Indica a condição principal e um exemplo.',
+          : targetLang === 'es'
+            ? `Resume en 2 frases sin apuntes la regla clave de «${topics[0].title}».`
+            : targetLang === 'pt-BR'
+              ? `Resuma em 2 frases, sem anotações, a regra principal de «${topics[0].title}».`
+              : `Resume em 2 frases sem apontamentos a regra principal de «${topics[0].title}».`,
+      hint:
+        targetLang === 'en'
+          ? 'Name the main condition and one example.'
+          : targetLang === 'es'
+            ? 'Indica la condición principal y un ejemplo.'
+            : targetLang === 'pt-BR'
+              ? 'Indique a condição principal e um exemplo.'
+              : 'Indica a condição principal e um exemplo.',
       sourceRef: args.sheets?.[0]?.title ?? args.courseName,
     });
   }

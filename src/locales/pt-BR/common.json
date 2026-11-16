@@ -1,4 +1,7 @@
 {
+  "docTitle": "Unipedia — Estude com calma, avance com clareza.",
+  "defaultSemester": "Semestre atual",
+  "loadingPage": "Abrindo página…",
   "nav": {
     "today": "Hoje",
     "courses": "Disciplinas",
@@ -47,5 +50,18 @@
     "uniTutor": "Uni Tutor",
     "uniNotebook": "Caderno do Uni",
     "externalNotebook": "Caderno externo"
+  },
+  "footer": {
+    "privacy": "Privacidade",
+    "terms": "Termos",
+    "data": "Dados"
+  },
+  "guide": {
+    "button": "Guia",
+    "gotIt": "Entendi",
+    "openAria": "Abrir guia do Uni para esta aba",
+    "openTitle": "O que faz esta aba? (Guia do Uni)",
+    "closeAria": "Fechar guia desta aba",
+    "sectionAria": "Guia rápido: {{title}}"
   }
 }

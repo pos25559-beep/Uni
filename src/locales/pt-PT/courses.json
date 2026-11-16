@@ -7,6 +7,42 @@
   "courseNotFound": "Esta cadeira não existe",
   "backToCourses": "Voltar às cadeiras",
   "subtitleFallback": "Detalhes da cadeira",
+  "unitOne": "cadeira",
+  "unitMany": "cadeiras",
+  "avgShort": "média",
+  "ectsTotal": "{{ects}} ECTS no total",
+  "noInstructor": "Sem docente atribuído",
+  "nextPrefix": "Próxima:",
+  "noAssessments": "Sem avaliações agendadas",
+  "track": {
+    "onTarget": "No objetivo",
+    "targetMissed": "Objetivo não atingido",
+    "outOfReach": "Objetivo fora de alcance",
+    "needsRemaining": "Precisa de {{grade}} no que falta"
+  },
+  "empty": {
+    "title": "Ainda não tens cadeiras",
+    "hint": "Cria à mão, envia uma foto do horário ou agenda para o Uni extrair tudo, ou lê aulas e testes direto do Google Calendar.",
+    "photoBtn": "Foto da agenda / horário",
+    "gcalBtn": "Extrair Google Calendar",
+    "icsBtn": "Horário (.ics / Portal)",
+    "manualBtn": "Criar à mão",
+    "photoBannerBtn": "Foto do horário (IA)",
+    "gcalBannerBtn": "Google Calendar"
+  },
+  "views": {
+    "deck": "Pastas",
+    "grid": "Grelha",
+    "deckHint": "Toca numa pasta para abrir notas, tópicos e exames",
+    "allCourses": "Todas as cadeiras"
+  },
+  "kinds": {
+    "exame": "Exame",
+    "teste": "Teste",
+    "trabalho": "Trabalho",
+    "projeto": "Projeto",
+    "quiz": "Quiz"
+  },
   "tabs": {
     "overview": "Visão & Regras",
     "topics": "Matéria & Notas",

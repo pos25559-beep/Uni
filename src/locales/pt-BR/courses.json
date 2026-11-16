@@ -7,6 +7,42 @@
   "courseNotFound": "Esta disciplina não existe",
   "backToCourses": "Voltar às disciplinas",
   "subtitleFallback": "Detalhes da disciplina",
+  "unitOne": "disciplina",
+  "unitMany": "disciplinas",
+  "avgShort": "média",
+  "ectsTotal": "{{ects}} créditos no total",
+  "noInstructor": "Sem professor atribuído",
+  "nextPrefix": "Próxima:",
+  "noAssessments": "Sem provas agendadas",
+  "track": {
+    "onTarget": "Na meta",
+    "targetMissed": "Meta não atingida",
+    "outOfReach": "Meta fora de alcance",
+    "needsRemaining": "Precisa de {{grade}} no restante"
+  },
+  "empty": {
+    "title": "Você ainda não tem disciplinas",
+    "hint": "Crie manualmente, envie uma foto da grade horária para o Uni extrair tudo ou importe aulas e provas direto do Google Agenda.",
+    "photoBtn": "Foto da grade / horário",
+    "gcalBtn": "Extrair Google Agenda",
+    "icsBtn": "Horário (.ics / Portal)",
+    "manualBtn": "Criar manualmente",
+    "photoBannerBtn": "Foto do horário (IA)",
+    "gcalBannerBtn": "Google Agenda"
+  },
+  "views": {
+    "deck": "Pastas",
+    "grid": "Grade",
+    "deckHint": "Toque em uma pasta para abrir notas, tópicos e provas",
+    "allCourses": "Todas as disciplinas"
+  },
+  "kinds": {
+    "exame": "Prova Final",
+    "teste": "Prova",
+    "trabalho": "Trabalho",
+    "projeto": "Projeto",
+    "quiz": "Quiz"
+  },
   "tabs": {
     "overview": "Visão & Regras",
     "topics": "Conteúdo & Notas",

@@ -7,5 +7,54 @@
   "topicsCovered": "Topics covered",
   "avgLabel": "Average",
   "hoursDone": "Hours completed",
-  "streak": "Streak"
+  "streak": "Streak",
+  "periods": {
+    "7d": "7 days",
+    "30d": "30 days",
+    "semestre": "Semester"
+  },
+  "hero": {
+    "title": "Overall semester progress",
+    "topicsDone": "{{covered}} of {{total}} topics completed or reviewed",
+    "addTopicsHint": "Add topics inside courses to track exam readiness",
+    "studied": "Studied",
+    "retention": "Retention",
+    "reviews": "Reviews",
+    "reviewsDue": "{{count}} due",
+    "upToDate": "up to date"
+  },
+  "emptyCharts": {
+    "eyebrow": "Rhythm & analytics notebook",
+    "title": "Your charts come alive after your first study block",
+    "body": "Instead of blank dashboards now, once you complete a session in Plan or Focus Timer you will see daily study minutes, consistency, and split across courses.",
+    "generateBtn": "Generate study plan",
+    "previewBtn": "Preview grid",
+    "card1Title": "1. Time per day",
+    "card1Body": "Daily progress compared to your study target.",
+    "card2Title": "2. Consistency map",
+    "card2Body": "Active streak to keep your pace steady.",
+    "card3Title": "3. Readiness & grades",
+    "card3Body": "Topic coverage and alerts before upcoming exams.",
+    "showEmptyBtn": "Also show empty charts",
+    "hideEmptyBtn": "Hide empty charts"
+  },
+  "logs": {
+    "title": "Uni Journal & Alignment",
+    "newEntryBtn": "New entry",
+    "all": "All ({{count}})",
+    "postClass": "After class",
+    "endOfDay": "End of day",
+    "sundays": "Sundays",
+    "sunday": "Sunday",
+    "testMode": "Exam Mode",
+    "emptyFilter": "No entries in this filter yet. Log how your last lecture went, your day, or an upcoming exam focus.",
+    "topicLabel": "Topic:",
+    "alignedTopicsLabel": "Aligned topics:",
+    "doubtsLabel": "Questions: {{text}}",
+    "deleteAria": "Delete journal entry",
+    "deletedToast": "Entry removed from journal.",
+    "skinUpdatedToast": "Uni look updated!",
+    "petRemovedToast": "Companion stored on shelf.",
+    "petEquippedToast": "Companion equipped!"
+  }
 }

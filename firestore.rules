@@ -17,8 +17,8 @@ service cloud.firestore {
     //   - displayName: string (optional, max 100 chars)
     //   - photoURL: string (optional, valid URL, max 500 chars)
     //   - userName: string (optional, max 100 chars)
-    //   - theme: string (optional, 'light' | 'dark')
-    //   - language: string (optional, 'pt-PT' | 'en')
+    //   - theme: string (optional, 'light' | 'dark' | 'system')
+    //   - language: string (optional, 'pt-PT' | 'pt-BR' | 'es' | 'en')
     //   - gradingScale: string (optional, 'pt20' | 'scale10' | 'pct100')
     //   - semesterName: string (optional, max 100 chars)
     //   - semesterStart: string/timestamp (optional, date format, max 35 chars)
@@ -38,6 +38,23 @@ service cloud.firestore {
     //   - aiConsent: bool (optional)
     //   - cloudSyncConsent: bool (optional)
     //   - tourCompleted: bool (optional)
+    //   - guestMode: bool (optional)
+    //   - hasSeenWelcome: bool (optional)
+    //   - themePalette: string (optional, 'caderno' | 'botanico' | 'ardosia' | 'terracota' | 'oceano' | 'cafe' | 'menta')
+    //   - appTone: string (optional, 'vibrante' | 'serio')
+    //   - uniLiveCompanions: string (optional, 'all' | 'solo' | 'off')
+    //   - uniAccessory: string (optional, 'auto' | 'default' | 'math' | 'tech' | 'health' | 'arts' | 'science' | 'humanities')
+    //   - uniSkin: string (optional, max 40 chars)
+    //   - uniSkinAutoRotate: bool (optional)
+    //   - uniPet: string (optional, 'none' | 'cat' | 'owl' | 'fox' | 'turtle' | 'rabbit')
+    //   - uniPersona: string (optional, 'amigo' | 'exigente' | 'calmo' | 'curioso' | 'treinador')
+    //   - hubSetupFlow: string (optional, 'caloiro_inicio' | 'caloiro_meio' | 'veterano_inicio' | 'veterano_meio')
+    //   - hubSetupCompleted: bool (optional)
+    //   - hubSetupDismissed: bool (optional)
+    //   - sharedHubDriveUrls: list (optional, max 30 items)
+    //   - seenTabGuides: list (optional, max 30 items)
+    //   - notifications: map (optional, max 20 entries)
+    //   - plannerPrefs: map (optional, max 20 entries)
     //   - settings: map (optional, containing settings key-values)
     //   - createdAt: timestamp/string (optional, immutable)
     //   - updatedAt: timestamp/string (optional)
@@ -459,11 +476,16 @@ service cloud.firestore {
           'dailyStudyMinutes', 'studyDays', 'geminiApiKey', 'geminiModel',
           'googleClientId', 'msClientId', 'academicEmail', 'personalEmail',
           'personalNotebookUrl', 'gdprAcceptedAt', 'gdprPolicyVersion',
-          'ageConfirmed13Plus', 'aiConsent', 'cloudSyncConsent', 'tourCompleted'
+          'ageConfirmed13Plus', 'aiConsent', 'cloudSyncConsent', 'tourCompleted',
+          'guestMode', 'hasSeenWelcome', 'themePalette', 'appTone',
+          'uniLiveCompanions', 'uniAccessory', 'uniSkin', 'uniSkinAutoRotate',
+          'uniPet', 'uniPersona', 'hubSetupFlow', 'hubSetupCompleted',
+          'hubSetupDismissed', 'sharedHubDriveUrls', 'seenTabGuides',
+          'notifications', 'plannerPrefs'
         ]) &&
         isValidOptionalString(settings, 'userName', 0, 100) &&
-        (!('theme' in settings) || settings.theme in ['light', 'dark']) &&
-        (!('language' in settings) || (settings.language is string && settings.language in ['pt-PT', 'en'])) &&
+        (!('theme' in settings) || (settings.theme is string && settings.theme in ['light', 'dark', 'system'])) &&
+        (!('language' in settings) || (settings.language is string && settings.language in ['pt-PT', 'pt-BR', 'es', 'en'])) &&
         (!('gradingScale' in settings) || (settings.gradingScale is string && settings.gradingScale in ['pt20', 'scale10', 'pct100'])) &&
         isValidOptionalString(settings, 'semesterName', 0, 100) &&
         isValidOptionalDateOrTimestamp(settings, 'semesterStart') &&
@@ -482,7 +504,24 @@ service cloud.firestore {
         isValidOptionalBool(settings, 'ageConfirmed13Plus') &&
         isValidOptionalBool(settings, 'aiConsent') &&
         isValidOptionalBool(settings, 'cloudSyncConsent') &&
-        isValidOptionalBool(settings, 'tourCompleted');
+        isValidOptionalBool(settings, 'tourCompleted') &&
+        isValidOptionalBool(settings, 'guestMode') &&
+        isValidOptionalBool(settings, 'hasSeenWelcome') &&
+        (!('themePalette' in settings) || (settings.themePalette is string && settings.themePalette in ['caderno', 'botanico', 'ardosia', 'terracota', 'oceano', 'cafe', 'menta'])) &&
+        (!('appTone' in settings) || (settings.appTone is string && settings.appTone in ['vibrante', 'serio'])) &&
+        (!('uniLiveCompanions' in settings) || (settings.uniLiveCompanions is string && settings.uniLiveCompanions in ['all', 'solo', 'off'])) &&
+        (!('uniAccessory' in settings) || (settings.uniAccessory is string && settings.uniAccessory in ['auto', 'default', 'math', 'tech', 'health', 'arts', 'science', 'humanities'])) &&
+        isValidOptionalString(settings, 'uniSkin', 0, 40) &&
+        isValidOptionalBool(settings, 'uniSkinAutoRotate') &&
+        (!('uniPet' in settings) || (settings.uniPet is string && settings.uniPet in ['none', 'cat', 'owl', 'fox', 'turtle', 'rabbit'])) &&
+        (!('uniPersona' in settings) || (settings.uniPersona is string && settings.uniPersona in ['amigo', 'exigente', 'calmo', 'curioso', 'treinador'])) &&
+        (!('hubSetupFlow' in settings) || (settings.hubSetupFlow is string && settings.hubSetupFlow in ['caloiro_inicio', 'caloiro_meio', 'veterano_inicio', 'veterano_meio'])) &&
+        isValidOptionalBool(settings, 'hubSetupCompleted') &&
+        isValidOptionalBool(settings, 'hubSetupDismissed') &&
+        (!('sharedHubDriveUrls' in settings) || (settings.sharedHubDriveUrls is list && settings.sharedHubDriveUrls.size() <= 30 && (settings.sharedHubDriveUrls.size() == 0 || (settings.sharedHubDriveUrls[0] is string && settings.sharedHubDriveUrls[0].size() <= 1000)) && (settings.sharedHubDriveUrls.size() <= 1 || (settings.sharedHubDriveUrls[settings.sharedHubDriveUrls.size() - 1] is string && settings.sharedHubDriveUrls[settings.sharedHubDriveUrls.size() - 1].size() <= 1000)))) &&
+        (!('seenTabGuides' in settings) || (settings.seenTabGuides is list && settings.seenTabGuides.size() <= 30 && (settings.seenTabGuides.size() == 0 || (settings.seenTabGuides[0] is string && settings.seenTabGuides[0].size() <= 150)) && (settings.seenTabGuides.size() <= 1 || (settings.seenTabGuides[settings.seenTabGuides.size() - 1] is string && settings.seenTabGuides[settings.seenTabGuides.size() - 1].size() <= 150)))) &&
+        (!('notifications' in settings) || (settings.notifications is map && settings.notifications.size() <= 20)) &&
+        (!('plannerPrefs' in settings) || (settings.plannerPrefs is map && settings.plannerPrefs.size() <= 20));
     }
 
     // Validates user profile & settings document
@@ -494,6 +533,11 @@ service cloud.firestore {
           'googleClientId', 'msClientId', 'academicEmail', 'personalEmail',
           'personalNotebookUrl', 'gdprAcceptedAt', 'gdprPolicyVersion',
           'ageConfirmed13Plus', 'aiConsent', 'cloudSyncConsent', 'tourCompleted',
+          'guestMode', 'hasSeenWelcome', 'themePalette', 'appTone',
+          'uniLiveCompanions', 'uniAccessory', 'uniSkin', 'uniSkinAutoRotate',
+          'uniPet', 'uniPersona', 'hubSetupFlow', 'hubSetupCompleted',
+          'hubSetupDismissed', 'sharedHubDriveUrls', 'seenTabGuides',
+          'notifications', 'plannerPrefs',
           'settings', 'createdAt', 'updatedAt'
         ]) &&
         (!('uid' in data) || data.uid == userId) &&
@@ -502,8 +546,8 @@ service cloud.firestore {
         isValidOptionalString(data, 'displayName', 1, 100) &&
         isValidOptionalUrl(data, 'photoURL') &&
         isValidOptionalString(data, 'userName', 0, 100) &&
-        (!('theme' in data) || data.theme in ['light', 'dark']) &&
-        (!('language' in data) || (data.language is string && data.language in ['pt-PT', 'en'])) &&
+        (!('theme' in data) || (data.theme is string && data.theme in ['light', 'dark', 'system'])) &&
+        (!('language' in data) || (data.language is string && data.language in ['pt-PT', 'pt-BR', 'es', 'en'])) &&
         (!('gradingScale' in data) || (data.gradingScale is string && data.gradingScale in ['pt20', 'scale10', 'pct100'])) &&
         isValidOptionalString(data, 'semesterName', 0, 100) &&
         isValidOptionalDateOrTimestamp(data, 'semesterStart') &&
@@ -523,6 +567,23 @@ service cloud.firestore {
         isValidOptionalBool(data, 'aiConsent') &&
         isValidOptionalBool(data, 'cloudSyncConsent') &&
         isValidOptionalBool(data, 'tourCompleted') &&
+        isValidOptionalBool(data, 'guestMode') &&
+        isValidOptionalBool(data, 'hasSeenWelcome') &&
+        (!('themePalette' in data) || (data.themePalette is string && data.themePalette in ['caderno', 'botanico', 'ardosia', 'terracota', 'oceano', 'cafe', 'menta'])) &&
+        (!('appTone' in data) || (data.appTone is string && data.appTone in ['vibrante', 'serio'])) &&
+        (!('uniLiveCompanions' in data) || (data.uniLiveCompanions is string && data.uniLiveCompanions in ['all', 'solo', 'off'])) &&
+        (!('uniAccessory' in data) || (data.uniAccessory is string && data.uniAccessory in ['auto', 'default', 'math', 'tech', 'health', 'arts', 'science', 'humanities'])) &&
+        isValidOptionalString(data, 'uniSkin', 0, 40) &&
+        isValidOptionalBool(data, 'uniSkinAutoRotate') &&
+        (!('uniPet' in data) || (data.uniPet is string && data.uniPet in ['none', 'cat', 'owl', 'fox', 'turtle', 'rabbit'])) &&
+        (!('uniPersona' in data) || (data.uniPersona is string && data.uniPersona in ['amigo', 'exigente', 'calmo', 'curioso', 'treinador'])) &&
+        (!('hubSetupFlow' in data) || (data.hubSetupFlow is string && data.hubSetupFlow in ['caloiro_inicio', 'caloiro_meio', 'veterano_inicio', 'veterano_meio'])) &&
+        isValidOptionalBool(data, 'hubSetupCompleted') &&
+        isValidOptionalBool(data, 'hubSetupDismissed') &&
+        (!('sharedHubDriveUrls' in data) || (data.sharedHubDriveUrls is list && data.sharedHubDriveUrls.size() <= 30 && (data.sharedHubDriveUrls.size() == 0 || (data.sharedHubDriveUrls[0] is string && data.sharedHubDriveUrls[0].size() <= 1000)) && (data.sharedHubDriveUrls.size() <= 1 || (data.sharedHubDriveUrls[data.sharedHubDriveUrls.size() - 1] is string && data.sharedHubDriveUrls[data.sharedHubDriveUrls.size() - 1].size() <= 1000)))) &&
+        (!('seenTabGuides' in data) || (data.seenTabGuides is list && data.seenTabGuides.size() <= 30 && (data.seenTabGuides.size() == 0 || (data.seenTabGuides[0] is string && data.seenTabGuides[0].size() <= 150)) && (data.seenTabGuides.size() <= 1 || (data.seenTabGuides[data.seenTabGuides.size() - 1] is string && data.seenTabGuides[data.seenTabGuides.size() - 1].size() <= 150)))) &&
+        (!('notifications' in data) || (data.notifications is map && data.notifications.size() <= 20)) &&
+        (!('plannerPrefs' in data) || (data.plannerPrefs is map && data.plannerPrefs.size() <= 20)) &&
         (!('settings' in data) || isValidSettingsMap(data.settings)) &&
         isValidOptionalDateOrTimestamp(data, 'createdAt') &&
         isValidOptionalDateOrTimestamp(data, 'updatedAt');

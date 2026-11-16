@@ -13,5 +13,118 @@
   "dailyMinutesLabel": "Daily study target (minutes)",
   "studyDaysLabel": "Study days",
   "uniPersonaLabel": "Default Uni personality",
-  "saveBtn": "Save changes"
+  "saveBtn": "Save changes",
+  "sections": {
+    "estudo": {
+      "title": "Profile & study",
+      "subtitle": "Name, semester dates, daily target, and Uni style"
+    },
+    "notificacoes": {
+      "title": "Smart Uni reminders",
+      "subtitle": "Daily streak, spaced reviews, exams, and classes"
+    },
+    "ligacoes": {
+      "title": "Data sources",
+      "subtitle": "Connect only the services you want to use in Unipedia"
+    },
+    "tutor": {
+      "title": "Uni · AI Tutor",
+      "subtitle": "Native tutor, AI consent, and advanced options",
+      "consentGroup": "Uni authorization",
+      "consentTitle": "Use Uni with AI (Gemini)",
+      "consentDesc": "Allows Uni to answer your questions and process your attached files.",
+      "consentAria": "Authorize Uni to use Gemini"
+    },
+    "dados": {
+      "title": "Data & backups",
+      "subtitle": "Export, restore, or clear your data safely"
+    }
+  },
+  "hero": {
+    "defaultName": "Student",
+    "cloudActive": "Cloud active",
+    "localOnly": "On this device only",
+    "localOnlyShort": "This device",
+    "completeProfileHint": "Set your degree and study pace below",
+    "editProfileUni": "Edit profile & Uni",
+    "editProfileMinimal": "Edit profile & palette",
+    "sync": "Sync",
+    "syncAria": "Sync now",
+    "signOut": "Sign out",
+    "signOutAria": "Sign out",
+    "signInToSync": "Sign in to sync",
+    "syncedToast": "Data synced to the cloud!",
+    "syncErrorToast": "Couldn't sync right now. Try again later.",
+    "loggedOutToast": "Signed out."
+  },
+  "appearance": {
+    "title": "Notebook appearance",
+    "paletteHint": "Active palette: {{name}}",
+    "themes": {
+      "system": "System",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "toneTitle": "Visual tone",
+    "toneVibrant": "Expressive",
+    "toneMinimal": "Minimal & Focused",
+    "toneVibrantHint": "Expressive active: warm stationery pastels, tactile motion, and live Unis.",
+    "toneMinimalHint": "Minimal active: clean neutral surfaces with reduced motion and no mascots.",
+    "paletteTitle": "Color palette"
+  },
+  "groups": {
+    "studyTitle": "Notebook & Study",
+    "semesterRowTitle": "Semester, daily goal & Uni",
+    "perDaySuffix": "{{time}}/day",
+    "remindersRowTitle": "Smart Uni reminders",
+    "remindersOn": "Active · max {{max}}/day · quiet {{start}}–{{end}}",
+    "remindersOff": "Off · streak, SRS, exams, and classes",
+    "remindersActiveBadge": "Active",
+    "remindersOptInBadge": "Opt-in",
+    "curriculumRowTitle": "Degree & academic history",
+    "curriculumSubtitleEmpty": "Choose your school or university",
+    "tourRowTitle": "Replay quick guide",
+    "tourSubtitle": "Revisit the highlights of the Today screen",
+    "connectionsTitle": "Connections & Uni",
+    "connectionsRowTitle": "Connections & imports",
+    "connectionsRowSubtitle": "Calendar, email, Drive, local folder, and schedules (.ics)",
+    "connectedBadge": "Connected",
+    "tutorRowTitle": "Uni · AI Tutor",
+    "tutorKeyConnected": "Personal key connected · Extended limit",
+    "tutorNativeIncluded": "Native Uni · Daily replies included",
+    "activeBadge": "Active",
+    "pausedBadge": "Paused",
+    "privacyTitle": "Privacy & Data",
+    "backupRowTitle": "Export backup & manage data",
+    "backupRowSubtitle": "JSON backup, sample data, and local cleanup",
+    "privacyPolicyRowTitle": "Privacy Policy",
+    "privacyPolicyRowSubtitle": "How we protect your data",
+    "termsRowTitle": "Terms of Use"
+  },
+  "dangerZone": {
+    "title": "Danger zone",
+    "body": "Permanently deletes local data on this device and, if signed in, deletes your cloud account.",
+    "cta": "Delete account and data"
+  },
+  "profileCard": {
+    "namePlaceholder": "What should we call you?",
+    "semesterNameLabel": "Semester name",
+    "semesterPlaceholder": "e.g. 2026/27 · Fall Semester",
+    "semesterStart": "Semester start",
+    "semesterEnd": "Semester end",
+    "endBeforeStart": "End date is before start date.",
+    "dailyMinutesHint": "Equals {{time}} per day.",
+    "uniStyle": "Uni style",
+    "uniStyleHint": "Automatically switches accessory per course or pins your favorite.",
+    "autoPerCourse": "Auto per course",
+    "companionsLabel": "Subtle screen companions",
+    "companionsPaused": "Paused while Minimal & Focused tone is active.",
+    "companionsHint": "Quiet companions in corners that hide while you type or scroll.",
+    "companionsAll": "Up to 2",
+    "companionsSolo": "Just 1",
+    "companionsOff": "Off",
+    "installTitle": "Install Unipedia app",
+    "installHint": "Use offline and as a dedicated app on your device.",
+    "installBtn": "Install Unipedia"
+  }
 }

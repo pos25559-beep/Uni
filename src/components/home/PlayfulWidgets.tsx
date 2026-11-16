@@ -1,6 +1,7 @@
 import { ArrowRight, CalendarDays, Flame, Plus, Sparkles } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { UniAccessoryId } from '../../lib/uniAccessories';
 import { hapticTap } from '../../lib/nativeBridge';
 import { useStore } from '../../store/useStore';
@@ -129,6 +130,7 @@ export function NotebookFocusSheet({
   uniAccessory: UniAccessoryId;
   children?: ReactNode;
 }) {
+  const { t } = useTranslation('today');
   const isMinimal = useStore((s) => (s.settings.appTone ?? 'vibrante') === 'serio');
   return (
     <section
@@ -136,7 +138,7 @@ export function NotebookFocusSheet({
         'overflow-hidden border border-line text-fg shadow-card',
         isMinimal
           ? 'rounded-2xl bg-surface'
-          : 'rounded-[28px] bg-bg dark:border-white/10 dark:bg-surface',
+          : 'rounded-3xl bg-bg dark:border-white/10 dark:bg-surface',
       )}
     >
       {/* Cabeçalho com faixa verde salva de caderno (neutro em Sério & Minimal) */}
@@ -150,7 +152,7 @@ export function NotebookFocusSheet({
       >
         <div className="flex items-center gap-2">
           <Sparkles size={15} className={isMinimal ? 'text-accent-ink' : 'text-[#0F6344] dark:text-[#4ADE80]'} />
-          <h2 className="font-display text-base font-bold">Foco de hoje</h2>
+          <h2 className="font-display text-base font-bold">{t('todayFocus.title')}</h2>
         </div>
         <button
           type="button"
@@ -162,7 +164,7 @@ export function NotebookFocusSheet({
               : 'bg-white/85 text-[#141312] shadow-sm hover:bg-white dark:bg-black/30 dark:text-[#FAF6EC]',
           )}
         >
-          Abrir plano <ArrowRight size={12} />
+          {t('todayFocus.openPlan')} <ArrowRight size={12} />
         </button>
       </div>
 
@@ -184,15 +186,15 @@ export function NotebookFocusSheet({
               <UniBuddy mood="happy" accessory={uniAccessory} size={64} interactive={false} />
             )}
             <div className="space-y-1">
-              <p className="font-display text-base font-bold">Dia livre para pôr ideias em ordem</p>
+              <p className="font-display text-base font-bold">{t('todayFocus.emptyTitle')}</p>
               <p className="mx-auto max-w-xs text-xs text-muted">
                 {isMinimal
-                  ? 'Cria um plano semanal com blocos curtos por cadeira.'
-                  : 'Cria um plano semanal com blocos curtos e o Uni acompanha cada sessão contigo.'}
+                  ? t('todayFocus.emptyMinimalHint')
+                  : t('todayFocus.emptyVibrantHint')}
               </p>
             </div>
             <Button variant="primary" size="sm" onClick={onOpenPlan}>
-              Gerar plano agora <ArrowRight size={14} />
+              {t('todayFocus.emptyCta')} <ArrowRight size={14} />
             </Button>
           </div>
         ) : (
@@ -221,14 +223,19 @@ export function StickyTasksPad({
   inputId?: string;
   children: ReactNode;
 }) {
+  const { t } = useTranslation('today');
   const isMinimal = useStore((s) => (s.settings.appTone ?? 'vibrante') === 'serio');
+  const pendingLabel =
+    pendingCount === 1
+      ? t('tasksPad.pendingOne')
+      : t('tasksPad.pendingMany', { count: pendingCount });
   return (
     <section
       className={cx(
         'relative overflow-hidden border border-line p-5 shadow-card',
         isMinimal
           ? 'rounded-2xl bg-surface text-fg'
-          : 'rounded-[28px] bg-pastel-butter/45 text-[#141312] dark:border-white/10 dark:bg-[#2C2512] dark:text-[#FAF6EC]',
+          : 'rounded-3xl bg-pastel-butter/45 text-[#141312] dark:border-white/10 dark:bg-[#2C2512] dark:text-[#FAF6EC]',
       )}
     >
       {/* Marcador coral estilo post-it */}
@@ -240,14 +247,12 @@ export function StickyTasksPad({
       )}
 
       <div className="mb-3.5 flex items-center justify-between gap-2">
-        <h2 className="font-display text-base font-bold">Notas &amp; Tarefas</h2>
+        <h2 className="font-display text-base font-bold">{t('tasksPad.title')}</h2>
         {isMinimal ? (
-          <Badge tone="neutral">
-            {pendingCount} {pendingCount === 1 ? 'pendente' : 'pendentes'}
-          </Badge>
+          <Badge tone="neutral">{pendingLabel}</Badge>
         ) : (
           <StickerBadge tone="butter" tilt={2}>
-            {pendingCount} {pendingCount === 1 ? 'pendente' : 'pendentes'}
+            {pendingLabel}
           </StickerBadge>
         )}
       </div>
@@ -259,8 +264,8 @@ export function StickyTasksPad({
           value={draft}
           onChange={(e) => onDraftChange(e.target.value)}
           onKeyDown={onDraftKeyDown}
-          placeholder="Escreve uma tarefa e prime Enter…"
-          aria-label="Nova tarefa"
+          placeholder={t('tasksPad.placeholder')}
+          aria-label={t('tasksPad.ariaLabel')}
           className={cx(
             'pl-10',
             !isMinimal &&
@@ -286,6 +291,7 @@ export function AgendaRibbonCard({
   isEmpty: boolean;
   children?: ReactNode;
 }) {
+  const { t } = useTranslation('today');
   const isMinimal = useStore((s) => (s.settings.appTone ?? 'vibrante') === 'serio');
   return (
     <section
@@ -293,7 +299,7 @@ export function AgendaRibbonCard({
         'overflow-hidden border border-line shadow-card',
         isMinimal
           ? 'rounded-2xl bg-surface text-fg'
-          : 'rounded-[28px] bg-pastel-peach/35 text-[#141312] dark:border-white/10 dark:bg-[#2C1E17] dark:text-[#FAF6EC]',
+          : 'rounded-3xl bg-pastel-peach/35 text-[#141312] dark:border-white/10 dark:bg-[#2C1E17] dark:text-[#FAF6EC]',
       )}
     >
       <div
@@ -306,7 +312,7 @@ export function AgendaRibbonCard({
       >
         <div className="flex items-center gap-2">
           <CalendarDays size={15} className="opacity-80" />
-          <h2 className="font-display text-base font-bold">Agenda de hoje</h2>
+          <h2 className="font-display text-base font-bold">{t('agendaCard.title')}</h2>
         </div>
         <span
           className={cx(
@@ -328,8 +334,8 @@ export function AgendaRibbonCard({
               isMinimal ? 'bg-surface-2/60 text-muted' : 'bg-white/60 dark:bg-black/20',
             )}
           >
-            <p className={cx('font-semibold', isMinimal && 'text-fg')}>Sem aulas ou blocos fixos hoje</p>
-            <p className="mt-1 opacity-75">Aproveita a tarde livre para avançar ao teu ritmo.</p>
+            <p className={cx('font-semibold', isMinimal && 'text-fg')}>{t('agendaCard.emptyTitle')}</p>
+            <p className="mt-1 opacity-75">{t('agendaCard.emptyHint')}</p>
           </div>
         ) : (
           children

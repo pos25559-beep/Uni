@@ -1,4 +1,7 @@
 {
+  "docTitle": "Unipedia — Estuda com calma, avança com clareza.",
+  "defaultSemester": "Semestre atual",
+  "loadingPage": "A abrir página…",
   "nav": {
     "today": "Hoje",
     "courses": "Cadeiras",
@@ -47,5 +50,18 @@
     "uniTutor": "Uni Tutor",
     "uniNotebook": "Caderno do Uni",
     "externalNotebook": "Caderno externo"
+  },
+  "footer": {
+    "privacy": "Privacidade",
+    "terms": "Termos",
+    "data": "Dados"
+  },
+  "guide": {
+    "button": "Guia",
+    "gotIt": "Entendido",
+    "openAria": "Abrir guia do Uni para esta aba",
+    "openTitle": "O que faz esta aba? (Guia do Uni)",
+    "closeAria": "Fechar guia desta aba",
+    "sectionAria": "Guia rápido: {{title}}"
   }
 }

@@ -1,13 +1,28 @@
 import { differenceInCalendarDays, format, parseISO } from 'date-fns';
-import { pt } from 'date-fns/locale';
-import type { Assessment, ClassSlot, TopicStatus } from '../../types';
+import { normalizeAppLanguage, resolveDateFnsLocale } from '../../lib/grading';
+import type { AppLanguage, Assessment, ClassSlot, TopicStatus } from '../../types';
 
 /** Dias até/desde uma data (yyyy-MM-dd ou ISO) em relação a hoje. */
 const dayDiff = (iso: string) => differenceInCalendarDays(parseISO(iso), new Date());
 
 /** Rótulo relativo para prazos: "hoje", "amanhã", "em 3 dias", "há 2 dias". */
-export function dueLabel(iso: string): string {
+export function dueLabel(iso: string, lang: AppLanguage | string = 'pt-PT'): string {
+  const normalized = normalizeAppLanguage(lang);
   const d = dayDiff(iso);
+  if (normalized === 'en') {
+    if (d === 0) return 'today';
+    if (d === 1) return 'tomorrow';
+    if (d === -1) return 'yesterday';
+    if (d > 1) return `in ${d} days`;
+    return `${-d} days ago`;
+  }
+  if (normalized === 'es') {
+    if (d === 0) return 'hoy';
+    if (d === 1) return 'mañana';
+    if (d === -1) return 'ayer';
+    if (d > 1) return `en ${d} días`;
+    return `hace ${-d} días`;
+  }
   if (d === 0) return 'hoje';
   if (d === 1) return 'amanhã';
   if (d === -1) return 'ontem';
@@ -16,20 +31,40 @@ export function dueLabel(iso: string): string {
 }
 
 /** Rótulo para "última vez estudada". */
-export function lastStudiedLabel(iso?: string): string {
-  if (!iso) return 'Nunca estudada';
+export function lastStudiedLabel(iso?: string, lang: AppLanguage | string = 'pt-PT'): string {
+  const normalized = normalizeAppLanguage(lang);
+  if (!iso) {
+    return normalized === 'en'
+      ? 'Never studied'
+      : normalized === 'es'
+        ? 'Nunca estudiada'
+        : normalized === 'pt-BR'
+          ? 'Nunca estudada'
+          : 'Nunca estudada';
+  }
   const d = -dayDiff(iso);
+  if (normalized === 'en') {
+    if (d <= 0) return 'today';
+    if (d === 1) return 'yesterday';
+    return `${d} days ago`;
+  }
+  if (normalized === 'es') {
+    if (d <= 0) return 'hoy';
+    if (d === 1) return 'ayer';
+    return `hace ${d} días`;
+  }
   if (d <= 0) return 'hoje';
   if (d === 1) return 'ontem';
   return `há ${d} dias`;
 }
 
 /** "3 dez · 14:00" para avaliações. */
-export const fmtAssessmentDate = (iso: string) =>
-  format(parseISO(iso), "d MMM yyyy 'às' HH:mm", { locale: pt });
+export const fmtAssessmentDate = (iso: string, lang: AppLanguage | string = 'pt-PT') =>
+  format(parseISO(iso), 'd MMM yyyy · HH:mm', { locale: resolveDateFnsLocale(lang) });
 
 /** "3 dez" para datas simples. */
-export const fmtShortDate = (iso: string) => format(parseISO(iso), 'd MMM', { locale: pt });
+export const fmtShortDate = (iso: string, lang: AppLanguage | string = 'pt-PT') =>
+  format(parseISO(iso), 'd MMM', { locale: resolveDateFnsLocale(lang) });
 
 /** Valor no formato YYYY-MM-DDTHH:mm (DateTimeField). */
 export const toDatetimeLocal = (iso: string) => iso.slice(0, 16);

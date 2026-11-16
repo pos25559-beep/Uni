@@ -7,6 +7,42 @@
   "courseNotFound": "Esta asignatura no existe",
   "backToCourses": "Volver a asignaturas",
   "subtitleFallback": "Detalles de la asignatura",
+  "unitOne": "asignatura",
+  "unitMany": "asignaturas",
+  "avgShort": "media",
+  "ectsTotal": "{{ects}} ECTS en total",
+  "noInstructor": "Sin docente asignado",
+  "nextPrefix": "Próxima:",
+  "noAssessments": "Sin exámenes programados",
+  "track": {
+    "onTarget": "En objetivo",
+    "targetMissed": "Objetivo no alcanzado",
+    "outOfReach": "Objetivo fuera de alcance",
+    "needsRemaining": "Necesita {{grade}} en lo restante"
+  },
+  "empty": {
+    "title": "Aún no tienes asignaturas",
+    "hint": "Créala manualmente, envía una foto de tu horario para que Uni extraiga todo o importa clases y exámenes desde Google Calendar.",
+    "photoBtn": "Foto de horario / agenda",
+    "gcalBtn": "Extraer Google Calendar",
+    "icsBtn": "Horario (.ics / Portal)",
+    "manualBtn": "Crear a mano",
+    "photoBannerBtn": "Foto del horario (IA)",
+    "gcalBannerBtn": "Google Calendar"
+  },
+  "views": {
+    "deck": "Carpetas",
+    "grid": "Cuadrícula",
+    "deckHint": "Toca una carpeta para abrir notas, temas y exámenes",
+    "allCourses": "Todas las asignaturas"
+  },
+  "kinds": {
+    "exame": "Examen",
+    "teste": "Parcial",
+    "trabalho": "Trabajo",
+    "projeto": "Proyecto",
+    "quiz": "Quiz"
+  },
   "tabs": {
     "overview": "Resumen y Reglas",
     "topics": "Temario y Notas",

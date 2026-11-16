@@ -1,7 +1,7 @@
 // Cálculos partilhados (funções puras). Usar estes em vez de recalcular nas páginas.
 import { addDays, differenceInCalendarDays, format, parseISO, startOfWeek } from 'date-fns';
 import type { AppLanguage, Assessment, Course, GradingScale, StudySession, Topic } from '../types';
-import { formatGradeByScale, parseGradeByScale } from './grading';
+import { formatGradeByScale, normalizeAppLanguage, parseGradeByScale } from './grading';
 
 export const todayStr = () => format(new Date(), 'yyyy-MM-dd');
 export const toDateStr = (d: Date) => format(d, 'yyyy-MM-dd');
@@ -154,31 +154,100 @@ const SYSTEM_SESSION_NOTES = new Set([
   'Revisão rápida',
   'Estudar base',
   'Consolidação',
+  'Praticar exercícios',
+  'Manutenção · ritmo contínuo',
   'Reforço pós-aula · consolidação',
   'Reforço · consolidação',
   'Arranque contínuo · consolidação',
 ]);
 
+const SESSION_NOTE_TRANSLATIONS: Record<string, Record<'pt-BR' | 'es' | 'en', string>> = {
+  'Foco Modo Teste': { 'pt-BR': 'Foco Modo Prova', es: 'Foco Modo Examen', en: 'Exam Mode Focus' },
+  'Equilíbrio Modo Teste': { 'pt-BR': 'Equilíbrio Modo Prova', es: 'Equilibrio Modo Examen', en: 'Balanced Exam Mode' },
+  'Prática para teste': { 'pt-BR': 'Prática para prova', es: 'Práctica para examen', en: 'Exam practice' },
+  'Revisão para teste': { 'pt-BR': 'Revisão para prova', es: 'Repaso para examen', en: 'Exam review' },
+  'Reforço pós-aula': { 'pt-BR': 'Reforço pós-aula', es: 'Refuerzo post-clase', en: 'After-class boost' },
+  'Reforçar dúvidas': { 'pt-BR': 'Reforçar dúvidas', es: 'Reforzar dudas', en: 'Clarify tricky concepts' },
+  'Reforço escolhido': { 'pt-BR': 'Reforço escolhido', es: 'Refuerzo elegido', en: 'Chosen boost' },
+  'Bloco focado curto (reforço)': { 'pt-BR': 'Bloco curto focado (reforço)', es: 'Bloque corto enfocado (refuerzo)', en: 'Short focused boost' },
+  'Prática guiada': { 'pt-BR': 'Prática guiada', es: 'Práctica guiada', en: 'Guided practice' },
+  'Revisão espaçada (SRS)': { 'pt-BR': 'Revisão espaçada (SRS)', es: 'Repaso espaciado (SRS)', en: 'Spaced repetition (SRS)' },
+  'Revisão ativa': { 'pt-BR': 'Revisão ativa', es: 'Repaso activo', en: 'Active review' },
+  'Revisão geral': { 'pt-BR': 'Revisão geral', es: 'Repaso general', en: 'Full review' },
+  'Revisão rápida': { 'pt-BR': 'Revisão rápida', es: 'Repaso rápido', en: 'Quick review' },
+  'Estudar base': { 'pt-BR': 'Estudar base', es: 'Estudiar base', en: 'Core fundamentals' },
+  Consolidação: { 'pt-BR': 'Consolidação', es: 'Consolidación', en: 'Consolidation' },
+  'Praticar exercícios': { 'pt-BR': 'Praticar exercícios', es: 'Practicar ejercicios', en: 'Practice problems' },
+  'Manutenção · ritmo contínuo': { 'pt-BR': 'Manutenção · ritmo contínuo', es: 'Mantenimiento · ritmo continuo', en: 'Maintenance · steady pace' },
+  'Reforço pós-aula · consolidação': { 'pt-BR': 'Reforço pós-aula · consolidação', es: 'Refuerzo post-clase · consolidación', en: 'After-class boost · consolidation' },
+  'Reforço · consolidação': { 'pt-BR': 'Reforço · consolidação', es: 'Refuerzo · consolidación', en: 'Boost · consolidation' },
+  'Arranque contínuo · consolidação': { 'pt-BR': 'Início contínuo · consolidação', es: 'Inicio continuo · consolidación', en: 'Steady start · consolidation' },
+  'Refazer testes antigos': { 'pt-BR': 'Refazer provas antigas', es: 'Hacer exámenes anteriores', en: 'Redo past tests' },
+  'Resolver exames antigos': { 'pt-BR': 'Resolver provas anteriores', es: 'Resolver exámenes pasados', en: 'Solve past exams' },
+  'Resolver exercícios práticos': { 'pt-BR': 'Resolver exercícios práticos', es: 'Resolver ejercicios prácticos', en: 'Solve practice problems' },
+  'Rever resumos e slides': { 'pt-BR': 'Revisar resumos e slides', es: 'Repasar resúmenes y diapositivas', en: 'Review summaries & slides' },
+  'Rever slides, apontamentos das aulas e livro': {
+    'pt-BR': 'Revisar slides, anotações das aulas e livro',
+    es: 'Repasar diapositivas, apuntes de clase y libro',
+    en: 'Review slides, lecture notes & textbook',
+  },
+};
+
+function localizeSessionNote(note: string, lang: AppLanguage): string {
+  if (lang === 'pt-PT') return note;
+  const exact = SESSION_NOTE_TRANSLATIONS[note]?.[lang];
+  if (exact) return exact;
+  const lower = note.toLowerCase();
+  if (lower.startsWith('rever slides')) {
+    return SESSION_NOTE_TRANSLATIONS['Rever slides, apontamentos das aulas e livro'][lang];
+  }
+  return note;
+}
+
 /** Formata o título e a etiqueta realistas de uma sessão de estudo (priorizando o foco alinhado pelo aluno). */
 export function formatSessionDisplay(
   session: StudySession,
   topic?: { title: string },
+  lang: AppLanguage | string = 'pt-PT',
 ): { title: string; badge?: string; isPersonalized: boolean } {
-  const note = session.notes?.trim();
+  const normalizedLang = normalizeAppLanguage(lang);
+  const rawNote = session.notes?.trim();
+  const note = rawNote ? localizeSessionNote(rawNote, normalizedLang) : undefined;
   const topicName = topic?.title.trim();
-  if (note && !SYSTEM_SESSION_NOTES.has(note)) {
+  const testModeBadge =
+    normalizedLang === 'en'
+      ? 'Exam Mode'
+      : normalizedLang === 'es'
+        ? 'Modo Examen'
+        : normalizedLang === 'pt-BR'
+          ? 'Modo Prova'
+          : 'Modo Teste';
+  const syncedBadge =
+    normalizedLang === 'en'
+      ? 'Synced w/ Uni'
+      : normalizedLang === 'es'
+        ? 'Alineado c/ Uni'
+        : 'Alinhado c/ Uni';
+  const freeStudyFallback =
+    normalizedLang === 'en'
+      ? 'Free study'
+      : normalizedLang === 'es'
+        ? 'Estudio libre'
+        : 'Estudo livre';
+
+  if (rawNote && !SYSTEM_SESSION_NOTES.has(rawNote) && note) {
     const redundant =
       topicName &&
       (note.toLowerCase().includes(topicName.toLowerCase()) ||
         topicName.toLowerCase().includes(note.toLowerCase()));
     return {
       title: topicName && !redundant ? `${note} · ${topicName}` : note,
-      badge: session.assessmentId ? 'Modo Teste' : 'Alinhado c/ Uni',
+      badge: session.assessmentId ? testModeBadge : syncedBadge,
       isPersonalized: true,
     };
   }
   return {
-    title: topicName || note || 'Estudo livre',
+    title: topicName || note || freeStudyFallback,
     badge: topicName && note ? note : undefined,
     isPersonalized: false,
   };

@@ -1,5 +1,6 @@
 import { MotionConfig } from 'motion/react';
 import { Suspense, lazy, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import AppShell from './components/AppShell';
 import { UnipediaLogoMark } from './components/brand/UnipediaMarks';
@@ -29,11 +30,12 @@ const TermsOfUsePage = lazy(() =>
 );
 
 function RouteLoadingFallback() {
+  const { t } = useTranslation('common');
   return (
     <div className="grid min-h-[45vh] place-items-center py-12 text-muted">
       <div className="flex flex-col items-center gap-3">
         <UnipediaLogoMark size={38} />
-        <span className="text-xs font-medium">A abrir página…</span>
+        <span className="text-xs font-medium">{t('loadingPage')}</span>
       </div>
     </div>
   );

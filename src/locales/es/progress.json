@@ -7,5 +7,54 @@
   "topicsCovered": "Temas cubiertos",
   "avgLabel": "Media",
   "hoursDone": "Horas completadas",
-  "streak": "Racha"
+  "streak": "Racha",
+  "periods": {
+    "7d": "7 días",
+    "30d": "30 días",
+    "semestre": "Cuatrimestre"
+  },
+  "hero": {
+    "title": "Progreso general del cuatrimestre",
+    "topicsDone": "{{covered}} de {{total}} temas completados o repasados",
+    "addTopicsHint": "Añade temas en las asignaturas para seguir tu preparación",
+    "studied": "Estudiado",
+    "retention": "Retención",
+    "reviews": "Repasos",
+    "reviewsDue": "{{count}} pendientes",
+    "upToDate": "al día"
+  },
+  "emptyCharts": {
+    "eyebrow": "Cuaderno de ritmo y métricas",
+    "title": "Tus gráficas cobran vida con tu primer bloque de estudio",
+    "body": "En lugar de mostrar paneles vacíos ahora, en cuanto completes una sesión en el Plan o el Temporizador verás cuánto has estudiado al día, constancia y reparto por asignatura.",
+    "generateBtn": "Generar plan de estudio",
+    "previewBtn": "Previsualizar panel",
+    "card1Title": "1. Tiempo por día",
+    "card1Body": "Comparación diaria frente a tu meta de estudio.",
+    "card2Title": "2. Mapa de constancia",
+    "card2Body": "Racha activa para seguir tu ritmo.",
+    "card3Title": "3. Preparación y notas",
+    "card3Body": "Cobertura del temario y avisos antes de exámenes.",
+    "showEmptyBtn": "Mostrar también gráficas vacías",
+    "hideEmptyBtn": "Ocultar gráficas vacías"
+  },
+  "logs": {
+    "title": "Diario y Alineación de Uni",
+    "newEntryBtn": "Nuevo registro",
+    "all": "Todos ({{count}})",
+    "postClass": "Post-clase",
+    "endOfDay": "Fin del día",
+    "sundays": "Domingos",
+    "sunday": "Domingo",
+    "testMode": "Modo Examen",
+    "emptyFilter": "Aún no tienes registros en este filtro. Registra cómo fue la última clase, tu jornada o el enfoque de un examen.",
+    "topicLabel": "Tema:",
+    "alignedTopicsLabel": "Temas alineados:",
+    "doubtsLabel": "Dudas: {{text}}",
+    "deleteAria": "Eliminar registro del diario",
+    "deletedToast": "Registro eliminado del diario.",
+    "skinUpdatedToast": "¡Aspecto de Uni actualizado!",
+    "petRemovedToast": "Compañero guardado en la estantería.",
+    "petEquippedToast": "¡Compañero equipado!"
+  }
 }

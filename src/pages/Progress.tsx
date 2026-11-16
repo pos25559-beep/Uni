@@ -26,12 +26,13 @@ import {
   getUniPetStates,
   readCollectibleTelemetry,
 } from '../lib/uniCollectibles';
+import { normalizeAppLanguage } from '../lib/grading';
 import { fmtGrade, fmtMinutes, semesterAverage, sessionMinutes, studyStreak, todayStr } from '../lib/selectors';
 import { useStore } from '../store/useStore';
 
 export default function ProgressPage() {
   const { t, i18n } = useTranslation('progress');
-  const appLang = i18n.language?.startsWith('en') ? ('en' as const) : ('pt-PT' as const);
+  const appLang = normalizeAppLanguage(i18n.language);
   const [progressTab, setProgressTab] = useState<'week' | 'semester'>('week');
   const [period, setPeriod] = useState<Period>('30d');
   const [logFilter, setLogFilter] = useState<'all' | StudyLogKind>('all');
@@ -113,7 +114,7 @@ export default function ProgressPage() {
               layoutId="progress-period-pill"
               value={period}
               onChange={(v) => setPeriod(v as Period)}
-              items={PERIODS.map((p) => ({ id: p.value, label: p.label }))}
+              items={PERIODS.map((p) => ({ id: p.value, label: t(`periods.${p.value}`) }))}
             />
           </div>
         }
@@ -134,37 +135,37 @@ export default function ProgressPage() {
       </div>
 
       {/* Cartão Hero Bento "Progresso Geral" com anel estilo papelaria */}
-      <section className="flex flex-wrap items-center justify-between gap-5 rounded-[26px] bg-pastel-sky/75 p-5 text-[#141312] shadow-card dark:bg-surface-2 dark:text-[#FAF6EC]">
+      <section className="flex flex-wrap items-center justify-between gap-5 rounded-3xl bg-pastel-sky/75 p-5 text-[#141312] shadow-card dark:bg-surface-2 dark:text-[#FAF6EC]">
         <div className="min-w-0 flex-1 space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-wider opacity-70">Progresso geral do semestre</p>
+          <p className="text-xs font-semibold uppercase tracking-wider opacity-70">{t('hero.title')}</p>
           <p className="font-display text-4xl font-bold tracking-tight tabular">{summary.pctLabel}</p>
           <p className="text-xs opacity-80">
             {summary.totalTopics > 0
-              ? `${summary.covered} de ${summary.totalTopics} tópicos concluídos ou revistos`
-              : 'Adiciona tópicos nas cadeiras para acompanhar a preparação'}
+              ? t('hero.topicsDone', { covered: summary.covered, total: summary.totalTopics })
+              : t('hero.addTopicsHint')}
           </p>
           <div className="flex flex-wrap items-center gap-4 pt-2 text-xs font-medium">
             <span className="tabular">{t('avgLabel')}: <strong>{fmtGrade(summary.avg, gradingScale, appLang)}</strong></span>
-            <span className="tabular">Estudado: <strong>{fmtMinutes(summary.totalDoneMin)}</strong></span>
-            <span className="tabular">Sequência: <strong>{summary.streak}d</strong></span>
+            <span className="tabular">{t('hero.studied')}: <strong>{fmtMinutes(summary.totalDoneMin)}</strong></span>
+            <span className="tabular">{t('streak')}: <strong>{summary.streak}d</strong></span>
             <span className="tabular">
-              Retenção:{' '}
+              {t('hero.retention')}:{' '}
               <strong>
                 {retention.avgRetentionPct !== null ? `${retention.avgRetentionPct}%` : '—'}
               </strong>
             </span>
             <span className="tabular">
-              Revisões:{' '}
+              {t('hero.reviews')}:{' '}
               {retention.dueCount > 0 ? (
                 <button
                   type="button"
                   onClick={() => setReviewTarget({})}
                   className="inline-flex min-h-11 items-center font-bold underline decoration-dotted underline-offset-2 hover:opacity-80"
                 >
-                  {retention.dueCount} devidas
+                  {t('hero.reviewsDue', { count: retention.dueCount })}
                 </button>
               ) : (
-                <strong>em dia</strong>
+                <strong>{t('hero.upToDate')}</strong>
               )}
             </span>
           </div>
@@ -185,11 +186,11 @@ export default function ProgressPage() {
           companion={companion}
           onSelectSkin={(skinId) => {
             updateSettings({ uniSkin: skinId });
-            showToast('Visual do Uni atualizado!');
+            showToast(t('logs.skinUpdatedToast'));
           }}
           onSelectPet={(petId) => {
             updateSettings({ uniPet: petId });
-            showToast(petId === 'none' ? 'Companheiro guardado na estante.' : 'Companheiro equipado!');
+            showToast(petId === 'none' ? t('logs.petRemovedToast') : t('logs.petEquippedToast'));
           }}
           onOpenCustomize={() => setCollectiblesOpen(true)}
         />
@@ -198,43 +199,43 @@ export default function ProgressPage() {
       {progressTab === 'week' ? (
       <>
       {!hasSessions && !showEmptyCharts ? (
-        <section className="space-y-4 rounded-[26px] bg-pastel-mint/55 p-5 text-[#141312] shadow-card dark:bg-surface-2 dark:text-[#FAF6EC]">
+        <section className="space-y-4 rounded-3xl bg-pastel-mint/55 p-5 text-[#141312] shadow-card dark:bg-surface-2 dark:text-[#FAF6EC]">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="max-w-lg space-y-1">
               <p className="text-xs font-bold uppercase tracking-[0.1em] opacity-75">
-                Caderno de ritmo &amp; métricas
+                {t('emptyCharts.eyebrow')}
               </p>
               <h2 className="font-display text-lg font-bold">
-                Os teus gráficos ganham vida com o primeiro bloco de estudo
+                {t('emptyCharts.title')}
               </h2>
               <p className="text-xs leading-relaxed opacity-85">
-                Em vez de mostrar painéis vazios agora, assim que concluires uma sessão no Plano ou no Temporizador verás aqui quanto estudaste por dia, consistência e distribuição por cadeira.
+                {t('emptyCharts.body')}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Link to="/plano">
                 <Button size="sm" variant="primary">
-                  Gerar plano de estudo <ArrowRight size={14} />
+                  {t('emptyCharts.generateBtn')} <ArrowRight size={14} />
                 </Button>
               </Link>
               <Button size="sm" variant="secondary" onClick={() => setShowEmptyCharts(true)}>
-                <BarChart3 size={14} /> Prever grelha
+                <BarChart3 size={14} /> {t('emptyCharts.previewBtn')}
               </Button>
             </div>
           </div>
 
           <div className="grid gap-2.5 sm:grid-cols-3">
-            <div className="rounded-[18px] bg-white/75 p-3 dark:bg-black/20">
-              <p className="text-xs font-bold">1. Tempo por dia</p>
-              <p className="mt-1 text-xs opacity-75">Comparação diária face à tua meta de estudo.</p>
+            <div className="rounded-2xl bg-white/75 p-3 dark:bg-black/20">
+              <p className="text-xs font-bold">{t('emptyCharts.card1Title')}</p>
+              <p className="mt-1 text-xs opacity-75">{t('emptyCharts.card1Body')}</p>
             </div>
-            <div className="rounded-[18px] bg-white/75 p-3 dark:bg-black/20">
-              <p className="text-xs font-bold">2. Mapa de consistência</p>
-              <p className="mt-1 text-xs opacity-75">Sequência ativa para acompanhar o ritmo.</p>
+            <div className="rounded-2xl bg-white/75 p-3 dark:bg-black/20">
+              <p className="text-xs font-bold">{t('emptyCharts.card2Title')}</p>
+              <p className="mt-1 text-xs opacity-75">{t('emptyCharts.card2Body')}</p>
             </div>
-            <div className="rounded-[18px] bg-white/75 p-3 dark:bg-black/20">
-              <p className="text-xs font-bold">3. Preparação &amp; notas</p>
-              <p className="mt-1 text-xs opacity-75">Cobertura de tópicos e alertas antes dos exames.</p>
+            <div className="rounded-2xl bg-white/75 p-3 dark:bg-black/20">
+              <p className="text-xs font-bold">{t('emptyCharts.card3Title')}</p>
+              <p className="mt-1 text-xs opacity-75">{t('emptyCharts.card3Body')}</p>
             </div>
           </div>
         </section>
@@ -261,21 +262,21 @@ export default function ProgressPage() {
       {(hasSessions && (!hasTopics || !hasGradesOrAssessments) && !showEmptyCharts) || showEmptyCharts ? (
         <div className="flex justify-center">
           <Button size="sm" variant="ghost" onClick={() => setShowEmptyCharts((v) => !v)}>
-            {showEmptyCharts ? 'Ocultar gráficos sem dados' : 'Mostrar também gráficos por preencher'}
+            {showEmptyCharts ? t('emptyCharts.hideEmptyBtn') : t('emptyCharts.showEmptyBtn')}
           </Button>
         </div>
       ) : null}
 
       {/* Diário & Check-ins do Uni (Pós-aula, Fim do dia, Domingos e Modo Teste) */}
       <Card
-        title="Diário & Alinhamento do Uni"
+        title={t('logs.title')}
         action={
           <Button
             size="sm"
             variant="primary"
             onClick={() => openUniCheckIn({ kind: logFilter === 'all' ? 'day' : logFilter })}
           >
-            <Plus size={14} /> Novo registo
+            <Plus size={14} /> {t('logs.newEntryBtn')}
           </Button>
         }
       >
@@ -283,11 +284,11 @@ export default function ProgressPage() {
           <div className="flex flex-wrap gap-1.5">
             {(
               [
-                { id: 'all', label: `Todos (${studyLogs.length})` },
-                { id: 'class', label: 'Pós-aula' },
-                { id: 'day', label: 'Fim do dia' },
-                { id: 'week', label: 'Domingos' },
-                { id: 'exam_prep', label: 'Modo Teste' },
+                { id: 'all', label: t('logs.all', { count: studyLogs.length }) },
+                { id: 'class', label: t('logs.postClass') },
+                { id: 'day', label: t('logs.endOfDay') },
+                { id: 'week', label: t('logs.sundays') },
+                { id: 'exam_prep', label: t('logs.testMode') },
               ] as const
             ).map((f) => (
               <button
@@ -313,17 +314,15 @@ export default function ProgressPage() {
               return (
                 <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-line p-5 text-center">
                   <BookOpenCheck size={20} className="text-muted" />
-                  <p className="text-xs text-muted">
-                    Ainda não tens registos neste filtro. Regista como correu a última aula, o dia de estudo ou o alinhamento de um teste.
-                  </p>
+                  <p className="text-xs text-muted">{t('logs.emptyFilter')}</p>
                 </div>
               );
             }
             const kindBadges: Record<StudyLogKind, string> = {
-              class: 'Pós-aula',
-              day: 'Fim do dia',
-              week: 'Domingo',
-              exam_prep: 'Modo Teste',
+              class: t('logs.postClass'),
+              day: t('logs.endOfDay'),
+              week: t('logs.sunday'),
+              exam_prep: t('logs.testMode'),
             };
             return (
               <ul className="space-y-2.5">
@@ -352,12 +351,12 @@ export default function ProgressPage() {
                         </div>
                         {log.topicTitle && (
                           <p className="text-xs text-fg">
-                            <strong className="font-semibold">Matéria:</strong> {log.topicTitle}
+                            <strong className="font-semibold">{t('logs.topicLabel')}</strong> {log.topicTitle}
                           </p>
                         )}
                         {topicNames.length > 0 && (
                           <p className="text-xs text-fg">
-                            <strong className="font-semibold">Tópicos alinhados:</strong>{' '}
+                            <strong className="font-semibold">{t('logs.alignedTopicsLabel')}</strong>{' '}
                             {topicNames.join(', ')}
                           </p>
                         )}
@@ -365,7 +364,7 @@ export default function ProgressPage() {
                           <p className="text-xs text-muted">{log.studiedSummary}</p>
                         )}
                         {log.difficulties && (
-                          <p className="text-xs text-coral">Dúvidas: {log.difficulties}</p>
+                          <p className="text-xs text-coral">{t('logs.doubtsLabel', { text: log.difficulties })}</p>
                         )}
                         {log.notes && <p className="text-xs text-muted">{log.notes}</p>}
                       </div>
@@ -373,9 +372,9 @@ export default function ProgressPage() {
                         type="button"
                         onClick={() => {
                           removeStudyLog(log.id);
-                          showToast('Registo removido do diário.', 'neutral');
+                          showToast(t('logs.deletedToast'), 'neutral');
                         }}
-                        aria-label="Apagar registo do diário"
+                        aria-label={t('logs.deleteAria')}
                         className="grid size-11 shrink-0 place-items-center rounded-full text-muted transition hover:bg-surface hover:text-danger"
                       >
                         <Trash2 size={14} />

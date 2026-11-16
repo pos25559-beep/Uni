@@ -26,6 +26,7 @@ import {
   sanitizeNotebookDelta,
 } from '../../lib/uniMastery';
 import { useStore } from '../../store/useStore';
+import { normalizeAppLanguage } from '../../lib/grading';
 import type { AppLanguage, Course, Topic } from '../../types';
 import { UniBuddy } from '../brand/UnipediaMarks';
 import { Button, Textarea } from '../ui';
@@ -55,7 +56,7 @@ export default function UniFocusRecallPanel({
   onFallbackToDeck,
 }: UniFocusRecallPanelProps) {
   const { t, i18n } = useTranslation('plan');
-  const appLang: AppLanguage = i18n.language?.startsWith('en') ? 'en' : 'pt-PT';
+  const appLang: AppLanguage = normalizeAppLanguage(i18n.language);
   const gradingScale = useStore((s) => s.settings.gradingScale) ?? 'pt20';
   const updateTopic = useStore((s) => s.updateTopic);
   const reconcileFuturePlan = useStore((s) => s.reconcileFuturePlan);

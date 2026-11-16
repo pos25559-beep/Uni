@@ -38,12 +38,6 @@ import { resolveUniAccessory } from '../lib/uniAccessories';
 import { useStore } from '../store/useStore';
 import type { AppTone, Settings as SettingsType } from '../types';
 
-const THEME_LABELS: Record<SettingsType['theme'], string> = {
-  system: 'Sistema',
-  light: 'Claro',
-  dark: 'Escuro',
-};
-
 export default function SettingsPage() {
   const { t } = useTranslation('settings');
   const { section } = useParams<{ section?: string }>();
@@ -63,9 +57,9 @@ export default function SettingsPage() {
     setSyncing(true);
     try {
       await migrateLocalDataToCloud();
-      showToast('Dados sincronizados com a nuvem!');
+      showToast(t('hero.syncedToast'));
     } catch {
-      showToast('Erro ao sincronizar agora. Tenta mais tarde.', 'danger');
+      showToast(t('hero.syncErrorToast'), 'danger');
     } finally {
       setSyncing(false);
     }
@@ -74,15 +68,15 @@ export default function SettingsPage() {
   const handleLogout = async () => {
     await logoutFirebase();
     updateSettings({ guestMode: false, userName: '' });
-    showToast('Sessão terminada.', 'neutral');
+    showToast(t('hero.loggedOutToast'), 'neutral');
   };
 
   if (section === 'estudo') {
     return (
       <AnimatedPage className="space-y-5">
         <SubpageHeader
-          title="Perfil e estudo"
-          subtitle="Nome, datas do semestre, meta diária e estilo do Uni"
+          title={t('sections.estudo.title')}
+          subtitle={t('sections.estudo.subtitle')}
           backTo="/definicoes"
         />
         <ProfileCard />
@@ -94,8 +88,8 @@ export default function SettingsPage() {
     return (
       <AnimatedPage className="space-y-5">
         <SubpageHeader
-          title="Lembretes inteligentes do Uni"
-          subtitle="Sequência diária, revisões espaçadas, provas e aulas"
+          title={t('sections.notificacoes.title')}
+          subtitle={t('sections.notificacoes.subtitle')}
           backTo="/definicoes"
         />
         <NotificationsCard hideHeader />
@@ -107,8 +101,8 @@ export default function SettingsPage() {
     return (
       <AnimatedPage className="space-y-5">
         <SubpageHeader
-          title="Fontes de dados"
-          subtitle="Liga apenas os serviços que queres usar na Unipedia"
+          title={t('sections.ligacoes.title')}
+          subtitle={t('sections.ligacoes.subtitle')}
           backTo="/definicoes"
         />
         <div className="grid gap-5 lg:grid-cols-2">
@@ -125,20 +119,20 @@ export default function SettingsPage() {
     return (
       <AnimatedPage className="space-y-5">
         <SubpageHeader
-          title="Uni · Tutor IA"
-          subtitle="Tutor nativo, autorização de IA e opções avançadas"
+          title={t('sections.tutor.title')}
+          subtitle={t('sections.tutor.subtitle')}
           backTo="/definicoes"
         />
-        <ListGroup title="Autorização do Uni">
+        <ListGroup title={t('sections.tutor.consentGroup')}>
           <ListRow
             icon={<Sparkles size={18} />}
-            title="Usar Uni com IA (Gemini)"
-            subtitle="Permite que o Uni responda às tuas perguntas e processe os ficheiros que anexares."
+            title={t('sections.tutor.consentTitle')}
+            subtitle={t('sections.tutor.consentDesc')}
             trailing={
               <Switch
                 checked={Boolean(settings.aiConsent)}
                 onCheckedChange={(v) => updateSettings({ aiConsent: v })}
-                label="Autorizar o Uni a usar Gemini"
+                label={t('sections.tutor.consentAria')}
               />
             }
           />
@@ -152,8 +146,8 @@ export default function SettingsPage() {
     return (
       <AnimatedPage className="space-y-5">
         <SubpageHeader
-          title="Dados e cópias de segurança"
-          subtitle="Exporta, restaura ou limpa os teus dados em segurança"
+          title={t('sections.dados.title')}
+          subtitle={t('sections.dados.subtitle')}
           backTo="/definicoes"
         />
         <DataCard />
@@ -173,7 +167,7 @@ export default function SettingsPage() {
         eyebrow={t('eyebrow')}
         title={t('title')}
         accentTitle={t('accentTitle')}
-        subtitle={[settings.semesterName.trim(), THEME_LABELS[settings.theme]].filter(Boolean).join(' · ')}
+        subtitle={[settings.semesterName.trim(), t(`appearance.themes.${settings.theme}`)].filter(Boolean).join(' · ')}
         actions={<TabGuideHelpButton tabKey="definicoes" />}
       />
 
@@ -183,8 +177,8 @@ export default function SettingsPage() {
       <section
         className={
           isMinimal
-            ? 'flex flex-col gap-4 rounded-[22px] border border-line bg-surface p-5 shadow-card sm:flex-row sm:items-center sm:justify-between'
-            : 'flex flex-col gap-4 rounded-[26px] bg-pastel-butter/75 p-5 text-[#141312] shadow-card dark:bg-surface-2 dark:text-[#FAF6EC] sm:flex-row sm:items-center sm:justify-between'
+            ? 'flex flex-col gap-4 rounded-2xl border border-line bg-surface p-5 shadow-card sm:flex-row sm:items-center sm:justify-between'
+            : 'flex flex-col gap-4 rounded-3xl bg-pastel-butter/75 p-5 text-[#141312] shadow-card dark:bg-surface-2 dark:text-[#FAF6EC] sm:flex-row sm:items-center sm:justify-between'
         }
       >
         <div className="flex min-w-0 items-center gap-3.5">
@@ -212,28 +206,28 @@ export default function SettingsPage() {
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="truncate font-display text-lg font-bold">
-                {settings.userName || user?.displayName || 'Estudante'}
+                {settings.userName || user?.displayName || t('hero.defaultName')}
               </h2>
               {isMinimal ? (
                 <Badge tone={user ? 'ok' : 'neutral'}>
-                  {user ? 'Cloud ativa' : 'Apenas neste dispositivo'}
+                  {user ? t('hero.cloudActive') : t('hero.localOnly')}
                 </Badge>
               ) : (
                 <StickerBadge tone={user ? 'mint' : 'peach'} tilt={-2}>
-                  {user ? 'Cloud ativa' : 'Neste dispositivo'}
+                  {user ? t('hero.cloudActive') : t('hero.localOnlyShort')}
                 </StickerBadge>
               )}
             </div>
             <p className="mt-1 truncate text-xs opacity-75">
               {academicProfile.degreeName
                 ? [academicProfile.universityName, academicProfile.degreeName].filter(Boolean).join(' · ')
-                : 'Define o teu curso e ritmo abaixo'}
+                : t('hero.completeProfileHint')}
             </p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" variant="secondary" onClick={() => navigate('/definicoes/estudo')}>
-            {isMinimal ? 'Editar perfil & paleta' : 'Editar perfil & Uni'}
+            {isMinimal ? t('hero.editProfileMinimal') : t('hero.editProfileUni')}
           </Button>
           {user ? (
             <>
@@ -242,25 +236,25 @@ export default function SettingsPage() {
                 variant="secondary"
                 onClick={() => void handleManualSync()}
                 disabled={syncing}
-                aria-label="Sincronizar agora"
+                aria-label={t('hero.syncAria')}
               >
                 <RefreshCw size={15} className={syncing ? 'animate-spin' : ''} />
-                <span className="hidden sm:inline">Sincronizar</span>
+                <span className="hidden sm:inline">{t('hero.sync')}</span>
               </Button>
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={() => void handleLogout()}
-                aria-label="Terminar sessão"
+                aria-label={t('hero.signOutAria')}
                 className="opacity-80 hover:text-coral-ink hover:opacity-100"
               >
                 <LogOut size={15} />
-                <span className="hidden sm:inline">Sair</span>
+                <span className="hidden sm:inline">{t('hero.signOut')}</span>
               </Button>
             </>
           ) : (
             <Button size="sm" variant="primary" onClick={() => navigate('/entrar')}>
-              Entrar para sincronizar
+              {t('hero.signInToSync')}
             </Button>
           )}
         </div>
@@ -270,34 +264,32 @@ export default function SettingsPage() {
       <section
         className={
           isMinimal
-            ? 'order-3 space-y-3 rounded-[22px] border border-line/70 bg-surface-2/65 p-4 md:order-2'
-            : 'order-3 space-y-3 rounded-[26px] bg-pastel-sky/50 p-5 text-[#141312] shadow-card dark:bg-surface-2 dark:text-[#FAF6EC] md:order-2'
+            ? 'order-3 space-y-3 rounded-2xl border border-line/70 bg-surface-2/65 p-4 md:order-2'
+            : 'order-3 space-y-3 rounded-3xl bg-pastel-sky/50 p-5 text-[#141312] shadow-card dark:bg-surface-2 dark:text-[#FAF6EC] md:order-2'
         }
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="font-display text-sm font-bold">Aparência do caderno</p>
-            <p className="text-xs opacity-75">Paleta atual: {activePaletteName}</p>
+            <p className="font-display text-sm font-bold">{t('appearance.title')}</p>
+            <p className="text-xs opacity-75">{t('appearance.paletteHint', { name: activePaletteName })}</p>
           </div>
           <SegmentedControl
             layoutId="settings-theme-pill"
             value={settings.theme}
             onChange={(v) => updateSettings({ theme: v as SettingsType['theme'] })}
             items={[
-              { id: 'system', label: 'Sistema' },
-              { id: 'light', label: 'Claro' },
-              { id: 'dark', label: 'Escuro' },
+              { id: 'system', label: t('appearance.themes.system') },
+              { id: 'light', label: t('appearance.themes.light') },
+              { id: 'dark', label: t('appearance.themes.dark') },
             ]}
           />
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-3 dark:border-white/10">
           <div className="min-w-0">
-            <p className="font-display text-sm font-bold">Estilo visual da app</p>
+            <p className="font-display text-sm font-bold">{t('appearance.toneTitle')}</p>
             <p className="text-xs opacity-75">
-              {isMinimal
-                ? 'Sério & Minimal ativo: superfícies neutras, sem animações nem mascotes.'
-                : 'Expressivo ativo: pastéis quentes, animações táteis e Unis vivos.'}
+              {isMinimal ? t('appearance.toneMinimalHint') : t('appearance.toneVibrantHint')}
             </p>
           </div>
           <SegmentedControl
@@ -305,14 +297,14 @@ export default function SettingsPage() {
             value={appTone}
             onChange={(v) => updateSettings({ appTone: v as AppTone })}
             items={[
-              { id: 'vibrante', label: 'Expressivo' },
-              { id: 'serio', label: 'Sério & Minimal' },
+              { id: 'vibrante', label: t('appearance.toneVibrant') },
+              { id: 'serio', label: t('appearance.toneMinimal') },
             ]}
           />
         </div>
 
         <div className="space-y-2 border-t border-black/10 pt-3 dark:border-white/10">
-          <p className="font-display text-sm font-bold">Paleta de cores</p>
+          <p className="font-display text-sm font-bold">{t('appearance.paletteTitle')}</p>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {APP_PALETTES.map((pal) => {
               const active = (settings.themePalette ?? 'caderno') === pal.id;
@@ -347,42 +339,53 @@ export default function SettingsPage() {
 
       <div className="order-2 space-y-6 md:order-3">
       {/* Grupo 1: Caderno & Estudo */}
-      <ListGroup title="Caderno & Estudo">
+      <ListGroup title={t('groups.studyTitle')}>
         <ListRow
           icon={<Sliders size={18} />}
-          title="Semestre, meta e Uni"
-          subtitle={[settings.semesterName.trim(), `${fmtMinutes(settings.dailyStudyMinutes)}/dia`].filter(Boolean).join(' · ')}
+          title={t('groups.semesterRowTitle')}
+          subtitle={[
+            settings.semesterName.trim(),
+            t('groups.perDaySuffix', { time: fmtMinutes(settings.dailyStudyMinutes) }),
+          ]
+            .filter(Boolean)
+            .join(' · ')}
           onClick={() => navigate('/definicoes/estudo')}
         />
         <ListRow
           icon={<Bell size={18} />}
-          title="Lembretes inteligentes do Uni"
+          title={t('groups.remindersRowTitle')}
           subtitle={
             settings.notifications?.enabled
-              ? `Ativos · máx ${settings.notifications.maxDailyNudges ?? 2}/dia · silêncio ${settings.notifications.quietStart ?? '22:30'}–${settings.notifications.quietEnd ?? '08:30'}`
-              : 'Desativados · sequência, SRS, provas e aulas'
+              ? t('groups.remindersOn', {
+                  max: settings.notifications.maxDailyNudges ?? 2,
+                  start: settings.notifications.quietStart ?? '22:30',
+                  end: settings.notifications.quietEnd ?? '08:30',
+                })
+              : t('groups.remindersOff')
           }
           trailing={
             <Badge tone={settings.notifications?.enabled ? 'ok' : 'neutral'}>
-              {settings.notifications?.enabled ? 'Ativo' : 'Opt-in'}
+              {settings.notifications?.enabled
+                ? t('groups.remindersActiveBadge')
+                : t('groups.remindersOptInBadge')}
             </Badge>
           }
           onClick={() => navigate('/definicoes/notificacoes')}
         />
         <ListRow
           icon={<GraduationCap size={18} />}
-          title="Curso e histórico académico"
+          title={t('groups.curriculumRowTitle')}
           subtitle={
             academicProfile.universityName || academicProfile.degreeName
               ? [academicProfile.universityName, academicProfile.degreeName].filter(Boolean).join(' · ')
-              : 'Escolher escola ou universidade'
+              : t('groups.curriculumSubtitleEmpty')
           }
           onClick={() => setWizardOpen(true)}
         />
         <ListRow
           icon={<Compass size={18} />}
-          title="Repetir guia rápido"
-          subtitle="Volta a ver os pontos principais do ecrã Hoje"
+          title={t('groups.tourRowTitle')}
+          subtitle={t('groups.tourSubtitle')}
           onClick={() => {
             navigate('/');
             window.setTimeout(() => startUnipediaGuidedTour(), 350);
@@ -391,63 +394,59 @@ export default function SettingsPage() {
       </ListGroup>
 
       {/* Grupo 2: Ligações & IA */}
-      <ListGroup title="Ligações & Uni">
+      <ListGroup title={t('groups.connectionsTitle')}>
         <ListRow
           icon={<Cloud size={18} />}
-          title="Ligações e importação"
-          subtitle="Calendário, email, Drive, pasta local e horários (.ics)"
-          badge={googleConnected ? 'Ligado' : undefined}
+          title={t('groups.connectionsRowTitle')}
+          subtitle={t('groups.connectionsRowSubtitle')}
+          badge={googleConnected ? t('groups.connectedBadge') : undefined}
           badgeTone="ok"
           onClick={() => navigate('/definicoes/ligacoes')}
         />
         <ListRow
           icon={<Sparkles size={18} />}
-          title="Uni · Tutor IA"
+          title={t('groups.tutorRowTitle')}
           subtitle={
-            settings.geminiApiKey
-              ? 'Chave pessoal ligada · Limite alargado'
-              : 'Uni Nativo · Respostas diárias incluídas'
+            settings.geminiApiKey ? t('groups.tutorKeyConnected') : t('groups.tutorNativeIncluded')
           }
-          badge={settings.aiConsent ? 'Ativo' : 'Pausado'}
+          badge={settings.aiConsent ? t('groups.activeBadge') : t('groups.pausedBadge')}
           badgeTone={settings.aiConsent ? 'accent' : 'neutral'}
           onClick={() => navigate('/definicoes/tutor')}
         />
       </ListGroup>
 
       {/* Grupo 3: Privacidade & Dados */}
-      <ListGroup title="Privacidade & Dados">
+      <ListGroup title={t('groups.privacyTitle')}>
         <ListRow
           icon={<Database size={18} />}
-          title="Exportar cópia e gerir dados"
-          subtitle="Backup JSON, dados de exemplo e limpeza local"
+          title={t('groups.backupRowTitle')}
+          subtitle={t('groups.backupRowSubtitle')}
           onClick={() => navigate('/definicoes/dados')}
         />
         <ListRow
           icon={<Shield size={18} />}
-          title="Política de Privacidade"
-          subtitle="Como protegemos os teus dados"
+          title={t('groups.privacyPolicyRowTitle')}
+          subtitle={t('groups.privacyPolicyRowSubtitle')}
           onClick={() => navigate('/privacidade')}
         />
         <ListRow
           icon={<FileText size={18} />}
-          title="Termos de Utilização"
+          title={t('groups.termsRowTitle')}
           onClick={() => navigate('/termos')}
         />
       </ListGroup>
       </div>
 
       {/* Zona de perigo isolada */}
-      <section className="order-4 rounded-[22px] border border-coral/35 bg-coral-soft/45 p-4">
+      <section className="order-4 rounded-2xl border border-coral/35 bg-coral-soft/45 p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h3 className="text-sm font-bold text-coral-ink">Zona de perigo</h3>
-            <p className="mt-0.5 text-xs text-muted">
-              Remove permanentemente os dados deste dispositivo e, se tiveres conta, elimina a tua conta na nuvem.
-            </p>
+            <h3 className="text-sm font-bold text-coral-ink">{t('dangerZone.title')}</h3>
+            <p className="mt-0.5 text-xs text-muted">{t('dangerZone.body')}</p>
           </div>
           <Button variant="danger" size="sm" onClick={() => navigate('/eliminar-conta')}>
             <Trash2 size={15} />
-            Eliminar conta e dados
+            {t('dangerZone.cta')}
           </Button>
         </div>
       </section>
@@ -456,7 +455,7 @@ export default function SettingsPage() {
         open={wizardOpen}
         onClose={() => setWizardOpen(false)}
         initialStepId="curso"
-        title="Curso e histórico académico"
+        title={t('groups.curriculumRowTitle')}
       />
     </AnimatedPage>
   );

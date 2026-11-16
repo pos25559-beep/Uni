@@ -1,3 +1,4 @@
+import { enGB, es as esLocale, pt as ptLocale, ptBR, type Locale } from 'date-fns/locale';
 import type { AppLanguage, GradingScale } from '../types';
 
 export interface GradeScaleMeta {
@@ -62,6 +63,14 @@ export function resolveIntlLocale(language: AppLanguage | string = 'pt-PT'): str
   if (normalized === 'pt-BR') return 'pt-BR';
   if (normalized === 'es') return 'es-ES';
   return 'pt-PT';
+}
+
+export function resolveDateFnsLocale(language: AppLanguage | string = 'pt-PT'): Locale {
+  const normalized = normalizeAppLanguage(language);
+  if (normalized === 'en') return enGB;
+  if (normalized === 'pt-BR') return ptBR;
+  if (normalized === 'es') return esLocale;
+  return ptLocale;
 }
 
 export function getLocalizedScaleLabel(

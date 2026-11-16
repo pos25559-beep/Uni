@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
-import { pt } from 'date-fns/locale';
 import { courseColors } from '../../lib/colors';
+import { normalizeAppLanguage, resolveDateFnsLocale } from '../../lib/grading';
 import { analyzeTestMode } from '../../lib/planner';
 import {
   daysUntil,
@@ -15,6 +15,7 @@ import {
 } from '../../lib/selectors';
 import { pickActiveInAppNudge } from '../../lib/uniNotifications';
 import type {
+  AppLanguage,
   Assessment,
   CalendarEvent,
   ClassSlot,
@@ -28,11 +29,26 @@ import type {
 import type { AgendaItem, Scored } from './DashboardRows';
 
 export const pct = (v: number) => `${Math.round(v * 100)}%`;
-export const fmtDay = (iso: string) => format(parseISO(iso), 'd MMM', { locale: pt });
-export const fmtDateTime = (iso: string) => format(parseISO(iso), 'EEE d MMM · HH:mm', { locale: pt });
+export const fmtDay = (iso: string, lang: AppLanguage | string = 'pt-PT') =>
+  format(parseISO(iso), 'd MMM', { locale: resolveDateFnsLocale(lang) });
+export const fmtDateTime = (iso: string, lang: AppLanguage | string = 'pt-PT') =>
+  format(parseISO(iso), 'EEE d MMM · HH:mm', { locale: resolveDateFnsLocale(lang) });
 export const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-export const dayWord = (days: number) => {
+export const dayWord = (days: number, lang: AppLanguage | string = 'pt-PT') => {
+  const normalized = normalizeAppLanguage(lang);
+  if (normalized === 'en') {
+    if (days === 0) return 'today';
+    if (days === 1) return 'tomorrow';
+    if (days === -1) return 'yesterday';
+    return days > 0 ? `in ${days} days` : `${-days} days ago`;
+  }
+  if (normalized === 'es') {
+    if (days === 0) return 'hoy';
+    if (days === 1) return 'mañana';
+    if (days === -1) return 'ayer';
+    return days > 0 ? `en ${days} días` : `hace ${-days} días`;
+  }
   if (days === 0) return 'hoje';
   if (days === 1) return 'amanhã';
   if (days === -1) return 'ontem';

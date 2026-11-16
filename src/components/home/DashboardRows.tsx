@@ -1,6 +1,8 @@
 import { Check } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { courseColors, kindLabel } from '../../lib/colors';
+import { courseColors } from '../../lib/colors';
+import { normalizeAppLanguage } from '../../lib/grading';
 import { daysUntil, fmtMinutes, sessionMinutes } from '../../lib/selectors';
 import { cx } from '../../lib/uiHelpers';
 import type { Assessment, Course, StudySession, Task } from '../../types';
@@ -11,11 +13,6 @@ const PRIORITY_DOT: Record<Task['priority'], string> = {
   1: 'bg-danger',
   2: 'bg-warn',
   3: 'bg-muted',
-};
-const PRIORITY_LABEL: Record<Task['priority'], string> = {
-  1: 'Prioridade alta',
-  2: 'Prioridade média',
-  3: 'Prioridade baixa',
 };
 
 export interface Scored {
@@ -46,6 +43,7 @@ export function SessionRow({
   topic: string;
   onToggle: () => void;
 }) {
+  const { t } = useTranslation('today');
   const isPartial =
     session.done &&
     session.actualMinutes !== undefined &&
@@ -61,7 +59,7 @@ export function SessionRow({
       <button
         type="button"
         onClick={onToggle}
-        aria-label={session.done ? 'Marcar como por concluir' : 'Marcar como concluída'}
+        aria-label={session.done ? t('rows.markUndone') : t('rows.markDone')}
         className="group -ml-1.5 grid size-11 shrink-0 place-items-center rounded-full"
       >
         <span
@@ -78,8 +76,8 @@ export function SessionRow({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <CourseChip course={course} />
-          <span className="text-xs tabular text-muted">{session.start ?? 'Qualquer hora'}</span>
-          {isPartial && <Badge tone="warn">Parcial</Badge>}
+          <span className="text-xs tabular text-muted">{session.start ?? t('rows.anyTime')}</span>
+          {isPartial && <Badge tone="warn">{t('rows.partial')}</Badge>}
         </div>
         <p className={cx('mt-1 truncate text-sm font-medium', session.done && 'text-muted line-through')}>
           {topic}
@@ -101,6 +99,8 @@ export function AssessmentRow({
   course: Course | undefined;
   ready: number;
 }) {
+  const { t, i18n } = useTranslation(['today', 'courses']);
+  const appLang = normalizeAppLanguage(i18n.language);
   const days = daysUntil(assessment.date);
   const tone = days <= 3 ? 'danger' : days <= 7 ? 'warn' : 'neutral';
   const bar = course ? courseColors[course.color].dot : 'bg-accent';
@@ -111,17 +111,17 @@ export function AssessmentRow({
         className="-mx-2 block rounded-xl px-2 py-3 transition hover:bg-surface-2"
       >
         <div className="flex flex-wrap items-center gap-2">
-          <Badge tone={tone}>{capitalize(dayWord(days))}</Badge>
-          <span className="text-xs text-muted">{kindLabel[assessment.kind]}</span>
+          <Badge tone={tone}>{capitalize(dayWord(days, appLang))}</Badge>
+          <span className="text-xs text-muted">{t(`courses:kinds.${assessment.kind}`)}</span>
         </div>
         <p className="mt-1.5 truncate text-sm font-medium">{assessment.title}</p>
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
           <CourseChip course={course} />
-          <span className="tabular">{fmtDateTime(assessment.date)}</span>
-          <span className="tabular">· peso {assessment.weight}%</span>
+          <span className="tabular">{fmtDateTime(assessment.date, appLang)}</span>
+          <span className="tabular">{t('today:rows.weightPct', { weight: assessment.weight })}</span>
         </div>
         <div className="mt-3 flex items-center gap-3">
-          <Progress value={ready} color={bar} label={`Preparação para ${assessment.title}`} className="flex-1" />
+          <Progress value={ready} color={bar} label={t('today:rows.prepAria', { title: assessment.title })} className="flex-1" />
           <span className="w-10 text-right text-xs font-medium tabular">{pct(ready)}</span>
         </div>
       </Link>
@@ -140,20 +140,27 @@ export function TaskRow({
   today: string;
   onToggle: () => void;
 }) {
+  const { t, i18n } = useTranslation('today');
+  const appLang = normalizeAppLanguage(i18n.language);
+  const priorityLabels: Record<Task['priority'], string> = {
+    1: t('rows.priorityHigh'),
+    2: t('rows.priorityMedium'),
+    3: t('rows.priorityLow'),
+  };
   const overdue = !!task.due && task.due < today;
   const dueLabel = task.due
     ? task.due === today
-      ? 'hoje'
+      ? t('rows.todayWord')
       : overdue
-        ? `${dayWord(daysUntil(task.due))} · ${fmtDay(task.due)}`
-        : fmtDay(task.due)
+        ? `${dayWord(daysUntil(task.due), appLang)} · ${fmtDay(task.due, appLang)}`
+        : fmtDay(task.due, appLang)
     : null;
   return (
     <li className="flex min-h-[48px] items-center gap-3 rounded-xl px-2 py-1.5 transition hover:bg-surface-2">
       <button
         type="button"
         onClick={onToggle}
-        aria-label={`Concluir: ${task.title}`}
+        aria-label={t('rows.completeAria', { title: task.title })}
         className="group -ml-2 grid size-11 shrink-0 place-items-center rounded-full"
       >
         <span className="size-7 rounded-full border-2 border-muted/50 bg-surface transition group-hover:border-accent" />
@@ -169,8 +176,8 @@ export function TaskRow({
       </div>
       <span
         role="img"
-        title={PRIORITY_LABEL[task.priority]}
-        aria-label={PRIORITY_LABEL[task.priority]}
+        title={priorityLabels[task.priority]}
+        aria-label={priorityLabels[task.priority]}
         className={cx('size-2 shrink-0 rounded-full', PRIORITY_DOT[task.priority])}
       />
     </li>

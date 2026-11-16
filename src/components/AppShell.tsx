@@ -315,7 +315,7 @@ export default function AppShell() {
                 semesterName.trim(),
               ]
                 .filter(Boolean)
-                .join(' · ') || 'Semestre atual'}
+                .join(' · ') || t('defaultSemester')}
             </div>
           </div>
         </div>
@@ -344,15 +344,15 @@ export default function AppShell() {
 
         <div className="mt-3 flex items-center justify-between border-t border-line/70 px-3 pt-3 text-xs text-muted">
           <NavLink to="/privacidade" className="hover:text-fg hover:underline">
-            Privacidade
+            {t('footer.privacy')}
           </NavLink>
           <span aria-hidden="true">·</span>
           <NavLink to="/termos" className="hover:text-fg hover:underline">
-            Termos
+            {t('footer.terms')}
           </NavLink>
           <span aria-hidden="true">·</span>
           <NavLink to="/eliminar-conta" className="hover:text-fg hover:underline">
-            Dados
+            {t('footer.data')}
           </NavLink>
         </div>
       </aside>

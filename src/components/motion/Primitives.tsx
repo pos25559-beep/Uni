@@ -2,6 +2,7 @@ import { ArrowRight } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { courseColors } from '../../lib/colors';
 import { UNIPEDIA_SPRING } from '../../lib/motionTokens';
 import { hapticTap } from '../../lib/nativeBridge';
@@ -342,6 +343,7 @@ export function FolderCardDeck({
   onSelect?: (courseId: string) => void;
   onOpenCourse: (courseId: string) => void;
 }) {
+  const { t } = useTranslation('today');
   const isMinimal = useStore((s) => (s.settings.appTone ?? 'vibrante') === 'serio');
   const [internalId, setInternalId] = useState<string>(courses[0]?.id ?? '');
   const activeId = selectedId ?? internalId;
@@ -452,11 +454,11 @@ export function FolderCardDeck({
                     >
                       <span className="font-medium opacity-80">
                         {totalTopics > 0
-                          ? `${doneTopics}/${totalTopics} tópicos estudados (${pct}%)`
-                          : 'Pronta para organizar tópicos e apontamentos'}
+                          ? t('folders.topicsStudied', { done: doneTopics, total: totalTopics, pct })
+                          : t('folders.emptyTopics')}
                       </span>
                       <span className="inline-flex items-center gap-1 rounded-full bg-[#141312] px-3 py-1 font-semibold text-[#FAF8F2] dark:bg-[#FAF6EC] dark:text-[#141312]">
-                        Abrir pasta
+                        {t('folders.openFolder')}
                         <ArrowRight size={13} aria-hidden="true" />
                       </span>
                     </motion.div>

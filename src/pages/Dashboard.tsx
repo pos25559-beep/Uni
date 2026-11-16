@@ -171,7 +171,7 @@ export default function Dashboard() {
 
   const topicTitle = (s: StudySession) => {
     const topic = courseById.get(s.courseId)?.topics.find((t) => t.id === s.topicId);
-    return formatSessionDisplay(s, topic).title;
+    return formatSessionDisplay(s, topic, appLang).title;
   };
 
   const visibleNudge = inAppNudge && inAppNudge.key !== dismissedNudgeKey ? inAppNudge : null;
@@ -248,10 +248,14 @@ export default function Dashboard() {
         : t('greetingEvening');
   const doneSessionsCount = todaySessions.filter((s) => s.done).length;
   const uniTip = next
-    ? `Tens ${next.title}${nextCourse ? ` (${nextCourse.shortName})` : ''} ${dayWord(daysUntil(next.date))}. Queres que prepare um plano ou resumo rápido?`
+    ? t('uniTips.nextExam', {
+        title: next.title,
+        course: nextCourse ? ` (${nextCourse.shortName})` : '',
+        when: dayWord(daysUntil(next.date), appLang),
+      })
     : todaySessions.length > 0
-      ? `Faltam ${todaySessions.length - doneSessionsCount} sessões para fechares a meta de hoje. Vamos a isso!`
-      : 'Sem sessões marcadas para hoje — adiciona as tuas cadeiras ou conversa comigo no Tutor!';
+      ? t('uniTips.sessionsLeft', { count: todaySessions.length - doneSessionsCount })
+      : t('uniTips.noSessions');
 
   const greetingHeading = (
     <>
@@ -290,7 +294,7 @@ export default function Dashboard() {
                     void hapticTap();
                     setUniBubbleOpen((v) => !v);
                   }}
-                  ariaLabel="Falar com o Uni"
+                  ariaLabel={t('uniAria')}
                 />
               </div>
             )}
@@ -312,8 +316,8 @@ export default function Dashboard() {
               variant="secondary"
               iconOnly
               onClick={() => openUniCheckIn({ kind: 'day' })}
-              aria-label="Abrir diário e check-in com o Uni"
-              title="Diário & Check-in do Uni"
+              aria-label={t('openCheckInAria')}
+              title={t('openCheckInTitle')}
             >
               <MessageSquare size={18} />
             </Button>
@@ -321,8 +325,8 @@ export default function Dashboard() {
               variant="secondary"
               iconOnly
               onClick={() => navigate('/definicoes')}
-              aria-label="Abrir definições"
-              title="Definições"
+              aria-label={t('openSettingsAria')}
+              title={t('common:nav.settings')}
             >
               <SettingsIcon size={18} />
             </Button>
@@ -370,7 +374,7 @@ export default function Dashboard() {
                 }
               }}
               className="-mr-2 grid size-11 place-items-center rounded-full text-muted hover:bg-surface-2 hover:text-fg"
-              aria-label="Dispensar lembrete"
+              aria-label={t('dismissNudgeAria')}
             >
               <X size={16} />
             </button>
@@ -423,7 +427,7 @@ export default function Dashboard() {
             <button
               type="button"
               onClick={() => setUniBubbleOpen(false)}
-              aria-label="Fechar sugestão do Uni"
+              aria-label={t('closeSuggestionAria')}
               className="-mr-1.5 flex size-11 shrink-0 items-center justify-center rounded-full text-muted transition hover:bg-surface-2 hover:text-fg"
             >
               <X size={16} />
@@ -467,9 +471,9 @@ export default function Dashboard() {
           <AlertTriangle size={16} className="shrink-0 text-warn" />
           <p className="min-w-0 flex-1 text-xs sm:text-sm">
             <span className="font-medium">
-              {topAlert.a.title} de {topAlert.course?.shortName ?? 'cadeira'} {dayWord(daysUntil(topAlert.a.date))}
+              {topAlert.a.title} ({topAlert.course?.shortName ?? t('topAlert.fallbackCourse')}) {dayWord(daysUntil(topAlert.a.date), appLang)}
             </span>
-            <span className="text-muted"> — preparação a {pct(topAlert.ready)}</span>
+            <span className="text-muted">{t('topAlert.prepAt', { pct: pct(topAlert.ready) })}</span>
           </p>
           <ArrowRight size={15} className="shrink-0 text-muted" />
         </Link>
@@ -513,11 +517,13 @@ export default function Dashboard() {
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-white/75 px-3.5 py-2.5 text-xs dark:bg-black/25">
                   <span className="font-semibold text-fg">
-                    Dia de descanso programado · próximo plano ({nextStudyDayLabel})
+                    {t('restBanner.nextPlan', { date: nextStudyDayLabel ?? '' })}
                   </span>
                   <span className="font-mono text-xs text-muted tabular">
-                    {nextStudyDaySessions.length}{' '}
-                    {nextStudyDaySessions.length === 1 ? 'bloco' : 'blocos'} ·{' '}
+                    {nextStudyDaySessions.length === 1
+                      ? t('restBanner.blockOne')
+                      : t('restBanner.blockMany', { count: nextStudyDaySessions.length })}{' '}
+                    ·{' '}
                     {fmtMinutes(nextStudyDaySessions.reduce((acc, s) => acc + sessionMinutes(s), 0))}
                   </span>
                 </div>
@@ -540,7 +546,7 @@ export default function Dashboard() {
                                 )}
                               >
                                 <span className={cx('size-1.5 rounded-full', colorStyle.dot)} />
-                                {course?.shortName ?? 'Estudo'}
+                                {course?.shortName ?? t('folders.courseFallback')}
                               </span>
                               {s.start && (
                                 <span className="font-mono text-xs text-muted tabular">{s.start}</span>
@@ -561,7 +567,7 @@ export default function Dashboard() {
                     to="/plano"
                     className="inline-flex min-h-11 items-center gap-1 px-1 text-xs font-semibold text-accent-ink hover:underline"
                   >
-                    Ver todos os {nextStudyDaySessions.length} blocos no plano <ArrowRight size={13} />
+                    {t('restBanner.seeAllBlocks', { count: nextStudyDaySessions.length })} <ArrowRight size={13} />
                   </Link>
                 )}
               </div>
@@ -656,24 +662,26 @@ export default function Dashboard() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs font-medium opacity-75">Semana</p>
+                    <p className="text-xs font-medium opacity-75">{t('summaryMetrics.week')}</p>
                     <p className="mt-0.5 font-display text-lg font-bold tabular sm:text-2xl">{weekPct}%</p>
                   </div>
                   <div>
-                    <p className="text-xs font-medium opacity-75">Sessões</p>
+                    <p className="text-xs font-medium opacity-75">{t('summaryMetrics.sessions')}</p>
                     <p className="mt-0.5 font-display text-lg font-bold tabular sm:text-2xl">
                       {doneSessionsCount}/{todaySessions.length}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs font-medium opacity-75">Provas</p>
+                    <p className="text-xs font-medium opacity-75">{t('summaryMetrics.exams')}</p>
                     <p className="mt-0.5 font-display text-lg font-bold tabular sm:text-2xl">{upcoming.length}</p>
                   </div>
                 </div>
 
                 <div className="mt-3 sm:mt-4">
                   <div className="mb-1 flex items-center justify-between text-xs font-medium opacity-80">
-                    <span>{scope === 'today' ? 'Progresso de hoje' : 'Meta semanal'}</span>
+                    <span>
+                      {scope === 'today' ? t('summaryMetrics.todayProgress') : t('summaryMetrics.weekGoal')}
+                    </span>
                     <span className="tabular">{scope === 'today' ? pct(progressToday) : `${weekPct}%`}</span>
                   </div>
                   <Progress
@@ -685,10 +693,10 @@ export default function Dashboard() {
             ) : (
               <div className="mt-3 flex flex-wrap items-center gap-2 sm:mt-4">
                 <Button size="sm" variant="primary" onClick={() => navigate('/cadeiras')}>
-                  Adicionar cadeiras
+                  {t('summaryMetrics.addCoursesBtn')}
                 </Button>
                 <Button size="sm" variant="secondary" onClick={() => navigate('/plano')}>
-                  Criar plano de estudo
+                  {t('summaryMetrics.createPlanBtn')}
                 </Button>
               </div>
             )}
@@ -697,12 +705,12 @@ export default function Dashboard() {
           {courses.length > 0 && (
             <div className="space-y-2.5">
               <div className="flex items-center justify-between px-1">
-                <h2 className="font-display text-base font-bold">As tuas pastas</h2>
+                <h2 className="font-display text-base font-bold">{t('folders.heading')}</h2>
                 <Link
                   to="/cadeiras"
                   className="inline-flex min-h-11 items-center px-2 text-xs font-semibold text-accent-ink hover:underline"
                 >
-                  Ver todas →
+                  {t('folders.seeAll')}
                 </Link>
               </div>
               <FolderCardDeck courses={courses} onOpenCourse={(id) => navigate(`/cadeiras/${id}`)} />
@@ -722,17 +730,17 @@ export default function Dashboard() {
                     )}
                   >
                     <div className="w-12 shrink-0 pt-0.5 text-right text-xs tabular opacity-70">
-                      {item.allDay ? 'Dia' : item.start}
+                      {item.allDay ? t('agendaCard.allDayLabel') : item.start}
                     </div>
                     <span className={cx('mt-1.5 size-2.5 shrink-0 rounded-full ring-4 ring-white/80 dark:ring-black/30', item.dot)} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{item.title}</p>
                       <p className="truncate text-xs opacity-75">
-                        {[item.allDay ? 'Dia inteiro' : `${item.start}–${item.end}`, item.sub]
+                        {[item.allDay ? t('agendaCard.allDayLongLabel') : `${item.start}–${item.end}`, item.sub]
                           .filter(Boolean)
                           .join(' · ')}
                       </p>
-                      {isNow && <span className="text-xs font-semibold text-accent-ink">Agora</span>}
+                      {isNow && <span className="text-xs font-semibold text-accent-ink">{t('agendaCard.nowLabel')}</span>}
                     </div>
                   </li>
                 );
@@ -750,7 +758,7 @@ export default function Dashboard() {
         <StaggerItem>
           {hubProgress.readyCount >= 2 ? (
             <div
-              aria-label="Primeiros passos da tua configuração"
+              aria-label={t('firstSteps.ariaLabel')}
               className={cx(
                 'flex min-h-11 items-center justify-between gap-2 py-1 pr-1 pl-3.5 shadow-card',
                 isMinimal
@@ -765,17 +773,17 @@ export default function Dashboard() {
               >
                 <Sparkles size={14} className="shrink-0 text-accent" />
                 <span className="truncate">
-                  Primeiros passos · {hubProgress.readyCount}/{hubProgress.totalCount} ligadas
+                  {t('firstSteps.title', { flow: hubProgress.flow.shortLabel })} · {t('firstSteps.connected', { ready: hubProgress.readyCount, total: hubProgress.totalCount })}
                 </span>
                 <span className="hidden shrink-0 rounded-full bg-surface/85 px-2 py-0.5 text-xs font-bold text-accent-ink dark:bg-surface-2 sm:inline-flex">
-                  Completar
+                  {t('firstSteps.badgeComplete')}
                 </span>
               </button>
               <button
                 type="button"
                 onClick={() => updateSettings({ hubSetupDismissed: true })}
-                aria-label="Dispensar cartão de Primeiros passos"
-                title="Dispensar"
+                aria-label={t('firstSteps.dismissAria')}
+                title={t('firstSteps.dismissTitle')}
                 className="grid size-11 shrink-0 place-items-center rounded-full text-muted transition hover:bg-surface/70 hover:text-fg"
               >
                 <X size={15} />
@@ -783,7 +791,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <section
-              aria-label="Primeiros passos da tua configuração"
+              aria-label={t('firstSteps.ariaLabel')}
               className={cx(
                 'p-4 shadow-card',
                 isMinimal
@@ -795,25 +803,25 @@ export default function Dashboard() {
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
                     <h2 className="font-display text-base font-bold">
-                      Primeiros passos · {hubProgress.flow.shortLabel}
+                      {t('firstSteps.title', { flow: hubProgress.flow.shortLabel })}
                     </h2>
                     <span className="text-xs font-semibold tabular-nums text-accent-ink">
-                      {hubProgress.readyCount}/{hubProgress.totalCount} ligadas
+                      {t('firstSteps.connected', { ready: hubProgress.readyCount, total: hubProgress.totalCount })}
                     </span>
                   </div>
                   <p className="text-xs leading-relaxed opacity-85">
-                    Liga horários, provas, pastas de estudo e o Gemini para um plano sempre afinado.
+                    {t('firstSteps.body')}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center justify-between gap-2 sm:justify-end">
                   <Button size="sm" variant="primary" onClick={() => openHubModal(null)}>
-                    <Sparkles size={13} /> Completar passos
+                    <Sparkles size={13} /> {t('firstSteps.cta')}
                   </Button>
                   <button
                     type="button"
                     onClick={() => updateSettings({ hubSetupDismissed: true })}
-                    aria-label="Dispensar cartão de Primeiros passos"
-                    title="Dispensar"
+                    aria-label={t('firstSteps.dismissAria')}
+                    title={t('firstSteps.dismissTitle')}
                     className="grid size-11 place-items-center rounded-full text-muted transition hover:bg-surface/70 hover:text-fg"
                   >
                     <X size={16} />
@@ -835,12 +843,12 @@ export default function Dashboard() {
                     );
                   const chipLabel =
                     step.key === 'schedule'
-                      ? 'Horário'
+                      ? t('firstSteps.chips.schedule')
                       : step.key === 'assessments'
-                        ? 'Provas'
+                        ? t('firstSteps.chips.assessments')
                         : step.key === 'drive_hd'
-                          ? 'Drive / PC'
-                          : 'Caderno do Uni';
+                          ? t('firstSteps.chips.driveHd')
+                          : t('firstSteps.chips.uniNotebook');
                   return (
                     <button
                       key={step.key}
@@ -868,19 +876,19 @@ export default function Dashboard() {
       <Modal
         open={undoSession !== null}
         onClose={() => setUndoSession(null)}
-        title="Reabrir esta sessão?"
+        title={t('undoModal.title')}
       >
         {undoSession && (
           <div className="space-y-4">
             <p className="text-sm text-muted">
-              A sessão{' '}
-              <span className="font-semibold text-fg">{topicTitle(undoSession)}</span> está marcada como
-              concluída ({fmtMinutes(sessionMinutes(undoSession))}). Queres mesmo reabri-la como por
-              concluir?
+              {t('undoModal.body', {
+                title: topicTitle(undoSession),
+                minutes: fmtMinutes(sessionMinutes(undoSession)),
+              })}
             </p>
             <div className="flex flex-wrap justify-end gap-2">
               <Button variant="secondary" onClick={() => setUndoSession(null)}>
-                Cancelar
+                {t('common:actions.cancel')}
               </Button>
               <Button
                 variant="danger"
@@ -890,7 +898,7 @@ export default function Dashboard() {
                   applySessionToggle(target, false);
                 }}
               >
-                Sim, reabrir sessão
+                {t('undoModal.confirm')}
               </Button>
             </div>
           </div>

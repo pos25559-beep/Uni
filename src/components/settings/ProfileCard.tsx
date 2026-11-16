@@ -7,9 +7,9 @@ import { fmtMinutes } from '../../lib/selectors';
 import {
   getLocalizedScaleLabel,
   normalizeAppLanguage,
+  resolveIntlLocale,
 } from '../../lib/grading';
-import { weekdayShort } from '../../lib/colors';
-import { getLocalizedPersonas, UNI_ACCESSORIES } from '../../lib/uniAccessories';
+import { getLocalizedAccessories, getLocalizedPersonas } from '../../lib/uniAccessories';
 import type { AppLanguage, GradingScale } from '../../types';
 import { UniBuddy } from '../brand/UnipediaMarks';
 import { Button, Card, DateField, Field, Input } from '../ui';
@@ -29,8 +29,14 @@ export default function ProfileCard() {
   const settings = useStore((s) => s.settings);
   const updateSettings = useStore((s) => s.updateSettings);
   const personas = getLocalizedPersonas(appLang);
+  const accessories = getLocalizedAccessories(appLang);
   const currentLang: AppLanguage = normalizeAppLanguage(settings.language ?? appLang);
   const currentScale: GradingScale = settings.gradingScale ?? 'pt20';
+  const weekdayFmt = new Intl.DateTimeFormat(resolveIntlLocale(appLang), { weekday: 'short' });
+  const dayLabel = (dayIndex: number) =>
+    weekdayFmt
+      .format(new Date(Date.UTC(2024, 0, 7 + dayIndex)))
+      .replace(/\.$/, '');
   const [minutesText, setMinutesText] = useState(String(settings.dailyStudyMinutes));
   const [userNameDraft, setUserNameDraft] = useState(settings.userName);
   const [semesterDraft, setSemesterDraft] = useState(settings.semesterName);
@@ -94,12 +100,12 @@ export default function ProfileCard() {
   };
 
   return (
-    <Card title="Perfil e semestre">
+    <Card title={t('settings:profileTitle')}>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Nome">
+        <Field label={t('settings:nameLabel')}>
           <Input
             value={editingField === 'userName' ? userNameDraft : settings.userName}
-            placeholder="Como te devemos chamar?"
+            placeholder={t('settings:profileCard.namePlaceholder')}
             onFocus={() => {
               setUserNameDraft(settings.userName);
               setEditingField('userName');
@@ -112,10 +118,10 @@ export default function ProfileCard() {
             onBlur={() => setEditingField(null)}
           />
         </Field>
-        <Field label="Nome do semestre">
+        <Field label={t('settings:profileCard.semesterNameLabel')}>
           <Input
             value={editingField === 'semesterName' ? semesterDraft : settings.semesterName}
-            placeholder="Ex.: 2026/27 · 1.º Semestre"
+            placeholder={t('settings:profileCard.semesterPlaceholder')}
             onFocus={() => {
               setSemesterDraft(settings.semesterName);
               setEditingField('semesterName');
@@ -128,26 +134,26 @@ export default function ProfileCard() {
             onBlur={() => setEditingField(null)}
           />
         </Field>
-        <Field label="Início do semestre">
+        <Field label={t('settings:profileCard.semesterStart')}>
           <DateField
-            aria-label="Início do semestre"
+            aria-label={t('settings:profileCard.semesterStart')}
             value={settings.semesterStart}
             onChange={(val) => val && updateSettings({ semesterStart: val })}
           />
         </Field>
         <Field
-          label="Fim do semestre"
-          hint={endBeforeStart ? <span className="text-warn">O fim é anterior ao início.</span> : undefined}
+          label={t('settings:profileCard.semesterEnd')}
+          hint={endBeforeStart ? <span className="text-warn">{t('settings:profileCard.endBeforeStart')}</span> : undefined}
         >
           <DateField
-            aria-label="Fim do semestre"
+            aria-label={t('settings:profileCard.semesterEnd')}
             value={settings.semesterEnd}
             onChange={(val) => val && updateSettings({ semesterEnd: val })}
           />
         </Field>
         <Field
-          label="Tempo de estudo por dia (minutos)"
-          hint={`Equivale a ${fmtMinutes(settings.dailyStudyMinutes)} por dia.`}
+          label={t('settings:dailyMinutesLabel')}
+          hint={t('settings:profileCard.dailyMinutesHint', { time: fmtMinutes(settings.dailyStudyMinutes) })}
         >
           <Input
             type="number"
@@ -160,7 +166,7 @@ export default function ProfileCard() {
           />
         </Field>
         <div>
-          <span className="mb-1.5 block text-xs font-medium text-muted">Dias de estudo</span>
+          <span className="mb-1.5 block text-xs font-medium text-muted">{t('settings:studyDaysLabel')}</span>
           <div className="flex flex-wrap gap-1.5">
             {DAY_ORDER.map((day) => {
               const on = settings.studyDays.includes(day);
@@ -177,7 +183,7 @@ export default function ProfileCard() {
                       : 'border-line bg-surface-2 text-muted hover:text-fg',
                   )}
                 >
-                  {weekdayShort[day]}
+                  {dayLabel(day)}
                 </button>
               );
             })}
@@ -189,9 +195,9 @@ export default function ProfileCard() {
       <div className="mt-5 space-y-3 border-t border-line pt-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <span className="text-xs font-medium text-muted">Estilo do Uni</span>
+            <span className="text-xs font-medium text-muted">{t('settings:profileCard.uniStyle')}</span>
             <p className="text-xs text-muted">
-              Muda o chapéu ou adereço automaticamente pela cadeira ou fixa o teu preferido.
+              {t('settings:profileCard.uniStyleHint')}
             </p>
           </div>
           <button
@@ -204,12 +210,12 @@ export default function ProfileCard() {
                 : 'border-line bg-surface-2 text-muted hover:text-fg',
             )}
           >
-            Automático por cadeira
+            {t('settings:profileCard.autoPerCourse')}
           </button>
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {UNI_ACCESSORIES.map((acc) => {
+          {accessories.map((acc) => {
             const active = settings.uniAccessory === acc.id;
             return (
               <button
@@ -305,19 +311,19 @@ export default function ProfileCard() {
         <div className="space-y-3 border-t border-line pt-4">
           <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
             <div>
-              <span className="text-xs font-medium text-muted">Unis discretos no ecrã</span>
+              <span className="text-xs font-medium text-muted">{t('settings:profileCard.companionsLabel')}</span>
               <p className="text-xs text-muted">
                 {(settings.appTone ?? 'vibrante') === 'serio'
-                  ? 'Em pausa porque o estilo Sério & Minimal está ativo.'
-                  : 'Companheiros tímidos nos cantos que se escondem quando escreves ou fazes scroll.'}
+                  ? t('settings:profileCard.companionsPaused')
+                  : t('settings:profileCard.companionsHint')}
               </p>
             </div>
             <div className="inline-flex rounded-full bg-surface-2 p-1">
               {(
                 [
-                  ['all', 'Até 2'],
-                  ['solo', 'Só 1'],
-                  ['off', 'Desligado'],
+                  ['all', t('settings:profileCard.companionsAll')],
+                  ['solo', t('settings:profileCard.companionsSolo')],
+                  ['off', t('settings:profileCard.companionsOff')],
                 ] as const
               ).map(([modeId, label]) => {
                 const active = (settings.uniLiveCompanions ?? 'all') === modeId;
@@ -343,11 +349,11 @@ export default function ProfileCard() {
       {!isInstalled && (supportsWebInstall || installPrompt) && (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
           <div className="space-y-0.5">
-            <span className="text-xs font-medium text-fg">Instalar aplicação Unipedia</span>
-            <p className="text-xs text-muted">Acede offline e como app dedicada no teu dispositivo.</p>
+            <span className="text-xs font-medium text-fg">{t('settings:profileCard.installTitle')}</span>
+            <p className="text-xs text-muted">{t('settings:profileCard.installHint')}</p>
           </div>
           <Button size="sm" variant="primary" onClick={() => void handleInstallApp()}>
-            <Download size={14} /> Instalar Unipedia
+            <Download size={14} /> {t('settings:profileCard.installBtn')}
           </Button>
         </div>
       )}

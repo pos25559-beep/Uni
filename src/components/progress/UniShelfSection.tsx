@@ -2,7 +2,7 @@ import { Award, GraduationCap, Lock, Sparkles } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { formatGradeByScale } from '../../lib/grading';
+import { formatGradeByScale, normalizeAppLanguage } from '../../lib/grading';
 import type { UniAgentRecord } from '../../lib/localDb';
 import { inferAccessoryFromCourses } from '../../lib/uniAccessories';
 import { saveUniAgent, useUniAgents } from '../../lib/uniAgents';
@@ -47,7 +47,7 @@ export default function UniShelfSection({
   onOpenCustomize,
 }: UniShelfSectionProps) {
   const { t, i18n } = useTranslation(['uni', 'common']);
-  const appLang: AppLanguage = i18n.language?.startsWith('en') ? 'en' : 'pt-PT';
+  const appLang: AppLanguage = normalizeAppLanguage(i18n.language);
   const navigate = useNavigate();
 
   const courses = useStore((s) => s.courses);
@@ -340,7 +340,11 @@ export default function UniShelfSection({
                     </div>
                     <span className="text-xs font-semibold">{pet.name}</span>
                     <span className="line-clamp-1 text-xs opacity-75">
-                      {unlocked ? (equipped ? '✓ Ativo' : progressLabel) : pet.unlockHint}
+                      {unlocked
+                        ? equipped
+                          ? `✓ ${appLang === 'en' ? 'Active' : appLang === 'es' ? 'Activo' : 'Ativo'}`
+                          : progressLabel
+                        : pet.unlockHint}
                     </span>
                   </button>
                 );

@@ -7,5 +7,54 @@
   "topicsCovered": "Tópicos cobertos",
   "avgLabel": "Média",
   "hoursDone": "Horas concluídas",
-  "streak": "Sequência"
+  "streak": "Sequência",
+  "periods": {
+    "7d": "7 dias",
+    "30d": "30 dias",
+    "semestre": "Semestre"
+  },
+  "hero": {
+    "title": "Progresso geral do semestre",
+    "topicsDone": "{{covered}} de {{total}} tópicos concluídos ou revisados",
+    "addTopicsHint": "Adicione tópicos nas disciplinas para acompanhar sua preparação",
+    "studied": "Estudado",
+    "retention": "Retenção",
+    "reviews": "Revisões",
+    "reviewsDue": "{{count}} pendentes",
+    "upToDate": "em dia"
+  },
+  "emptyCharts": {
+    "eyebrow": "Caderno de ritmo e métricas",
+    "title": "Seus gráficos ganham vida com o primeiro bloco de estudo",
+    "body": "Em vez de mostrar painéis vazios agora, assim que você concluir uma sessão no Plano ou no Temporizador verá aqui quanto estudou por dia, consistência e divisão por disciplina.",
+    "generateBtn": "Gerar plano de estudo",
+    "previewBtn": "Pré-visualizar grade",
+    "card1Title": "1. Tempo por dia",
+    "card1Body": "Comparação diária com sua meta de estudo.",
+    "card2Title": "2. Mapa de consistência",
+    "card2Body": "Sequência ativa para acompanhar seu ritmo.",
+    "card3Title": "3. Preparação e notas",
+    "card3Body": "Cobertura de tópicos e alertas antes das provas.",
+    "showEmptyBtn": "Mostrar também gráficos sem dados",
+    "hideEmptyBtn": "Ocultar gráficos vazios"
+  },
+  "logs": {
+    "title": "Diário e Alinhamento do Uni",
+    "newEntryBtn": "Novo registro",
+    "all": "Todos ({{count}})",
+    "postClass": "Pós-aula",
+    "endOfDay": "Fim do dia",
+    "sundays": "Domingos",
+    "sunday": "Domingo",
+    "testMode": "Modo Prova",
+    "emptyFilter": "Você ainda não tem registros neste filtro. Registre como foi a última aula, o dia de estudo ou o foco de uma prova.",
+    "topicLabel": "Matéria:",
+    "alignedTopicsLabel": "Tópicos alinhados:",
+    "doubtsLabel": "Dúvidas: {{text}}",
+    "deleteAria": "Excluir registro do diário",
+    "deletedToast": "Registro removido do diário.",
+    "skinUpdatedToast": "Visual do Uni atualizado!",
+    "petRemovedToast": "Companheiro guardado na estante.",
+    "petEquippedToast": "Companheiro equipado!"
+  }
 }
