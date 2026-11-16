@@ -1703,9 +1703,9 @@ test('extractGoogleDriveFileId extracts IDs from Drive URLs, Docs URLs and gdriv
   assert.equal(extractGoogleDriveFileId('https://notebooklm.google.com/notebook/abc'), null);
 });
 
-test('getAiMaterialLimit unlocks 12 sources with personal Gemini key vs 3 on native free tier', () => {
+test('getAiMaterialLimit keeps 3 sources on native free tier and lifts the file cap with a personal key', () => {
   assert.equal(getAiMaterialLimit(false), 3);
-  assert.equal(getAiMaterialLimit(true), 12);
+  assert.equal(getAiMaterialLimit(true), 100);
 });
 
 test('isFileUriCacheValid validates expiry and size mismatches for Gemini Files API entries', () => {
