@@ -173,7 +173,14 @@
     "noCoursesText": "I couldn't find any courses in that text. Paste the table from your student portal or type one course per line.",
     "pastedN": "{{count}} course(s) imported from the pasted text!",
     "noRecognise": "I couldn't recognise any courses or classes in those images. Try a sharper screenshot of your grades or weekly timetable.",
-    "badImage": "Choose a valid image (PNG, JPG, WebP or timetable screenshot)."
+    "badImage": "Choose a valid image (PNG, JPG, WebP or timetable screenshot).",
+    "legalPreview": {
+      "controller": "Controller:",
+      "local": "Your notes, courses, assessments and sessions are stored locally on your device by default. Cloud sync only happens if you create an account.",
+      "ai": "The shared Uni uses Gemini's free quota: Google may use what you send to improve its products. Don't send personal data. AI features require you to be 18.",
+      "terms": "{{app}} is a free study tool for university students. AI features require you to be 18; other features follow your country's minimum age.",
+      "open": "Open full page"
+    }
   },
   "hub": {
     "flow": {

@@ -27,3 +27,9 @@ export function longDateTimePattern(withWeekday = true): string {
   const base = longDatePattern(withWeekday);
   return lang.startsWith('pt') ? `${base} 'às' HH:mm` : `${base}, HH:mm`;
 }
+
+/** Data completa com ano: «16 de novembro de 2026» / «16 November 2026». */
+export function fullDatePattern(): string {
+  const lang = i18n.language || 'pt-PT';
+  return lang === 'en' ? 'd MMMM yyyy' : "d 'de' MMMM 'de' yyyy";
+}

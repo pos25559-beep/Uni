@@ -1453,19 +1453,19 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
               {legalPreview === 'privacy' ? (
                 <>
                   <p>
-                    <strong className="text-fg">Responsável:</strong> {LEGAL_INFO.controllerName} ({LEGAL_INFO.country}) ·{' '}
+                    <strong className="text-fg">{t('shell.legalPreview.controller')}</strong> {LEGAL_INFO.controllerName} ({LEGAL_INFO.country}) ·{' '}
                     <span className="font-mono">{LEGAL_INFO.contactEmail}</span>
                   </p>
                   <p>
-                    Os teus apontamentos, disciplinas, avaliações e sessões são guardados por predefinição no armazenamento local do teu dispositivo. Só há sincronização Firebase se iniciares sessão voluntariamente.
+                    {t('shell.legalPreview.local')}
                   </p>
                   <p>
-                    O teu email institucional é ligado apenas se quiseres, de forma independente do Gmail pessoal.
+                    {t('shell.legalPreview.ai')}
                   </p>
                 </>
               ) : (
                 <p>
-                  A {LEGAL_INFO.appName} é uma ferramenta gratuita de apoio ao estudo para estudantes do Ensino Secundário e Superior (idade mínima {LEGAL_INFO.minimumAgePT} anos em Portugal).
+                  {t('shell.legalPreview.terms', { app: LEGAL_INFO.appName })}
                 </p>
               )}
               <div className="pt-2">
@@ -1475,7 +1475,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                   rel="noreferrer"
                   className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-accent-ink hover:underline"
                 >
-                  Abrir página completa <ExternalLink size={13} />
+                  {t('shell.legalPreview.open')} <ExternalLink size={13} />
                 </a>
               </div>
             </div>

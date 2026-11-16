@@ -1,4 +1,5 @@
 import type { Collections, Settings } from '../types';
+import { detectSystemLanguage } from './grading';
 
 export const defaultSettings: Settings = {
   userName: '',
@@ -20,7 +21,8 @@ export const defaultSettings: Settings = {
   uniSkinAutoRotate: true,
   uniPet: 'cat',
   uniPersona: 'amigo',
-  language: 'pt-PT',
+  // Primeira utilização: segue a língua do sistema. Depois fica a escolha guardada do estudante.
+  language: detectSystemLanguage(),
   gradingScale: 'pt20',
   seenTabGuides: [],
   notifications: {

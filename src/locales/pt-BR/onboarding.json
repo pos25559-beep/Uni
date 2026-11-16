@@ -173,7 +173,14 @@
     "noCoursesText": "Não detectei disciplinas nesse texto. Cole a tabela do portal acadêmico ou escreva uma por linha.",
     "pastedN": "{{count}} disciplina(s) importada(s) do texto colado!",
     "noRecognise": "Não consegui reconhecer disciplinas nem aulas nessas imagens. Tente um print mais nítido do boletim ou do horário semanal.",
-    "badImage": "Selecione uma imagem válida (PNG, JPG, WebP ou print do horário)."
+    "badImage": "Selecione uma imagem válida (PNG, JPG, WebP ou print do horário).",
+    "legalPreview": {
+      "controller": "Controlador:",
+      "local": "Suas anotações, disciplinas, avaliações e sessões ficam por padrão no armazenamento local do seu dispositivo. Só há sincronização na nuvem se você criar uma conta.",
+      "ai": "O Uni compartilhado usa a cota gratuita do Gemini: o Google pode usar o que você envia para melhorar seus produtos. Não envie dados pessoais. As funções de IA exigem 18 anos.",
+      "terms": "A {{app}} é uma ferramenta gratuita de apoio aos estudos para universitários. As funções de IA exigem 18 anos; as demais seguem a idade mínima do seu país.",
+      "open": "Abrir página completa"
+    }
   },
   "hub": {
     "flow": {

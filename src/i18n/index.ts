@@ -1,6 +1,6 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import { normalizeAppLanguage } from '../lib/grading';
+import { detectSystemLanguage, normalizeAppLanguage } from '../lib/grading';
 import type { AppLanguage } from '../types';
 
 import ptAssistant from '../locales/pt-PT/assistant.json';
@@ -12,6 +12,7 @@ import ptProgress from '../locales/pt-PT/progress.json';
 import ptSettings from '../locales/pt-PT/settings.json';
 import ptToday from '../locales/pt-PT/today.json';
 import ptUni from '../locales/pt-PT/uni.json';
+import ptLegal from '../locales/pt-PT/legal.json';
 
 import ptBrAssistant from '../locales/pt-BR/assistant.json';
 import ptBrCommon from '../locales/pt-BR/common.json';
@@ -22,6 +23,7 @@ import ptBrProgress from '../locales/pt-BR/progress.json';
 import ptBrSettings from '../locales/pt-BR/settings.json';
 import ptBrToday from '../locales/pt-BR/today.json';
 import ptBrUni from '../locales/pt-BR/uni.json';
+import ptBrLegal from '../locales/pt-BR/legal.json';
 
 import esAssistant from '../locales/es/assistant.json';
 import esCommon from '../locales/es/common.json';
@@ -32,6 +34,7 @@ import esProgress from '../locales/es/progress.json';
 import esSettings from '../locales/es/settings.json';
 import esToday from '../locales/es/today.json';
 import esUni from '../locales/es/uni.json';
+import esLegal from '../locales/es/legal.json';
 
 import enAssistant from '../locales/en/assistant.json';
 import enCommon from '../locales/en/common.json';
@@ -42,6 +45,7 @@ import enProgress from '../locales/en/progress.json';
 import enSettings from '../locales/en/settings.json';
 import enToday from '../locales/en/today.json';
 import enUni from '../locales/en/uni.json';
+import enLegal from '../locales/en/legal.json';
 
 export const SUPPORTED_LANGUAGES: AppLanguage[] = ['pt-PT', 'pt-BR', 'es', 'en'];
 
@@ -56,6 +60,7 @@ export const resources = {
     assistant: ptAssistant,
     settings: ptSettings,
     onboarding: ptOnboarding,
+    legal: ptLegal,
   },
   'pt-BR': {
     common: ptBrCommon,
@@ -67,6 +72,7 @@ export const resources = {
     assistant: ptBrAssistant,
     settings: ptBrSettings,
     onboarding: ptBrOnboarding,
+    legal: ptBrLegal,
   },
   es: {
     common: esCommon,
@@ -78,6 +84,7 @@ export const resources = {
     assistant: esAssistant,
     settings: esSettings,
     onboarding: esOnboarding,
+    legal: esLegal,
   },
   en: {
     common: enCommon,
@@ -89,6 +96,7 @@ export const resources = {
     assistant: enAssistant,
     settings: enSettings,
     onboarding: enOnboarding,
+    legal: enLegal,
   },
 } as const;
 
@@ -100,13 +108,7 @@ export { normalizeAppLanguage };
 
 export function detectPreferredLanguage(explicit?: string | null): AppLanguage {
   if (explicit) return normalizeAppLanguage(explicit);
-  if (typeof navigator !== 'undefined' && navigator.language) {
-    const nav = navigator.language.toLowerCase();
-    if (nav === 'pt-br') return 'pt-BR';
-    if (nav.startsWith('es')) return 'es';
-    if (nav.startsWith('en')) return 'en';
-  }
-  return 'pt-PT';
+  return detectSystemLanguage();
 }
 
 export function initAppI18n(initialLanguage: AppLanguage = 'pt-PT') {

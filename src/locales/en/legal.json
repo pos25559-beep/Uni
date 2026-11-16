@@ -1,0 +1,272 @@
+{
+  "common": {
+    "updated": "Updated {{date}}",
+    "nav": {
+      "privacy": "Privacy",
+      "terms": "Terms",
+      "delete": "Delete account"
+    },
+    "translationNote": "Courtesy translation. If versions differ, the European Portuguese version prevails."
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "subtitle": "What stays with you, what is shared and with whom, with no fine print.",
+    "summaryBadge": "Your privacy in 30 seconds",
+    "laws": "GDPR (EU) · UK GDPR · LGPD (Brazil)",
+    "cards": [
+      {
+        "title": "On your device",
+        "body": "Courses, grades, tasks and PDFs are stored locally by default. No ads and no selling of data."
+      },
+      {
+        "title": "Cloud only if you want",
+        "body": "We only sync if you create an account. You can use the app without one."
+      },
+      {
+        "title": "AI, clearly labelled",
+        "body": "Uni only sends content to Google when you ask it something. On the free shared Uni, Google may use that content to improve its products."
+      }
+    ],
+    "sections": [
+      {
+        "title": "1. Who is responsible",
+        "items": [
+          [
+            "Controller:",
+            "{{controller}} ({{country}})."
+          ],
+          [
+            "Privacy contact:",
+            "{{email}}. This is also the channel to reach the data officer under Art. 41 of Brazil's LGPD."
+          ]
+        ]
+      },
+      {
+        "title": "2. What data we process and where it lives",
+        "items": [
+          [
+            "On your device (default):",
+            "academic profile, courses, timetable, assessments, tasks, focus sessions, grades and files you import. Stored in the browser's or app's local storage."
+          ],
+          [
+            "Account and cloud (optional):",
+            "if you create an account, we store your email and app data in Firebase (Google) to sync across devices."
+          ],
+          [
+            "Google and Microsoft connections (optional):",
+            "Drive, Calendar, Gmail and OneDrive only with your permission, read-only. Access tokens stay on your device."
+          ],
+          [
+            "Personal Gemini key:",
+            "stays on your device only and is never sent to your Unipedia account."
+          ],
+          [
+            "Abuse protection:",
+            "Firebase App Check uses Google reCAPTCHA Enterprise to confirm requests come from the app."
+          ]
+        ]
+      },
+      {
+        "title": "3. Artificial intelligence (Uni and Tutor)",
+        "items": [
+          [
+            "What is sent:",
+            "your question and, if you choose, excerpts from materials, images or course context. Nothing is sent unless you ask."
+          ],
+          [
+            "Shared Uni (Unipedia's free quota):",
+            "uses the free tier of the Gemini API. On that tier, Google uses submitted content and responses to improve its products and machine-learning technologies, and human reviewers may read them. Don't send personal, health or confidential data."
+          ],
+          [
+            "With your personal key:",
+            "Google's processing follows your own agreement with Google. On a Google project with active billing, Google does not use the content to train models."
+          ],
+          [
+            "Uni's memory:",
+            "off by default. If you turn it on, you can view, edit and delete everything in “What Uni knows”."
+          ],
+          [
+            "Transparency:",
+            "Uni's answers are AI-generated and may contain mistakes. Always check against the course syllabus."
+          ]
+        ]
+      },
+      {
+        "title": "4. Minimum age",
+        "items": [
+          [
+            "Tutor and AI features:",
+            "18 and over only. Google's Gemini API terms don't allow use by anyone under 18."
+          ],
+          [
+            "Other features:",
+            "from your country's age of digital consent; below it, only with permission from a parent or guardian."
+          ],
+          [
+            "Portugal:",
+            "13 (Law 58/2019, Art. 16)."
+          ],
+          [
+            "Spain:",
+            "14 (LOPDGDD, Art. 7)."
+          ],
+          [
+            "Other EU countries:",
+            "between 13 and 16 depending on national law (GDPR Art. 8)."
+          ],
+          [
+            "United Kingdom:",
+            "13 (UK GDPR / Data Protection Act 2018)."
+          ],
+          [
+            "Brazil:",
+            "children's and teenagers' data follow LGPD Art. 14 and the Digital ECA (Law 15.211/2025). Under-18s only with guardian consent."
+          ],
+          [
+            "United States:",
+            "not directed at children under 13 (COPPA)."
+          ]
+        ]
+      },
+      {
+        "title": "5. Legal bases",
+        "items": [
+          [
+            "Running the app:",
+            "performing the service you request (GDPR Art. 6(1)(b); LGPD Art. 7, V)."
+          ],
+          [
+            "Cloud account, AI and Google/Microsoft connections:",
+            "your consent (GDPR Art. 6(1)(a); LGPD Art. 7, I), which you can withdraw at any time in Settings."
+          ]
+        ]
+      },
+      {
+        "title": "6. International transfers",
+        "items": [
+          [
+            "Google and Microsoft:",
+            "may process data in the United States. Both participate in the EU-U.S. Data Privacy Framework and use the European Commission's standard contractual clauses."
+          ],
+          [
+            "Brazil:",
+            "transfers follow LGPD Art. 33, based on contractual clauses."
+          ]
+        ]
+      },
+      {
+        "title": "7. How long we keep data",
+        "items": [
+          [
+            "On your device:",
+            "until you delete it or uninstall the app."
+          ],
+          [
+            "In the cloud:",
+            "until you delete your account, when it is erased from Firebase."
+          ],
+          [
+            "At Google (AI):",
+            "according to Google's terms for the tier used."
+          ]
+        ]
+      },
+      {
+        "title": "8. Your rights",
+        "items": [
+          [
+            "Access and portability:",
+            "export everything as JSON in Settings → Privacy & data."
+          ],
+          [
+            "Rectification and erasure:",
+            "edit or delete data in the app, or delete your account on the “Delete account” page."
+          ],
+          [
+            "Withdraw consent:",
+            "turn off cloud, AI or connections in Settings."
+          ],
+          [
+            "Other rights:",
+            "objection, restriction and information (GDPR Arts. 15–22; LGPD Art. 18). Ask by email: we reply within one month (GDPR) or 15 days for confirmation and access (LGPD)."
+          ]
+        ]
+      },
+      {
+        "title": "9. Complaints",
+        "intro": "You can complain to the data protection authority in your country:"
+      },
+      {
+        "title": "10. Changes",
+        "items": [
+          [
+            "",
+            "If we change this policy in a meaningful way, we'll tell you in the app before the change takes effect."
+          ]
+        ]
+      }
+    ],
+    "authorities": {
+      "pt": "Portugal",
+      "es": "Spain",
+      "br": "Brazil",
+      "uk": "United Kingdom",
+      "eu": "Other EU countries"
+    }
+  },
+  "terms": {
+    "title": "Terms of Use",
+    "subtitle": "Clear, fair rules for using Unipedia in your studies.",
+    "sections": [
+      {
+        "title": "1. What Unipedia is",
+        "body": "A free study tool for university students: timetables, plans, focus, review and an AI tutor. Averages, plans and alerts are guidance only: always check deadlines, rooms and official rules with your institution."
+      },
+      {
+        "title": "2. Who can use it",
+        "body": "AI features require you to be 18 or over. Other features follow the minimum age for your country listed in the Privacy Policy."
+      },
+      {
+        "title": "3. Artificial intelligence",
+        "body": "Uni's answers are generated automatically and can get calculations, dates or facts wrong. By using the AI you also accept Google's usage rules for Gemini. If you use a personal key, it stays on your device and you're responsible for how it's used."
+      },
+      {
+        "title": "4. Your content",
+        "body": "Only upload material you have the right to use, and don't upload other people's personal data without permission. Your notes remain yours."
+      },
+      {
+        "title": "5. Shared curricula",
+        "body": "If you share a degree's structure, only send public information (name, code, credits and general topics), with no personal data."
+      },
+      {
+        "title": "6. Availability",
+        "body": "The service is free and may have usage limits, change or be interrupted. We'll give notice whenever possible."
+      },
+      {
+        "title": "7. Liability",
+        "body": "We do our best to keep the app working well, but we don't guarantee academic results. Nothing in these terms limits your rights under the consumer protection law of your country."
+      },
+      {
+        "title": "8. Governing law",
+        "body": "These terms are governed by Portuguese law, without prejudice to mandatory rules of the country where you live. Contact: {{email}}."
+      }
+    ]
+  },
+  "delete": {
+    "title": "Delete account and data",
+    "subtitle": "Permanently erases your data from this device and the cloud (right to erasure: GDPR Art. 17; LGPD Art. 18, VI).",
+    "removedTitle": "What gets removed",
+    "removed": [
+      "Your Unipedia account (if you're signed in).",
+      "All data in the cloud and on this device: courses, grades, tasks, local materials and settings."
+    ],
+    "status": "Current status:",
+    "signedIn": "Signed in ({{email}}).",
+    "activeAccount": "active account",
+    "offline": "This device only (no cloud account).",
+    "deleteAccount": "Delete account permanently",
+    "deleteLocal": "Erase data on this device",
+    "byEmail": "Request by email",
+    "emailSubject": "Unipedia account deletion request"
+  }
+}

@@ -57,6 +57,24 @@ export function normalizeAppLanguage(language?: string | null): AppLanguage {
   return 'pt-PT';
 }
 
+/**
+ * Língua do sistema (telemóvel ou navegador). Percorre `navigator.languages` por ordem de
+ * preferência e devolve a primeira suportada; qualquer variante de português que não seja
+ * do Brasil (pt, pt-PT, pt-AO, pt-MZ…) fica em pt-PT. Sem navegador (testes), pt-PT.
+ */
+export function detectSystemLanguage(): AppLanguage {
+  if (typeof navigator === 'undefined') return 'pt-PT';
+  const list = (navigator.languages?.length ? navigator.languages : [navigator.language]).filter(Boolean);
+  for (const raw of list) {
+    const lower = raw.toLowerCase();
+    if (lower === 'pt-br') return 'pt-BR';
+    if (lower === 'pt' || lower.startsWith('pt-')) return 'pt-PT';
+    if (lower === 'es' || lower.startsWith('es-')) return 'es';
+    if (lower === 'en' || lower.startsWith('en-')) return 'en';
+  }
+  return 'pt-PT';
+}
+
 export function resolveIntlLocale(language: AppLanguage | string = 'pt-PT'): string {
   const normalized = normalizeAppLanguage(language);
   if (normalized === 'en') return 'en-GB';
