@@ -174,5 +174,8 @@
     "preview": "Pré-visualização ao vivo",
     "scheduled": "{{count}} agendada(s) nas próximas 72h",
     "example": "Exemplo imediato"
+  },
+  "gemini": {
+    "keyLocalOnly": "A chave fica salva só neste dispositivo. Nunca é enviada para a conta Unipedia nem para outros aparelhos."
   }
 }

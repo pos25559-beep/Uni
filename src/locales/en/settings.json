@@ -174,5 +174,8 @@
     "preview": "Live preview",
     "scheduled": "{{count}} scheduled in the next 72h",
     "example": "Instant example"
+  },
+  "gemini": {
+    "keyLocalOnly": "Your key is stored on this device only. It is never sent to your Unipedia account or other devices."
   }
 }
