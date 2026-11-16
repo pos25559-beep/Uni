@@ -202,5 +202,8 @@
     "signOutOnly": "I'd rather just sign out and clear this device",
     "gdprContact": "GDPR contact:",
     "googleHint": "For security, tapping below asks Google to quickly confirm it's you (basic identity only, no access to Drive or Calendar)."
+  },
+  "gemini": {
+    "keyLocalOnly": "Your key is stored on this device only. It is never sent to your Unipedia account or other devices."
   }
 }
