@@ -8,9 +8,10 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test": "vitest run src",
+    "test:legacy": "npx --yes tsx --test tests/planner.test.ts",
     "guard:ui": "node scripts/ui-guard.mjs --strict",
     "a11y:smoke": "python3 scripts/a11y-smoke.py",
-    "check": "tsc -b --noEmit && npm run lint && npm run guard:ui && npm test && npm run build",
+    "check": "tsc -b --noEmit && npm run lint && npm run guard:ui && npm test && npm run test:legacy && npm run build",
     "preview": "vite preview",
     "android:sync": "npm run build && npx cap sync android"
   },

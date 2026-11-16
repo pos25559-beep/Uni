@@ -70,6 +70,8 @@ export interface ChatAttachment {
   dataBase64: string;
   fileUri?: string;
   sizeBytes: number;
+  /** Tokens que o ficheiro ocupa no contexto (medidos via countTokens ou estimados). */
+  tokenCount?: number;
 }
 
 export interface ChatMessage {
@@ -1097,9 +1099,11 @@ export function buildDocumentContext(
       .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)))
       .slice(0, 15);
     if (libraryPreview.length > 0) {
-      const limitLabel = options?.maxFiles ?? (hasCustomGeminiKey() ? 12 : 3);
+      const limitLabel = hasCustomGeminiKey()
+        ? 'todos os PDFs que couberem no orçamento de contexto da chave pessoal'
+        : `até ${options?.maxFiles ?? 3} PDFs`;
       sections.push(
-        `BIBLIOTECA DISPONÍVEL EM ${options.activeCourseName?.toUpperCase() ?? 'CADEIRA'} (${options.courseMaterials.length} itens no total — podes sugerir ao estudante selecionar até ${limitLabel} PDFs em «Apontamentos» caso queira que os analises em detalhe):`,
+        `BIBLIOTECA DISPONÍVEL EM ${options.activeCourseName?.toUpperCase() ?? 'CADEIRA'} (${options.courseMaterials.length} itens no total — podes sugerir ao estudante selecionar ${limitLabel} em «Apontamentos» caso queira que os analises em detalhe):`,
       );
       for (const m of libraryPreview) {
         const meta = [m.category, m.year, m.hasSolution ? 'c/ resolução' : '', m.pinned ? 'fixado' : '']

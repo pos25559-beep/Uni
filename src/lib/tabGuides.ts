@@ -99,7 +99,7 @@ export const TAB_GUIDES: Record<AppTabKey, TabGuideSpec> = {
       'Agrupa PDFs locais, pastas do Google Drive (ex.: FCT2627/C3D/, TEP/, MS2/) e cadernos externos por cadeira — mesmo que o nome do PDF não tenha a sigla da cadeira.',
     highlights: [
       'Varredura Drive / HD: cria pastas com a sigla ou nome da cadeira e cola o link da pasta mãe (ex.: FCT2627) em «Pasta raiz» para acelerar o Google Drive.',
-      'Marca materiais prioritários como «Fixado»: o Tutor lê automaticamente até 3 PDFs/Docs reais (ou até 12 com chave pessoal Gemini).',
+      'Marca materiais prioritários como «Fixado»: o Tutor lê automaticamente até 3 PDFs/Docs reais (com chave pessoal Gemini, todos os que couberem no orçamento de contexto).',
     ],
     mood: 'curious',
     tintClass: 'border-[#0891B2]/25 bg-[#F1FAFC] dark:bg-[#132429]',

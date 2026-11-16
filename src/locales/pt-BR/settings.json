@@ -202,5 +202,8 @@
     "signOutOnly": "Prefiro apenas sair e limpar este dispositivo",
     "gdprContact": "Contato LGPD/RGPD:",
     "googleHint": "Por segurança, ao clicar abaixo você vai confirmar rapidamente quem é na janela do Google (só identidade básica, sem pedir acesso ao Drive ou Agenda)."
+  },
+  "gemini": {
+    "keyLocalOnly": "A chave fica salva só neste dispositivo. Nunca é enviada para a conta Unipedia nem para outros aparelhos."
   }
 }

@@ -54,7 +54,7 @@ const SETTINGS_KEYS: Array<keyof Settings> = [
   'semesterEnd',
   'dailyStudyMinutes',
   'studyDays',
-  'geminiApiKey',
+  // `geminiApiKey` NUNCA é sincronizado: a chave pessoal fica só neste dispositivo.
   'geminiModel',
   'googleClientId',
   'msClientId',
@@ -112,7 +112,7 @@ function stripUndefined<T>(value: T): T {
   return value;
 }
 
-function sanitizeSettingsPayload(
+export function sanitizeSettingsPayload(
   changes: Partial<Settings>,
   isPatch: boolean,
 ): Record<string, unknown | FieldValue> {
@@ -350,6 +350,16 @@ export function initFirestoreSync() {
         ) {
           data.language = lastLocalLanguage.value;
           void syncSettings({ language: lastLocalLanguage.value }).catch(() => {});
+        }
+        // Migração: versões antigas guardavam a chave Gemini pessoal na nuvem.
+        // Mantém-na neste dispositivo (se ainda não existir) e apaga-a do Firestore.
+        if (data.geminiApiKey !== undefined) {
+          const remoteKey = typeof data.geminiApiKey === 'string' ? data.geminiApiKey.trim() : '';
+          delete data.geminiApiKey;
+          if (remoteKey && !useStore.getState().settings.geminiApiKey?.trim()) {
+            useStore.getState().updateSettings({ geminiApiKey: remoteKey });
+          }
+          void setDoc(userDocRef, { geminiApiKey: deleteField() }, { merge: true }).catch(() => {});
         }
         isApplyingRemote = true;
         try {
