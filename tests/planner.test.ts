@@ -912,7 +912,8 @@ test('generatePlan entra em Modo Arranque de Semestre quando ha cadeiras sem ava
   assert.ok(sessions.some((s) => s.courseId === 'c1'));
   assert.ok(sessions.some((s) => s.courseId === 'c2'));
   assert.ok(sessions.every((s) => s.minutes >= 30 && s.minutes <= 60));
-  assert.ok(sessions.every((s) => s.notes?.includes('Arranque contínuo')));
+  const starterNotes = new Set(['Consolidação', 'Reforçar dúvidas', 'Prática guiada']);
+  assert.ok(sessions.every((s) => starterNotes.has(s.notes ?? '')));
 });
 
 test('parsePtGrade, capitalizeFirst e sessionMinutes respeitam regras PT e sessoes parciais', () => {
@@ -2055,7 +2056,10 @@ test('planSmartNotifications agenda pos-aula, fim do dia, domingo, modo teste e 
     courses: [course],
     assessments: [examInFiveDays],
     classes: [classSlot],
-    sessions: [],
+    // Conta com atividade anterior: o balanço de domingo só aparece depois do 1.º estudo.
+    sessions: [
+      { id: 'prev', courseId: 'c-tep', date: '2026-11-12', minutes: 45, done: true, actualMinutes: 45, generated: false },
+    ],
     studyLogs: [],
     weeklyCheckIns: [],
     settings: {
@@ -2183,7 +2187,7 @@ test('generatePlan prioriza cadeira/topico dificil em registo pos-aula com Refor
   const hardSessions = sessions.filter((s) => s.courseId === 'c-hard');
   assert.ok(hardSessions.length > 0);
   assert.ok(
-    hardSessions.some((s) => (s.notes ?? '').includes('Reforço pós-aula')),
+    hardSessions.some((s) => (s.notes ?? '').includes('Reforçar dúvidas')),
     'Deve assinalar reforco pos-aula na cadeira dificil',
   );
 });
