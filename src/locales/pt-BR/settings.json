@@ -330,5 +330,8 @@
       "how2": "Toque em «Importar horário» e escolha o arquivo ou cole o texto.",
       "how3": "Confirme a disciplina de cada aula e importe sem perder o resto dos seus dados."
     }
+  },
+  "gemini": {
+    "keyLocalOnly": "A chave fica salva só neste dispositivo. Nunca é enviada para a conta Unipedia nem para outros aparelhos."
   }
 }

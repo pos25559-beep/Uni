@@ -455,7 +455,10 @@ export function planSmartNotifications(input: NotificationPlannerInput): Schedul
 
   // 3) Contagem decrescente de avaliações (72h, 24h, 2h)
   if (prefs.assessments) {
-    const upcoming = upcomingAssessments(input.assessments);
+    // Usa o relógio de `now` (e não a data real) para decidir o que ainda está por vir.
+    const upcoming = input.assessments
+      .filter((a) => a.grade === undefined)
+      .sort((x, y) => x.date.localeCompare(y.date));
     for (const a of upcoming) {
       const examAt = parseAssessmentDateTime(a.date);
       if (!examAt || examAt.getTime() <= now.getTime()) continue;

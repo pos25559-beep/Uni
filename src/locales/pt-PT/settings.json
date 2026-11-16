@@ -330,5 +330,8 @@
       "how2": "Carrega em «Importar horário» e escolhe o ficheiro ou cola o texto.",
       "how3": "Confirma a cadeira correspondente a cada aula e importa sem perder o resto dos teus dados."
     }
+  },
+  "gemini": {
+    "keyLocalOnly": "A chave fica guardada só neste dispositivo. Nunca é enviada para a conta Unipedia nem para outros aparelhos."
   }
 }

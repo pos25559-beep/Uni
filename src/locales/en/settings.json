@@ -330,5 +330,8 @@
       "how2": "Tap “Import timetable” and pick the file or paste the text.",
       "how3": "Confirm the course for each class and import without losing the rest of your data."
     }
+  },
+  "gemini": {
+    "keyLocalOnly": "Your key is stored on this device only. It is never sent to your Unipedia account or other devices."
   }
 }
