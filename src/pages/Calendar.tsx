@@ -134,8 +134,8 @@ export default function Calendar() {
     );
     showToast(
       saturdayClasses.length === 1
-        ? '1 aula movida de Sábado para Sexta-feira (6ª).'
-        : `${saturdayClasses.length} aulas movidas de Sábado para Sexta-feira (6ª).`,
+        ? t('cal.movedOne')
+        : t('cal.movedMany', { count: saturdayClasses.length }),
     );
   };
 
@@ -167,7 +167,7 @@ export default function Calendar() {
   const handleExportIcs = () => {
     const ics = buildIcsCalendar({ courses, classes, assessments, events, settings });
     downloadIcsCalendar(`unipedia-${toDateStr(new Date())}.ics`, ics);
-    showToast('Calendário exportado (.ics) para Google/Apple/Outlook!');
+    showToast(t('cal.exported'));
   };
 
   const handleShareTurma = async () => {
@@ -184,7 +184,7 @@ export default function Calendar() {
       if (navigator.share) {
         await navigator.share({
           title: `Horário ${payload.semesterName} · Unipedia`,
-          text: 'Importa as cadeiras, aulas e avaliações da nossa turma no Unipedia:',
+          text: t('cal.shareText'),
           url,
         });
         return;
@@ -194,7 +194,7 @@ export default function Calendar() {
     }
     try {
       await navigator.clipboard?.writeText(url);
-      showToast('Link da turma copiado! Sem dados pessoais nem notas.');
+      showToast(t('cal.linkCopiedClass'));
     } catch {
       // modal já mostra o link para copiar manualmente
     }
@@ -221,7 +221,7 @@ export default function Calendar() {
     if (plan.newAssessments.length > 0) upsertMany('assessments', plan.newAssessments);
     dismissIncomingShare();
     showToast(
-      `Importado: ${plan.newCourses.length} cadeira(s), ${plan.newClasses.length} aula(s), ${plan.newAssessments.length} avaliação(ões).`,
+      t('cal.importedSummary', { c: plan.newCourses.length, k: plan.newClasses.length, a: plan.newAssessments.length }),
     );
   };
 
@@ -231,7 +231,7 @@ export default function Calendar() {
         eyebrow={t('calendar.eyebrow')}
         title={t('calendar.title')}
         accentTitle={t('calendar.accentTitle')}
-        subtitle="Aulas, avaliações, estudo, eventos e tarefas num só lugar."
+        subtitle={t('cal.subtitle')}
         actions={
           <div className="flex items-center gap-2">
             <TabGuideHelpButton tabKey="calendario" />
@@ -259,22 +259,22 @@ export default function Calendar() {
           className="flex flex-wrap items-center justify-between gap-2.5 rounded-2xl border border-warn/35 bg-warn/10 px-4 py-3 text-xs text-fg"
         >
           <span>
-            Encontrámos{' '}
+            {t('cal.satFound')}{' '}
             <strong>
               {saturdayClasses.length}{' '}
-              {saturdayClasses.length === 1 ? 'aula marcada ao Sábado' : 'aulas marcadas ao Sábado'}
+              {saturdayClasses.length === 1 ? t('cal.satOne') : t('cal.satMany')}
             </strong>{' '}
-            (frequentemente vinda(s) da coluna «6ª» / Sexta-feira).
+            {t('cal.satHint')}
           </span>
           <div className="flex items-center gap-2">
             <Button size="sm" variant="primary" onClick={moveSaturdayToFriday}>
-              Mover para Sexta (6ª)
+              {t('cal.moveFri')}
             </Button>
             <button
               type="button"
               onClick={() => setSatNoticeDismissed(true)}
-              aria-label="Manter aulas ao Sábado"
-              title="Fechar aviso"
+              aria-label={t('cal.keepSat')}
+              title={t('cal.closeNotice')}
               className="-mr-1.5 grid size-11 place-items-center rounded-full text-muted transition hover:bg-surface-2 hover:text-fg"
             >
               <X size={15} />
@@ -286,11 +286,11 @@ export default function Calendar() {
       {/* Navegação e vista */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-1.5">
-          <Button size="sm" iconOnly variant="secondary" aria-label="Anterior" onClick={() => step(-1)}>
+          <Button size="sm" iconOnly variant="secondary" aria-label={t('cal.prev')} onClick={() => step(-1)}>
             <ChevronLeft size={16} />
           </Button>
           <Button size="sm" variant="secondary" onClick={goToday}>{t('calendar.today')}</Button>
-          <Button size="sm" iconOnly variant="secondary" aria-label="Seguinte" onClick={() => step(1)}>
+          <Button size="sm" iconOnly variant="secondary" aria-label={t('cal.next')} onClick={() => step(1)}>
             <ChevronRight size={16} />
           </Button>
           <span className="ml-1 min-w-0 truncate font-display text-sm font-bold tabular">{capitalizeFirst(label)}</span>
@@ -300,7 +300,7 @@ export default function Calendar() {
           layoutId="calendar-view-tabs"
           value={view}
           onChange={(v) => setView(v as View)}
-          items={VIEWS.map((v) => ({ id: v.key, label: v.label }))}
+          items={VIEWS.map((v) => ({ id: v.key, label: t(`cal.view.${v.key}`) }))}
         />
       </div>
 
@@ -394,8 +394,8 @@ export default function Calendar() {
 
       {deletingClass && (
         <ConfirmModal
-          title="Apagar aula"
-          message={`Apagar "${deletingClass.title}"? Esta ação não se pode desfazer.`}
+          title={t('cal.deleteClass')}
+          message={t('cal.deleteClassMsg', { title: deletingClass.title })}
           confirmLabel="Apagar"
           onConfirm={() => remove('classes', deletingClass.id)}
           onClose={() => setDeletingClass(null)}
@@ -407,26 +407,26 @@ export default function Calendar() {
       <ActionSheet
         open={calMenuOpen}
         onClose={() => setCalMenuOpen(false)}
-        title="Ações do calendário"
+        title={t('cal.actions')}
         actions={[
           {
             id: 'import-schedule',
-            label: 'Importar horário',
-            hint: 'Foto do horário ou ficheiro .ics',
+            label: t('cal.importSchedule'),
+            hint: t('cal.importHint'),
             icon: <Upload size={16} />,
             onSelect: () => setImportOpen(true),
           },
           {
             id: 'export-ics',
-            label: 'Exportar .ics',
-            hint: 'Compatível com Google, Apple e Outlook',
+            label: t('cal.exportIcs'),
+            hint: t('cal.exportHint'),
             icon: <Download size={16} />,
             onSelect: handleExportIcs,
           },
           {
             id: 'share-turma',
-            label: 'Partilhar horário da turma',
-            hint: 'Envia cadeiras, aulas e avaliações aos colegas',
+            label: t('cal.share'),
+            hint: t('cal.shareHint'),
             icon: <Share2 size={16} />,
             onSelect: () => void handleShareTurma(),
           },
@@ -436,7 +436,7 @@ export default function Calendar() {
       <Modal
         open={Boolean(shareModalUrl)}
         onClose={() => setShareModalUrl(null)}
-        title="Partilhar horário da turma"
+        title={t('cal.share')}
         footer={
           <div className="flex justify-end gap-2">
             <Button
@@ -444,20 +444,19 @@ export default function Calendar() {
               onClick={() => {
                 if (shareModalUrl) {
                   void navigator.clipboard?.writeText(shareModalUrl);
-                  showToast('Link copiado!');
+                  showToast(t('cal.linkCopied'));
                 }
               }}
             >
-              Copiar link
+              {t('cal.copyLink')}
             </Button>
-            <Button onClick={() => setShareModalUrl(null)}>Fechar</Button>
+            <Button onClick={() => setShareModalUrl(null)}>{t('cal.close')}</Button>
           </div>
         }
       >
         <div className="space-y-3 text-sm">
           <p className="text-muted">
-            Envia este link aos colegas para importarem rapidamente {courses.length} cadeira(s),{' '}
-            {classes.length} aula(s) e datas de avaliação futuras. Nunca inclui o teu email, notas nem chaves API.
+            {t('cal.shareBody', { c: courses.length, k: classes.length })}
           </p>
           <input
             type="text"
@@ -472,14 +471,14 @@ export default function Calendar() {
       <Modal
         open={Boolean(incomingShare)}
         onClose={dismissIncomingShare}
-        title={incomingShare ? `Importar turma · ${incomingShare.semesterName}` : 'Importar turma'}
+        title={incomingShare ? t('cal.importTitle', { name: incomingShare.semesterName }) : t('cal.importTitleBare')}
         footer={
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={dismissIncomingShare}>
-              Cancelar
+              {t('cal.cancel')}
             </Button>
             <Button variant="primary" onClick={confirmIncomingShare}>
-              Importar para o meu calendário
+              {t('cal.importConfirm')}
             </Button>
           </div>
         }
@@ -487,20 +486,20 @@ export default function Calendar() {
         {incomingShare && (
           <div className="space-y-3 text-sm">
             <p className="text-muted">
-              Vais adicionar ao teu semestre (sem duplicar itens existentes):
+              {t('cal.willAdd')}
             </p>
             <div className="grid grid-cols-3 gap-2 rounded-2xl border border-line bg-surface-2/60 p-3 text-center">
               <div>
                 <p className="font-display text-lg font-bold text-fg">{incomingShare.courses.length}</p>
-                <p className="text-xs text-muted">Cadeiras</p>
+                <p className="text-xs text-muted">{t('cal.courses')}</p>
               </div>
               <div>
                 <p className="font-display text-lg font-bold text-fg">{incomingShare.classes.length}</p>
-                <p className="text-xs text-muted">Aulas</p>
+                <p className="text-xs text-muted">{t('cal.classes')}</p>
               </div>
               <div>
                 <p className="font-display text-lg font-bold text-fg">{incomingShare.assessments.length}</p>
-                <p className="text-xs text-muted">Provas</p>
+                <p className="text-xs text-muted">{t('cal.exams')}</p>
               </div>
             </div>
             <ul className="max-h-40 space-y-1 overflow-y-auto text-xs text-muted">

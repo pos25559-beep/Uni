@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+import { tr } from '../../i18n/tr';
 import { format, parseISO, startOfWeek } from 'date-fns';
 import {
   ArrowUp,
@@ -73,11 +75,14 @@ const CHECKIN_TABS: ReadonlyArray<{
   shortLabel: string;
   icon: typeof BookOpenCheck;
 }> = [
-  { id: 'class', label: 'Pós-Aula', shortLabel: 'Aula', icon: BookOpenCheck },
-  { id: 'day', label: 'Fim do Dia', shortLabel: 'Dia', icon: Moon },
-  { id: 'week', label: 'Domingo', shortLabel: 'Semana', icon: Sun },
-  { id: 'exam_prep', label: 'Modo Teste', shortLabel: 'Teste', icon: Flame },
+  { id: 'class', label: 'tabs.class', shortLabel: 'tabs.classShort', icon: BookOpenCheck },
+  { id: 'day', label: 'tabs.day', shortLabel: 'tabs.dayShort', icon: Moon },
+  { id: 'week', label: 'tabs.week', shortLabel: 'tabs.weekShort', icon: Sun },
+  { id: 'exam_prep', label: 'tabs.exam', shortLabel: 'tabs.examShort', icon: Flame },
 ];
+
+/** Atalho de tradução para o check-in (namespace `assistant`, grupo `checkin`). */
+const ck = (key: string, vars: Record<string, string | number> = {}) => tr(`assistant:checkin.${key}`, vars);
 
 function buildOpeningGreeting(args: {
   kind: StudyLogKind;
@@ -88,62 +93,69 @@ function buildOpeningGreeting(args: {
   classSlotLabel?: string;
 }): string {
   const { kind, course, assessment, minutesToday, classesCountToday, classSlotLabel } = args;
-  const cname = course?.shortName || course?.name || 'a tua cadeira';
+  const cname = course?.shortName || course?.name || ck('yourCourse');
 
   if (kind === 'class') {
-    const slotText = classSlotLabel ? ` (${classSlotLabel})` : '';
-    return `Como correu a aula de **${cname}**${slotText}? Podes escrever naturalmente — ex.: *"Entendi tudo sobre Laminagem"* ou *"Foi difícil, demos Critério de Von Mises e travei nos sinais"*.`;
+    const slot = classSlotLabel ? ` (${classSlotLabel})` : '';
+    return ck('greet.class', { course: cname, slot });
   }
   if (kind === 'day') {
     const summary =
       minutesToday > 0
-        ? `Hoje já somaste **${fmtMinutes(minutesToday)}** de estudo`
+        ? ck('greet.daySummaryMinutes', { minutes: fmtMinutes(minutesToday) })
         : classesCountToday > 0
-          ? `Tiveste ${classesCountToday} aula(s) hoje`
-          : 'Dia tranquilo no horário';
-    return `${summary}. Como sentiste o dia e o teu estudo hoje? Conta-me por palavras tuas para eu calibrar o plano de amanhã.`;
+          ? ck('greet.daySummaryClasses', { count: classesCountToday })
+          : ck('greet.daySummaryCalm');
+    return ck('greet.day', { summary });
   }
   if (kind === 'week') {
-    return `Hora do balanço da semana! O que ficou bem consolidado, onde travaste ou que cadeiras pedem mais foco nos próximos dias?`;
+    return ck('greet.week');
   }
-  const testName = assessment ? `**${assessment.title}** de **${cname}**` : `o próximo teste de **${cname}**`;
+  const testName = assessment
+    ? ck('greet.testNamed', { test: assessment.title, course: cname })
+    : ck('greet.testNext', { course: cname });
   const days = assessment ? Math.max(0, daysUntil(assessment.date)) : null;
-  const when = days !== null ? (days === 0 ? ' (é hoje!)' : ` (faltam ${days} dia${days === 1 ? '' : 's'})`) : '';
-  return `Vamos alinhar ${testName}${when}! Diz-me **até que slide, aula ou matéria sai**, o que já estudaste e como te sentes.\n*(Ex.: "Cai até ao slide 8, já revi até T03 e estou ansioso")*`;
+  const when = days !== null ? (days === 0 ? ck('greet.whenToday') : ck('greet.whenDays', { count: days })) : '';
+  return ck('greet.exam', { test: testName, when });
 }
 
 function getQuickChips(kind: StudyLogKind, course?: Course): QuickChip[] {
   const firstTopic = course?.topics[0]?.title;
   if (kind === 'class') {
     return [
-      { label: 'Entendi bem', sendText: 'Entendi bem a aula de hoje, deu para acompanhar tudo.' },
-      { label: 'Dúvidas em…', prefillText: 'Fiquei com dúvidas em ' },
-      { label: 'Difícil / demos…', prefillText: 'A aula foi difícil, demos ' },
+      { label: ck('chips.classGood'), sendText: ck('chips.classGoodText') },
+      { label: ck('chips.classDoubts'), prefillText: ck('chips.classDoubtsText') },
+      { label: ck('chips.classHard'), prefillText: ck('chips.classHardText') },
       ...(firstTopic
-        ? [{ label: `Demos ${firstTopic.slice(0, 18)}`, prefillText: `Hoje demos ${firstTopic} e ` }]
+        ? [
+            {
+              label: ck('chips.classTopic', { topic: firstTopic.slice(0, 18) }),
+              prefillText: ck('chips.classTopicText', { topic: firstTopic }),
+            },
+          ]
         : []),
-      { label: 'Faltei / rever', sendText: 'Faltei à aula hoje, preciso de rever a matéria.' },
+      { label: ck('chips.classMissed'), sendText: ck('chips.classMissedText') },
     ];
   }
   if (kind === 'day') {
     return [
-      { label: 'Dia produtivo', sendText: 'Hoje foi um dia produtivo, rendeu bem o estudo (4/5).' },
-      { label: 'Ritmo normal', sendText: 'Dia normal de estudo, avancei ao meu ritmo (3/5).' },
-      { label: 'Estou cansado', sendText: 'Estou muito cansado hoje, quase não deu para estudar (2/5).' },
+      { label: ck('chips.dayGood'), sendText: ck('chips.dayGoodText') },
+      { label: ck('chips.dayNormal'), sendText: ck('chips.dayNormalText') },
+      { label: ck('chips.dayTired'), sendText: ck('chips.dayTiredText') },
     ];
   }
   if (kind === 'week') {
     return [
-      { label: 'Semana estável', sendText: 'Semana estável, cumpri o essencial e sinto-me acompanhado.' },
-      { label: 'Pressionado c/ testes', sendText: 'Semana pressionada, acumulei dúvidas antes dos testes.' },
-      { label: 'Semana confiante', sendText: 'Semana excelente e confiante, consolidei bem a matéria!' },
+      { label: ck('chips.weekStable'), sendText: ck('chips.weekStableText') },
+      { label: ck('chips.weekPressure'), sendText: ck('chips.weekPressureText') },
+      { label: ck('chips.weekConfident'), sendText: ck('chips.weekConfidentText') },
     ];
   }
   return [
-    { label: 'Cai até ao slide…', prefillText: 'A matéria do teste cai até ao slide ' },
-    { label: 'Já estudei metade', sendText: 'Já estudei cerca de metade da matéria, mas sinto-me um pouco ansioso.' },
-    { label: 'Ainda não comecei', prefillText: 'Ainda não comecei a estudar e sai até ao slide ' },
-    { label: 'Sinto-me confiante', sendText: 'Já revi bem os tópicos principais e sinto-me confiante.' },
+    { label: ck('chips.examSlide'), prefillText: ck('chips.examSlideText') },
+    { label: ck('chips.examHalf'), sendText: ck('chips.examHalfText') },
+    { label: ck('chips.examNotStarted'), prefillText: ck('chips.examNotStartedText') },
+    { label: ck('chips.examConfident'), sendText: ck('chips.examConfidentText') },
   ];
 }
 
@@ -177,6 +189,7 @@ function UniCheckInModalInner({
   initialClassSlotId,
   initialAssessmentId,
 }: UniCheckInModalProps) {
+  const { t } = useTranslation('assistant');
   const navigate = useNavigate();
   const titleId = useId();
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -564,7 +577,7 @@ function UniCheckInModalInner({
       });
     }
     if (!finalUnderstanding) {
-      showToast('Escreve ou escolhe uma resposta rápida para o Uni antes de guardar.', 'neutral');
+      showToast(t('checkin.needText'), 'neutral');
       return;
     }
 
@@ -657,8 +670,8 @@ function UniCheckInModalInner({
 
     showToast(
       wasAlreadySaved
-        ? 'Conversa atualizada no Diário do Uni e plano alinhado!'
-        : 'Conversa registada no Diário do Uni (+4 ⚡) e plano alinhado!',
+        ? t('checkin.updated')
+        : t('checkin.saved'),
       'ok',
     );
     onClose();
@@ -744,7 +757,7 @@ function UniCheckInModalInner({
               </div>
               <div className="min-w-0">
                 <h2 id={titleId} className="truncate font-display text-base font-bold leading-tight text-fg">
-                  Diário do{' '}
+                  {t('checkin.journalOf')}{' '}
                   <span className="font-serif font-medium italic text-accent-ink dark:text-accent">Uni</span>
                 </h2>
               </div>
@@ -755,7 +768,7 @@ function UniCheckInModalInner({
             <button
               type="button"
               onClick={onClose}
-              aria-label="Fechar"
+              aria-label={t('checkin.close')}
               className="hidden size-11 -mr-1.5 items-center justify-center rounded-full text-muted transition hover:bg-surface-2 hover:text-fg sm:flex"
             >
               <X size={18} aria-hidden="true" />
@@ -766,7 +779,7 @@ function UniCheckInModalInner({
         {/* Faixa compacta de modos em 1 linha (estilo chips do Tutor) */}
         <div
           role="tablist"
-          aria-label="Tipo de conversa do Uni"
+          aria-label={t('checkin.kindAria')}
           className="mt-1.5 flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar"
         >
           {CHECKIN_TABS.map((item) => {
@@ -787,8 +800,8 @@ function UniCheckInModalInner({
                 )}
               >
                 <Icon size={13} />
-                <span className="sm:hidden">{item.shortLabel}</span>
-                <span className="hidden sm:inline">{item.label}</span>
+                <span className="sm:hidden">{t(`checkin.${item.shortLabel}`)}</span>
+                <span className="hidden sm:inline">{t(`checkin.${item.label}`)}</span>
               </button>
             );
           })}
@@ -836,7 +849,7 @@ function UniCheckInModalInner({
                       : 'border-line bg-surface-2/60 text-muted hover:text-fg',
                   )}
                 >
-                  {c?.shortName ?? 'Cadeira'} · {a.title} ({days}d)
+                  {c?.shortName ?? t('checkin.course')} · {a.title} ({days}d)
                 </button>
               );
             })}
@@ -855,15 +868,15 @@ function UniCheckInModalInner({
           <div className="flex items-center justify-between gap-2 rounded-2xl border border-line/75 bg-surface px-3 py-2 text-xs">
             <span className="min-w-0 truncate text-muted">
               {conversationSource === 'saved'
-                ? `Conversa guardada${savedEntryForContext?.date ? ` · ${savedEntryForContext.date}` : ''}`
-                : 'Rascunho guardado automaticamente'}
+                ? t('checkin.savedConv', { date: savedEntryForContext?.date ? ` · ${savedEntryForContext.date}` : '' })
+                : t('checkin.draftSaved')}
             </span>
             <button
               type="button"
               onClick={handleStartFresh}
               className="inline-flex min-h-[30px] shrink-0 items-center gap-1 rounded-full border border-line bg-bg px-2.5 py-1 text-xs font-semibold text-fg transition hover:border-accent"
             >
-              <RotateCcw size={12} /> {conversationSource === 'saved' ? 'Nova conversa' : 'Limpar'}
+              <RotateCcw size={12} /> {conversationSource === 'saved' ? t('checkin.newConv') : t('checkin.clear')}
             </button>
           </div>
         )}
@@ -908,7 +921,7 @@ function UniCheckInModalInner({
               size={26}
               interactive={false}
             />
-            <span>O Uni está a alinhar o plano…</span>
+            <span>{t('checkin.aligning')}</span>
           </div>
         )}
       </div>
@@ -918,12 +931,12 @@ function UniCheckInModalInner({
         {understanding && (
           <div className="rounded-2xl border border-accent/35 bg-accent-soft/55 px-3 py-2.5 text-xs">
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="font-bold text-accent-ink dark:text-accent">Alinhamento pronto:</span>
+              <span className="font-bold text-accent-ink dark:text-accent">{t('checkin.ready')}</span>
               <Badge tone="accent">{understanding.feelingLabel}</Badge>
               {understanding.studyFocus && <Badge tone="ok">{understanding.studyFocus}</Badge>}
               {understanding.scopeLabel && <Badge tone="neutral">{understanding.scopeLabel}</Badge>}
               {understanding.topicTitle && <Badge tone="neutral">{understanding.topicTitle}</Badge>}
-              {perceivedCount > 0 && <Badge tone="neutral">{perceivedCount} tópico(s)</Badge>}
+              {perceivedCount > 0 && <Badge tone="neutral">{t('checkin.topicsN', { count: perceivedCount })}</Badge>}
             </div>
             {(understanding.newTopicsToAdd.length > 0 || understanding.matchedTopicIds.length > 0) &&
               effectiveCourse && (
@@ -945,7 +958,7 @@ function UniCheckInModalInner({
                 onClick={() => handleConfirm(true)}
                 className="flex-1 whitespace-nowrap px-3 text-xs"
               >
-                <Sparkles size={14} className="shrink-0" /> Falar no Tutor
+                <Sparkles size={14} className="shrink-0" /> {t('checkin.toTutor')}
               </Button>
               <Button
                 size="sm"
@@ -955,7 +968,7 @@ function UniCheckInModalInner({
                 className="flex-1 whitespace-nowrap px-3 text-xs"
               >
                 <Check size={14} className="shrink-0" />{' '}
-                {savedEntryForContext ? 'Atualizar & alinhar' : 'Guardar & alinhar'}
+                {savedEntryForContext ? t('checkin.update') : t('checkin.save')}
               </Button>
             </div>
           </div>
@@ -1002,13 +1015,13 @@ function UniCheckInModalInner({
               setInputText(e.target.value);
             }}
             onKeyDown={onComposerKeyDown}
-            aria-label="Mensagem para o Diário do Uni"
+            aria-label={t('checkin.msgAria')}
             placeholder={
               kind === 'exam_prep'
-                ? 'Ex.: Cai até ao slide 8 e já revi T01–T03…'
+                ? t('checkin.phExam')
                 : kind === 'class'
-                  ? 'Ex.: Demos Critério de Von Mises, fiquei com dúvidas…'
-                  : 'Responde ao Uni com as tuas palavras…'
+                  ? t('checkin.phClass')
+                  : t('checkin.phDefault')
             }
             style={{ minHeight: 40 }}
             className="max-h-28 min-w-0 flex-1 resize-none bg-transparent px-1 py-2 text-sm text-fg placeholder:text-muted/75 focus:outline-none"
@@ -1016,7 +1029,7 @@ function UniCheckInModalInner({
           <button
             type="submit"
             disabled={!inputText.trim() || sending}
-            aria-label="Enviar resposta ao Uni"
+            aria-label={t('checkin.sendAria')}
             className="grid size-10 shrink-0 place-items-center rounded-full bg-ink-cta text-ink-cta-fg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-35"
           >
             <ArrowUp size={18} strokeWidth={2.2} />
