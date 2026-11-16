@@ -48,17 +48,29 @@ const PERSONA_PREBUILT_VOICES: Record<UniPersonaMode, string> = {
   treinador: 'Charon',
 };
 
-function floatToInt16Base64(floatData: Float32Array, sourceRate: number): string {
-  const ratio = sourceRate / INPUT_SAMPLE_RATE;
+/**
+ * Reduz a taxa de amostragem para 16 kHz com média por janela (filtro passa-baixo simples),
+ * em vez de saltar amostras — evita o som metálico (aliasing) da versão anterior.
+ */
+export function downsampleToPcm16(floatData: Float32Array, sourceRate: number): Int16Array {
+  const ratio = Math.max(1, sourceRate / INPUT_SAMPLE_RATE);
   const outLength = Math.max(1, Math.floor(floatData.length / ratio));
   const pcm16 = new Int16Array(outLength);
 
   for (let i = 0; i < outLength; i++) {
-    const srcIdx = Math.min(floatData.length - 1, Math.floor(i * ratio));
-    const clamped = Math.max(-1, Math.min(1, floatData[srcIdx] ?? 0));
+    const start = Math.floor(i * ratio);
+    const end = Math.min(floatData.length, Math.max(start + 1, Math.floor((i + 1) * ratio)));
+    let sum = 0;
+    for (let j = start; j < end; j++) sum += floatData[j] ?? 0;
+    const avg = sum / (end - start);
+    const clamped = Math.max(-1, Math.min(1, avg));
     pcm16[i] = clamped < 0 ? Math.round(clamped * 32768) : Math.round(clamped * 32767);
   }
+  return pcm16;
+}
 
+function floatToInt16Base64(floatData: Float32Array, sourceRate: number): string {
+  const pcm16 = downsampleToPcm16(floatData, sourceRate);
   const bytes = new Uint8Array(pcm16.buffer);
   let binary = '';
   const chunkSize = 0x8000;
@@ -103,6 +115,44 @@ export interface LiveVoiceController {
   stop: () => void;
 }
 
+const CAPTURE_WORKLET_SOURCE = `
+class UniCaptureProcessor extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this.buffer = new Float32Array(4096);
+    this.length = 0;
+  }
+  process(inputs) {
+    const channel = inputs[0] && inputs[0][0];
+    if (channel) {
+      for (let i = 0; i < channel.length; i++) {
+        this.buffer[this.length++] = channel[i];
+        if (this.length === this.buffer.length) {
+          this.port.postMessage(this.buffer.slice(0));
+          this.length = 0;
+        }
+      }
+    }
+    return true;
+  }
+}
+registerProcessor('uni-capture', UniCaptureProcessor);
+`;
+
+/** Cria o nó de captura em AudioWorklet (thread de áudio); devolve null se não for suportado. */
+async function createCaptureWorklet(ctx: AudioContext): Promise<AudioWorkletNode | null> {
+  if (typeof AudioWorkletNode === 'undefined' || !ctx.audioWorklet) return null;
+  const url = URL.createObjectURL(new Blob([CAPTURE_WORKLET_SOURCE], { type: 'application/javascript' }));
+  try {
+    await ctx.audioWorklet.addModule(url);
+    return new AudioWorkletNode(ctx, 'uni-capture', { numberOfInputs: 1, numberOfOutputs: 1, channelCount: 1 });
+  } catch {
+    return null;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 /**
  * Abre sessão bidirecional em tempo real (`gemini-3.8-live`) exclusivamente com a chave Gemini própria.
  */
@@ -126,7 +176,8 @@ export async function startUniLiveVoiceSession(
   let session: Session | null = null;
   let stream: MediaStream | null = null;
   let audioCtx: AudioContext | null = null;
-  let processor: ScriptProcessorNode | null = null;
+  let processor: AudioNode | null = null;
+  let processorSink: GainNode | null = null;
   let sourceNode: MediaStreamAudioSourceNode | null = null;
   let silenceTimer: number | null = null;
   let nextPlayTime = 0;
@@ -168,7 +219,9 @@ export async function startUniLiveVoiceSession(
     }
     stopQueuedOutputAudio();
     try {
+      if (processor instanceof AudioWorkletNode) processor.port.onmessage = null;
       processor?.disconnect();
+      processorSink?.disconnect();
     } catch {
       // ignore
     }
@@ -422,12 +475,10 @@ export async function startUniLiveVoiceSession(
     }
 
     sourceNode = audioCtx.createMediaStreamSource(stream);
-    processor = audioCtx.createScriptProcessor(4096, 1, 1);
     const actualSampleRate = audioCtx.sampleRate;
 
-    processor.onaudioprocess = (ev) => {
+    const handleChunk = (input: Float32Array) => {
       if (closed || muted || !session) return;
-      const input = ev.inputBuffer.getChannelData(0);
       let peak = 0;
       for (let i = 0; i < input.length; i += 8) {
         const v = Math.abs(input[i] ?? 0);
@@ -449,8 +500,24 @@ export async function startUniLiveVoiceSession(
       }
     };
 
+    // Saída silenciosa: mantém o grafo de áudio ativo sem reproduzir o microfone.
+    processorSink = audioCtx.createGain();
+    processorSink.gain.value = 0;
+    processorSink.connect(audioCtx.destination);
+
+    const workletNode = await createCaptureWorklet(audioCtx);
+    if (workletNode) {
+      workletNode.port.onmessage = (ev: MessageEvent<Float32Array>) => handleChunk(ev.data);
+      processor = workletNode;
+    } else {
+      // Fallback para browsers sem AudioWorklet (ScriptProcessorNode está obsoleto).
+      const legacy = audioCtx.createScriptProcessor(4096, 1, 1);
+      legacy.onaudioprocess = (ev) => handleChunk(ev.inputBuffer.getChannelData(0));
+      processor = legacy;
+    }
+
     sourceNode.connect(processor);
-    processor.connect(audioCtx.destination);
+    processor.connect(processorSink);
 
     return {
       setMuted: (nextMuted: boolean) => {

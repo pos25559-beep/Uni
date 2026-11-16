@@ -263,5 +263,8 @@
     "clearTitle": "Apagar todos os dados locais?",
     "deleteAll": "Apagar tudo",
     "clearBody": "Esta ação remove cadeiras, avaliações, aulas, sessões, tarefas, materiais e eventos guardados neste dispositivo. Exporta primeiro uma cópia de segurança se precisares."
+  },
+  "gemini": {
+    "keyLocalOnly": "A chave fica guardada só neste dispositivo. Nunca é enviada para a conta Unipedia nem para outros aparelhos."
   }
 }

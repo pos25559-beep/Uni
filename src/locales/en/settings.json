@@ -263,5 +263,8 @@
     "clearTitle": "Delete all local data?",
     "deleteAll": "Delete everything",
     "clearBody": "This removes courses, assessments, classes, sessions, tasks, materials and events stored on this device. Export a backup first if you need one."
+  },
+  "gemini": {
+    "keyLocalOnly": "Your key is stored on this device only. It is never sent to your Unipedia account or other devices."
   }
 }

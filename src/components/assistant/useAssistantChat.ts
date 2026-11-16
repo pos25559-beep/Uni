@@ -396,7 +396,7 @@ export function useAssistantChat({
                 textExcerpts: [],
                 readTitles: [],
                 skipped: [],
-                needsDriveAuth: false,
+                needsDriveAuth: false, contextTokens: 0, contextTokenBudget: null,
               };
         setDriveAuthNeeded(resolvedMaterials.needsDriveAuth);
 

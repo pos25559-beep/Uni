@@ -5,8 +5,26 @@ import { getGoogleToken, hasValidGisToken } from '../integrations/googleAuth';
 import type { Material } from '../types';
 
 export const MAX_FREE_AI_MATERIAL_FILES = 3;
-export const MAX_KEY_AI_MATERIAL_FILES = 12;
+/**
+ * Com chave pessoal o limite real é o orçamento de tokens (ver `getKeyContextTokenBudget`).
+ * Este teto só protege a interface e o número de uploads em paralelo.
+ */
+export const MAX_KEY_AI_MATERIAL_FILES = 100;
 export const MAX_AI_MATERIAL_FILES = MAX_FREE_AI_MATERIAL_FILES;
+
+/**
+ * Orçamento de contexto por pergunta com chave pessoal. 240k fica abaixo do limite de
+ * tokens/minuto que alguns projetos do escalão gratuito têm; quem tem faturação ativa
+ * pode subir até ~900k (janela de 1M) com `setKeyContextTokenBudget`.
+ */
+export const DEFAULT_KEY_CONTEXT_TOKEN_BUDGET = 240_000;
+export const MIN_KEY_CONTEXT_TOKEN_BUDGET = 20_000;
+export const MAX_KEY_CONTEXT_TOKEN_BUDGET = 900_000;
+const CONTEXT_BUDGET_STORAGE_KEY = 'uni-gemini-context-budget-v1';
+const TOKEN_COUNT_MODEL = 'gemini-3.8-flash';
+/** Estimativa quando o countTokens falha: ~258 tokens por página, ~60 KB por página de PDF. */
+const ESTIMATED_TOKENS_PER_PAGE = 258;
+const ESTIMATED_BYTES_PER_PAGE = 60_000;
 
 const MAX_FREE_AI_MATERIAL_BYTES = 7.5 * 1024 * 1024;
 const MAX_KEY_AI_MATERIAL_BYTES = 25 * 1024 * 1024;
@@ -20,6 +38,71 @@ const MAX_STORED_FILE_URIS = 40;
 /** Limite de materiais lidos simultaneamente consoante o utilizador use chave pessoal Gemini. */
 export function getAiMaterialLimit(hasPersonalKey = Boolean(getCustomGeminiKey())): number {
   return hasPersonalKey ? MAX_KEY_AI_MATERIAL_FILES : MAX_FREE_AI_MATERIAL_FILES;
+}
+
+function clampBudget(value: number): number {
+  return Math.round(
+    Math.max(MIN_KEY_CONTEXT_TOKEN_BUDGET, Math.min(MAX_KEY_CONTEXT_TOKEN_BUDGET, value)),
+  );
+}
+
+/** Orçamento de tokens de materiais por pergunta quando há chave pessoal. */
+export function getKeyContextTokenBudget(): number {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(CONTEXT_BUDGET_STORAGE_KEY) : null;
+    const parsed = raw ? Number(raw) : NaN;
+    return Number.isFinite(parsed) ? clampBudget(parsed) : DEFAULT_KEY_CONTEXT_TOKEN_BUDGET;
+  } catch {
+    return DEFAULT_KEY_CONTEXT_TOKEN_BUDGET;
+  }
+}
+
+export function setKeyContextTokenBudget(tokens: number | null): void {
+  try {
+    if (tokens === null) localStorage.removeItem(CONTEXT_BUDGET_STORAGE_KEY);
+    else localStorage.setItem(CONTEXT_BUDGET_STORAGE_KEY, String(clampBudget(tokens)));
+  } catch {
+    // armazenamento indisponível: fica o valor por omissão
+  }
+}
+
+/** Estimativa conservadora quando não há contagem real (PDF/imagem). */
+export function estimateBinaryTokens(sizeBytes: number): number {
+  const pages = Math.max(1, Math.ceil(sizeBytes / ESTIMATED_BYTES_PER_PAGE));
+  return pages * ESTIMATED_TOKENS_PER_PAGE;
+}
+
+/** ~4 caracteres por token para texto. */
+export function estimateTextTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
+
+export function attachmentTokens(attachment: ChatAttachment): number {
+  return attachment.tokenCount ?? estimateBinaryTokens(attachment.sizeBytes);
+}
+
+async function countFileTokens(
+  fileUri: string,
+  mimeType: string,
+  customKey: string,
+  signal?: AbortSignal,
+): Promise<number | undefined> {
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${TOKEN_COUNT_MODEL}:countTokens`,
+      {
+        method: 'POST',
+        headers: { 'x-goog-api-key': customKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ role: 'user', parts: [{ fileData: { fileUri, mimeType } }] }] }),
+        signal,
+      },
+    );
+    if (!res.ok) return undefined;
+    const json = (await res.json()) as { totalTokens?: number };
+    return typeof json.totalTokens === 'number' && json.totalTokens > 0 ? json.totalTokens : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export interface ResolvedMaterialExcerpt {
@@ -41,6 +124,10 @@ export interface ResolvedMaterialsBundle {
   readTitles: string[];
   skipped: SkippedMaterialInfo[];
   needsDriveAuth: boolean;
+  /** Tokens de materiais incluídos (medidos ou estimados). */
+  contextTokens: number;
+  /** Orçamento aplicado; `null` no modo gratuito (limite por ficheiros). */
+  contextTokenBudget: number | null;
 }
 
 interface CachedMaterialResolution {
@@ -53,6 +140,7 @@ export interface StoredGeminiFileUriEntry {
   mimeType: string;
   sizeBytes: number;
   expiresAt: number;
+  tokenCount?: number;
 }
 
 const contentCache = new Map<string, CachedMaterialResolution>();
@@ -187,7 +275,7 @@ function hasSilentDriveToken(): boolean {
 
 /**
  * Envia o ficheiro uma única vez para a Gemini Files API (apenas com chave pessoal),
- * permitindo usar até 12 PDFs em simultâneo via `fileData.fileUri` (validade 47h).
+ * permitindo usar muitos PDFs em simultâneo via `fileData.fileUri` (validade 47h), limitados pelo orçamento de tokens.
  */
 async function uploadBlobToGeminiFilesApi(
   blob: Blob,
@@ -258,11 +346,14 @@ async function uploadBlobToGeminiFilesApi(
     }
   }
 
+  const finalMime = json.file?.mimeType || mimeType;
+  const tokenCount = await countFileTokens(fileUri, finalMime, customKey, signal);
   const entry: StoredGeminiFileUriEntry = {
     fileUri,
-    mimeType: json.file?.mimeType || mimeType,
+    mimeType: finalMime,
     sizeBytes: blob.size,
     expiresAt: Date.now() + FILE_URI_TTL_MS,
+    tokenCount,
   };
   existingMap[cacheKey] = entry;
   writeStoredFileUriMap(existingMap);
@@ -296,6 +387,7 @@ async function resolveBinaryBlobToAttachment(
         dataBase64: '',
         fileUri: uploaded.fileUri,
         sizeBytes: blob.size,
+        tokenCount: uploaded.tokenCount,
       };
     } catch {
       // Fallback silencioso para inlineData se o tamanho couber no orçamento
@@ -458,7 +550,7 @@ async function resolveDriveMaterial(
 
 /**
  * Resolve conteúdo real (PDF via Gemini Files API / anexo multimodal ou texto extraído)
- * para até `maxFiles` materiais (3 no modo gratuito, até 12 com chave pessoal Gemini).
+ * para até `maxFiles` materiais (3 no modo gratuito; com chave pessoal, os que couberem em `getKeyContextTokenBudget()`).
  */
 export async function resolveMaterialsForAI(
   materials: Material[],
@@ -483,6 +575,25 @@ export async function resolveMaterialsForAI(
   }));
   let needsDriveAuth = false;
   let inlineBytesUsed = 0;
+  const tokenBudget = customKey ? getKeyContextTokenBudget() : null;
+  let tokensUsed = 0;
+
+  /** Com chave pessoal, o limite é o orçamento de tokens; o primeiro material entra sempre. */
+  const fitsTokenBudget = (m: Material, resolved: CachedMaterialResolution): boolean => {
+    const cost =
+      (resolved.attachment ? attachmentTokens(resolved.attachment) : 0) +
+      (resolved.excerpt ? estimateTextTokens(resolved.excerpt.content) : 0);
+    if (tokenBudget !== null && tokensUsed > 0 && tokensUsed + cost > tokenBudget) {
+      skipped.push({
+        id: m.id,
+        title: m.title,
+        reason: `Orçamento de contexto atingido (~${Math.round(tokenBudget / 1000)}k tokens por pergunta).`,
+      });
+      return false;
+    }
+    tokensUsed += cost;
+    return true;
+  };
 
   for (const m of candidates) {
     if (options?.signal?.aborted) break;
@@ -490,6 +601,7 @@ export async function resolveMaterialsForAI(
     const cacheKey = `${customKey ? 'key' : 'free'}:${m.id}:${m.modifiedAt ?? ''}`;
     const cached = contentCache.get(cacheKey);
     if (cached) {
+      if (!fitsTokenBudget(m, cached)) continue;
       if (cached.attachment) {
         if (cached.attachment.fileUri) {
           attachments.push(cached.attachment);
@@ -522,6 +634,7 @@ export async function resolveMaterialsForAI(
           options?.signal,
         );
         setCacheEntry(cacheKey, resolved);
+        if (!fitsTokenBudget(m, resolved)) continue;
         if (resolved.attachment) {
           if (!resolved.attachment.fileUri) inlineBytesUsed += resolved.attachment.sizeBytes;
           attachments.push(resolved.attachment);
@@ -557,6 +670,7 @@ export async function resolveMaterialsForAI(
           options?.signal,
         );
         setCacheEntry(cacheKey, resolved);
+        if (!fitsTokenBudget(m, resolved)) continue;
         if (resolved.attachment) {
           if (!resolved.attachment.fileUri) inlineBytesUsed += resolved.attachment.sizeBytes;
           attachments.push(resolved.attachment);
@@ -580,5 +694,13 @@ export async function resolveMaterialsForAI(
     });
   }
 
-  return { attachments, textExcerpts, readTitles, skipped, needsDriveAuth };
+  return {
+    attachments,
+    textExcerpts,
+    readTitles,
+    skipped,
+    needsDriveAuth,
+    contextTokens: tokensUsed,
+    contextTokenBudget: tokenBudget,
+  };
 }

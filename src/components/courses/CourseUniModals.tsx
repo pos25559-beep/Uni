@@ -657,7 +657,7 @@ export function CourseSheetsModal({
       const resolved =
         pickedMats.length > 0
           ? await resolveMaterialsForAI(pickedMats, { maxFiles })
-          : { attachments: [], textExcerpts: [], readTitles: [], skipped: [], needsDriveAuth: false };
+          : { attachments: [], textExcerpts: [], readTitles: [], skipped: [], needsDriveAuth: false, contextTokens: 0, contextTokenBudget: null };
 
       if (resolved.needsDriveAuth) {
         showToast('Autoriza o Google Drive no separador Materiais para ler PDFs da pasta.');
