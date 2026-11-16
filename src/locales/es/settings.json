@@ -175,6 +175,34 @@
     "scheduled": "{{count}} programada(s) en las próximas 72 h",
     "example": "Ejemplo inmediato"
   },
+  "del": {
+    "word": "ELIMINAR",
+    "needPassword": "Introduce tu contraseña actual abajo para confirmar la eliminación.",
+    "googleClosed": "Has cerrado la ventana de Google antes de confirmar. Puedes intentarlo de nuevo sin riesgo o usar la limpieza local.",
+    "wrongPassword": "Contraseña incorrecta. Inténtalo de nuevo.",
+    "failed": "No se ha podido completar la eliminación.",
+    "titleAccount": "Eliminar cuenta y datos",
+    "titleLocal": "Borrar todos los datos locales",
+    "finish": "Terminar y empezar de nuevo",
+    "cancel": "Cancelar",
+    "confirmGoogle": "Confirmar en Google y borrar",
+    "deleteForever": "Eliminar definitivamente",
+    "deleteLocal": "Borrar datos locales",
+    "done": "Eliminación completada",
+    "doneBody": "Tus registros locales, perfil y cuenta en la nube se han eliminado. Puedes empezar de nuevo cuando quieras.",
+    "irreversible": "Esta acción no se puede deshacer.",
+    "accountBody": "Borra tu cuenta ({{email}}), todos los datos en la nube y los datos guardados en este móvil.",
+    "localBody": "Borra todas las asignaturas, evaluaciones, sesiones, materiales y ajustes guardados en este dispositivo.",
+    "export": "Exportar copia JSON antes de borrar",
+    "reauthTitle": "Confirmación rápida de seguridad (sesión abierta hace más de 4 min)",
+    "reauthPassword": "Introduce tu contraseña actual para confirmar que eres tú:",
+    "currentPassword": "Contraseña actual",
+    "typeBefore": "Escribe",
+    "typeAfter": "para confirmar:",
+    "signOutOnly": "Prefiero solo cerrar sesión y limpiar este dispositivo",
+    "gdprContact": "Contacto RGPD:",
+    "googleHint": "Por seguridad, al pulsar abajo confirmarás quién eres en la ventana de Google (solo identidad básica, sin pedir acceso a Drive ni Calendar)."
+  },
   "gemini": {
     "keyLocalOnly": "La clave se guarda solo en este dispositivo. Nunca se envía a tu cuenta de Unipedia ni a otros dispositivos."
   }

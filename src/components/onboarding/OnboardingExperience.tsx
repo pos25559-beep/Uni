@@ -2,6 +2,7 @@ import { OnboardingProvider, useOnboarding } from '@onboardjs/react';
 import type { OnboardingStep } from '@onboardjs/core';
 import { ArrowRight, ChevronLeft, ChevronRight, ExternalLink, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAcademicEmails } from '../../hooks/useGoogleData';
 import { matchCourse } from '../../integrations/clip';
@@ -98,6 +99,7 @@ export interface OnboardingExperienceProps {
 }
 
 function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperienceProps) {
+  const { t } = useTranslation('onboarding');
   const settings = useStore((s) => s.settings);
   const existingCourses = useStore((s) => s.courses);
   const storedProfile = useStore((s) => s.academicProfile);
@@ -388,14 +390,14 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     }
 
     const parts: string[] = [];
-    if (importedCourses.length > 0) parts.push(`${importedCourses.length} registo(s)`);
-    if (meta.classesCount > 0) parts.push(`${meta.classesCount} aula(s) no horário`);
-    if (meta.assessmentsCount > 0) parts.push(`${meta.assessmentsCount} avaliação(ões)`);
+    if (importedCourses.length > 0) parts.push(t('shell.rec', { count: importedCourses.length }));
+    if (meta.classesCount > 0) parts.push(t('shell.classes', { count: meta.classesCount }));
+    if (meta.assessmentsCount > 0) parts.push(t('shell.assess', { count: meta.assessmentsCount }));
     setOcrError(null);
     setOcrFeedback(
       hasActiveItems
-        ? `Etapa pronta pelo teu horário: ${parts.join(', ')}. As restantes ficaram arrumadas em «Depois».`
-        : `Importado com sucesso: ${parts.join(', ')}.`,
+        ? t('shell.readyBySchedule', { parts: parts.join(', ') })
+        : t('shell.imported', { parts: parts.join(', ') }),
     );
     void hapticSuccess();
   };
@@ -641,7 +643,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     const parsed = parseCurriculumFromText(pastedPlanText, primaryAcademicYear, currentSemester);
     if (parsed.length === 0) {
       setOcrError(
-        'Não detetei cadeiras nesse texto. Cola a tabela do portal académico ou escreve uma cadeira por linha.',
+        t('shell.noCoursesText'),
       );
       return;
     }
@@ -676,7 +678,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
 
     setOcrError(null);
     setOcrFeedback(
-      `${parsed.length} ${parsed.length === 1 ? 'cadeira importada' : 'cadeiras importadas'} diretamente do texto colado!`,
+      t('shell.pastedN', { count: parsed.length }),
     );
     setShowPastePlan(false);
     setPastedPlanText('');
@@ -717,7 +719,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
       return /\.(png|jpe?g|webp|gif|heic|heif|bmp)$/i.test(f.name);
     });
     if (imageFiles.length === 0) {
-      setOcrError('Seleciona uma imagem válida (PNG, JPG, WebP ou print do horário).');
+      setOcrError(t('shell.badImage'));
       return;
     }
 
@@ -777,7 +779,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
 
       if (historyItems.length === 0 && scheduleSlots.length === 0 && scheduleAssessments.length === 0) {
         setOcrError(
-          'Não consegui reconhecer cadeiras nem aulas nessas imagens. Tenta um print mais nítido da pauta ou do horário semanal.',
+          t('shell.noRecognise'),
         );
         return;
       }
@@ -1167,7 +1169,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
                 Unipedia
               </p>
               <p className="font-mono text-xs text-muted tabular">
-                Passo {stepIndex + 1}/{STEP_META.length} · {STEP_META[stepIndex]?.label}
+                {t('shell.stepOf', { n: stepIndex + 1, total: STEP_META.length, label: t(`shell.step.${STEP_META[stepIndex]?.id ?? 'curso'}`) })}
               </p>
             </div>
           </div>
@@ -1196,7 +1198,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
 
             {canSkipDirectly && (
               <Button variant="ghost" size="sm" onClick={onClose}>
-                Fechar
+                {t('shell.close')}
               </Button>
             )}
           </div>
@@ -1382,11 +1384,11 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
           {stepIndex > 0 ? (
             <Button variant="ghost" onClick={() => void handleGoPrev()}>
-              <ChevronLeft size={16} /> Anterior
+              <ChevronLeft size={16} /> {t('shell.prev')}
             </Button>
           ) : (
             <span className="text-xs font-medium text-muted">
-              Podes ajustar tudo mais tarde
+              {t('shell.later')}
             </span>
           )}
 
@@ -1399,7 +1401,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
               whileTap={{ scale: 0.94 }}
               className="inline-flex min-h-[48px] items-center gap-2 rounded-full bg-ink-cta px-5 text-sm font-bold text-ink-cta-fg shadow-card transition-opacity hover:opacity-90"
             >
-              <span>Continuar</span>
+              <span>{t('shell.next')}</span>
               <ChevronRight size={18} aria-hidden="true" />
             </motion.button>
           ) : (
@@ -1411,7 +1413,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
               whileTap={{ scale: 0.96 }}
               className="inline-flex min-h-[48px] items-center gap-2 rounded-full bg-ink-cta px-6 text-sm font-bold text-ink-cta-fg shadow-card transition-opacity hover:opacity-90"
             >
-              <span>Começar com o Uni</span>
+              <span>{t('shell.start')}</span>
               <ArrowRight size={17} aria-hidden="true" />
             </motion.button>
           )}
@@ -1422,7 +1424,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
         <div
           role="dialog"
           aria-modal="true"
-          aria-label={legalPreview === 'privacy' ? 'Política de Privacidade' : 'Termos de Utilização'}
+          aria-label={legalPreview === 'privacy' ? t('shell.privacy') : t('shell.terms')}
           onClick={() => setLegalPreview(null)}
           className="fixed inset-0 z-[70] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
         >
@@ -1435,11 +1437,11 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
               <div className="mx-auto mb-3 h-1.5 w-11 rounded-full bg-line sm:hidden" aria-hidden="true" />
               <div className="flex items-center justify-between gap-3 border-b border-line pb-3">
                 <h3 className="font-display text-lg font-bold text-fg">
-                  {legalPreview === 'privacy' ? 'Política de Privacidade' : 'Termos de Utilização'}
+                  {legalPreview === 'privacy' ? t('shell.privacy') : t('shell.terms')}
                 </h3>
                 <button
                   type="button"
-                  aria-label="Fechar pré-visualização legal"
+                  aria-label={t('shell.closeLegal')}
                   onClick={() => setLegalPreview(null)}
                   className="hidden size-11 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-fg sm:flex"
                 >

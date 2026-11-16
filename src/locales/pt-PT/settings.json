@@ -175,6 +175,34 @@
     "scheduled": "{{count}} agendada(s) nas próximas 72h",
     "example": "Exemplo imediato"
   },
+  "del": {
+    "word": "ELIMINAR",
+    "needPassword": "Introduz a tua palavra-passe atual abaixo para confirmar a eliminação.",
+    "googleClosed": "Fechaste a janela da Google antes de confirmar. Podes tentar novamente sem risco, ou usar a limpeza local.",
+    "wrongPassword": "Palavra-passe incorreta. Tenta novamente.",
+    "failed": "Não foi possível concluir a eliminação.",
+    "titleAccount": "Eliminar conta e dados",
+    "titleLocal": "Apagar todos os dados locais",
+    "finish": "Concluir e recomeçar",
+    "cancel": "Cancelar",
+    "confirmGoogle": "Confirmar no Google e apagar",
+    "deleteForever": "Eliminar definitivamente",
+    "deleteLocal": "Apagar dados locais",
+    "done": "Eliminação concluída",
+    "doneBody": "Os teus registos locais, perfil e conta Cloud foram removidos. Podes começar de novo quando quiseres.",
+    "irreversible": "Esta ação não tem retorno.",
+    "accountBody": "Apaga a tua conta ({{email}}), todos os dados na nuvem e os dados guardados neste telemóvel.",
+    "localBody": "Apaga todas as cadeiras, avaliações, sessões, materiais e definições guardadas neste dispositivo.",
+    "export": "Exportar cópia JSON antes de apagar",
+    "reauthTitle": "Confirmação rápida de segurança (sessão aberta há mais de 4 min)",
+    "reauthPassword": "Introduz a tua palavra-passe atual para confirmar que és mesmo tu:",
+    "currentPassword": "Palavra-passe atual",
+    "typeBefore": "Escreve",
+    "typeAfter": "para confirmar:",
+    "signOutOnly": "Prefiro apenas terminar sessão e limpar este dispositivo",
+    "gdprContact": "Contacto RGPD:",
+    "googleHint": "Por segurança, ao clicar abaixo vais confirmar rapidamente quem és na janela da Google (só identidade básica, sem pedir acesso a Drive ou Agenda e sem risco de bloqueio)."
+  },
   "gemini": {
     "keyLocalOnly": "A chave fica guardada só neste dispositivo. Nunca é enviada para a conta Unipedia nem para outros aparelhos."
   }

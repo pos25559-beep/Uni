@@ -70,5 +70,36 @@
     "addLink": "Adicionar ligação",
     "uploadFile": "Enviar ficheiro",
     "emptyTitle": "Ainda sem materiais guardados"
+  },
+  "practice": {
+    "rating": {
+      "1": "Rever já",
+      "2": "Com esforço",
+      "3": "Dominei"
+    },
+    "realTitle": "Prática real · Cartão {{n}}/{{total}}",
+    "activeTitle": "Prática ativa · {{topic}}",
+    "cancel": "Cancelar",
+    "newCard": "Novo cartão",
+    "newFromMaterial": "Novos da matéria",
+    "fromNotes": "Gerar dos apontamentos",
+    "sourcesRead": "Fontes lidas: {{list}}",
+    "available": "Materiais disponíveis: {{list}}",
+    "qPh": "Pergunta curta (ex.: Condição de KKT no ponto ótimo?)",
+    "qAria": "Pergunta do cartão",
+    "aPh": "Resposta / fórmula ou ideia-chave",
+    "aAria": "Resposta do cartão",
+    "save": "Guardar cartão no tópico",
+    "preparing": "A preparar 3–5 perguntas com base na tua matéria real…",
+    "consolidatedOne": "verificação consolidada",
+    "consolidatedMany": "cartões consolidados",
+    "confidence": "Confiança {{n}}/5",
+    "nextReview": "Próxima revisão ativa agendada para",
+    "repeat": "Repetir baralho",
+    "source": "Fonte: {{title}}",
+    "reveal": "Revelar resposta",
+    "selfCard": "Autoavaliação do cartão",
+    "selfTopic": "Autoavaliação rápida do tópico",
+    "explain": "Sem olhar para os apontamentos, tenta explicar por palavras tuas a ideia central de «{{topic}}» — ou cria/gera um baralho de prática acima."
   }
 }

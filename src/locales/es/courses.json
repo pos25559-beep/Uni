@@ -70,5 +70,36 @@
     "addLink": "Añadir enlace",
     "uploadFile": "Subir archivo",
     "emptyTitle": "Aún sin materiales guardados"
+  },
+  "practice": {
+    "rating": {
+      "1": "Repasar ya",
+      "2": "Con esfuerzo",
+      "3": "Dominado"
+    },
+    "realTitle": "Práctica real · Tarjeta {{n}}/{{total}}",
+    "activeTitle": "Práctica activa · {{topic}}",
+    "cancel": "Cancelar",
+    "newCard": "Nueva tarjeta",
+    "newFromMaterial": "Nuevas del temario",
+    "fromNotes": "Generar desde apuntes",
+    "sourcesRead": "Fuentes leídas: {{list}}",
+    "available": "Materiales disponibles: {{list}}",
+    "qPh": "Pregunta corta (ej.: ¿Condición KKT en el óptimo?)",
+    "qAria": "Pregunta de la tarjeta",
+    "aPh": "Respuesta / fórmula o idea clave",
+    "aAria": "Respuesta de la tarjeta",
+    "save": "Guardar tarjeta en el tema",
+    "preparing": "Preparando 3–5 preguntas con tu temario real…",
+    "consolidatedOne": "verificación consolidada",
+    "consolidatedMany": "tarjetas consolidadas",
+    "confidence": "Confianza {{n}}/5",
+    "nextReview": "Próximo repaso activo programado para",
+    "repeat": "Repetir mazo",
+    "source": "Fuente: {{title}}",
+    "reveal": "Mostrar respuesta",
+    "selfCard": "Autoevaluación de la tarjeta",
+    "selfTopic": "Autoevaluación rápida del tema",
+    "explain": "Sin mirar tus apuntes, intenta explicar con tus palabras la idea central de «{{topic}}», o crea/genera un mazo de práctica arriba."
   }
 }
