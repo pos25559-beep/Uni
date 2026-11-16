@@ -174,5 +174,33 @@
     "preview": "Pré-visualização ao vivo",
     "scheduled": "{{count}} agendada(s) nas próximas 72h",
     "example": "Exemplo imediato"
+  },
+  "del": {
+    "word": "EXCLUIR",
+    "needPassword": "Digite sua senha atual abaixo para confirmar a exclusão.",
+    "googleClosed": "Você fechou a janela do Google antes de confirmar. Pode tentar novamente sem risco ou usar a limpeza local.",
+    "wrongPassword": "Senha incorreta. Tente novamente.",
+    "failed": "Não foi possível concluir a exclusão.",
+    "titleAccount": "Excluir conta e dados",
+    "titleLocal": "Apagar todos os dados locais",
+    "finish": "Concluir e recomeçar",
+    "cancel": "Cancelar",
+    "confirmGoogle": "Confirmar no Google e apagar",
+    "deleteForever": "Excluir definitivamente",
+    "deleteLocal": "Apagar dados locais",
+    "done": "Exclusão concluída",
+    "doneBody": "Seus registros locais, perfil e conta na nuvem foram removidos. Você pode começar de novo quando quiser.",
+    "irreversible": "Esta ação não pode ser desfeita.",
+    "accountBody": "Apaga sua conta ({{email}}), todos os dados na nuvem e os dados salvos neste celular.",
+    "localBody": "Apaga todas as disciplinas, avaliações, sessões, materiais e configurações salvas neste dispositivo.",
+    "export": "Exportar cópia JSON antes de apagar",
+    "reauthTitle": "Confirmação rápida de segurança (sessão aberta há mais de 4 min)",
+    "reauthPassword": "Digite sua senha atual para confirmar que é você mesmo:",
+    "currentPassword": "Senha atual",
+    "typeBefore": "Digite",
+    "typeAfter": "para confirmar:",
+    "signOutOnly": "Prefiro apenas sair e limpar este dispositivo",
+    "gdprContact": "Contato LGPD/RGPD:",
+    "googleHint": "Por segurança, ao clicar abaixo você vai confirmar rapidamente quem é na janela do Google (só identidade básica, sem pedir acesso ao Drive ou Agenda)."
   }
 }

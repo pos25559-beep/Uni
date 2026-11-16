@@ -10,6 +10,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { hasCustomGeminiKey } from '../../integrations/gemini';
 import {
   computePracticeSessionOutcome,
@@ -19,7 +20,7 @@ import {
   selectPriorityMaterialsForTopic,
 } from '../../lib/practiceEngine';
 import { todayStr } from '../../lib/selectors';
-import { computeNextSrsState, RECALL_LABELS, type RecallScore } from '../../lib/spacedRepetition';
+import { computeNextSrsState, type RecallScore } from '../../lib/spacedRepetition';
 import { cx } from '../../lib/uiHelpers';
 import { newId, useStore } from '../../store/useStore';
 import type { Course, PracticeCard, Topic } from '../../types';
@@ -51,6 +52,7 @@ export default function ActivePracticeDeck({
   autoPrepare = false,
   onOutcome,
 }: ActivePracticeDeckProps) {
+  const { t } = useTranslation('courses');
   const materials = useStore((s) => s.materials);
   const studyLogs = useStore((s) => s.studyLogs);
   const aiConsent = Boolean(useStore((s) => s.settings.aiConsent));
@@ -248,8 +250,8 @@ export default function ActivePracticeDeck({
         <span className="inline-flex items-center gap-1.5 font-semibold text-fg">
           <Brain size={14} className="text-accent-ink" />
           {cards.length > 0 && !completedSummary
-            ? `Prática real · Cartão ${index + 1}/${cards.length}`
-            : `Prática ativa · ${topic.title}`}
+            ? t('practice.realTitle', { n: index + 1, total: cards.length })
+            : t('practice.activeTitle', { topic: topic.title })}
         </span>
 
         <div className="flex flex-wrap items-center gap-1.5">
@@ -260,7 +262,7 @@ export default function ActivePracticeDeck({
               className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-line bg-surface-2 px-2.5 py-1.5 text-xs font-medium text-fg transition hover:bg-surface"
             >
               <Plus size={13} />
-              {addingManual ? 'Cancelar' : 'Novo cartão'}
+              {addingManual ? t('practice.cancel') : t('practice.newCard')}
             </button>
           )}
           {aiConsent && course && (
@@ -277,7 +279,7 @@ export default function ActivePracticeDeck({
               ) : (
                 <Sparkles size={13} />
               )}
-              {cards.length > 0 ? 'Novos da matéria' : 'Gerar dos apontamentos'}
+              {cards.length > 0 ? t('practice.newFromMaterial') : t('practice.fromNotes')}
             </button>
           )}
         </div>
@@ -288,8 +290,8 @@ export default function ActivePracticeDeck({
           <FileText size={13} className="shrink-0 text-accent-ink" />
           <span>
             {usedSources.length > 0
-              ? `Fontes lidas: ${usedSources.join(', ')}`
-              : `Materiais disponíveis: ${courseMaterials.map((m) => m.title).join(', ')}`}
+              ? t('practice.sourcesRead', { list: usedSources.join(', ') })
+              : t('practice.available', { list: courseMaterials.map((m) => m.title).join(', ') })}
           </span>
         </p>
       )}
@@ -299,15 +301,15 @@ export default function ActivePracticeDeck({
           <Input
             value={manualPrompt}
             onChange={(e) => setManualPrompt(e.target.value)}
-            placeholder="Pergunta curta (ex.: Condição de KKT no ponto ótimo?)"
-            aria-label="Pergunta do cartão"
+            placeholder={t('practice.qPh')}
+            aria-label={t('practice.qAria')}
           />
           <Textarea
             rows={2}
             value={manualAnswer}
             onChange={(e) => setManualAnswer(e.target.value)}
-            placeholder="Resposta / fórmula ou ideia-chave"
-            aria-label="Resposta do cartão"
+            placeholder={t('practice.aPh')}
+            aria-label={t('practice.aAria')}
           />
           <Button
             size="sm"
@@ -315,7 +317,7 @@ export default function ActivePracticeDeck({
             onClick={handleSaveManualCard}
             disabled={!manualPrompt.trim() || !manualAnswer.trim()}
           >
-            Guardar cartão no tópico
+            {t('practice.save')}
           </Button>
         </div>
       )}
@@ -325,7 +327,7 @@ export default function ActivePracticeDeck({
       {busy && cards.length === 0 ? (
         <div className="flex items-center gap-2 rounded-xl bg-surface-2/70 p-4 text-xs text-muted">
           <Loader2 size={15} className="animate-spin text-accent-ink" />
-          A preparar 3–5 perguntas com base na tua matéria real…
+          {t('practice.preparing')}
         </div>
       ) : completedSummary ? (
         <div className="space-y-2.5 rounded-xl border border-ok/30 bg-ok/10 p-3.5">
@@ -333,15 +335,15 @@ export default function ActivePracticeDeck({
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-ok">
               <CheckCircle2 size={15} />
               {completedSummary.hits}/{completedSummary.total}{' '}
-              {completedSummary.total === 1 ? 'verificação consolidada' : 'cartões consolidados'}
+              {completedSummary.total === 1 ? t('practice.consolidatedOne') : t('practice.consolidatedMany')}
             </span>
             <span className="text-xs font-medium text-fg tabular">
-              Confiança {completedSummary.confidence}/5
+              {t('practice.confidence', { n: completedSummary.confidence })}
             </span>
           </div>
           {completedSummary.nextReviewDate && (
             <p className="text-xs text-fg">
-              Próxima revisão ativa agendada para{' '}
+              {t('practice.nextReview')}{' '}
               <strong className="tabular">{completedSummary.nextReviewDate}</strong> (+
               {completedSummary.srsIntervalDays}d).
             </p>
@@ -357,7 +359,7 @@ export default function ActivePracticeDeck({
                 setCompletedSummary(null);
               }}
             >
-              Repetir baralho
+              {t('practice.repeat')}
             </Button>
           )}
         </div>
@@ -366,7 +368,7 @@ export default function ActivePracticeDeck({
           {activeCard.sourceTitle && (
             <span className="inline-flex items-center gap-1 rounded-full bg-surface px-2.5 py-0.5 text-xs font-medium text-muted">
               <BookOpen size={12} />
-              Fonte: {activeCard.sourceTitle}
+              {t('practice.source', { title: activeCard.sourceTitle })}
             </span>
           )}
           <p className="text-sm font-medium leading-relaxed text-fg">{activeCard.prompt}</p>
@@ -378,14 +380,14 @@ export default function ActivePracticeDeck({
               className="w-full"
               onClick={() => setRevealed(true)}
             >
-              <Eye size={14} /> Revelar resposta
+              <Eye size={14} /> {t('practice.reveal')}
             </Button>
           ) : (
             <div className="space-y-3">
               <div className="rounded-xl border border-line bg-surface p-3 text-xs leading-relaxed text-fg">
                 {activeCard.answer}
               </div>
-              <div className="grid grid-cols-3 gap-1.5" role="group" aria-label="Autoavaliação do cartão">
+              <div className="grid grid-cols-3 gap-1.5" role="group" aria-label={t('practice.selfCard')}>
                 {RATING_OPTIONS.map((score) => (
                   <button
                     key={score}
@@ -400,7 +402,7 @@ export default function ActivePracticeDeck({
                           : 'border-line bg-surface text-fg hover:bg-surface-2',
                     )}
                   >
-                    {RECALL_LABELS[score].label}
+                    {t(`practice.rating.${score}`)}
                   </button>
                 ))}
               </div>
@@ -410,9 +412,9 @@ export default function ActivePracticeDeck({
       ) : (
         <div className="space-y-3">
           <p className="text-xs leading-relaxed text-muted">
-            Sem olhar para os apontamentos, tenta explicar por palavras tuas a ideia central de «{topic.title}» — ou cria/gera um baralho de prática acima.
+            {t('practice.explain', { topic: topic.title })}
           </p>
-          <div className="grid grid-cols-3 gap-1.5" role="group" aria-label="Autoavaliação rápida do tópico">
+          <div className="grid grid-cols-3 gap-1.5" role="group" aria-label={t('practice.selfTopic')}>
             {RATING_OPTIONS.map((score) => (
               <button
                 key={score}
@@ -420,7 +422,7 @@ export default function ActivePracticeDeck({
                 onClick={() => handleQuickSingleRating(score)}
                 className="min-h-11 rounded-xl border border-line bg-surface-2 px-2 py-2 text-center text-xs font-semibold text-fg transition hover:border-accent hover:bg-accent-soft hover:text-accent-ink"
               >
-                {RECALL_LABELS[score].label}
+                {t(`practice.rating.${score}`)}
               </button>
             ))}
           </div>

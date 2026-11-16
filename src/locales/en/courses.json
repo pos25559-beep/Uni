@@ -70,5 +70,36 @@
     "addLink": "Add link",
     "uploadFile": "Upload file",
     "emptyTitle": "No saved materials yet"
+  },
+  "practice": {
+    "rating": {
+      "1": "Review now",
+      "2": "With effort",
+      "3": "Nailed it"
+    },
+    "realTitle": "Real practice · Card {{n}}/{{total}}",
+    "activeTitle": "Active practice · {{topic}}",
+    "cancel": "Cancel",
+    "newCard": "New card",
+    "newFromMaterial": "New from material",
+    "fromNotes": "Generate from notes",
+    "sourcesRead": "Sources read: {{list}}",
+    "available": "Available materials: {{list}}",
+    "qPh": "Short question (e.g. KKT condition at the optimum?)",
+    "qAria": "Card question",
+    "aPh": "Answer / formula or key idea",
+    "aAria": "Card answer",
+    "save": "Save card to topic",
+    "preparing": "Preparing 3–5 questions from your real material…",
+    "consolidatedOne": "check consolidated",
+    "consolidatedMany": "cards consolidated",
+    "confidence": "Confidence {{n}}/5",
+    "nextReview": "Next active review scheduled for",
+    "repeat": "Repeat deck",
+    "source": "Source: {{title}}",
+    "reveal": "Reveal answer",
+    "selfCard": "Card self-assessment",
+    "selfTopic": "Quick topic self-assessment",
+    "explain": "Without looking at your notes, try to explain the core idea of «{{topic}}» in your own words — or create/generate a practice deck above."
   }
 }

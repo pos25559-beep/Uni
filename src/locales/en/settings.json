@@ -174,5 +174,33 @@
     "preview": "Live preview",
     "scheduled": "{{count}} scheduled in the next 72h",
     "example": "Instant example"
+  },
+  "del": {
+    "word": "DELETE",
+    "needPassword": "Enter your current password below to confirm deletion.",
+    "googleClosed": "You closed the Google window before confirming. You can safely try again or use local cleanup.",
+    "wrongPassword": "Wrong password. Please try again.",
+    "failed": "Couldn't complete the deletion.",
+    "titleAccount": "Delete account and data",
+    "titleLocal": "Delete all local data",
+    "finish": "Finish and start over",
+    "cancel": "Cancel",
+    "confirmGoogle": "Confirm with Google and delete",
+    "deleteForever": "Delete permanently",
+    "deleteLocal": "Delete local data",
+    "done": "Deletion complete",
+    "doneBody": "Your local records, profile and cloud account were removed. You can start again whenever you like.",
+    "irreversible": "This can't be undone.",
+    "accountBody": "Deletes your account ({{email}}), all cloud data and the data stored on this phone.",
+    "localBody": "Deletes all courses, assessments, sessions, materials and settings stored on this device.",
+    "export": "Export a JSON copy before deleting",
+    "reauthTitle": "Quick security check (signed in more than 4 min ago)",
+    "reauthPassword": "Enter your current password to confirm it's you:",
+    "currentPassword": "Current password",
+    "typeBefore": "Type",
+    "typeAfter": "to confirm:",
+    "signOutOnly": "I'd rather just sign out and clear this device",
+    "gdprContact": "GDPR contact:",
+    "googleHint": "For security, tapping below asks Google to quickly confirm it's you (basic identity only, no access to Drive or Calendar)."
   }
 }
