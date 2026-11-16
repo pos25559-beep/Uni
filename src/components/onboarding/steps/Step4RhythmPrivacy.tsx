@@ -1,4 +1,5 @@
 import { AlertCircle, Clock, Cloud, Loader2, Mail, ShieldCheck, Sparkles } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { LEGAL_INFO } from '../../../lib/legal';
 import { hapticTap } from '../../../lib/nativeBridge';
 import { useStore } from '../../../store/useStore';
@@ -78,6 +79,7 @@ export default function Step4RhythmPrivacy({
   submitAttempted,
   onOpenLegal,
 }: Step4RhythmPrivacyProps) {
+  const { t } = useTranslation('onboarding');
   const isMinimal = useStore((s) => (s.settings.appTone ?? 'vibrante') === 'serio');
 
   return (
@@ -100,16 +102,16 @@ export default function Step4RhythmPrivacy({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Clock size={18} className="text-accent-ink dark:text-accent" />
-              <h2 className="font-display text-xl font-bold">O teu ritmo semanal</h2>
+              <h2 className="font-display text-xl font-bold">{t('s4.title')}</h2>
             </div>
             {!isMinimal && (
               <StickerBadge tone="butter" tilt={-2}>
-                Ritmo real
+                {t('s4.badge')}
               </StickerBadge>
             )}
           </div>
           <p className="mt-1 text-xs opacity-80">
-            Escolhe quanto tempo queres dedicar nos teus dias disponíveis.
+            {t('s4.intro')}
           </p>
         </div>
 
@@ -134,14 +136,14 @@ export default function Step4RhythmPrivacy({
                 <span className="block font-display text-lg font-extrabold tabular">
                   {preset.label}
                 </span>
-                <span className="block text-xs text-muted">{preset.hint}</span>
+                <span className="block text-xs text-muted">{t(`s4.preset.${preset.minutes}`)}</span>
               </button>
             );
           })}
         </div>
 
         <div>
-          <span className="block text-xs font-medium text-muted">Dias disponíveis para estudar</span>
+          <span className="block text-xs font-medium text-muted">{t('s4.days')}</span>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {DAY_LABELS.map((d) => {
               const active = studyDays.includes(d.day);
@@ -157,7 +159,7 @@ export default function Step4RhythmPrivacy({
                       : 'border-line bg-surface-2 text-muted hover:text-fg',
                   )}
                 >
-                  {d.label}
+                  {t(`s4.day.${d.day}`)}
                 </button>
               );
             })}
@@ -169,10 +171,10 @@ export default function Step4RhythmPrivacy({
       {activeCandidates.length > 0 && (
         <div className="space-y-3 rounded-[24px] border border-line bg-surface p-4 shadow-[var(--shadow-card)] sm:p-5">
           <h3 className="font-display text-base font-bold text-fg">
-            Alguma cadeira mais exigente? (opcional)
+            {t('s4.hard')}
           </h3>
           <p className="text-xs text-muted">
-            O planeador dá prioridade extra e blocos mais curtos às cadeiras que selecionares aqui.
+            {t('s4.hardHint')}
           </p>
           <div className="flex flex-wrap gap-2">
             {activeCandidates.map((c) => {
@@ -194,12 +196,12 @@ export default function Step4RhythmPrivacy({
               );
             })}
           </div>
-          <Field label="Notas para o Uni (opcional)">
+          <Field label={t('s4.notes')}>
             <Textarea
               rows={2}
               value={difficultNotes}
               onChange={(e) => setDifficultNotes(e.target.value)}
-              placeholder="Ex.: preciso de reforço em séries ou física antes dos testes"
+              placeholder={t('s4.notesPh')}
             />
           </Field>
         </div>
@@ -209,14 +211,14 @@ export default function Step4RhythmPrivacy({
       <div className="space-y-3 rounded-[24px] border border-line bg-surface p-4 shadow-[var(--shadow-card)] sm:p-5">
         <div className="flex items-center gap-2">
           <Mail size={17} className="text-accent-ink" />
-          <h3 className="font-display text-base font-bold text-fg">Correio da escola/faculdade (opcional)</h3>
+          <h3 className="font-display text-base font-bold text-fg">{t('s4.mailTitle')}</h3>
         </div>
         <p className="text-xs leading-relaxed text-muted">
-          Podes ligar o teu email académico para ver avisos importantes no separador Hoje, ou deixar para mais tarde nas Definições.
+          {t('s4.mailBody')}
         </p>
         {academicMailConnected && academicEmail ? (
           <div className="rounded-xl bg-ok/10 px-3 py-2 text-xs font-semibold text-ok">
-            Ligado: {academicEmail}
+            {t('s4.connected', { email: academicEmail })}
           </div>
         ) : (
           <div className="flex flex-wrap gap-2">
@@ -224,12 +226,12 @@ export default function Step4RhythmPrivacy({
               type="email"
               value={academicHint}
               onChange={(e) => setAcademicHint(e.target.value)}
-              placeholder="Ex.: a12345@escola.pt (opcional)"
+              placeholder={t('s4.mailPh')}
               className="min-w-[200px] flex-1"
             />
             <Button size="sm" variant="secondary" onClick={onConnectAcademic} disabled={academicBusy}>
               {academicBusy && <Loader2 size={14} className="animate-spin" />}
-              Ligar agora
+              {t('s4.connect')}
             </Button>
           </div>
         )}
@@ -246,7 +248,7 @@ export default function Step4RhythmPrivacy({
       >
         <div className="flex items-center gap-2">
           <ShieldCheck size={18} className="text-accent-ink dark:text-accent" />
-          <h3 className="font-display text-base font-bold">Privacidade e controlo dos teus dados</h3>
+          <h3 className="font-display text-base font-bold">{t('s4.privacyTitle')}</h3>
         </div>
 
         {/* Idade mínima obrigatória (aviso apenas se tentar avançar sem confirmar) */}
@@ -268,14 +270,14 @@ export default function Step4RhythmPrivacy({
             className="mt-0.5 size-5 shrink-0 accent-accent"
           />
           <span className="text-xs leading-relaxed text-fg">
-            <strong>Confirmação de idade ({LEGAL_INFO.minimumAgePT}+ anos):</strong> confirmo que tenho pelo menos{' '}
-            {LEGAL_INFO.minimumAgePT} anos ou autorização de quem me representa.
+            <strong>{t('s4.ageTitle', { age: LEGAL_INFO.minimumAgePT })}</strong>{' '}
+            {t('s4.ageBody', { age: LEGAL_INFO.minimumAgePT })}
           </span>
         </label>
 
         {submitAttempted && !ageConfirmed && (
           <p id="onboarding-age-error" role="alert" className="flex items-center gap-1.5 px-1 text-xs font-semibold text-coral-ink">
-            <AlertCircle size={14} aria-hidden="true" /> Confirma a tua idade mínima acima para entrares no caderno.
+            <AlertCircle size={14} aria-hidden="true" /> {t('s4.ageError')}
           </p>
         )}
 
@@ -289,9 +291,9 @@ export default function Step4RhythmPrivacy({
           />
           <span className="text-xs leading-relaxed text-fg">
             <strong className="inline-flex items-center gap-1">
-              <Sparkles size={13} className="text-accent-ink" /> Ativar o Tutor Uni com IA (opcional):
+              <Sparkles size={13} className="text-accent-ink" /> {t('s4.aiTitle')}
             </strong>{' '}
-            permite que o Uni responda a perguntas, gere desafios de revisão e leia prints que lhe enviares. Os teus dados ficam apenas para o teu estudo.
+            {t('s4.aiBody')}
           </span>
         </label>
 
@@ -305,11 +307,11 @@ export default function Step4RhythmPrivacy({
           />
           <span className="text-xs leading-relaxed text-fg">
             <strong className="inline-flex items-center gap-1">
-              <Cloud size={13} className="text-accent-ink" /> Cópia segura na nuvem (opcional):
+              <Cloud size={13} className="text-accent-ink" /> {t('s4.cloudTitle')}
             </strong>{' '}
             {isSignedIn && personalEmail
-              ? `guarda o teu caderno associado à tua conta (${personalEmail}) para acederes em vários dispositivos.`
-              : 'se iniciares sessão mais tarde, sincroniza o teu caderno entre telemóvel e computador.'}
+              ? t('s4.cloudSigned', { email: personalEmail })
+              : t('s4.cloudLater')}
           </span>
         </label>
 
@@ -319,7 +321,7 @@ export default function Step4RhythmPrivacy({
             onClick={() => onOpenLegal('privacy')}
             className="min-h-11 rounded-xl px-2 font-semibold text-accent-ink hover:underline"
           >
-            Ler Política de Privacidade
+            {t('s4.readPrivacy')}
           </button>
           <span aria-hidden="true" className="text-muted">·</span>
           <button
@@ -327,7 +329,7 @@ export default function Step4RhythmPrivacy({
             onClick={() => onOpenLegal('terms')}
             className="min-h-11 rounded-xl px-2 font-semibold text-accent-ink hover:underline"
           >
-            Termos de Utilização
+            {t('s4.terms')}
           </button>
         </div>
       </div>

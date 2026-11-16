@@ -56,5 +56,27 @@
     "skinUpdatedToast": "Uni look updated!",
     "petRemovedToast": "Companion stored on shelf.",
     "petEquippedToast": "Companion equipped!"
+  },
+  "retention": {
+    "title": "Retention and focus quality",
+    "emptyTitle": "No reviews logged yet",
+    "emptyHint": "Finish a focus block or practise a topic to measure retention.",
+    "openPlan": "Open Plan & Focus",
+    "avg": "Average retention:",
+    "due": "{{n}} to review today",
+    "upToDate": "Reviews up to date",
+    "clean": "Clean focus:",
+    "cleanOf": "Clean focus in {{pct}} of sessions",
+    "estimated": "Estimated retention",
+    "hitRate": "Practice accuracy",
+    "quality": "Focus quality:",
+    "noDistractions": "distraction-free",
+    "exits": "{{n}} exits/session",
+    "noExits": "No exits logged in Focus Mode",
+    "active": "Active practice:",
+    "priorities": "Review priorities",
+    "pct": "{{n}}% retention",
+    "dueOne": "review due",
+    "practice": "Practise"
   }
 }

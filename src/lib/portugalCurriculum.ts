@@ -1,3 +1,4 @@
+import { tr } from '../i18n/tr';
 import type { CompletedCourseRecord, Course, CourseColor, GradingScale, Topic } from '../types';
 
 export interface CurriculumCourseTemplate {
@@ -15,20 +16,18 @@ export interface CurriculumCourseTemplate {
 
 export function formatAcademicYearLabel(year: number, isSecondarySchool = false): string {
   if (isSecondarySchool) {
-    return year === 1 ? '10.º Ano' : year === 2 ? '11.º Ano' : '12.º Ano';
+    return tr('common:fmt.secondaryYear', { n: year + 9 });
   }
-  if (year === 4) return '4.º Ano · 1.º Mestrado';
-  if (year === 5) return '5.º Ano · 2.º Mestrado';
-  return `${year}.º Ano`;
+  if (year === 4 || year === 5) return tr('common:fmt.yearMasters', { n: year, m: year - 3 });
+  return tr('common:fmt.year', { n: year });
 }
 
 export function formatAcademicYearShort(year: number, isSecondarySchool = false): string {
   if (isSecondarySchool) {
-    return year === 1 ? '10.º' : year === 2 ? '11.º' : '12.º';
+    return tr('common:fmt.secondaryShort', { n: Math.min(12, year + 9) });
   }
-  if (year === 4) return '1.º Mest.';
-  if (year === 5) return '2.º Mest.';
-  return `${year}.º Ano`;
+  if (year === 4 || year === 5) return tr('common:fmt.mastersShort', { m: year - 3 });
+  return tr('common:fmt.year', { n: year });
 }
 
 export interface DegreeCurriculum {

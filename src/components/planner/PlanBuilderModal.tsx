@@ -1,5 +1,6 @@
 import { CalendarDays, Clock, Flame, PauseCircle, RotateCcw, Sparkles, Star } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { weekdayShort } from '../../lib/colors';
 import { generatePlan, planSummary } from '../../lib/planner';
 import { fmtMinutes } from '../../lib/selectors';
@@ -93,6 +94,7 @@ export default function PlanBuilderModal({
   hasPendingGenerated,
   onApply,
 }: Props) {
+  const { t } = useTranslation('plan');
   const initial = settings.plannerPrefs ?? DEFAULT_PREFS;
   const [strategy, setStrategy] = useState<PlannerStrategy>(initial.strategy);
   const [horizonDays, setHorizonDays] = useState<7 | 14 | 21>(initial.horizonDays);
@@ -217,25 +219,25 @@ export default function PlanBuilderModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="Estúdio do Plano de Estudo"
+      title={t('builder.title')}
       maxWidthClass="sm:max-w-2xl"
       footer={
         <div className="flex w-full flex-wrap items-center justify-between gap-2">
           <span className="text-xs text-muted">
             {hasPendingGenerated
-              ? 'Sessões concluídas e manuais mantêm-se intactas.'
-              : 'Podes ajustar qualquer bloco depois de gerar.'}
+              ? t('builder.keepDone')
+              : t('builder.adjustLater')}
           </span>
           <div className="flex items-center gap-2">
             <Button variant="ghost" onClick={onClose}>
-              Cancelar
+              {t('builder.cancel')}
             </Button>
             <Button
               variant="primary"
               onClick={handleApply}
               disabled={courses.length === 0 || (previewPlan.length === 0 && pausedIds.length === courses.length)}
             >
-              <Sparkles size={15} /> Aplicar ({previewPlan.length} blocos)
+              <Sparkles size={15} /> {t('builder.apply', { n: previewPlan.length })}
             </Button>
           </div>
         </div>
@@ -246,12 +248,12 @@ export default function PlanBuilderModal({
         <section className="rounded-[22px] bg-pastel-sage/65 p-4 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider opacity-70">Pré-visualização</p>
+              <p className="text-xs font-bold uppercase tracking-wider opacity-70">{t('builder.preview')}</p>
               <p className="mt-0.5 font-display text-xl font-bold tabular">
-                {previewPlan.length} sessões · {fmtMinutes(previewTotalMinutes)}
+                {t('builder.sessionsTotal', { n: previewPlan.length, time: fmtMinutes(previewTotalMinutes) })}
               </p>
             </div>
-            <Badge tone="ok">{horizonDays} dias · blocos {blockMinutes}m</Badge>
+            <Badge tone="ok">{t('builder.badge', { d: horizonDays, m: blockMinutes })}</Badge>
           </div>
           {previewByCourse.length > 0 ? (
             <div className="mt-3 flex flex-wrap gap-1.5">
@@ -268,15 +270,15 @@ export default function PlanBuilderModal({
           ) : (
             <p className="mt-2 text-xs opacity-80">
               {pausedIds.length === courses.length
-                ? 'Pausaste todas as cadeiras — reativa pelo menos uma.'
-                : 'Todos os tópicos marcados já estão cobertos ou sem janelas livres neste período.'}
+                ? t('builder.allPaused')
+                : t('builder.allCovered')}
             </p>
           )}
         </section>
 
         {/* Estratégia */}
         <div className="space-y-2">
-          <label className="text-xs font-semibold uppercase tracking-wider text-muted">Objetivo do plano</label>
+          <label className="text-xs font-semibold uppercase tracking-wider text-muted">{t('builder.goal')}</label>
           <div className="grid grid-cols-2 gap-2">
             {STRATEGIES.map((st) => {
               const active = strategy === st.id;
@@ -292,8 +294,8 @@ export default function PlanBuilderModal({
                       : 'border-line bg-surface hover:bg-surface-2',
                   )}
                 >
-                  <span className="text-xs font-bold">{st.label}</span>
-                  <span className="mt-0.5 text-xs opacity-75">{st.hint}</span>
+                  <span className="text-xs font-bold">{t(`builder.strategy.${st.id}`)}</span>
+                  <span className="mt-0.5 text-xs opacity-75">{t(`builder.strategy.${st.id}Hint`)}</span>
                 </button>
               );
             })}
@@ -304,7 +306,7 @@ export default function PlanBuilderModal({
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted">
-              <CalendarDays size={13} /> Horizonte
+              <CalendarDays size={13} /> {t('builder.horizon')}
             </span>
             <div className="flex gap-1.5">
               {HORIZONS.map((d) => (
@@ -319,7 +321,7 @@ export default function PlanBuilderModal({
                       : 'border-line bg-surface-2/60 text-muted hover:text-fg',
                   )}
                 >
-                  {d} dias
+                  {t('builder.days', { d })}
                 </button>
               ))}
             </div>
@@ -327,7 +329,7 @@ export default function PlanBuilderModal({
 
           <div className="space-y-2">
             <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted">
-              <Clock size={13} /> Duração do bloco
+              <Clock size={13} /> {t('builder.block')}
             </span>
             <div className="flex gap-1.5">
               {BLOCK_DURATIONS.map((m) => (
@@ -351,7 +353,7 @@ export default function PlanBuilderModal({
 
         {/* Período do dia */}
         <div className="space-y-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted">Período preferido</span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted">{t('builder.periodTitle')}</span>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {PERIODS.map((p) => (
               <button
@@ -365,8 +367,8 @@ export default function PlanBuilderModal({
                     : 'border-line bg-surface-2/60 text-fg hover:bg-surface-2',
                 )}
               >
-                <span className="text-xs font-bold">{p.label}</span>
-                <span className="text-xs text-muted">{p.sub}</span>
+                <span className="text-xs font-bold">{t(`builder.period.${p.id}`)}</span>
+                <span className="text-xs text-muted">{p.id === 'auto' ? t('builder.period.autoSub') : p.sub}</span>
               </button>
             ))}
           </div>
@@ -376,7 +378,7 @@ export default function PlanBuilderModal({
         <div className="space-y-2.5 rounded-2xl border border-line bg-surface-2/40 p-3.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-xs font-semibold text-fg">
-              Meta diária: <span className="font-mono tabular text-accent-ink dark:text-accent">{fmtMinutes(dailyMinutes)}</span>
+              {t('builder.dailyGoal')} <span className="font-mono tabular text-accent-ink dark:text-accent">{fmtMinutes(dailyMinutes)}</span>
             </span>
             <div className="flex flex-wrap gap-1">
               {DAILY_PRESETS.map((m) => (
@@ -422,9 +424,9 @@ export default function PlanBuilderModal({
           <div className="space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-1">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted">
-                Foco por cadeira
+                {t('builder.focusByCourse')}
               </span>
-              <span className="text-xs text-muted">Toca para alternar: Normal → Reforçar → Pausa</span>
+              <span className="text-xs text-muted">{t('builder.toggleHint')}</span>
             </div>
             <div className="flex flex-wrap gap-2">
               {courses.map((c) => {
@@ -459,7 +461,7 @@ export default function PlanBuilderModal({
           <label className="flex min-h-[48px] cursor-pointer items-center justify-between gap-3 rounded-2xl border border-warn/40 bg-pastel-butter/50 px-3.5 py-2 text-xs dark:bg-surface-2">
             <span className="flex items-center gap-2 font-medium text-fg">
               <Flame size={15} className="shrink-0 text-coral" />
-              Reagendar automaticamente {overdueCount} {overdueCount === 1 ? 'sessão em atraso' : 'sessões em atraso'} nos próximos dias livres
+              {t('builder.overdue', { count: overdueCount })}
             </span>
             <input
               type="checkbox"
@@ -483,7 +485,7 @@ export default function PlanBuilderModal({
             }}
             className="inline-flex min-h-[36px] items-center gap-1.5 text-xs font-medium text-muted hover:text-fg"
           >
-            <RotateCcw size={13} /> Repor padrões recomendados
+            <RotateCcw size={13} /> {t('builder.reset')}
           </button>
         )}
       </div>

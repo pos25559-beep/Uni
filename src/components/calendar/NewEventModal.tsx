@@ -1,5 +1,6 @@
 // Modal para criar um evento pessoal ou uma avaliação local.
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { kindLabel } from '../../lib/colors';
 import { newId, useStore } from '../../store/useStore';
 import type { AssessmentKind } from '../../types';
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export default function NewEventModal({ defaultDate, onClose }: Props) {
+  const { t } = useTranslation('plan');
   const courses = useStore((s) => s.courses);
   const upsert = useStore((s) => s.upsert);
 
@@ -39,10 +41,10 @@ export default function NewEventModal({ defaultDate, onClose }: Props) {
   const [weight, setWeight] = useState('10');
 
   const save = () => {
-    if (!title.trim()) { setError('Indica um título.'); return; }
+    if (!title.trim()) { setError(t('newEvent.needTitle')); return; }
     if (mode === 'evento') {
-      if (!start || !end) { setError('Indica o início e o fim.'); return; }
-      if (end < start) { setError('O fim tem de ser depois do início.'); return; }
+      if (!start || !end) { setError(t('newEvent.needTimes')); return; }
+      if (end < start) { setError(t('newEvent.endAfter')); return; }
       upsert('events', {
         id: newId(),
         title: title.trim(),
@@ -53,10 +55,10 @@ export default function NewEventModal({ defaultDate, onClose }: Props) {
         courseId: eventCourse || undefined,
       });
     } else {
-      if (!avCourse) { setError('Escolhe a cadeira da avaliação.'); return; }
-      if (!date) { setError('Indica a data da avaliação.'); return; }
+      if (!avCourse) { setError(t('newEvent.needCourse')); return; }
+      if (!date) { setError(t('newEvent.needDate')); return; }
       const w = Number(weight);
-      if (!Number.isFinite(w) || w < 0 || w > 100) { setError('O peso tem de estar entre 0 e 100%.'); return; }
+      if (!Number.isFinite(w) || w < 0 || w > 100) { setError(t('newEvent.weightRange')); return; }
       upsert('assessments', {
         id: newId(),
         courseId: avCourse,
@@ -75,15 +77,15 @@ export default function NewEventModal({ defaultDate, onClose }: Props) {
     <Modal
       open
       onClose={onClose}
-      title="Novo evento"
+      title={t('newEvent.title')}
       footer={
         <>
-          <Button onClick={onClose}>Cancelar</Button>
-          <Button variant="primary" onClick={save}>Guardar</Button>
+          <Button onClick={onClose}>{t('newEvent.cancel')}</Button>
+          <Button variant="primary" onClick={save}>{t('newEvent.save')}</Button>
         </>
       }
     >
-      <div className="grid grid-cols-2 gap-1 rounded-xl bg-surface-2 p-1" role="group" aria-label="Tipo">
+      <div className="grid grid-cols-2 gap-1 rounded-xl bg-surface-2 p-1" role="group" aria-label={t('newEvent.type')}>
         {(['evento', 'avaliacao'] as Mode[]).map((m) => (
           <button
             key={m}
@@ -95,31 +97,31 @@ export default function NewEventModal({ defaultDate, onClose }: Props) {
               mode === m ? 'bg-surface text-fg shadow-sm' : 'text-muted hover:text-fg',
             )}
           >
-            {m === 'evento' ? 'Evento' : 'Avaliação'}
+            {m === 'evento' ? t('newEvent.event') : t('newEvent.assessment')}
           </button>
         ))}
       </div>
 
-      <Field label="Título">
-        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={mode === 'evento' ? 'Ex.: Reunião de grupo' : 'Ex.: Teste 1'} autoFocus />
+      <Field label={t('newEvent.titleLabel')}>
+        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={mode === 'evento' ? t('newEvent.phEvent') : t('newEvent.phTest')} autoFocus />
       </Field>
 
       {mode === 'evento' ? (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Início">
-              <DateTimeField aria-label="Data e hora de início" value={start} onChange={setStart} />
+            <Field label={t('newEvent.start')}>
+              <DateTimeField aria-label={t('newEvent.startAria')} value={start} onChange={setStart} />
             </Field>
-            <Field label="Fim">
-              <DateTimeField aria-label="Data e hora de fim" value={end} onChange={setEnd} />
+            <Field label={t('newEvent.end')}>
+              <DateTimeField aria-label={t('newEvent.endAria')} value={end} onChange={setEnd} />
             </Field>
           </div>
-          <Field label="Local" hint="Opcional">
-            <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Ex.: Biblioteca, sala 2.14" />
+          <Field label={t('newEvent.place')} hint={t('newEvent.optional')}>
+            <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder={t('newEvent.placePh')} />
           </Field>
-          <Field label="Cadeira" hint="Opcional">
+          <Field label={t('newEvent.course')} hint={t('newEvent.optional')}>
             <Select value={eventCourse} onChange={(e) => setEventCourse(e.target.value)}>
-              <option value="">Sem cadeira</option>
+              <option value="">{t('newEvent.noCourse')}</option>
               {courses.map((c) => (
                 <option key={c.id} value={c.id}>{c.shortName}</option>
               ))}
@@ -127,10 +129,10 @@ export default function NewEventModal({ defaultDate, onClose }: Props) {
           </Field>
         </>
       ) : courses.length === 0 ? (
-        <p className="text-sm text-muted">Cria primeiro uma cadeira para poderes registar avaliações.</p>
+        <p className="text-sm text-muted">{t('newEvent.createCourse')}</p>
       ) : (
         <>
-          <Field label="Cadeira">
+          <Field label={t('newEvent.course')}>
             <Select value={avCourse} onChange={(e) => setAvCourse(e.target.value)}>
               {courses.map((c) => (
                 <option key={c.id} value={c.id}>{c.shortName}</option>
@@ -138,19 +140,19 @@ export default function NewEventModal({ defaultDate, onClose }: Props) {
             </Select>
           </Field>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Tipo">
+            <Field label={t('newEvent.type')}>
               <Select value={kind} onChange={(e) => setKind(e.target.value as AssessmentKind)}>
                 {KINDS.map((k) => (
                   <option key={k} value={k}>{kindLabel[k]}</option>
                 ))}
               </Select>
             </Field>
-            <Field label="Peso (%)">
+            <Field label={t('newEvent.weight')}>
               <Input type="number" min={0} max={100} step={1} value={weight} onChange={(e) => setWeight(e.target.value)} />
             </Field>
           </div>
-          <Field label="Data e hora">
-            <DateTimeField aria-label="Data e hora da avaliação" value={date} onChange={setDate} />
+          <Field label={t('newEvent.dateTime')}>
+            <DateTimeField aria-label={t('newEvent.dateTimeAria')} value={date} onChange={setDate} />
           </Field>
         </>
       )}

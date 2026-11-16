@@ -1,6 +1,7 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { BookOpen, Brain, CalendarDays, CheckCircle2, HardDrive, Mail, Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { tr } from '../../i18n/tr';
 import { UNIPEDIA_BOUNCE_SPRING } from '../../lib/motionTokens';
 import { UniBuddy } from './UnipediaMarks';
 
@@ -9,7 +10,7 @@ export function UniClassroomScene() {
   return (
     <div
       className="relative flex h-60 w-full max-w-[332px] flex-col items-center justify-between py-1 select-none"
-      aria-label="Ilustração animada de uma aula com o Professor Uni no quadro e alunos Uni sentados"
+      aria-label={tr('onboarding:scenes.classAria')}
     >
       {/* Quadro negro escolar */}
       <motion.div
@@ -146,7 +147,7 @@ export function UniStudyGroupScene() {
   return (
     <div
       className="relative flex h-60 w-full max-w-[332px] items-center justify-center select-none"
-      aria-label="Ilustração animada de um grupo de estudo com quatro companheiros Uni à volta de cadernos"
+      aria-label={tr('onboarding:scenes.groupAria')}
     >
       {/* Stickers discretos a flutuar com ritmo SRS */}
       <motion.div
@@ -155,7 +156,7 @@ export function UniStudyGroupScene() {
         className="absolute left-3 top-2 flex items-center gap-1.5 rounded-full bg-bg px-3 py-1.5 text-xs font-bold text-fg shadow-card dark:bg-surface"
       >
         <Sparkles size={12} className="text-accent-ink" />
-        <span>Revisão 1→3→7d</span>
+        <span>{tr('onboarding:scenes.review')}</span>
       </motion.div>
 
       <motion.div
@@ -164,7 +165,7 @@ export function UniStudyGroupScene() {
         className="absolute right-3 top-4 flex items-center gap-1.5 rounded-full bg-pastel-butter px-3 py-1.5 text-xs font-bold text-[#141312] shadow-card"
       >
         <BookOpen size={12} className="text-[#0F6344]" />
-        <span>Caderno em grupo</span>
+        <span>{tr('onboarding:scenes.groupNotebook')}</span>
       </motion.div>
 
       {/* Mesa redonda de estudo */}
@@ -281,7 +282,7 @@ export function UniPlanAndConnectScene() {
   return (
     <div
       className="relative flex h-64 w-full max-w-[340px] items-center justify-center px-2 select-none"
-      aria-label="Ilustração do plano semanal e ligações Google opcionais com pequenos companheiros Uni discretos nas margens"
+      aria-label={tr('onboarding:scenes.planAria')}
     >
       {/* Pequeno Uni curioso a passear discretamente na margem superior direita */}
       <motion.div
@@ -331,9 +332,9 @@ export function UniPlanAndConnectScene() {
             className="flex w-full max-w-[292px] flex-col items-center gap-2.5"
           >
             {[
-              { label: '09:30 · Rever capítulo 3', tone: 'bg-bg text-fg dark:bg-surface', tilt: -1.4 },
-              { label: '14:00 · Ficha prática com o Uni', tone: 'bg-pastel-sage text-[#141312]', tilt: 1.4 },
-              { label: '17:30 · Simulação de exame', tone: 'bg-pastel-butter text-[#141312]', tilt: -1 },
+              { label: `09:30 · ${tr('onboarding:scenes.task1')}`, tone: 'bg-bg text-fg dark:bg-surface', tilt: -1.4 },
+              { label: `14:00 · ${tr('onboarding:scenes.task2')}`, tone: 'bg-pastel-sage text-[#141312]', tilt: 1.4 },
+              { label: `17:30 · ${tr('onboarding:scenes.task3')}`, tone: 'bg-pastel-butter text-[#141312]', tilt: -1 },
             ].map((card, i) => (
               <motion.div
                 key={card.label}
@@ -362,20 +363,20 @@ export function UniPlanAndConnectScene() {
             {[
               {
                 icon: HardDrive,
-                title: 'Google Drive nas cadeiras',
-                detail: 'Sebentas e fichas sem andar à procura.',
+                title: tr('onboarding:scenes.driveTitle'),
+                detail: tr('onboarding:scenes.driveDetail'),
                 tone: 'bg-bg text-fg dark:bg-surface',
               },
               {
                 icon: CalendarDays,
-                title: 'Google Agenda sincronizada',
-                detail: 'Aulas e datas de provas sem duplicar.',
+                title: tr('onboarding:scenes.calTitle'),
+                detail: tr('onboarding:scenes.calDetail'),
                 tone: 'bg-pastel-sky text-[#141312]',
               },
               {
                 icon: Mail,
-                title: 'Avisos académicos opcionais',
-                detail: 'Ativa quando quiseres, ao teu ritmo.',
+                title: tr('onboarding:scenes.mailTitle'),
+                detail: tr('onboarding:scenes.mailDetail'),
                 tone: 'bg-pastel-butter text-[#141312]',
               },
             ].map((item, idx) => {
@@ -414,7 +415,7 @@ export function UniFocusRecallScene() {
   return (
     <div
       className="relative flex h-64 w-full max-w-[336px] flex-col items-center justify-center select-none"
-      aria-label="Ilustração do modo foco com temporizador e revisão ativa acompanhada pelo Uni"
+      aria-label={tr('onboarding:scenes.focusAria')}
     >
       {/* Sticker superior com progresso de Recall */}
       <motion.div
@@ -423,7 +424,7 @@ export function UniFocusRecallScene() {
         className="absolute left-3 top-2 flex items-center gap-1.5 rounded-full bg-bg px-3 py-1.5 text-xs font-bold text-fg shadow-card dark:bg-surface"
       >
         <Brain size={14} className="text-accent-ink" />
-        <span>Lembrei bem · +7d</span>
+        <span>{tr('onboarding:scenes.remembered')}</span>
       </motion.div>
 
       <motion.div
@@ -432,7 +433,7 @@ export function UniFocusRecallScene() {
         className="absolute right-3 bottom-3 flex items-center gap-1.5 rounded-full bg-pastel-mint px-3 py-1.5 text-xs font-bold text-[#141312] shadow-card"
       >
         <CheckCircle2 size={14} className="text-[#0F6344]" />
-        <span>25 min reais guardados</span>
+        <span>{tr('onboarding:scenes.saved')}</span>
       </motion.div>
 
       {/* Cartão circular de foco pastel */}
@@ -443,7 +444,7 @@ export function UniFocusRecallScene() {
         className="relative flex items-center gap-4 rounded-[32px] border-2 border-accent/20 bg-bg/95 px-6 py-5 shadow-card dark:bg-surface/95"
       >
         <div className="flex flex-col items-start text-left">
-          <span className="text-xs font-semibold text-accent-ink">Sessão de foco</span>
+          <span className="text-xs font-semibold text-accent-ink">{tr('onboarding:scenes.focusSession')}</span>
           <span className="mt-0.5 font-display text-3xl font-extrabold tracking-tight tabular text-fg">
             25:00
           </span>

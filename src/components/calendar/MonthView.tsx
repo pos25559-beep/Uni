@@ -1,6 +1,6 @@
 // Grelha mensal (6 semanas, Seg–Dom). Em ecrãs pequenos mostra apenas pontos coloridos.
 import { format, isSameMonth } from 'date-fns';
-import { pt } from 'date-fns/locale';
+import { appDateLocale as pt } from '../../lib/dateLocale';
 import { weekdayShort } from '../../lib/colors';
 import type { Course } from '../../types';
 import { cx } from '../../lib/uiHelpers';

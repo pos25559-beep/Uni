@@ -102,7 +102,7 @@ export const UNI_SKINS: UniSkinMeta[] = [
   },
   {
     id: 'terracotta',
-    name: 'Uni Terracota FCT',
+    name: 'Uni Terracota',
     tagline: 'Barro quente de fim de tarde no campus',
     unlockHint: 'Conclui 6 sessões de estudo',
     swatchHex: '#D97757',

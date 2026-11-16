@@ -1,5 +1,6 @@
 // Criar (manual) ou editar uma sessão de estudo.
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { newId, useStore } from '../../store/useStore';
 import type { Course, StudySession } from '../../types';
 import { Button, DateField, Field, Input, Modal, Select, TimeField } from '../ui';
@@ -13,6 +14,7 @@ interface SessionModalProps {
 }
 
 export default function SessionModal({ courses, session, defaultDate, onClose }: SessionModalProps) {
+  const { t } = useTranslation('plan');
   const upsert = useStore((s) => s.upsert);
   const editing = Boolean(session);
 
@@ -54,19 +56,19 @@ export default function SessionModal({ courses, session, defaultDate, onClose }:
     <Modal
       open
       onClose={onClose}
-      title={editing ? 'Editar sessão' : 'Nova sessão'}
+      title={editing ? t('session.edit') : t('session.new')}
       footer={
         <>
-          <Button onClick={onClose}>Cancelar</Button>
+          <Button onClick={onClose}>{t('session.cancel')}</Button>
           <Button variant="primary" onClick={save} disabled={!valid}>
-            Guardar
+            {t('session.save')}
           </Button>
         </>
       }
     >
       {!editing && (
         <>
-          <Field label="Cadeira">
+          <Field label={t('session.course')}>
             <Select
               value={courseId}
               onChange={(e) => { setCourseId(e.target.value); setTopicId(''); }}
@@ -74,9 +76,9 @@ export default function SessionModal({ courses, session, defaultDate, onClose }:
               {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </Select>
           </Field>
-          <Field label="Tópico" hint="Opcional. Sem tópico, a sessão fica como estudo geral da cadeira.">
+          <Field label={t('session.topic')} hint={t('session.topicHint')}>
             <Select value={topicId} onChange={(e) => setTopicId(e.target.value)}>
-              <option value="">Estudo geral</option>
+              <option value="">{t('session.general')}</option>
               {course?.topics.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
             </Select>
           </Field>
@@ -91,14 +93,14 @@ export default function SessionModal({ courses, session, defaultDate, onClose }:
         </p>
       )}
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Data">
-          <DateField aria-label="Data da sessão" value={date} onChange={setDate} />
+        <Field label={t('session.date')}>
+          <DateField aria-label={t('session.dateAria')} value={date} onChange={setDate} />
         </Field>
-        <Field label="Início">
-          <TimeField aria-label="Hora de início da sessão" value={start} onChange={setStart} />
+        <Field label={t('session.start')}>
+          <TimeField aria-label={t('session.startAria')} value={start} onChange={setStart} />
         </Field>
       </div>
-      <Field label="Duração (minutos)" hint={minutesText && !minutesOk ? 'Indica entre 5 e 480 minutos.' : undefined}>
+      <Field label={t('session.duration')} hint={minutesText && !minutesOk ? t('session.durationHint') : undefined}>
         <Input
           type="number"
           inputMode="numeric"

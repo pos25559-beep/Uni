@@ -154,5 +154,223 @@
       "localOnly": "Use on this phone only",
       "acceptBefore": "By continuing you accept the"
     }
+  },
+  "fmt": {
+    "year": "Year {{n}}",
+    "yearMasters": "Year {{n}} · Master's {{m}}",
+    "mastersShort": "Master's {{m}}",
+    "secondaryShort": "Grade {{n}}",
+    "secondaryYear": "Grade {{n}}",
+    "semester": "Semester {{n}}",
+    "period": "Term {{n}}",
+    "semShort": "sem {{n}}",
+    "perWeek": "{{h}}h/week"
+  },
+  "stage": {
+    "start": "Year 1 · Just starting",
+    "m120y4": "Master's year 1 (120 ECTS)",
+    "m120y5": "Master's year 2 · Final stretch to the dissertation",
+    "i300y1": "Year 1 of 300 ECTS (start of bachelor's)",
+    "i300y2": "Year 2 of 300 ECTS (halfway through bachelor's)",
+    "i300mixed": "End of bachelor's (you can start master's courses early)",
+    "i300y3": "Year 3 of 300 ECTS (finishing first cycle)",
+    "i300y4": "Year 4 · Master's year 1 (180+ ECTS done)",
+    "i300y5": "Year 5 · Master's year 2 and dissertation",
+    "b180y1": "Year 1 of 180 ECTS",
+    "b180y2": "Year 2 of 180 ECTS",
+    "b180final": "Final-year bachelor's (last of 180 ECTS)",
+    "b180y3": "Year 3 of 180 ECTS"
+  },
+  "challenge": {
+    "tempo": "Managing time and deadlines",
+    "procrastinacao": "Starting without procrastinating",
+    "exercicios": "Solving problems & calculations",
+    "teoria": "Memorising very theoretical material",
+    "ansiedade": "Pressure / anxiety before tests",
+    "organizacao": "Scattered notes and links"
+  },
+  "extra": {
+    "trabalho": "Work / Part-time",
+    "desporto": "Sport / Gym",
+    "nucleo": "Student society",
+    "musica": "Volunteering / Music"
+  },
+  "labels": {
+    "kind": {
+      "exame": "Exam",
+      "teste": "Test",
+      "trabalho": "Assignment",
+      "projeto": "Project",
+      "quiz": "Quiz"
+    },
+    "status": {
+      "todo": "To study",
+      "learning": "Learning",
+      "review": "In review",
+      "done": "Mastered"
+    },
+    "provider": {
+      "gdrive": "Google Drive",
+      "onedrive": "OneDrive",
+      "notebooklm": "External notebook",
+      "clip": "Portal",
+      "link": "Link",
+      "upload": "File"
+    },
+    "weekdayShort": {
+      "0": "Sun",
+      "1": "Mon",
+      "2": "Tue",
+      "3": "Wed",
+      "4": "Thu",
+      "5": "Fri",
+      "6": "Sat"
+    },
+    "weekdayLong": {
+      "0": "Sunday",
+      "1": "Monday",
+      "2": "Tuesday",
+      "3": "Wednesday",
+      "4": "Thursday",
+      "5": "Friday",
+      "6": "Saturday"
+    }
+  },
+  "notif": {
+    "streak": {
+      "serio": {
+        "titleStreak": "{{n}}-day streak pending",
+        "title": "Daily session pending",
+        "body": "Log a study session today to keep your streak going."
+      },
+      "exigente": {
+        "titleStreak": "{{n}}-day streak at risk.",
+        "title": "No study yet today.",
+        "body": "Do at least 25 minutes now before the day ends."
+      },
+      "calmo": {
+        "titleStreak": "Keep a gentle pace ({{n}}d)",
+        "title": "A short block still counts",
+        "body": "10–15 minutes today is enough to close the day calmly."
+      },
+      "amigo": {
+        "titleStreak": "Don't let your {{n}}-day flame go out",
+        "title": "Uni saved you 15 minutes",
+        "bodyStreak": "Do a quick review today to protect your streak.",
+        "body": "Open your Plan and finish the first study block of the day."
+      }
+    },
+    "srs": {
+      "one": "1 topic ready",
+      "many": "{{n}} topics ready",
+      "serio": {
+        "title": "Spaced review: {{topics}}",
+        "body": "Topics due for review today are waiting."
+      },
+      "exigente": {
+        "title": "{{topics}} slipping from memory",
+        "body": "Review now so you don't lose retention."
+      },
+      "calmo": {
+        "title": "{{topics}} to review at your pace",
+        "body": "A light pass today keeps material from piling up before tests."
+      },
+      "amigo": {
+        "title": "Uni picked out {{topics}}",
+        "body": "A quick review now locks it in before you forget."
+      }
+    },
+    "when": {
+      "2h": "in 2h",
+      "24h": "tomorrow",
+      "72h": "in 3 days",
+      "today": "today",
+      "days": "in {{n}}d"
+    },
+    "assess": {
+      "serio": {
+        "title": "{{course}} · {{kind}} {{when}}",
+        "body": "{{title}}. Estimated readiness: {{pct}}%."
+      },
+      "exigente": {
+        "title": "{{course}}: {{title}} ({{when}})",
+        "body": "Readiness {{pct}}%. Close the missing topics today."
+      },
+      "calmo": {
+        "title": "{{course}} {{when}} — step by step",
+        "body": "{{title}} is {{pct}}% ready. Do a short, calm review."
+      },
+      "amigo": {
+        "title": "{{course}}: {{kind}} {{when}}",
+        "body": "{{title}} · {{pct}}% ready. Shall we polish the last bits?"
+      }
+    },
+    "class": {
+      "room": " · Room {{room}}",
+      "serio": {
+        "title": "Class in {{mins}} min: {{course}}"
+      },
+      "title": "{{course}} starts in {{mins}} min",
+      "body": "{{type}} at {{start}}{{room}}."
+    },
+    "post": {
+      "serio": {
+        "title": "After-class log · {{course}}",
+        "body": "How did {{type}} ({{end}}) go and what was covered?"
+      },
+      "exigente": {
+        "title": "End of {{course}} {{type}}: what was covered?",
+        "body": "Note the material and any doubts in 10s to align your plan."
+      },
+      "amigo": {
+        "title": "How was {{course}} class?",
+        "body": "{{type}} ended at {{end}}. Tell Uni what you covered today!"
+      }
+    },
+    "evening": {
+      "serio": {
+        "title": "Daily study check-in",
+        "body": "Log how today went to tune tomorrow's plan."
+      },
+      "calmo": {
+        "title": "How was your day?",
+        "body": "15 seconds with Uni to close the day and adjust tomorrow."
+      },
+      "amigo": {
+        "title": "How did today and your studying go?",
+        "body": "Log it in Uni's Journal, earn energy in the Nest and line up tomorrow."
+      }
+    },
+    "sunday": {
+      "serio": {
+        "title": "Sunday weekly review",
+        "body": "Review what you understood, what was hard and next week's priorities."
+      },
+      "amigo": {
+        "title": "Sunday check-in with Uni",
+        "body": "How was the week? Sort out what's pending before Monday."
+      }
+    },
+    "exam": {
+      "serio": {
+        "title": "Test Mode ({{course}} · {{when}})",
+        "body": "Confirm what \"{{title}}\" covers, what you've studied and how you feel."
+      },
+      "amigo": {
+        "title": "Test Mode: what does {{course}} cover?",
+        "body": "{{title}} ({{when}}) — tell Uni what you've studied and how you feel."
+      }
+    },
+    "cta": {
+      "seeCalendar": "See calendar",
+      "logClass": "Log class",
+      "alignMaterial": "Align material",
+      "weekly": "Weekly check-in",
+      "closeDay": "Close the day",
+      "studyNow": "Study now",
+      "openReviews": "Open reviews"
+    },
+    "course": "Course",
+    "nextClass": "Next class"
   }
 }

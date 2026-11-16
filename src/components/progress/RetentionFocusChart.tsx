@@ -1,5 +1,6 @@
 import { Brain, ShieldCheck } from 'lucide-react';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
   Bar,
@@ -30,6 +31,7 @@ interface Props {
  * e leitura compacta da limpeza do Modo Foco.
  */
 export function RetentionFocusChart({ courses, sessions, dayKey, onPracticeTopic }: Props) {
+  const { t } = useTranslation('progress');
   const overview = useMemo(
     () => retentionOverview(courses, sessions, dayKey),
     [courses, sessions, dayKey],
@@ -52,35 +54,35 @@ export function RetentionFocusChart({ courses, sessions, dayKey, onPracticeTopic
 
   return (
     <ChartCard
-      title="Retenção & Qualidade de Foco"
+      title={t('retention.title')}
       isEmpty={isEmpty}
-      emptyTitle="Ainda sem revisões registadas"
-      emptyHint="Termina um bloco de foco ou pratica um tópico para medir a retenção real e a estabilidade SRS."
+      emptyTitle={t('retention.emptyTitle')}
+      emptyHint={t('retention.emptyHint')}
       emptyAction={
         <Link to="/plano" className="text-sm font-medium text-accent">
-          Abrir Plano &amp; Foco
+          {t('retention.openPlan')}
         </Link>
       }
       takeaway={
         overview.avgRetentionPct !== null ? (
           <>
-            Retenção média: <span className="tabular">{fmtPct(overview.avgRetentionPct)}</span>
+            {t('retention.avg')} <span className="tabular">{fmtPct(overview.avgRetentionPct)}</span>
             {' · '}
             {overview.dueCount > 0 ? (
-              <span className="tabular font-semibold text-warn">{overview.dueCount} por rever hoje</span>
+              <span className="tabular font-semibold text-warn">{t('retention.due', { n: overview.dueCount })}</span>
             ) : (
-              <span>Revisões em dia</span>
+              <span>{t('retention.upToDate')}</span>
             )}
             {focusQuality.cleanFocusPct !== null && (
               <>
                 {' · '}
-                Foco limpo: <span className="tabular">{fmtPct(focusQuality.cleanFocusPct)}</span>
+                {t('retention.clean')} <span className="tabular">{fmtPct(focusQuality.cleanFocusPct)}</span>
               </>
             )}
           </>
         ) : focusQuality.cleanFocusPct !== null ? (
           <>
-            Foco limpo em <span className="tabular">{fmtPct(focusQuality.cleanFocusPct)}</span> das sessões
+            {t('retention.cleanOf', { pct: fmtPct(focusQuality.cleanFocusPct) })}
           </>
         ) : undefined
       }
@@ -105,7 +107,7 @@ export function RetentionFocusChart({ courses, sessions, dayKey, onPracticeTopic
                 <Legend iconType="circle" iconSize={8} wrapperStyle={legendStyle} />
                 <Bar
                   dataKey="retencao"
-                  name="Retenção estimada"
+                  name={t('retention.estimated')}
                   fill="var(--accent)"
                   radius={barRadius}
                   barSize={18}
@@ -113,7 +115,7 @@ export function RetentionFocusChart({ courses, sessions, dayKey, onPracticeTopic
                 />
                 <Bar
                   dataKey="acerto"
-                  name="Acerto em prática"
+                  name={t('retention.hitRate')}
                   fill="var(--warn)"
                   fillOpacity={0.85}
                   radius={barRadius}
@@ -129,20 +131,20 @@ export function RetentionFocusChart({ courses, sessions, dayKey, onPracticeTopic
           <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line/70 bg-surface-2/60 px-3 py-2 text-xs">
             <span className="inline-flex items-center gap-1.5 font-medium text-fg">
               <ShieldCheck size={14} className="text-ok" />
-              Qualidade de foco:
+              {t('retention.quality')}
             </span>
             {focusQuality.cleanFocusPct !== null ? (
               <span className="text-muted tabular">
-                <strong className="text-fg">{focusQuality.cleanFocusPct}%</strong> sem distrações (
+                <strong className="text-fg">{focusQuality.cleanFocusPct}%</strong> {t('retention.noDistractions')} (
                 {focusQuality.cleanFocusCount}/{focusQuality.trackedCount})
-                {focusQuality.avgExits !== null && ` · ${focusQuality.avgExits} saídas/sessão`}
+                {focusQuality.avgExits !== null && ` · ${t('retention.exits', { n: focusQuality.avgExits })}`}
               </span>
             ) : (
-              <span className="text-muted">Sem saídas registadas no Modo Foco</span>
+              <span className="text-muted">{t('retention.noExits')}</span>
             )}
             {focusQuality.practiceHitRatePct !== null && (
               <span className="text-muted tabular">
-                · Prática ativa: <strong className="text-fg">{focusQuality.practiceHitRatePct}%</strong> (
+                · {t('retention.active')} <strong className="text-fg">{focusQuality.practiceHitRatePct}%</strong> (
                 {focusQuality.practiceHits}/{focusQuality.practiceTotal})
               </span>
             )}
@@ -152,7 +154,7 @@ export function RetentionFocusChart({ courses, sessions, dayKey, onPracticeTopic
         {topFragile.length > 0 && (
           <div className="space-y-1.5">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-              Prioridades de revisão
+              {t('retention.priorities')}
             </p>
             <ul className="space-y-1.5">
               {topFragile.map((item) => (
@@ -169,8 +171,8 @@ export function RetentionFocusChart({ courses, sessions, dayKey, onPracticeTopic
                       <span className="truncate text-xs font-medium text-fg">{item.title}</span>
                     </div>
                     <p className="mt-0.5 text-xs text-muted tabular">
-                      {item.courseName} · {item.retentionPct}% retenção
-                      {item.due ? ' · revisão devida' : ''}
+                      {item.courseName} · {t('retention.pct', { n: item.retentionPct })}
+                      {item.due ? ` · ${t('retention.dueOne')}` : ''}
                     </p>
                   </div>
                   {onPracticeTopic && (
@@ -179,7 +181,7 @@ export function RetentionFocusChart({ courses, sessions, dayKey, onPracticeTopic
                       variant="secondary"
                       onClick={() => onPracticeTopic(item.courseId, item.topicId)}
                     >
-                      <Brain size={13} /> Praticar
+                      <Brain size={13} /> {t('retention.practice')}
                     </Button>
                   )}
                 </li>

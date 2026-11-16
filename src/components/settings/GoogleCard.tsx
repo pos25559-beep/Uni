@@ -11,12 +11,14 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGoogleAccounts } from '../../hooks/useGoogleData';
 import { useStore } from '../../store/useStore';
 import { Badge, Button, Modal } from '../ui';
 import { IntegrationCard } from './shared';
 
 export default function GoogleCard() {
+  const { t } = useTranslation('settings');
   const status = useStore((s) => s.integrations.google);
 
   const [confirmOff, setConfirmOff] = useState(false);
@@ -57,8 +59,8 @@ export default function GoogleCard() {
     <>
       <IntegrationCard
         icon={<HardDrive size={18} />}
-        title="Google &amp; Contas Dual (Pessoal e Académica)"
-        description="Gere as tuas duas contas de forma independente: conta pessoal para Google Drive, agenda e Tutor; e email académico para receber avisos de docentes."
+        title={t('google.title')}
+        description={t('google.desc')}
         status={effectiveStatus}
       >
         <div className="space-y-4">
@@ -72,28 +74,28 @@ export default function GoogleCard() {
                 <div>
                   <div className="flex items-center gap-2">
                     <p className="font-semibold text-fg text-sm">
-                      Conta Principal (Pessoal)
+                      {t('google.personal')}
                     </p>
                     {isPersonalConnected ? (
-                      <Badge tone="ok">Ligada</Badge>
+                      <Badge tone="ok">{t('google.linked')}</Badge>
                     ) : (
-                      <Badge tone="warn">Por ligar</Badge>
+                      <Badge tone="warn">{t('google.notLinked')}</Badge>
                     )}
                   </div>
                   <p className="text-muted text-xs">
-                    {personalEmail || (isPersonalConnected ? 'Sessão Google pessoal ativa' : 'Opcional · Liga apenas se quiseres importar do Drive ou Agenda')}
+                    {personalEmail || (isPersonalConnected ? t('google.personalActive') : t('google.personalOptional'))}
                   </p>
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-1.5">
                 <Badge tone="accent">Google Drive</Badge>
-                <Badge tone="accent">Agenda</Badge>
+                <Badge tone="accent">{t('google.calendar')}</Badge>
               </div>
             </div>
 
             <p className="text-muted leading-relaxed">
-              Opcional: permite ler as pastas do Google Drive que associares às tuas cadeiras e importar eventos da Google Agenda. Para iniciar sessão na Unipedia, recomendamos usar Email e Palavra-passe em Conta.
+              {t('google.personalInfo')}
             </p>
 
             <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-line/60">
@@ -106,17 +108,17 @@ export default function GoogleCard() {
                     disabled={personalBusy || scanningDrive}
                   >
                     {scanningDrive ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
-                    Analisar pastas do Drive
+                    {t('google.scanDrive')}
                   </Button>
                   <Button
                     size="sm"
                     variant="secondary"
                     onClick={cleanJunk}
                     disabled={personalBusy || scanningDrive}
-                    title="Remove faturas, recibos e ficheiros pessoais erroneamente importados"
+                    title={t('google.cleanupTitle')}
                   >
                     <Trash2 size={13} />
-                    Limpar Ficheiros Irrelevantes
+                    {t('google.cleanup')}
                   </Button>
                   <Button
                     size="sm"
@@ -125,7 +127,7 @@ export default function GoogleCard() {
                     disabled={personalBusy || scanningDrive}
                   >
                     <Calendar size={13} />
-                    Sincronizar Agenda
+                    {t('google.syncCal')}
                   </Button>
                   <Button
                     size="sm"
@@ -133,7 +135,7 @@ export default function GoogleCard() {
                     onClick={switchPersonal}
                     disabled={personalBusy || scanningDrive}
                   >
-                    Trocar Conta Pessoal
+                    {t('google.switch')}
                   </Button>
                   <Button
                     size="sm"
@@ -142,7 +144,7 @@ export default function GoogleCard() {
                     disabled={personalBusy || scanningDrive}
                     className="text-danger hover:text-danger"
                   >
-                    Terminar Sessão Pessoal
+                    {t('google.signOutPersonal')}
                   </Button>
                 </>
               ) : (
@@ -153,7 +155,7 @@ export default function GoogleCard() {
                   disabled={personalBusy}
                 >
                   <KeyRound size={13} />
-                  Iniciar Sessão com Conta Pessoal
+                  {t('google.signInPersonal')}
                 </Button>
               )}
             </div>
@@ -169,32 +171,32 @@ export default function GoogleCard() {
                 <div>
                   <div className="flex items-center gap-2">
                     <p className="font-semibold text-fg text-sm">
-                      Conta Académica (Email Escolar / Universitário)
+                      {t('google.academic')}
                     </p>
                     {isAcademicConnected ? (
                       isAcademicTokenLive ? (
-                        <Badge tone="ok">Ativa</Badge>
+                        <Badge tone="ok">{t('google.active')}</Badge>
                       ) : (
-                        <Badge tone="accent">Guardada</Badge>
+                        <Badge tone="accent">{t('google.stored')}</Badge>
                       )
                     ) : (
-                      <Badge tone="warn">Por ligar</Badge>
+                      <Badge tone="warn">{t('google.notLinked')}</Badge>
                     )}
                   </div>
                   <p className="text-muted text-xs">
-                    {isAcademicConnected && academicEmail ? academicEmail : 'Opcional · Qualquer email Google escolar ou pessoal'}
+                    {isAcademicConnected && academicEmail ? academicEmail : t('google.academicOptional')}
                   </p>
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-1.5">
-                <Badge tone="accent">Gmail Professores</Badge>
-                <Badge tone="accent">Só Leitura</Badge>
+                <Badge tone="accent">{t('google.teachersGmail')}</Badge>
+                <Badge tone="accent">{t('google.readOnly')}</Badge>
               </div>
             </div>
 
             <p className="text-muted leading-relaxed">
-              Lê avisos de docentes sobre salas, testes e horários diretamente na caixa académica, em modo só de leitura.
+              {t('google.academicInfo')}
             </p>
 
             <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-line/60">
@@ -202,7 +204,7 @@ export default function GoogleCard() {
                 <>
                   <div className="flex items-center gap-1.5 text-ok font-medium">
                     <CheckCircle2 size={14} />
-                    <span>Conectada: {academicEmail || 'Conta académica ativa'}</span>
+                    <span>{t('google.connectedTo', { email: academicEmail || t('google.academicActive') })}</span>
                   </div>
                   <Button
                     size="sm"
@@ -211,7 +213,7 @@ export default function GoogleCard() {
                     disabled={academicBusy}
                   >
                     {academicBusy ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-                    {isAcademicTokenLive ? 'Reautenticar / Renovar Token' : 'Sincronizar / Renovar Sessão'}
+                    {isAcademicTokenLive ? t('google.reauth') : t('google.renew')}
                   </Button>
                   <Button
                     size="sm"
@@ -220,7 +222,7 @@ export default function GoogleCard() {
                     disabled={academicBusy}
                     className="text-danger hover:text-danger"
                   >
-                    Desligar Conta Académica
+                    {t('google.disconnectAcademic')}
                   </Button>
                 </>
               ) : (
@@ -231,7 +233,7 @@ export default function GoogleCard() {
                   disabled={academicBusy}
                 >
                   {academicBusy ? <Loader2 size={13} className="animate-spin" /> : <Mail size={13} />}
-                  Ligar Email Académico
+                  {t('google.connectAcademic')}
                 </Button>
               )}
             </div>
@@ -244,7 +246,7 @@ export default function GoogleCard() {
           )}
 
           <p className="text-xs text-muted">
-            Acesso só de leitura. Os tokens de acesso vivem apenas em memória e sessionStorage e nunca são gravados em bases de dados públicas.
+            {t('google.tokensInfo')}
           </p>
         </div>
       </IntegrationCard>
@@ -252,18 +254,18 @@ export default function GoogleCard() {
       <Modal
         open={confirmOff}
         onClose={() => setConfirmOff(false)}
-        title="Desligar as contas Google?"
+        title={t('google.offTitle')}
         footer={
           <>
-            <Button onClick={() => setConfirmOff(false)}>Cancelar</Button>
+            <Button onClick={() => setConfirmOff(false)}>{t('google.cancel')}</Button>
             <Button variant="danger" onClick={handleDisconnectAll}>
-              Desligar e apagar eventos
+              {t('google.offConfirm')}
             </Button>
           </>
         }
       >
         <p className="text-sm text-muted">
-          Os eventos importados da Google Agenda serão removidos desta aplicação. As tuas contas Google não sofrerão alterações.
+          {t('google.offBody')}
         </p>
       </Modal>
     </>

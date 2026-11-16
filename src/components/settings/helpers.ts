@@ -1,5 +1,5 @@
 import { formatDistanceToNow, parseISO } from 'date-fns';
-import { pt } from 'date-fns/locale';
+import { appDateLocale as pt } from '../../lib/dateLocale';
 
 export function relativeTime(iso: string): string {
   return formatDistanceToNow(parseISO(iso), { addSuffix: true, locale: pt });

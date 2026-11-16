@@ -1,6 +1,6 @@
 // Painel do dia selecionado: lista completa com ações (apagar eventos locais, concluir sessões, abrir avaliações).
 import { format, parseISO } from 'date-fns';
-import { pt } from 'date-fns/locale';
+import { appDateLocale as pt, longDatePattern } from '../../lib/dateLocale';
 import { CalendarPlus, ChevronRight, Check, MapPin, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -25,7 +25,7 @@ export default function DayPanel({ date, items, courseById, onNewEvent }: Props)
   const classes = useStore((s) => s.classes);
   const remove = useStore((s) => s.remove);
   const patch = useStore((s) => s.patch);
-  const heading = format(parseISO(date), "EEEE, d 'de' MMMM", { locale: pt });
+  const heading = format(parseISO(date), longDatePattern(), { locale: pt });
   const [toDelete, setToDelete] = useState<{ storeKey: 'events' | 'classes'; refId: string; title: string } | null>(null);
   const [editingClass, setEditingClass] = useState<{ slot: ClassSlot; course: Course } | null>(null);
 

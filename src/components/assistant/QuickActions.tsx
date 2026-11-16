@@ -1,5 +1,6 @@
 import { BrainCircuit, CalendarRange, Lightbulb, ListChecks, Target, TrendingDown } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ReactNode } from 'react';
 import { useStore } from '../../store/useStore';
 import { Button, Select } from '../ui';
@@ -10,14 +11,15 @@ interface Props {
   onSend: (prompt: string) => void;
 }
 
-const simple: { label: string; prompt: string; icon: ReactNode }[] = [
-  { label: 'O que devo estudar hoje?', prompt: 'O que devo estudar hoje? Dá-me uma ordem concreta de prioridades para a minha sessão.', icon: <Target size={15} /> },
-  { label: 'Resumo da minha semana', prompt: 'Faz um resumo da minha semana: o que estudei, o que está atrasado e o que falta.', icon: <ListChecks size={15} /> },
-  { label: 'Plano para a próxima avaliação', prompt: 'Cria um plano de estudo dia a dia para a minha próxima avaliação, até à data dela.', icon: <CalendarRange size={15} /> },
-  { label: 'Onde estou mais fraco?', prompt: 'Onde estou mais fraco? Diz-me que matérias devo reforçar primeiro e porquê.', icon: <TrendingDown size={15} /> },
+const simple: { id: 'today' | 'week' | 'plan' | 'weak'; icon: ReactNode }[] = [
+  { id: 'today', icon: <Target size={15} /> },
+  { id: 'week', icon: <ListChecks size={15} /> },
+  { id: 'plan', icon: <CalendarRange size={15} /> },
+  { id: 'weak', icon: <TrendingDown size={15} /> },
 ];
 
 export function QuickActions({ disabled, onSend }: Props) {
+  const { t: tq } = useTranslation('assistant');
   const courses = useStore((s) => s.courses);
   const [courseId, setCourseId] = useState('');
   const [quizTopic, setQuizTopic] = useState('');
@@ -37,14 +39,14 @@ export function QuickActions({ disabled, onSend }: Props) {
       <div className="flex flex-wrap gap-2">
         {simple.map((a) => (
           <button
-            key={a.label}
+            key={a.id}
             type="button"
             disabled={disabled}
-            onClick={() => onSend(a.prompt)}
+            onClick={() => onSend(tq(`quick.${a.id}P`))}
             className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 text-xs font-medium text-fg shadow-card transition hover:border-accent/50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <span className="text-accent">{a.icon}</span>
-            {a.label}
+            {tq(`quick.${a.id}L`)}
           </button>
         ))}
       </div>
@@ -52,22 +54,22 @@ export function QuickActions({ disabled, onSend }: Props) {
       <div className="grid gap-2 sm:grid-cols-2">
         <ParamCard
           icon={<BrainCircuit size={15} />}
-          label="Faz-me um quiz sobre…"
+          label={tq('quick.quizL')}
           disabled={disabled || !hasTopics}
           course={courseId} setCourse={setCourseId} courses={courses}
           topic={effectiveQuiz} setTopic={setQuizTopic} topics={topics}
           onGo={() => course && quizTitle && onSend(
-            `Faz-me um quiz sobre "${quizTitle}" de ${course.name}. Faz uma pergunta de cada vez e espera pela minha resposta antes de a corrigires.`,
+            tq('quick.quizP', { topic: quizTitle, course: course.name }),
           )}
         />
         <ParamCard
           icon={<Lightbulb size={15} />}
-          label="Explica-me…"
+          label={tq('quick.explainL')}
           disabled={disabled || !hasTopics}
           course={courseId} setCourse={setCourseId} courses={courses}
           topic={effectiveExplain} setTopic={setExplainTopic} topics={topics}
           onGo={() => course && explainTitle && onSend(
-            `Explica-me "${explainTitle}" (${course.name}) de forma clara, com um exemplo concreto e um erro comum a evitar.`,
+            tq('quick.explainP', { topic: explainTitle, course: course.name }),
           )}
         />
       </div>
@@ -83,6 +85,7 @@ function ParamCard({ icon, label, disabled, course, setCourse, courses, topic, s
   topics: { id: string; title: string }[];
   onGo: () => void;
 }) {
+  const { t: tq } = useTranslation('assistant');
   return (
     <div className={cx('rounded-2xl border border-line bg-surface p-3', disabled && 'opacity-60')}>
       <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted">
@@ -91,27 +94,27 @@ function ParamCard({ icon, label, disabled, course, setCourse, courses, topic, s
       </div>
       <div className="flex flex-col gap-2 sm:flex-row">
         <Select
-          aria-label="Cadeira"
+          aria-label={tq('quick.course')}
           value={course || courses[0]?.id || ''}
           onChange={(e) => setCourse(e.target.value)}
           disabled={disabled || courses.length === 0}
           className="text-xs sm:w-40"
         >
-          {courses.length === 0 && <option value="">Sem cadeiras</option>}
+          {courses.length === 0 && <option value="">{tq('quick.noCourses')}</option>}
           {courses.map((c) => <option key={c.id} value={c.id}>{c.shortName}</option>)}
         </Select>
         <Select
-          aria-label="Matéria"
+          aria-label={tq('quick.topic')}
           value={topic}
           onChange={(e) => setTopic(e.target.value)}
           disabled={disabled || topics.length === 0}
           className="min-w-0 flex-1 text-xs"
         >
-          {topics.length === 0 && <option value="">Sem matéria</option>}
+          {topics.length === 0 && <option value="">{tq('quick.noTopics')}</option>}
           {topics.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
         </Select>
         <Button size="sm" disabled={disabled || topics.length === 0} onClick={onGo}>
-          Enviar
+          {tq('quick.send')}
         </Button>
       </div>
     </div>

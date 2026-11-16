@@ -1,6 +1,6 @@
 // Helpers de materiais: deteção de fornecedor a partir do URL, ícones e datas.
 import { format, formatDistanceToNow, isValid, parseISO } from 'date-fns';
-import { pt } from 'date-fns/locale';
+import { appDateLocale as pt } from '../../lib/dateLocale';
 import {
   BookOpen, Cloud, FileSpreadsheet, FileText, Folder, GraduationCap, HardDrive, Image as ImageIcon,
   Link2, Presentation, Video, type LucideIcon,

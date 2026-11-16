@@ -1,5 +1,7 @@
 // Cartão de uma sessão no quadro semanal.
 import { Check, Pencil, Play, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { tr } from '../../i18n/tr';
 import { courseColors } from '../../lib/colors';
 import { daysUntil, formatSessionDisplay, sessionMinutes } from '../../lib/selectors';
 import { useStore } from '../../store/useStore';
@@ -18,13 +20,14 @@ interface SessionCardProps {
 
 function deadlineLabel(a: Assessment): string {
   const n = daysUntil(a.date);
-  if (n < 0) return 'passou';
-  if (n === 0) return 'hoje';
-  if (n === 1) return 'amanhã';
-  return `em ${n} dias`;
+  if (n < 0) return tr('plan:session.past');
+  if (n === 0) return tr('plan:session.today');
+  if (n === 1) return tr('plan:session.tomorrow');
+  return tr('plan:session.inDays', { n });
 }
 
 export default function SessionCard({ session, course, topic, assessment, onFocus, onEdit }: SessionCardProps) {
+  const { t } = useTranslation('plan');
   const patch = useStore((s) => s.patch);
   const remove = useStore((s) => s.remove);
   const color = course ? courseColors[course.color].hex : undefined;
@@ -55,7 +58,7 @@ export default function SessionCard({ session, course, topic, assessment, onFocu
       <div className="mt-1 flex flex-wrap items-center gap-1.5">
         <span className="text-xs text-muted tabular">
           {session.done
-            ? `${sessionMinutes(session)} min estudados`
+            ? t('session.minStudied', { n: sessionMinutes(session) })
             : `${session.minutes} min`}
         </span>
         {badge && (
@@ -83,7 +86,7 @@ export default function SessionCard({ session, course, topic, assessment, onFocu
         <button
           type="button"
           onClick={toggle}
-          aria-label={session.done ? 'Marcar como por fazer' : 'Marcar como concluída'}
+          aria-label={session.done ? t('session.markTodo') : t('session.markDone')}
           className="group -ml-1.5 grid size-11 place-items-center rounded-full"
         >
           <span
@@ -98,15 +101,15 @@ export default function SessionCard({ session, course, topic, assessment, onFocu
           </span>
         </button>
         {!session.done && (
-          <Button size="sm" variant="ghost" onClick={() => onFocus(session)} aria-label="Focar nesta sessão">
-            <Play size={14} /> Focar
+          <Button size="sm" variant="ghost" onClick={() => onFocus(session)} aria-label={t('session.focusAria')}>
+            <Play size={14} /> {t('session.focus')}
           </Button>
         )}
         <div className="ml-auto flex items-center">
           <button
             type="button"
             onClick={() => onEdit(session)}
-            aria-label="Editar sessão"
+            aria-label={t('session.edit')}
             className="grid size-11 place-items-center rounded-full text-muted hover:bg-surface hover:text-fg"
           >
             <Pencil size={15} />
@@ -114,7 +117,7 @@ export default function SessionCard({ session, course, topic, assessment, onFocu
           <button
             type="button"
             onClick={() => remove('sessions', session.id)}
-            aria-label="Apagar sessão"
+            aria-label={t('session.delete')}
             className="-mr-1.5 grid size-11 place-items-center rounded-full text-muted hover:bg-danger/12 hover:text-danger"
           >
             <Trash2 size={15} />

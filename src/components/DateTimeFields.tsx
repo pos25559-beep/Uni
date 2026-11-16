@@ -13,7 +13,7 @@ import {
   startOfWeek,
   subMonths,
 } from 'date-fns';
-import { pt } from 'date-fns/locale';
+import { appDateLocale as pt } from '../lib/dateLocale';
 import { CalendarDays, ChevronLeft, ChevronRight, Clock, Keyboard, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';

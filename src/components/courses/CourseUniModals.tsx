@@ -290,7 +290,7 @@ export function AdoptUniModal({
                         : 'border-line bg-surface text-muted hover:text-fg',
                     )}
                   >
-                    {style.label}
+                    {t(`memory.style.${style.id}`)}
                   </button>
                 ))}
               </div>
@@ -343,6 +343,7 @@ export function UniNotebookMemoryModal({
   courseName: string;
   onUpdateAgent: (next: UniAgentRecord) => Promise<void>;
 }) {
+  const { t } = useTranslation(['uni', 'common']);
   const [newGoal, setNewGoal] = useState('');
   const [newWeakTopic, setNewWeakTopic] = useState('');
   const [newWeakNote, setNewWeakNote] = useState('');
@@ -366,7 +367,7 @@ export function UniNotebookMemoryModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={`O que ${agent.name} sabe · ${courseName}`}
+      title={t('memory.title', { name: agent.name, course: courseName })}
       footer={
         <div className="flex w-full flex-wrap items-center justify-between gap-2">
           <Button
@@ -379,13 +380,13 @@ export function UniNotebookMemoryModal({
                 strengths: [],
                 customNotes: [],
                 learningStyle: undefined,
-              }).then(() => showToast('Memória deste Uni limpa com sucesso.'));
+              }).then(() => showToast(t('memory.cleared')));
             }}
           >
-            <Trash2 size={14} /> Apagar tudo
+            <Trash2 size={14} /> {t('memory.deleteAll')}
           </Button>
           <Button size="sm" variant="primary" onClick={onClose}>
-            Concluir
+            {t('memory.done')}
           </Button>
         </div>
       }
@@ -393,9 +394,9 @@ export function UniNotebookMemoryModal({
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface-2/60 p-3.5">
           <div className="min-w-0">
-            <p className="text-xs font-semibold text-fg">Memória automática após conversas e recall</p>
+            <p className="text-xs font-semibold text-fg">{t('memory.auto')}</p>
             <p className="text-xs text-muted">
-              Podes pausar a aprendizagem automática a qualquer momento e editar manualmente abaixo.
+              {t('memory.autoHint')}
             </p>
           </div>
           <Switch
@@ -407,12 +408,12 @@ export function UniNotebookMemoryModal({
                 updatedAt: new Date().toISOString(),
               });
             }}
-            label="Ativar ou pausar memória automática"
+            label={t('memory.toggle')}
           />
         </div>
 
         <div>
-          <p className="mb-1.5 text-xs font-semibold text-muted">Preferência de explicação</p>
+          <p className="mb-1.5 text-xs font-semibold text-muted">{t('memory.pref')}</p>
           <div className="flex flex-wrap gap-1.5">
             {LEARNING_STYLES.map((st) => (
               <button
@@ -426,14 +427,14 @@ export function UniNotebookMemoryModal({
                     : 'border-line bg-surface-2 text-muted hover:text-fg',
                 )}
               >
-                {st.label}
+                {t(`memory.style.${st.id}`)}
               </button>
             ))}
           </div>
         </div>
 
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-muted">Objetivos nesta cadeira</p>
+          <p className="text-xs font-semibold text-muted">{t('memory.goals')}</p>
           {agent.notebook.goals.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {agent.notebook.goals.map((g, idx) => (
@@ -444,7 +445,7 @@ export function UniNotebookMemoryModal({
                   <span>{g}</span>
                   <button
                     type="button"
-                    aria-label={`Remover objetivo ${g}`}
+                    aria-label={t('memory.removeGoal', { x: g })}
                     onClick={() =>
                       void patchNotebook({
                         goals: agent.notebook.goals.filter((_, i) => i !== idx),
@@ -462,7 +463,7 @@ export function UniNotebookMemoryModal({
             <Input
               value={newGoal}
               onChange={(e) => setNewGoal(e.target.value)}
-              placeholder="Adicionar objetivo (ex: nota 15 no 2.º teste)"
+              placeholder={t('memory.goalPh')}
               maxLength={120}
             />
             <Button
@@ -478,16 +479,16 @@ export function UniNotebookMemoryModal({
                 });
               }}
             >
-              <Plus size={14} /> Juntar
+              <Plus size={14} /> {t('memory.join')}
             </Button>
           </div>
         </div>
 
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-muted">Pontos fracos e erros recorrentes</p>
+          <p className="text-xs font-semibold text-muted">{t('memory.weak')}</p>
           {agent.notebook.weakSpots.length === 0 ? (
             <p className="rounded-xl bg-surface-2/60 px-3 py-2 text-xs text-muted">
-              Ainda não existem pontos fracos registados.
+              {t('memory.noWeak')}
             </p>
           ) : (
             <div className="space-y-1.5">
@@ -502,7 +503,7 @@ export function UniNotebookMemoryModal({
                   </div>
                   <button
                     type="button"
-                    aria-label={`Remover ponto fraco ${w.topic}`}
+                    aria-label={t('memory.removeWeak', { x: w.topic })}
                     onClick={() =>
                       void patchNotebook({
                         weakSpots: agent.notebook.weakSpots.filter((_, i) => i !== idx),
@@ -520,13 +521,13 @@ export function UniNotebookMemoryModal({
             <Input
               value={newWeakTopic}
               onChange={(e) => setNewWeakTopic(e.target.value)}
-              placeholder="Tópico"
+              placeholder={t('memory.topicPh')}
               maxLength={60}
             />
             <Input
               value={newWeakNote}
               onChange={(e) => setNewWeakNote(e.target.value)}
-              placeholder="Nota (ex: troca o sinal)"
+              placeholder={t('memory.notePh')}
               maxLength={140}
             />
             <Button
@@ -550,7 +551,7 @@ export function UniNotebookMemoryModal({
         </div>
 
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-muted">Pontos fortes</p>
+          <p className="text-xs font-semibold text-muted">{t('memory.strong')}</p>
           {agent.notebook.strengths.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {agent.notebook.strengths.map((st, idx) => (
@@ -561,7 +562,7 @@ export function UniNotebookMemoryModal({
                   <span>{st}</span>
                   <button
                     type="button"
-                    aria-label={`Remover ponto forte ${st}`}
+                    aria-label={t('memory.removeStrong', { x: st })}
                     onClick={() =>
                       void patchNotebook({
                         strengths: agent.notebook.strengths.filter((_, i) => i !== idx),
@@ -579,7 +580,7 @@ export function UniNotebookMemoryModal({
             <Input
               value={newStrength}
               onChange={(e) => setNewStrength(e.target.value)}
-              placeholder="Adicionar ponto forte (ex: domina regra da cadeia)"
+              placeholder={t('memory.strongPh')}
               maxLength={120}
             />
             <Button
@@ -595,7 +596,7 @@ export function UniNotebookMemoryModal({
                 });
               }}
             >
-              <Plus size={14} /> Juntar
+              <Plus size={14} /> {t('memory.join')}
             </Button>
           </div>
         </div>
@@ -621,6 +622,7 @@ export function CourseSheetsModal({
   onRefreshSheets: () => Promise<void>;
   onOpenInTutor: () => void;
 }) {
+  const { t } = useTranslation(['uni', 'common']);
   const aiConsent = useStore((s) => s.settings.aiConsent);
   const [selectedTopicId, setSelectedTopicId] = useState<string>(course.topics[0]?.id ?? '');
   const [selectedMatIds, setSelectedMatIds] = useState<string[]>(() =>
@@ -635,7 +637,7 @@ export function CourseSheetsModal({
   const maxFiles = getAiMaterialLimit(customKey);
   const quota = getDailyQuotaSnapshot(customKey);
 
-  const selectedTopic = course.topics.find((t) => t.id === selectedTopicId);
+  const selectedTopic = course.topics.find((tp) => tp.id === selectedTopicId);
 
   const toggleMat = (matId: string) => {
     setSelectedMatIds((prev) =>
@@ -688,6 +690,7 @@ export function CourseSheetsModal({
         summary: extracted.summary,
         keyConcepts: extracted.keyConcepts,
         materialIds: pickedMats.map((m) => m.id),
+        // oxlint-disable-next-line react/purity -- corre dentro do handler assíncrono, não durante o render
         updatedAt: new Date().toISOString(),
       });
       await onRefreshSheets();
@@ -695,7 +698,7 @@ export function CourseSheetsModal({
       setManualText('');
       showToast('Ficha guardada em IndexedDB para o Tutor e Foco.');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Não foi possível gerar a ficha agora.');
+      setError(e instanceof Error ? e.message : t('memory.sheetFail'));
     } finally {
       setBusy(false);
     }
@@ -705,34 +708,34 @@ export function CourseSheetsModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={`Fichas permanentes · ${course.shortName}`}
+      title={t('memory.sheetsTitle', { course: course.shortName })}
       footer={
         <div className="flex w-full flex-wrap items-center justify-between gap-2">
           <Button size="sm" variant="secondary" onClick={onOpenInTutor}>
             <Sparkles size={14} /> Abrir no Tutor
           </Button>
           <Button size="sm" variant="primary" onClick={onClose}>
-            Fechar
+            {t('memory.close')}
           </Button>
         </div>
       }
     >
       <div className="space-y-4">
         <div className="rounded-2xl border border-line bg-surface-2/60 p-3.5 text-xs text-muted">
-          As fichas ficam guardadas localmente em texto permanente no teu dispositivo: o Uni usa-as como base nas perguntas e no Recall mesmo quando os anexos temporários expiram.
+          {t('memory.sheetsInfo')}
         </div>
 
         <div className="space-y-3 rounded-2xl border border-line bg-surface p-3.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs font-semibold text-fg">Gerar nova ficha dos materiais</p>
+            <p className="text-xs font-semibold text-fg">{t('memory.newSheet')}</p>
             <span className="text-xs text-muted">
-              {customKey ? 'Chave pessoal · ilimitado' : `${quota.notebookRemaining}/${quota.notebookLimit} hoje`}
+              {customKey ? t('memory.keyUnlimited') : t('memory.todayN', { a: quota.notebookRemaining, b: quota.notebookLimit })}
             </span>
           </div>
 
           {course.topics.length > 0 && (
             <div>
-              <p className="mb-1.5 text-xs text-muted">Tópico associado</p>
+              <p className="mb-1.5 text-xs text-muted">{t('memory.topic')}</p>
               <div className="flex max-h-24 flex-wrap gap-1.5 overflow-y-auto">
                 {course.topics.map((t) => (
                   <button
@@ -756,7 +759,7 @@ export function CourseSheetsModal({
           {materials.length > 0 && (
             <div>
               <p className="mb-1.5 text-xs text-muted">
-                Materiais da cadeira ({selectedMatIds.length}/{maxFiles})
+                {t('memory.materials', { a: selectedMatIds.length, b: maxFiles })}
               </p>
               <div className="flex max-h-28 flex-wrap gap-1.5 overflow-y-auto">
                 {materials.map((m) => {
@@ -782,18 +785,18 @@ export function CourseSheetsModal({
             </div>
           )}
 
-          <Field label="Ou cola excerto / notas da aula (opcional)">
+          <Field label={t('memory.pasteLabel')}>
             <Textarea
               value={manualText}
               onChange={(e) => setManualText(e.target.value)}
-              placeholder="Cola fórmulas, teoremas ou apontamentos para estruturar numa ficha citável..."
+              placeholder={t('memory.pastePh')}
               className="min-h-20"
             />
           </Field>
 
           {!aiConsent && (
             <p className="rounded-xl bg-surface-2 px-3 py-2 text-xs text-muted">
-              Ativa o Uni primeiro nas Definições ou no Tutor para gerar fichas com IA.
+              {t('memory.needConsent')}
             </p>
           )}
 
@@ -808,13 +811,13 @@ export function CourseSheetsModal({
             onClick={() => void handleGenerateSheet()}
           >
             {busy ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
-            {busy ? 'A extrair conceitos e citações…' : 'Gerar ficha permanente'}
+            {busy ? t('memory.extracting') : t('memory.generate')}
           </Button>
         </div>
 
         {sheets.length > 0 && (
           <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted">Fichas guardadas ({sheets.length})</p>
+            <p className="text-xs font-semibold text-muted">{t('memory.savedN', { n: sheets.length })}</p>
             <div className="max-h-40 space-y-1.5 overflow-y-auto pr-1">
               {sheets.map((sheet) => {
                 const active = previewSheet?.id === sheet.id;
@@ -838,7 +841,7 @@ export function CourseSheetsModal({
                     </button>
                     <button
                       type="button"
-                      aria-label={`Copiar ${sheet.title}`}
+                      aria-label={t('memory.copy', { title: sheet.title })}
                       onClick={async () => {
                         await navigator.clipboard?.writeText(sheet.summary);
                         showToast('Ficha copiada!');
@@ -849,7 +852,7 @@ export function CourseSheetsModal({
                     </button>
                     <button
                       type="button"
-                      aria-label={`Apagar ficha ${sheet.title}`}
+                      aria-label={t('memory.deleteSheet', { title: sheet.title })}
                       onClick={async () => {
                         await deleteTopicSheet(sheet.id);
                         await onRefreshSheets();
@@ -949,7 +952,7 @@ export function StudyBridgeModal({
       showToast(t('uni:bridge.importedSuccess'), 'ok');
       onClose();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Erro ao importar quiz', 'danger');
+      showToast(err instanceof Error ? err.message : t('memory.quizErr'), 'danger');
     } finally {
       setImporting(false);
     }
@@ -1082,7 +1085,7 @@ export function MasterMentorshipModal({
       );
       onClose();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Erro ao ensinar cadeira seguinte', 'danger');
+      showToast(err instanceof Error ? err.message : t('memory.mentorErr'), 'danger');
     } finally {
       setSaving(false);
     }

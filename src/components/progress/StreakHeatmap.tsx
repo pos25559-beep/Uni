@@ -1,5 +1,5 @@
 import { format, parseISO } from 'date-fns';
-import { pt } from 'date-fns/locale';
+import { appDateLocale as pt } from '../../lib/dateLocale';
 import { Fragment, useMemo } from 'react';
 import { fmtMinutes, studyStreak } from '../../lib/selectors';
 import type { StudySession } from '../../types';
