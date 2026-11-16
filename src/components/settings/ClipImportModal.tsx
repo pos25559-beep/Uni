@@ -2,6 +2,7 @@ import { format, parseISO } from 'date-fns';
 import { appDateLocale as pt } from '../../lib/dateLocale';
 import { FileText, Upload } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ClipboardEvent, ReactNode } from 'react';
 import {
   decodeHtmlBytes, icsToClipData, matchCourse, parseClipScheduleHtml, parsePastedSchedule,
@@ -83,6 +84,7 @@ function buildRows(p: Preview, courses: Course[]): { classes: Row[]; assessments
 const kbd = 'rounded border border-line bg-surface px-1 font-mono text-xs text-fg';
 
 export default function ClipImportModal({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation('settings');
   const courses = useStore((s) => s.courses);
   const replaceSource = useStore((s) => s.replaceSource);
   const setIntegration = useStore((s) => s.setIntegration);
@@ -143,7 +145,7 @@ export default function ClipImportModal({ onClose }: { onClose: () => void }) {
         return;
       }
     }
-    setError('Não encontrei aulas nesse conteúdo. Abre o Horário no portal da tua escola/faculdade, seleciona tudo (Ctrl/Cmd+A), copia (Ctrl/Cmd+C) e cola aqui.');
+    setError(t('importSchedule.err.pasteEmpty'));
   };
 
   const onHtmlFile = async (file: File | undefined) => {
@@ -154,12 +156,12 @@ export default function ClipImportModal({ onClose }: { onClose: () => void }) {
       const html = decodeHtmlBytes(await file.arrayBuffer());
       const parsed = parseClipScheduleHtml(html, courses);
       if (parsed.classes.length === 0) {
-        setError('Não encontrei aulas nessa página. Guarda a página do Horário do portal académico (Ctrl/Cmd+S) e escolhe esse ficheiro.');
+        setError(t('importSchedule.err.htmlEmpty'));
         return;
       }
       startPreview(toClipPreview(parsed.classes, parsed.courses));
     } catch (e) {
-      setError(errorMessage(e, 'Não foi possível ler a página.'));
+      setError(errorMessage(e, t('importSchedule.err.readPage')));
     } finally {
       setReading(false);
     }
@@ -173,12 +175,12 @@ export default function ClipImportModal({ onClose }: { onClose: () => void }) {
       const content = await file.text();
       const events = parseIcs(content);
       if (events.length === 0) {
-        setError('Não encontrei eventos neste ficheiro. Confirma que é um .ics exportado do portal ou agenda.');
+        setError(t('importSchedule.err.icsEmpty'));
         return;
       }
       startPreview({ ...icsToClipData(events, courses), rejected: [], source: 'ics', clipCourses: [] });
     } catch (e) {
-      setError(errorMessage(e, 'Não foi possível ler o ficheiro.'));
+      setError(errorMessage(e, t('importSchedule.err.readFile')));
     } finally {
       setReading(false);
     }
@@ -187,12 +189,12 @@ export default function ClipImportModal({ onClose }: { onClose: () => void }) {
   const analyseText = () => {
     setError(null);
     if (!text.trim()) {
-      setError('Cola primeiro as linhas do horário.');
+      setError(t('importSchedule.err.pasteFirst'));
       return;
     }
     const r = parsePastedSchedule(text, courses);
     if (r.classes.length === 0 && r.rejected.length === 0) {
-      setError('Não encontrei linhas com texto.');
+      setError(t('importSchedule.err.noLines'));
       return;
     }
     startPreview({ classes: r.classes, assessments: [], events: [], rejected: r.rejected, source: 'texto', clipCourses: [] });
@@ -309,29 +311,29 @@ export default function ClipImportModal({ onClose }: { onClose: () => void }) {
               className="size-4 accent-accent"
               checked={p.include && !missing}
               disabled={missing}
-              aria-label={`Incluir ${row.label}`}
+              aria-label={t('importSchedule.include', { label: row.label })}
               onChange={(e) => setPick(row.key, p, { include: e.target.checked })}
             />
             <div className="min-w-0 flex-1">
               <p className={cx('truncate text-sm font-medium', missing && 'text-muted line-through')}>{row.label}</p>
               <p className="truncate text-xs text-muted">
                 {row.detail}
-                {missing && <span className="text-warn"> · sem cadeira, não será importado</span>}
+                {missing && <span className="text-warn"> · {t('importSchedule.noCourseSkip')}</span>}
               </p>
             </div>
             <Select
               className="w-36 text-xs"
-              aria-label="Cadeira"
+              aria-label={t('importSchedule.course')}
               value={shown}
               onChange={(e) => setPick(row.key, p, { courseId: e.target.value })}
             >
-              <option value="">Sem cadeira</option>
+              <option value="">{t('importSchedule.noCourse')}</option>
               {activeCourses.map((c) => (
                 <option key={c.id} value={c.id}>{c.shortName}</option>
               ))}
               {createMissing && missingCourses.map((c) => (
                 <option key={`${NEW_PREFIX}${c.clipId}`} value={`${NEW_PREFIX}${c.clipId}`}>
-                  {c.shortName} (nova)
+                  {t('importSchedule.newCourse', { name: c.shortName })}
                 </option>
               ))}
             </Select>
@@ -347,42 +349,40 @@ export default function ClipImportModal({ onClose }: { onClose: () => void }) {
         {title} <span className="font-normal text-muted">({list?.length ?? 0})</span>
       </h3>
       {list && list.length > 0 ? renderRows(list) : (
-        <p className="rounded-xl border border-dashed border-line px-3 py-3 text-xs text-muted">Nada detetado.</p>
+        <p className="rounded-xl border border-dashed border-line px-3 py-3 text-xs text-muted">{t('importSchedule.nothing')}</p>
       )}
     </div>
   );
 
   let footer: ReactNode;
   if (done) {
-    footer = <Button variant="primary" onClick={onClose}>Fechar</Button>;
+    footer = <Button variant="primary" onClick={onClose}>{t('importSchedule.close')}</Button>;
   } else if (preview) {
     footer = (
       <>
-        <Button onClick={() => { setPreview(null); setPicks({}); }}>Voltar</Button>
+        <Button onClick={() => { setPreview(null); setPicks({}); }}>{t('importSchedule.back')}</Button>
         <Button variant="primary" disabled={importable === 0} onClick={importAll}>
-          Importar {importable} {importable === 1 ? 'item' : 'itens'}
+          {t('importSchedule.importN', { count: importable })}
         </Button>
       </>
     );
   } else {
-    footer = <Button onClick={onClose}>Cancelar</Button>;
+    footer = <Button onClick={onClose}>{t('importSchedule.cancel')}</Button>;
   }
 
   const TABS: [Tab, string][] = [
-    ['ics', 'Ficheiro .ics'],
-    ['clip', 'Colar página / HTML'],
-    ['text', 'Texto'],
+    ['ics', t('importSchedule.tab.ics')],
+    ['clip', t('importSchedule.tab.page')],
+    ['text', t('importSchedule.tab.text')],
   ];
 
   return (
-    <Modal open onClose={onClose} title="Importar horário" footer={footer}>
+    <Modal open onClose={onClose} title={t('importSchedule.title')} footer={footer}>
       {done && (
         <div className="space-y-2">
-          <p className="text-sm font-medium text-ok">Importação concluída.</p>
+          <p className="text-sm font-medium text-ok">{t('importSchedule.doneTitle')}</p>
           <p className="text-sm text-muted">
-            {done.classes} {done.classes === 1 ? 'aula' : 'aulas'}, {done.assessments}{' '}
-            {done.assessments === 1 ? 'avaliação' : 'avaliações'} e {done.events}{' '}
-            {done.events === 1 ? 'evento' : 'eventos'} importados.
+            {t('importSchedule.doneBody', { classes: done.classes, assessments: done.assessments, events: done.events })}
           </p>
         </div>
       )}
@@ -409,30 +409,30 @@ export default function ClipImportModal({ onClose }: { onClose: () => void }) {
           {tab === 'clip' && (
             <div className="space-y-4">
               <ol className="list-decimal space-y-1.5 pl-5 text-sm text-muted marker:text-fg">
-                <li>Abre o <b className="font-medium text-fg">Horário</b> no portal da tua escola ou faculdade.</li>
-                <li>Seleciona tudo (<kbd className={kbd}>Ctrl</kbd>/<kbd className={kbd}>Cmd</kbd> + <kbd className={kbd}>A</kbd>) e copia (<kbd className={kbd}>Ctrl</kbd>/<kbd className={kbd}>Cmd</kbd> + <kbd className={kbd}>C</kbd>).</li>
-                <li>Cola aqui (<kbd className={kbd}>Ctrl</kbd>/<kbd className={kbd}>Cmd</kbd> + <kbd className={kbd}>V</kbd>).</li>
+                <li>{t('importSchedule.step1')}</li>
+                <li>{t('importSchedule.step2a')} (<kbd className={kbd}>Ctrl</kbd>/<kbd className={kbd}>Cmd</kbd> + <kbd className={kbd}>A</kbd>) {t('importSchedule.step2b')} (<kbd className={kbd}>Ctrl</kbd>/<kbd className={kbd}>Cmd</kbd> + <kbd className={kbd}>C</kbd>).</li>
+                <li>{t('importSchedule.step3')} (<kbd className={kbd}>Ctrl</kbd>/<kbd className={kbd}>Cmd</kbd> + <kbd className={kbd}>V</kbd>).</li>
               </ol>
 
               <div
                 tabIndex={0}
                 role="textbox"
                 aria-multiline="true"
-                aria-label="Zona para colar o horário"
+                aria-label={t('importSchedule.pasteZone')}
                 onPaste={onPaste}
                 className="grid min-h-40 cursor-text place-items-center rounded-2xl border border-dashed border-line bg-surface-2 px-4 py-10 text-center text-sm font-medium text-muted transition hover:border-accent focus:border-accent focus:outline-none"
               >
-                Clica aqui e cola o horário
+                {t('importSchedule.pasteHere')}
               </div>
 
               <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
-                <span>ou carrega a página guardada (.html):</span>
+                <span>{t('importSchedule.orHtml')}</span>
                 <label className={cx(
                   'inline-flex h-8 cursor-pointer items-center gap-2 rounded-xl border border-line bg-surface-2 px-3 font-medium text-fg hover:border-muted/50',
                   reading && 'pointer-events-none opacity-60',
                 )}>
                   <Upload size={14} />
-                  <span>{reading ? 'A ler página…' : 'Escolher .html'}</span>
+                  <span>{reading ? t('importSchedule.readingPage') : t('importSchedule.chooseHtml')}</span>
                   <input
                     type="file"
                     accept=".html,.htm,text/html"
@@ -452,14 +452,14 @@ export default function ClipImportModal({ onClose }: { onClose: () => void }) {
           {tab === 'ics' && (
             <div className="space-y-3">
               <p className="text-sm text-muted">
-                Exporta o teu calendário académico em formato .ics e carrega-o aqui. Aulas recorrentes entram no horário e datas de provas viram avaliações.
+                {t('importSchedule.icsIntro')}
               </p>
               <label className={cx(
                 'flex cursor-pointer flex-col items-center gap-2 rounded-2xl border border-dashed border-line px-4 py-8 text-center text-sm text-muted transition hover:border-accent hover:text-fg',
                 reading && 'pointer-events-none opacity-60',
               )}>
                 <Upload size={20} />
-                <span>{reading ? 'A ler ficheiro…' : 'Escolher ficheiro .ics'}</span>
+                <span>{reading ? t('importSchedule.readingFile') : t('importSchedule.chooseIcs')}</span>
                 <input
                   type="file"
                   accept=".ics,text/calendar"
@@ -478,19 +478,19 @@ export default function ClipImportModal({ onClose }: { onClose: () => void }) {
           {tab === 'text' && (
             <div className="space-y-3">
               <p className="text-sm text-muted">
-                Uma aula por linha. Exemplos: <code className="text-xs text-fg">Seg 09:00-11:00 AM2 T Ed.VII 1A</code> ou{' '}
+                {t('importSchedule.textIntro')} <code className="text-xs text-fg">Seg 09:00-11:00 AM2 T Ed.VII 1A</code> {t('importSchedule.or')}{' '}
                 <code className="text-xs text-fg">segunda;9:00;11:00;Análise Matemática II;TP;sala 2B</code>.
               </p>
               <Textarea
                 rows={6}
                 value={text}
-                placeholder="Cola aqui o horário…"
+                placeholder={t('importSchedule.textPlaceholder')}
                 onChange={(e) => setText(e.target.value)}
-                aria-label="Horário em texto"
+                aria-label={t('importSchedule.textAria')}
               />
               <Button variant="secondary" onClick={analyseText} disabled={!text.trim()}>
                 <FileText size={16} />
-                Analisar texto
+                {t('importSchedule.analyse')}
               </Button>
             </div>
           )}
@@ -502,7 +502,7 @@ export default function ClipImportModal({ onClose }: { onClose: () => void }) {
       {!done && preview && rows && (
         <>
           <div className="rounded-xl bg-warn/12 px-3 py-2 text-xs text-warn">
-            Importar substitui o que foi importado antes pelo portal (aulas, avaliações e eventos). Os dados de outras fontes não mudam.
+            {t('importSchedule.replaceWarn')}
           </div>
 
           {missingCourses.length > 0 && (
@@ -514,7 +514,7 @@ export default function ClipImportModal({ onClose }: { onClose: () => void }) {
                   checked={createMissing}
                   onChange={(e) => setCreateMissing(e.target.checked)}
                 />
-                Criar {missingCourses.length} {missingCourses.length === 1 ? 'cadeira em falta' : 'cadeiras em falta'}
+                {t('importSchedule.createMissing', { count: missingCourses.length })}
               </label>
               <ul className="space-y-0.5 pl-6 text-xs text-muted">
                 {missingCourses.map((c) => (
@@ -525,17 +525,17 @@ export default function ClipImportModal({ onClose }: { onClose: () => void }) {
           )}
 
           {activeCourses.length === 0 && missingCourses.length === 0 && (
-            <p className="text-sm text-warn">Ainda não tens cadeiras. Cria-as em Cadeiras antes de importar.</p>
+            <p className="text-sm text-warn">{t('importSchedule.noCourses')}</p>
           )}
 
-          {section('Aulas', rows.classes)}
-          {section('Avaliações', rows.assessments)}
-          {section('Eventos', rows.events)}
+          {section(t('importSchedule.sec.classes'), rows.classes)}
+          {section(t('importSchedule.sec.assessments'), rows.assessments)}
+          {section(t('importSchedule.sec.events'), rows.events)}
 
           {preview.rejected.length > 0 && (
             <div className="space-y-1.5">
               <p className="text-sm font-medium text-warn">
-                {preview.rejected.length} {preview.rejected.length === 1 ? 'linha não reconhecida' : 'linhas não reconhecidas'} (não serão importadas)
+                {t('importSchedule.rejected', { count: preview.rejected.length })}
               </p>
               <ul className="max-h-32 space-y-1 overflow-y-auto rounded-xl bg-surface-2 p-3 font-mono text-xs text-warn">
                 {preview.rejected.map((line, i) => (

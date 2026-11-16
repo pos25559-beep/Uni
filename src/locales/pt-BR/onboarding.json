@@ -277,5 +277,30 @@
       "onlyWhatYouHave": "Conecte só o que já tiver à mão",
       "noTests": "Sem provas marcadas ainda? Ao começar o plano agora, o Uni distribui blocos leves pelas disciplinas ativas e recalcula tudo assim que você enviar um print ou data de prova."
     }
+  },
+  "scenes": {
+    "classAria": "Ilustração animada de uma aula com o Professor Uni no quadro e alunos Uni sentados",
+    "groupAria": "Ilustração animada de um grupo de estudo com quatro companheiros Uni em volta de cadernos",
+    "review": "Revisão 1→3→7d",
+    "groupNotebook": "Caderno em grupo",
+    "planAria": "Ilustração do plano semanal e conexões Google opcionais",
+    "task1": "Revisar capítulo 3",
+    "task2": "Exercícios com o Uni",
+    "task3": "Simulado de prova",
+    "driveTitle": "Google Drive nas disciplinas",
+    "driveDetail": "Apostilas e listas sem procurar.",
+    "calTitle": "Google Agenda sincronizada",
+    "calDetail": "Aulas e datas de provas sem duplicar.",
+    "mailTitle": "Avisos acadêmicos opcionais",
+    "mailDetail": "Ative quando quiser, no seu ritmo.",
+    "focusAria": "Ilustração do modo foco com temporizador e revisão ativa com o Uni",
+    "remembered": "Lembrei bem · +7d",
+    "saved": "25 min reais salvos",
+    "focusSession": "Sessão de foco",
+    "demoCourse": "Cálculo I",
+    "demoCourseShort": "Cálculo",
+    "demoTopic": "Limites até a prova",
+    "demoStatus": "Plano + Recall em dia",
+    "accessoryAria": "Mudar acessório do Uni"
   }
 }

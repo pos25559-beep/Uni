@@ -1,5 +1,7 @@
 // Modal para navegar e importar ficheiros do Google Drive (pastas pessoais e pastas partilhadas).
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { tr } from '../../i18n/tr';
 import { ChevronRight, Folder, HardDrive, LoaderCircle } from 'lucide-react';
 import { Badge, Button, EmptyState, Field, Input, Modal, Select } from '../ui';
 import { cx } from '../../lib/uiHelpers';
@@ -11,14 +13,10 @@ import { materialIcon, relativeDate } from './meta';
 
 type Tab = 'folders' | 'shared' | 'recent' | 'search';
 
-const tabs: { id: Tab; label: string }[] = [
-  { id: 'folders', label: 'O meu Disco' },
-  { id: 'shared', label: 'Partilhados comigo' },
-  { id: 'recent', label: 'Recentes' },
-  { id: 'search', label: 'Procurar' },
-];
+const tabs: { id: Tab }[] = [{ id: 'folders' }, { id: 'shared' }, { id: 'recent' }, { id: 'search' }];
 
 export default function CloudPicker({ source, onClose }: { source: CloudSource; onClose: () => void }) {
+  const { t: tp } = useTranslation('courses');
   const clientId = useStore((s) => s.settings[source.clientIdKey]);
   const courses = useStore((s) => s.courses);
   const upsertMany = useStore((s) => s.upsertMany);
@@ -30,7 +28,7 @@ export default function CloudPicker({ source, onClose }: { source: CloudSource; 
   const [tab, setTab] = useState<Tab>('folders');
   const [text, setText] = useState('');
   const [submitted, setSubmitted] = useState('');
-  const [stack, setStack] = useState<{ id?: string; name: string }[]>([{ name: 'Raiz' }]);
+  const [stack, setStack] = useState<{ id?: string; name: string }[]>(() => [{ name: tp('cloud.root') }]);
   const [files, setFiles] = useState<CloudFile[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +48,7 @@ export default function CloudPicker({ source, onClose }: { source: CloudSource; 
         await googleService.connectPersonalAccount(true, personal.email ?? undefined);
       }
       if (!googleService.isDriveConnected() && clientId.trim() === '') {
-        setAuthError('A Google não devolveu permissão de leitura do Drive. Tenta novamente e aceita o acesso ao Google Drive.');
+        setAuthError(tp('cloud.errNoScope'));
         return;
       }
       setReloadTick((t) => t + 1);
@@ -58,10 +56,10 @@ export default function CloudPicker({ source, onClose }: { source: CloudSource; 
       const code = typeof err === 'object' && err && 'code' in err ? String((err as { code: unknown }).code) : '';
       if (code === 'auth/popup-closed-by-user') return;
       if (code === 'auth/popup-blocked') {
-        setAuthError('O navegador bloqueou a janela da Google. Permite popups para este site e tenta novamente.');
+        setAuthError(tp('cloud.errPopup'));
         return;
       }
-      const msg = err instanceof Error ? err.message : 'Não foi possível autorizar o Google Drive.';
+      const msg = err instanceof Error ? err.message : tp('cloud.errAuth');
       setAuthError(msg);
       setError(msg);
     } finally {
@@ -103,7 +101,7 @@ export default function CloudPicker({ source, onClose }: { source: CloudSource; 
         });
       } catch (e: unknown) {
         if (cancelled) return;
-        const msg = e instanceof Error ? e.message : 'Erro desconhecido ao contactar o serviço.';
+        const msg = e instanceof Error ? e.message : tr('courses:cloud.errUnknown');
         setFiles([]);
         setLoading(false);
         setError(msg);
@@ -168,7 +166,7 @@ export default function CloudPicker({ source, onClose }: { source: CloudSource; 
         <li key={f.id} className="flex items-center gap-3 px-3 py-2.5 text-muted">
           <Folder size={18} className="shrink-0" />
           <span className="min-w-0 flex-1 truncate text-sm">{f.name}</span>
-          <Badge>Pasta</Badge>
+          <Badge>{tp('cloud.folder')}</Badge>
         </li>
       );
     }
@@ -213,24 +211,24 @@ export default function CloudPicker({ source, onClose }: { source: CloudSource; 
               onClick={() => void handleAuthorizeDrive(true)}
             >
               {authBusy ? <LoaderCircle size={13} className="animate-spin" /> : <HardDrive size={13} />}
-              Autorizar Google Drive
+              {tp('cloud.authorize')}
             </Button>
             <Button size="sm" onClick={() => setReloadTick((t) => t + 1)}>
-              Tentar novamente
+              {tp('cloud.retry')}
             </Button>
           </div>
         </div>
       );
     }
     if (tab === 'search' && !submitted) {
-      return <p className="px-4 py-10 text-center text-sm text-muted">Escreve parte do nome e carrega em Enter.</p>;
+      return <p className="px-4 py-10 text-center text-sm text-muted">{tp('cloud.searchHint')}</p>;
     }
     if (files.length === 0) {
       const empty = tab === 'search'
-        ? { title: 'Sem resultados', hint: 'Experimenta outras palavras.' }
+        ? { title: tp('cloud.noResults'), hint: tp('cloud.noResultsHint') }
         : tab === 'recent'
-          ? { title: 'Sem ficheiros recentes', hint: 'Abre um ficheiro no serviço e volta a tentar.' }
-          : { title: 'Pasta vazia', hint: 'Não há ficheiros nesta pasta.' };
+          ? { title: tp('cloud.noRecent'), hint: tp('cloud.noRecentHint') }
+          : { title: tp('cloud.emptyFolder'), hint: tp('cloud.emptyFolderHint') };
       return <div className="p-4"><EmptyState title={empty.title} hint={empty.hint} /></div>;
     }
     return <ul className="divide-y divide-line">{files.map(renderRow)}</ul>;
@@ -240,12 +238,12 @@ export default function CloudPicker({ source, onClose }: { source: CloudSource; 
     <Modal
       open
       onClose={onClose}
-      title={`Importar do ${source.label}`}
+      title={tp('cloud.title', { source: source.label })}
       footer={configured ? (
         <>
-          <Button onClick={onClose}>Cancelar</Button>
+          <Button onClick={onClose}>{tp('cloud.cancel')}</Button>
           <Button variant="primary" disabled={n === 0} onClick={doImport}>
-            {n === 0 ? 'Importar ficheiros' : `Importar ${n} ${n === 1 ? 'ficheiro' : 'ficheiros'}`}
+            {n === 0 ? tp('cloud.importFiles') : tp('cloud.importN', { count: n })}
           </Button>
         </>
       ) : undefined}
@@ -253,12 +251,12 @@ export default function CloudPicker({ source, onClose }: { source: CloudSource; 
       {!configured ? (
         <EmptyState
           icon={<HardDrive size={24} />}
-          title={personal.connected ? 'Autorizar acesso ao Google Drive' : 'Google Drive não ligado'}
+          title={personal.connected ? tp('cloud.authTitle') : tp('cloud.notConnected')}
           hint={
             authError ||
             (personal.connected
-              ? `A tua conta Unipedia (${personal.email ?? 'Google'}) está ligada, mas a sessão temporária do Google Drive expirou ou ainda não foi autorizada neste separador.`
-              : 'Inicia sessão com a tua conta Google para acederes diretamente às tuas pastas pessoais e pastas partilhadas do Drive.')
+              ? tp('cloud.expired', { email: personal.email ?? 'Google' })
+              : tp('cloud.signInHint'))
           }
           action={(
             <Button
@@ -267,7 +265,7 @@ export default function CloudPicker({ source, onClose }: { source: CloudSource; 
               onClick={() => void handleAuthorizeDrive(false)}
             >
               {authBusy ? <LoaderCircle size={14} className="animate-spin" /> : <HardDrive size={14} />}
-              {personal.connected ? 'Autorizar Google Drive' : 'Entrar com a Google'}
+              {personal.connected ? tp('cloud.authorize') : tp('cloud.signIn')}
             </Button>
           )}
         />
@@ -286,7 +284,7 @@ export default function CloudPicker({ source, onClose }: { source: CloudSource; 
                   tab === t.id ? 'bg-surface text-fg shadow-sm' : 'text-muted hover:text-fg',
                 )}
               >
-                {t.label}
+                {tp(`cloud.tab.${t.id}`)}
               </button>
             ))}
           </div>
@@ -295,16 +293,16 @@ export default function CloudPicker({ source, onClose }: { source: CloudSource; 
             <form onSubmit={(e) => { e.preventDefault(); setSubmitted(text.trim()); }}>
               <Input
                 type="search"
-                placeholder="Nome do ficheiro… (Enter para procurar)"
+                placeholder={tp('cloud.searchPh')}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                aria-label="Procurar ficheiros"
+                aria-label={tp('cloud.searchAria')}
               />
             </form>
           )}
 
           {tab === 'folders' && (
-            <nav aria-label="Caminho" className="flex flex-wrap items-center gap-1 text-xs text-muted">
+            <nav aria-label={tp('cloud.path')} className="flex flex-wrap items-center gap-1 text-xs text-muted">
               {stack.map((s, i) => (
                 <span key={`${i}-${s.name}`} className="inline-flex items-center gap-1">
                   {i > 0 && <ChevronRight size={12} />}
@@ -325,9 +323,9 @@ export default function CloudPicker({ source, onClose }: { source: CloudSource; 
             {renderList()}
           </div>
 
-          <Field label="Cadeira dos ficheiros">
+          <Field label={tp('cloud.course')}>
             <Select value={courseId} onChange={(e) => setCourseId(e.target.value)}>
-              <option value="">Sem cadeira</option>
+              <option value="">{tp('cloud.noCourse')}</option>
               {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </Select>
           </Field>

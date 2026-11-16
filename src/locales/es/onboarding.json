@@ -277,5 +277,30 @@
       "onlyWhatYouHave": "Conecta solo lo que ya tengas a mano",
       "noTests": "¿Aún sin exámenes fijados? Al arrancar el plan ahora, Uni reparte bloques ligeros entre tus asignaturas activas y lo recalcula todo en cuanto envíes una captura o fecha de examen."
     }
+  },
+  "scenes": {
+    "classAria": "Ilustración animada de una clase con el Profesor Uni en la pizarra y alumnos Uni sentados",
+    "groupAria": "Ilustración animada de un grupo de estudio con cuatro compañeros Uni alrededor de cuadernos",
+    "review": "Repaso 1→3→7d",
+    "groupNotebook": "Cuaderno en grupo",
+    "planAria": "Ilustración del plan semanal y conexiones opcionales con Google",
+    "task1": "Repasar tema 3",
+    "task2": "Ejercicios con Uni",
+    "task3": "Simulacro de examen",
+    "driveTitle": "Google Drive en las asignaturas",
+    "driveDetail": "Apuntes y ejercicios sin buscar.",
+    "calTitle": "Google Calendar sincronizado",
+    "calDetail": "Clases y fechas de exámenes sin duplicar.",
+    "mailTitle": "Avisos académicos opcionales",
+    "mailDetail": "Actívalo cuando quieras, a tu ritmo.",
+    "focusAria": "Ilustración del modo enfoque con temporizador y repaso activo con Uni",
+    "remembered": "Lo recordé · +7d",
+    "saved": "25 min reales guardados",
+    "focusSession": "Sesión de enfoque",
+    "demoCourse": "Cálculo I",
+    "demoCourseShort": "Cálculo",
+    "demoTopic": "Límites hasta el examen",
+    "demoStatus": "Plan + Recall al día",
+    "accessoryAria": "Cambiar accesorio de Uni"
   }
 }

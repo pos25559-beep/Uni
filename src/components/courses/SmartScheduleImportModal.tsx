@@ -1,5 +1,6 @@
 import { CalendarDays, Camera, Check, CheckCircle2, FileText, Loader2, Sparkles, Upload } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { matchCourse } from '../../integrations/clip';
 import {
   parseAcademicHistoryFromScreenshot,
@@ -84,6 +85,7 @@ export default function SmartScheduleImportModal({
   onOpenClipModal?: () => void;
   onImported?: (summary: SmartScheduleImportSummary) => void;
 }) {
+  const { t } = useTranslation('courses');
   const courses = useStore((s) => s.courses);
   const existingClasses = useStore((s) => s.classes);
   const events = useStore((s) => s.events);
@@ -243,7 +245,7 @@ export default function SmartScheduleImportModal({
       uniqueDetectedCourses.length === 0
     ) {
       setError(
-        'Não encontrei aulas, avaliações nem cadeiras reconhecíveis nestas imagens. Tenta prints mais nítidos da grelha de horário ou da lista de cadeiras.',
+        t('smartImport.err.nothing'),
       );
     }
   };
@@ -257,7 +259,7 @@ export default function SmartScheduleImportModal({
       return /\.(png|jpe?g|webp|gif|heic|heif|bmp)$/i.test(f.name);
     });
     if (imageFiles.length === 0) {
-      setError('Seleciona uma imagem (PNG, JPG, WebP ou print do horário).');
+      setError(t('smartImport.err.pickImage'));
       return;
     }
 
@@ -319,7 +321,7 @@ export default function SmartScheduleImportModal({
         combinedCourses,
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Falha ao analisar a foto do horário.');
+      setError(e instanceof Error ? e.message : t('smartImport.err.photo'));
     } finally {
       setBusy(false);
     }
@@ -357,7 +359,7 @@ export default function SmartScheduleImportModal({
         'google',
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro ao extrair aulas da Google Agenda.');
+      setError(e instanceof Error ? e.message : t('smartImport.err.gcal'));
     } finally {
       setBusy(false);
     }
@@ -468,7 +470,7 @@ export default function SmartScheduleImportModal({
     });
 
     setImportedSummary(
-      `Importado: ${createdCourses.length} cadeira(s) nova(s), ${newClasses.length} aula(s) e ${newAssessments.length} avaliação(ões).`,
+      t('smartImport.summary', { courses: createdCourses.length, classes: newClasses.length, assessments: newAssessments.length }),
     );
     setSlots([]);
     setAssessments([]);
@@ -482,7 +484,7 @@ export default function SmartScheduleImportModal({
     <Modal
       open
       onClose={onClose}
-      title={focus === 'assessments' ? 'Ler datas dos testes por print' : 'Importar horário ou agenda'}
+      title={focus === 'assessments' ? t('smartImport.titleAssess') : t('smartImport.title')}
       maxWidthClass="sm:max-w-xl"
       footer={
         <div className="flex w-full flex-wrap items-center justify-between gap-2">
@@ -495,16 +497,16 @@ export default function SmartScheduleImportModal({
                 onOpenClipModal();
               }}
             >
-              <FileText size={14} /> Importar .ics / Portal
+              <FileText size={14} /> {t('smartImport.icsPortal')}
             </Button>
           ) : (
             <span />
           )}
           <div className="flex gap-2">
-            <Button onClick={onClose}>Fechar</Button>
+            <Button onClick={onClose}>{t('smartImport.close')}</Button>
             {hasPreview && (
               <Button variant="primary" onClick={handleConfirmImport}>
-                <Check size={15} /> Guardar selecionados
+                <Check size={15} /> {t('smartImport.saveSelected')}
               </Button>
             )}
           </div>
@@ -526,7 +528,7 @@ export default function SmartScheduleImportModal({
                 : 'border-line bg-surface-2 text-muted hover:text-fg',
             )}
           >
-            <Camera size={15} /> Foto / Print (IA)
+            <Camera size={15} /> {t('smartImport.tabPhoto')}
           </button>
           <button
             type="button"
@@ -570,23 +572,23 @@ export default function SmartScheduleImportModal({
             <div className="flex flex-wrap items-center justify-between gap-2">
               {isExpressive ? (
                 <StickerBadge tone="mint" tilt={-1.5}>
-                  <Camera size={11} /> {focus === 'assessments' ? 'Leitura de testes e provas' : 'Leitura rápida do horário'}
+                  <Camera size={11} /> {focus === 'assessments' ? t('smartImport.badgeAssess') : t('smartImport.badge')}
                 </StickerBadge>
               ) : (
                 <span className="font-semibold text-fg">
-                  {focus === 'assessments' ? 'Print de testes e avaliações' : 'Leitura de foto / print'}
+                  {focus === 'assessments' ? t('smartImport.headAssess') : t('smartImport.head')}
                 </span>
               )}
-              <span className="text-xs opacity-75">PNG, JPG ou print</span>
+              <span className="text-xs opacity-75">{t('smartImport.formats')}</span>
             </div>
             <p className="leading-relaxed opacity-90">
               {focus === 'assessments'
-                ? 'Envia 1 ou mais prints da pauta de exames, calendário de testes ou datas da cadeira. O Uni lê as disciplinas, datas e horas por ti.'
-                : 'Envia 1 ou mais fotos ou prints (ou arrasta para aqui). O Uni lê as cadeiras, horas, dias e salas por ti.'}
+                ? t('smartImport.bodyAssess')
+                : t('smartImport.body')}
             </p>
             <label className="inline-flex min-h-[42px] cursor-pointer items-center gap-2 rounded-full bg-ink-cta px-4 py-2 text-xs font-semibold text-ink-cta-fg shadow-card transition hover:opacity-90">
               {busy ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-              {busy ? 'A ler prints com o Uni…' : 'Escolher fotos ou prints'}
+              {busy ? t('smartImport.reading') : t('smartImport.choose')}
               <input
                 type="file"
                 multiple
@@ -604,7 +606,7 @@ export default function SmartScheduleImportModal({
               <p className="flex items-center gap-2 rounded-xl bg-white/75 px-3 py-2 text-xs font-medium text-[#141312] dark:bg-black/30 dark:text-[#FAF6EC]">
                 <Loader2 size={13} className="shrink-0 animate-spin text-accent" />
                 <span className="truncate">
-                  A analisar {pickedNames.join(', ')}…
+                  {t('smartImport.analysing', { names: pickedNames.join(', ') })}
                 </span>
               </p>
             )}
@@ -612,13 +614,13 @@ export default function SmartScheduleImportModal({
         ) : (
           <div className="space-y-3 rounded-2xl border border-line bg-surface-2/70 p-4 text-xs">
             <div className="flex items-center justify-between gap-2">
-              <span className="font-semibold text-fg">Extrair da Google Agenda</span>
+              <span className="font-semibold text-fg">{t('smartImport.gcalTitle')}</span>
               <Badge tone={googleConnected ? 'ok' : 'neutral'}>
-                {googleConnected ? `${googleEventsCount} eventos` : 'Por ligar'}
+                {googleConnected ? t('smartImport.events', { n: googleEventsCount }) : t('smartImport.notConnected')}
               </Badge>
             </div>
             <p className="leading-relaxed text-muted">
-              Deteto aulas recorrentes e datas de testes na tua Google Agenda para preencher Cadeiras e Horários sem trabalho manual.
+              {t('smartImport.gcalBody')}
             </p>
             <div className="flex flex-wrap gap-2">
               <Button
@@ -629,14 +631,14 @@ export default function SmartScheduleImportModal({
               >
                 {busy ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                 {busy
-                  ? 'A sincronizar e extrair…'
+                  ? t('smartImport.syncing')
                   : googleEventsCount > 0
-                    ? 'Extrair dos eventos sincronizados'
-                    : 'Sincronizar Google Calendar & extrair'}
+                    ? t('smartImport.extract')
+                    : t('smartImport.syncExtract')}
               </Button>
               {googleEventsCount > 0 && (
                 <Button size="sm" variant="secondary" disabled={busy} onClick={() => void handleExtractGoogle(true)}>
-                  Atualizar agenda primeiro
+                  {t('smartImport.refreshFirst')}
                 </Button>
               )}
             </div>
@@ -659,7 +661,7 @@ export default function SmartScheduleImportModal({
               <div className="space-y-1.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted">
-                    Aulas detetadas ({slots.length})
+                    {t('smartImport.slots', { n: slots.length })}
                   </p>
                   {existingClasses.length > 0 && (
                     <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-xs font-medium text-fg">
@@ -669,7 +671,7 @@ export default function SmartScheduleImportModal({
                         onChange={(e) => setReplaceExistingClasses(e.target.checked)}
                         className="size-4 accent-accent"
                       />
-                      Substituir {existingClasses.length} aula(s) atuais
+                      {t('smartImport.replace', { n: existingClasses.length })}
                     </label>
                   )}
                 </div>
@@ -715,7 +717,7 @@ export default function SmartScheduleImportModal({
                                   prev.map((x) => (x.id === s.id ? { ...x, weekday: nextDay } : x)),
                                 );
                               }}
-                              aria-label={`Dia da semana para ${displayName}`}
+                              aria-label={t('smartImport.weekdayFor', { name: displayName })}
                               className="!min-h-11 !rounded-lg !px-2.5 !py-1 !text-xs font-medium"
                             >
                               {weekdayLong.map((dayName, idx) => (
@@ -726,13 +728,13 @@ export default function SmartScheduleImportModal({
                             </Select>
                             <span>
                               {s.start}–{s.end}
-                              {s.room ? ` · Sala ${s.room}` : ''}
+                              {s.room ? ` · ${t('smartImport.room', { room: s.room })}` : ''}
                             </span>
                           </div>
                         </div>
                       </div>
                       <Badge tone={matched ? 'ok' : 'accent'}>
-                        {matched ? `Liga a ${matched.shortName}` : 'Cria cadeira'}
+                        {matched ? t('smartImport.linksTo', { name: matched.shortName }) : t('smartImport.creates')}
                       </Badge>
                     </div>
                   );
@@ -743,7 +745,7 @@ export default function SmartScheduleImportModal({
             {assessments.length > 0 && (
               <div className="space-y-1.5">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted">
-                  Avaliações detetadas ({assessments.length})
+                  {t('smartImport.assess', { n: assessments.length })}
                 </p>
                 {assessments.map((a) => (
                   <label
@@ -778,7 +780,7 @@ export default function SmartScheduleImportModal({
             {detectedCourses.length > 0 && (
               <div className="space-y-1.5">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted">
-                  Cadeiras detetadas ({detectedCourses.length})
+                  {t('smartImport.courses', { n: detectedCourses.length })}
                 </p>
                 {detectedCourses.map((c) => {
                   const matched = matchCourse(c.name, courses, c.code);
@@ -807,7 +809,7 @@ export default function SmartScheduleImportModal({
                         </div>
                       </div>
                       <Badge tone={matched ? 'ok' : 'accent'}>
-                        {matched ? `Liga a ${matched.shortName}` : 'Cria cadeira'}
+                        {matched ? t('smartImport.linksTo', { name: matched.shortName }) : t('smartImport.creates')}
                       </Badge>
                     </label>
                   );

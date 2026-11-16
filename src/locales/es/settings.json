@@ -264,6 +264,73 @@
     "deleteAll": "Borrar todo",
     "clearBody": "Esta acción elimina asignaturas, evaluaciones, clases, sesiones, tareas, materiales y eventos guardados en este dispositivo. Exporta antes una copia si la necesitas."
   },
+  "importSchedule": {
+    "err": {
+      "pasteEmpty": "No encontré clases en ese contenido. Abre el Horario en el portal de tu facultad, selecciona todo (Ctrl/Cmd+A), copia (Ctrl/Cmd+C) y pega aquí.",
+      "htmlEmpty": "No encontré clases en esa página. Guarda la página del Horario del portal académico (Ctrl/Cmd+S) y elige ese archivo.",
+      "readPage": "No se pudo leer la página.",
+      "icsEmpty": "No encontré eventos en este archivo. Comprueba que es un .ics exportado del portal o del calendario.",
+      "readFile": "No se pudo leer el archivo.",
+      "pasteFirst": "Pega primero las líneas del horario.",
+      "noLines": "No encontré líneas con texto."
+    },
+    "include": "Incluir {{label}}",
+    "noCourseSkip": "sin asignatura, no se importará",
+    "course": "Asignatura",
+    "noCourse": "Sin asignatura",
+    "newCourse": "{{name}} (nueva)",
+    "nothing": "Nada detectado.",
+    "close": "Cerrar",
+    "back": "Volver",
+    "importN_one": "Importar {{count}} elemento",
+    "importN_other": "Importar {{count}} elementos",
+    "cancel": "Cancelar",
+    "tab": {
+      "ics": "Archivo .ics",
+      "page": "Pegar página / HTML",
+      "text": "Texto"
+    },
+    "title": "Importar horario",
+    "doneTitle": "Importación completada.",
+    "doneBody": "Importados: {{classes}} clases, {{assessments}} evaluaciones y {{events}} eventos.",
+    "step1": "Abre el Horario en el portal de tu facultad.",
+    "step2a": "Selecciona todo",
+    "step2b": "y copia",
+    "step3": "Pega aquí",
+    "pasteZone": "Zona para pegar el horario",
+    "pasteHere": "Haz clic aquí y pega el horario",
+    "orHtml": "o sube la página guardada (.html):",
+    "readingPage": "Leyendo página…",
+    "chooseHtml": "Elegir .html",
+    "icsIntro": "Exporta tu calendario académico en formato .ics y súbelo aquí. Las clases recurrentes van al horario y las fechas de exámenes se convierten en evaluaciones.",
+    "readingFile": "Leyendo archivo…",
+    "chooseIcs": "Elegir archivo .ics",
+    "textIntro": "Una clase por línea (días de la semana en portugués). Ejemplos:",
+    "or": "o",
+    "textPlaceholder": "Pega aquí el horario…",
+    "textAria": "Horario en texto",
+    "analyse": "Analizar texto",
+    "replaceWarn": "Importar sustituye lo importado antes desde el portal (clases, evaluaciones y eventos). Los datos de otras fuentes no cambian.",
+    "createMissing_one": "Crear {{count}} asignatura que falta",
+    "createMissing_other": "Crear {{count}} asignaturas que faltan",
+    "noCourses": "Aún no tienes asignaturas. Créalas en Asignaturas antes de importar.",
+    "sec": {
+      "classes": "Clases",
+      "assessments": "Evaluaciones",
+      "events": "Eventos"
+    },
+    "rejected_one": "{{count}} línea no reconocida (no se importará)",
+    "rejected_other": "{{count}} líneas no reconocidas (no se importarán)",
+    "card": {
+      "title": "Importar horario y calificaciones",
+      "desc": "Calendario .ics o página de horario del portal de tu facultad.",
+      "body": "Importa tu archivo de calendario (.ics) o pega la tabla de horarios del portal de tu facultad para rellenar clases y exámenes.",
+      "counts": "{{classes}} clases · {{assessments}} evaluaciones · {{events}} eventos importados",
+      "how1": "Exporta tu horario en formato .ics o copia la tabla del portal académico.",
+      "how2": "Pulsa «Importar horario» y elige el archivo o pega el texto.",
+      "how3": "Confirma la asignatura de cada clase e importa sin perder el resto de tus datos."
+    }
+  },
   "gemini": {
     "keyLocalOnly": "La clave se guarda solo en este dispositivo. Nunca se envía a tu cuenta de Unipedia ni a otros dispositivos."
   }

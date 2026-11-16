@@ -20,3 +20,10 @@ export function longDatePattern(withWeekday = true): string {
   if (lang === 'en') return withWeekday ? 'EEEE, d MMMM' : 'd MMMM';
   return withWeekday ? "EEEE, d 'de' MMMM" : "d 'de' MMMM";
 }
+
+/** Data longa com hora: «às» só em português; vírgula nas outras línguas. */
+export function longDateTimePattern(withWeekday = true): string {
+  const lang = i18n.language || 'pt-PT';
+  const base = longDatePattern(withWeekday);
+  return lang.startsWith('pt') ? `${base} 'às' HH:mm` : `${base}, HH:mm`;
+}

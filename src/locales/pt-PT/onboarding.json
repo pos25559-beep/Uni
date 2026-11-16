@@ -277,5 +277,30 @@
       "onlyWhatYouHave": "Liga apenas o que já tiveres à mão",
       "noTests": "Sem testes marcados ainda? Ao arrancar o plano agora, o Uni distribui blocos ligeiros pelas tuas cadeiras ativas e recalcula tudo mal enviares um print ou data de teste."
     }
+  },
+  "scenes": {
+    "classAria": "Ilustração animada de uma aula com o Professor Uni no quadro e alunos Uni sentados",
+    "groupAria": "Ilustração animada de um grupo de estudo com quatro companheiros Uni à volta de cadernos",
+    "review": "Revisão 1→3→7d",
+    "groupNotebook": "Caderno em grupo",
+    "planAria": "Ilustração do plano semanal e ligações Google opcionais",
+    "task1": "Rever capítulo 3",
+    "task2": "Ficha prática com o Uni",
+    "task3": "Simulação de exame",
+    "driveTitle": "Google Drive nas cadeiras",
+    "driveDetail": "Sebentas e fichas sem andar à procura.",
+    "calTitle": "Google Agenda sincronizada",
+    "calDetail": "Aulas e datas de provas sem duplicar.",
+    "mailTitle": "Avisos académicos opcionais",
+    "mailDetail": "Ativa quando quiseres, ao teu ritmo.",
+    "focusAria": "Ilustração do modo foco com temporizador e revisão ativa acompanhada pelo Uni",
+    "remembered": "Lembrei bem · +7d",
+    "saved": "25 min reais guardados",
+    "focusSession": "Sessão de foco",
+    "demoCourse": "Cálculo I",
+    "demoCourseShort": "Cálculo",
+    "demoTopic": "Limites até ao teste",
+    "demoStatus": "Plano + Recall em dia",
+    "accessoryAria": "Mudar acessório do Uni"
   }
 }

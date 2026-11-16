@@ -56,5 +56,27 @@
     "skinUpdatedToast": "¡Aspecto de Uni actualizado!",
     "petRemovedToast": "Compañero guardado en la estantería.",
     "petEquippedToast": "¡Compañero equipado!"
+  },
+  "retention": {
+    "title": "Retención y calidad de enfoque",
+    "emptyTitle": "Aún sin repasos registrados",
+    "emptyHint": "Termina un bloque de enfoque o practica un tema para medir la retención.",
+    "openPlan": "Abrir Plan y Enfoque",
+    "avg": "Retención media:",
+    "due": "{{n}} por repasar hoy",
+    "upToDate": "Repasos al día",
+    "clean": "Enfoque limpio:",
+    "cleanOf": "Enfoque limpio en {{pct}} de las sesiones",
+    "estimated": "Retención estimada",
+    "hitRate": "Aciertos en práctica",
+    "quality": "Calidad de enfoque:",
+    "noDistractions": "sin distracciones",
+    "exits": "{{n}} salidas/sesión",
+    "noExits": "Sin salidas registradas en Modo Enfoque",
+    "active": "Práctica activa:",
+    "priorities": "Prioridades de repaso",
+    "pct": "{{n}}% retención",
+    "dueOne": "repaso pendiente",
+    "practice": "Practicar"
   }
 }

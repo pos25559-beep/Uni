@@ -185,9 +185,9 @@ export default function WelcomePage() {
                   >
                     <div className="flex items-center gap-2 text-xs font-bold">
                       <BookOpen size={14} className="text-accent-ink" />
-                      <span>Cálculo I · 2×50 min</span>
+                      <span>{t('onboarding:scenes.demoCourse')} · 2×50 min</span>
                     </div>
-                    <p className="mt-0.5 text-xs text-muted">Limites até ao teste</p>
+                    <p className="mt-0.5 text-xs text-muted">{t('onboarding:scenes.demoTopic')}</p>
                   </motion.div>
 
                   <motion.div
@@ -198,7 +198,7 @@ export default function WelcomePage() {
                   >
                     <div className="flex items-center gap-1.5 text-xs font-bold">
                       <CheckCircle2 size={14} className="text-[#0F6344]" />
-                      <span>Plano + Recall em dia</span>
+                      <span>{t('onboarding:scenes.demoStatus')}</span>
                     </div>
                   </motion.div>
 
@@ -228,7 +228,7 @@ export default function WelcomePage() {
                         const idx = UNI_ACCESSORIES.findIndex((a) => a.id === previewAccessory);
                         setPreviewAccessory(UNI_ACCESSORIES[(idx + 1) % UNI_ACCESSORIES.length].id);
                       }}
-                      ariaLabel="Mudar acessório do Uni"
+                      ariaLabel={t('onboarding:scenes.accessoryAria')}
                     />
                   </div>
 
@@ -264,7 +264,7 @@ export default function WelcomePage() {
                       <GraduationCap size={13} className="text-[#0F6344] dark:text-[#4ADE80]" />
                       <span>
                         <strong>{t('uni:stages.0')} → {masterStageInfo.localizedLabel}:</strong>{' '}
-                        {t('uni:adoptModal.summarySubtitle', { course: 'Cálculo' })}
+                        {t('uni:adoptModal.summarySubtitle', { course: t('onboarding:scenes.demoCourseShort') })}
                       </span>
                     </div>
                   </div>

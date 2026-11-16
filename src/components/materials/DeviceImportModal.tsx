@@ -9,6 +9,8 @@ import {
   X,
 } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { tr } from '../../i18n/tr';
 import type { ChangeEvent, DragEvent } from 'react';
 import { Badge, Button, Input, Modal, Select } from '../ui';
 import { cx, showToast } from '../../lib/uiHelpers';
@@ -22,15 +24,14 @@ interface Props {
   onClose: () => void;
 }
 
-const categoryOptions: { value: MaterialCategory; label: string }[] = [
-  { value: 'teste_antigo', label: 'Teste Antigo' },
-  { value: 'exame_antigo', label: 'Exame Antigo' },
-  { value: 'ficha', label: 'Ficha / Exercícios' },
-  { value: 'slide_oficial', label: 'Slide / Teórica' },
-  { value: 'sebenta', label: 'Sebenta / Resumo' },
-  { value: 'relatorio', label: 'Relatório / Trabalho' },
-  { value: 'outro', label: 'Outro' },
-];
+const categoryOptions: { value: MaterialCategory; readonly label: string }[] = (
+  ['teste_antigo', 'exame_antigo', 'ficha', 'slide_oficial', 'sebenta', 'relatorio', 'outro'] as MaterialCategory[]
+).map((value) => ({
+  value,
+  get label() {
+    return tr(`courses:device.cat.${value}`);
+  },
+}));
 
 interface LocalCandidate extends ParsedFileItem {
   relPath: string;
@@ -128,6 +129,7 @@ async function readDirectoryHandleRecursive(
 }
 
 export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
+  const { t } = useTranslation('courses');
   const courses = useStore((s) => s.courses);
   const existingMaterials = useStore((s) => s.materials);
   const upsertMany = useStore((s) => s.upsertMany);
@@ -210,7 +212,7 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
         if (collected.length > 0) {
           processFileEntries(collected);
         } else {
-          showToast('A pasta escolhida está vazia.', 'neutral');
+          showToast(t('device.emptyFolder'), 'neutral');
         }
         return;
       } catch (err) {
@@ -332,7 +334,7 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
       onClose();
     } catch (err) {
       console.error('Erro ao guardar ficheiros no disco:', err);
-      showToast('Ocorreu um erro ao guardar os ficheiros no armazenamento local.', 'danger');
+      showToast(t('device.saveError'), 'danger');
     } finally {
       setSaving(false);
     }
@@ -353,14 +355,14 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
     <Modal
       open
       onClose={saving ? () => {} : onClose}
-      title="Importador do Disco / HD (Ficheiros & Pastas)"
+      title={t('device.title')}
     >
       <div className="space-y-4 max-h-[80vh] flex flex-col">
         {/* Orientação de organização por pastas */}
         <div className="rounded-2xl bg-pastel-mint/65 px-4 py-3 text-xs leading-relaxed text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]">
-          <p className="font-semibold">Dica para portal académico e HD pessoal: organiza em pastas por cadeira</p>
+          <p className="font-semibold">{t('device.tipTitle')}</p>
           <p className="mt-0.5 opacity-85">
-            Cria subpastas com a sigla ou nome da cadeira (ex.:{' '}
+            {t('device.tipA')}{' '}
             <span className="font-mono font-medium">
               {courses.length > 0
                 ? courses
@@ -369,7 +371,7 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
                     .join(', ')
                 : 'Calculo/, Fisica/, Economia/'}
             </span>
-            ). A varredura associa tudo o que estiver lá dentro — mesmo ficheiros com nomes genéricos como <span className="italic">1- Introducao.pdf</span> ou <span className="italic">Teste 1.pdf</span>.
+            {t('device.tipB')}
           </p>
         </div>
 
@@ -391,26 +393,26 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
 
           <h4 className="text-sm font-semibold text-fg">
             {supportsFolderScan
-              ? 'Varre uma pasta do teu computador (ou arrasta para aqui)'
-              : 'Seleciona vários PDFs, fotos ou slides do telemóvel'}
+              ? t('device.dropDesktop')
+              : t('device.dropMobile')}
           </h4>
           <p className="mt-1 text-xs text-muted max-w-sm">
             {supportsFolderScan
-              ? 'PDFs, slides, fotografias de exames ou a pasta inteira do semestre (os ficheiros ficam guardados offline neste dispositivo).'
-              : 'No Android/iOS o navegador não expõe o caminho das pastas — escolhe a cadeira abaixo e seleciona os vários ficheiros de uma só vez.'}
+              ? t('device.hintDesktop')
+              : t('device.hintMobile')}
           </p>
 
           {courses.length > 0 && (
             <div className="mt-3 w-full max-w-xs text-left">
               <label className="mb-1 block text-xs font-medium text-muted">
-                Cadeira por omissão (para ficheiros soltos)
+                {t('device.defaultCourse')}
               </label>
               <Select
                 value={targetCourseId}
                 onChange={(e) => applyTargetCourseToAll(e.target.value)}
                 className="text-xs"
               >
-                <option value="">Detetar automaticamente</option>
+                <option value="">{t('device.autoDetect')}</option>
                 {courses.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.shortName ? `${c.shortName} · ${c.name}` : c.name}
@@ -430,7 +432,7 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
                 disabled={saving}
               >
                 <FolderOpen size={14} />
-                Varrer Pasta Inteira (HD)
+                {t('device.scanFolder')}
               </Button>
             )}
 
@@ -442,7 +444,7 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
               disabled={saving}
             >
               <Upload size={14} />
-              {supportsFolderScan ? 'Selecionar Ficheiros Soltos' : 'Selecionar Vários Ficheiros'}
+              {supportsFolderScan ? t('device.pickLoose') : t('device.pickMany')}
             </Button>
           </div>
 
@@ -472,9 +474,9 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
             <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-fg">
-                  {items.length} {items.length === 1 ? 'ficheiro analisado' : 'ficheiros analisados'}
+                  {t('device.analysed', { count: items.length })}
                 </span>
-                <span className="text-xs text-muted">({selectedCount} selecionados)</span>
+                <span className="text-xs text-muted">{t('device.selected', { n: selectedCount })}</span>
               </div>
 
               <div className="flex items-center gap-2">
@@ -484,7 +486,7 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
                   onClick={() => toggleAll(true)}
                   className="text-xs h-7 px-2"
                 >
-                  Selecionar todos
+                  {t('device.selectAll')}
                 </Button>
                 <Button
                   size="sm"
@@ -492,7 +494,7 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
                   onClick={() => toggleAll(false)}
                   className="text-xs h-7 px-2"
                 >
-                  Desmarcar
+                  {t('device.unselect')}
                 </Button>
                 <div className="relative w-44">
                   <Search
@@ -500,7 +502,7 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
                     className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted"
                   />
                   <Input
-                    placeholder="Filtrar lista..."
+                    placeholder={t('device.filterPh')}
                     value={filterQuery}
                     onChange={(e) => setFilterQuery(e.target.value)}
                     className="pl-7 text-xs h-7"
@@ -533,14 +535,14 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
                             {it.relPath.slice(0, it.relPath.lastIndexOf('/'))}
                           </span>
                         )}
-                        {it.matchSource === 'folder' && <Badge tone="ok">Por pasta</Badge>}
-                        {it.alreadyImported && <Badge tone="neutral">Já guardada</Badge>}
+                        {it.matchSource === 'folder' && <Badge tone="ok">{t('device.byFolder')}</Badge>}
+                        {it.alreadyImported && <Badge tone="neutral">{t('device.alreadySaved')}</Badge>}
                         {it.fileSize && <span>{formatBytes(it.fileSize)}</span>}
                         {it.year && <span className="font-mono">{it.year}</span>}
                         {it.epoch && <Badge tone="accent">{it.epoch}</Badge>}
                         {it.hasSolution && (
                           <span className="flex items-center gap-0.5 text-ok">
-                            <CheckCircle size={10} /> Resolvido
+                            <CheckCircle size={10} /> {t('device.solved')}
                           </span>
                         )}
                       </div>
@@ -549,12 +551,12 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
 
                   <div className="flex flex-wrap items-center gap-2 pl-6 sm:shrink-0 sm:pl-0">
                     <Select
-                      aria-label="Cadeira associada"
+                      aria-label={t('device.courseAria')}
                       value={it.courseId ?? ''}
                       onChange={(e) => updateItemCourse(it.id, e.target.value)}
                       className="h-8 min-w-[120px] flex-1 text-xs sm:w-36 sm:flex-none"
                     >
-                      <option value="">Sem cadeira</option>
+                      <option value="">{t('device.noCourse')}</option>
                       {courses.map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.code || c.name}
@@ -563,7 +565,7 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
                     </Select>
 
                     <Select
-                      aria-label="Categoria"
+                      aria-label={t('device.categoryAria')}
                       value={it.category}
                       onChange={(e) =>
                         updateItemCategory(it.id, e.target.value as MaterialCategory)
@@ -581,7 +583,7 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
                       type="button"
                       onClick={() => removeItem(it.id)}
                       className="grid size-8 shrink-0 place-items-center rounded-lg text-muted hover:text-danger"
-                      title="Remover da lista"
+                      title={t('device.removeFromList')}
                     >
                       <X size={14} />
                     </button>
@@ -598,7 +600,7 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
             <div className="flex items-center justify-between text-xs font-medium">
               <span className="flex items-center gap-1.5 text-accent">
                 <Loader2 size={13} className="animate-spin" />
-                A guardar ficheiros no armazenamento local...
+                {t('device.saving')}
               </span>
               <span>{saveProgress}%</span>
             </div>
@@ -614,7 +616,7 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
         {/* Rodapé com Ações */}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-line">
           <Button type="button" variant="ghost" onClick={onClose} disabled={saving}>
-            Cancelar
+            {t('device.cancel')}
           </Button>
 
           <Button
@@ -627,14 +629,14 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
             {saving ? (
               <>
                 <Loader2 size={14} className="animate-spin" />
-                A guardar...
+                {t('device.savingShort')}
               </>
             ) : (
               <>
                 <HardDrive size={14} />
                 <span>
-                  Guardar {selectedCount} {selectedCount === 1 ? 'ficheiro' : 'ficheiros'}
-                  <span className="hidden sm:inline"> na biblioteca</span>
+                  {t('device.save', { count: selectedCount })}
+                  <span className="hidden sm:inline"> {t('device.toLibrary')}</span>
                 </span>
               </>
             )}

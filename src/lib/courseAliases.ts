@@ -399,7 +399,7 @@ export interface ParsedFileItem {
 
 /**
  * Analisa o nome/caminho de um ficheiro (do HD ou Google Drive) dando PRIORIDADE às pastas pai
- * (ex.: `FCT2627 / MF / 1- Introducao.pdf` associa a `MF` mesmo sem sigla no nome do PDF)
+ * (ex.: `Semestre1 / MF / 1- Introducao.pdf` associa a `MF` mesmo sem sigla no nome do PDF)
  * e extrai metadados estruturados (cadeira, teste/exame, ano, época, se tem resolução).
  */
 export function parseFilenameToParsedItem(

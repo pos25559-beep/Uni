@@ -264,6 +264,73 @@
     "deleteAll": "Delete everything",
     "clearBody": "This removes courses, assessments, classes, sessions, tasks, materials and events stored on this device. Export a backup first if you need one."
   },
+  "importSchedule": {
+    "err": {
+      "pasteEmpty": "No classes found in that content. Open the Timetable in your university portal, select all (Ctrl/Cmd+A), copy (Ctrl/Cmd+C) and paste here.",
+      "htmlEmpty": "No classes found on that page. Save the Timetable page from your academic portal (Ctrl/Cmd+S) and pick that file.",
+      "readPage": "Couldn't read the page.",
+      "icsEmpty": "No events found in this file. Check it's an .ics exported from your portal or calendar.",
+      "readFile": "Couldn't read the file.",
+      "pasteFirst": "Paste the timetable lines first.",
+      "noLines": "No text lines found."
+    },
+    "include": "Include {{label}}",
+    "noCourseSkip": "no course, won't be imported",
+    "course": "Course",
+    "noCourse": "No course",
+    "newCourse": "{{name}} (new)",
+    "nothing": "Nothing detected.",
+    "close": "Close",
+    "back": "Back",
+    "importN_one": "Import {{count}} item",
+    "importN_other": "Import {{count}} items",
+    "cancel": "Cancel",
+    "tab": {
+      "ics": ".ics file",
+      "page": "Paste page / HTML",
+      "text": "Text"
+    },
+    "title": "Import timetable",
+    "doneTitle": "Import complete.",
+    "doneBody": "Imported: {{classes}} classes, {{assessments}} assessments and {{events}} events.",
+    "step1": "Open the Timetable in your university portal.",
+    "step2a": "Select all",
+    "step2b": "and copy",
+    "step3": "Paste here",
+    "pasteZone": "Area to paste the timetable",
+    "pasteHere": "Click here and paste the timetable",
+    "orHtml": "or upload the saved page (.html):",
+    "readingPage": "Reading page…",
+    "chooseHtml": "Choose .html",
+    "icsIntro": "Export your academic calendar as .ics and upload it here. Recurring classes go into the timetable and exam dates become assessments.",
+    "readingFile": "Reading file…",
+    "chooseIcs": "Choose .ics file",
+    "textIntro": "One class per line (weekday names in Portuguese). Examples:",
+    "or": "or",
+    "textPlaceholder": "Paste the timetable here…",
+    "textAria": "Timetable as text",
+    "analyse": "Analyse text",
+    "replaceWarn": "Importing replaces what was previously imported from the portal (classes, assessments and events). Data from other sources stays as is.",
+    "createMissing_one": "Create {{count}} missing course",
+    "createMissing_other": "Create {{count}} missing courses",
+    "noCourses": "You have no courses yet. Create them in Courses before importing.",
+    "sec": {
+      "classes": "Classes",
+      "assessments": "Assessments",
+      "events": "Events"
+    },
+    "rejected_one": "{{count}} unrecognised line (won't be imported)",
+    "rejected_other": "{{count}} unrecognised lines (won't be imported)",
+    "card": {
+      "title": "Import timetable and grades",
+      "desc": ".ics calendar or timetable page from your university portal.",
+      "body": "Quickly import your calendar file (.ics) or paste the timetable from your university portal to fill in classes and exams.",
+      "counts": "{{classes}} classes · {{assessments}} assessments · {{events}} events imported",
+      "how1": "Export your timetable as .ics or copy the table from your academic portal.",
+      "how2": "Tap “Import timetable” and pick the file or paste the text.",
+      "how3": "Confirm the course for each class and import without losing the rest of your data."
+    }
+  },
   "gemini": {
     "keyLocalOnly": "Your key is stored on this device only. It is never sent to your Unipedia account or other devices."
   }
