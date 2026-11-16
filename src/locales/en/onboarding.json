@@ -277,5 +277,30 @@
       "onlyWhatYouHave": "Connect only what you already have",
       "noTests": "No tests scheduled yet? Start the plan now and Uni spreads light blocks across your active courses, then recalculates as soon as you send a screenshot or test date."
     }
+  },
+  "scenes": {
+    "classAria": "Animated illustration of a class with Professor Uni at the board and Uni students seated",
+    "groupAria": "Animated illustration of a study group with four Uni companions around notebooks",
+    "review": "Review 1→3→7d",
+    "groupNotebook": "Group notebook",
+    "planAria": "Illustration of the weekly plan and optional Google connections",
+    "task1": "Review chapter 3",
+    "task2": "Practice set with Uni",
+    "task3": "Mock exam",
+    "driveTitle": "Google Drive in your courses",
+    "driveDetail": "Notes and problem sets without hunting.",
+    "calTitle": "Google Calendar synced",
+    "calDetail": "Classes and exam dates without duplicates.",
+    "mailTitle": "Optional academic notices",
+    "mailDetail": "Turn on whenever you like.",
+    "focusAria": "Illustration of focus mode with a timer and active recall with Uni",
+    "remembered": "Remembered · +7d",
+    "saved": "25 real minutes saved",
+    "focusSession": "Focus session",
+    "demoCourse": "Calculus I",
+    "demoCourseShort": "Calculus",
+    "demoTopic": "Limits before the test",
+    "demoStatus": "Plan + Recall up to date",
+    "accessoryAria": "Change Uni's accessory"
   }
 }
