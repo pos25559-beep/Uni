@@ -1,17 +1,29 @@
 // Metadados visuais partilhados pelas vistas do calendário.
 import { BookOpen, Brain, CalendarDays, CheckSquare, GraduationCap } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { tr } from '../../i18n/tr';
 import { courseColors } from '../../lib/colors';
 import type { Course, Source } from '../../types';
 import { cx } from '../../lib/uiHelpers';
 import type { CalItem, CalKind } from './items';
 
+const kindMeta = (kind: CalKind, icon: LucideIcon, dot: string) => ({
+  get label() {
+    return tr(`plan:cal.kind.${kind}`);
+  },
+  get plural() {
+    return tr(`plan:cal.kind.${kind}Plural`);
+  },
+  icon,
+  dot,
+});
+
 export const KIND_META: Record<CalKind, { label: string; plural: string; icon: LucideIcon; dot: string }> = {
-  aula: { label: 'Aula', plural: 'Aulas', icon: BookOpen, dot: 'bg-accent' },
-  avaliacao: { label: 'Avaliação', plural: 'Avaliações', icon: GraduationCap, dot: 'bg-danger' },
-  estudo: { label: 'Estudo', plural: 'Estudo', icon: Brain, dot: 'bg-ok' },
-  evento: { label: 'Evento', plural: 'Eventos', icon: CalendarDays, dot: 'bg-warn' },
-  tarefa: { label: 'Tarefa', plural: 'Tarefas', icon: CheckSquare, dot: 'bg-muted' },
+  aula: kindMeta('aula', BookOpen, 'bg-accent'),
+  avaliacao: kindMeta('avaliacao', GraduationCap, 'bg-danger'),
+  estudo: kindMeta('estudo', Brain, 'bg-ok'),
+  evento: kindMeta('evento', CalendarDays, 'bg-warn'),
+  tarefa: kindMeta('tarefa', CheckSquare, 'bg-muted'),
 };
 
 export const KIND_ORDER: CalKind[] = ['aula', 'avaliacao', 'estudo', 'evento', 'tarefa'];

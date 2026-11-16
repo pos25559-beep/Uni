@@ -8,7 +8,7 @@ import { parseEmlToAcademicEmail } from '../../integrations/gmail';
 import type { AcademicEmail } from '../../services/googleService';
 import { newId, useStore } from '../../store/useStore';
 import { format, parseISO } from 'date-fns';
-import { pt } from 'date-fns/locale';
+import { appDateLocale as pt } from '../../lib/dateLocale';
 
 export default function AcademicGmailWidget() {
   const courses = useStore((s) => s.courses);

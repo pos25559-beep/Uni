@@ -265,7 +265,7 @@ export default function Step2Academic({
                           : 'border-line bg-surface-2 text-muted hover:text-fg',
                       )}
                     >
-                      {sem}.º {isSecondarySchool ? 'Período' : 'Semestre'}
+                      {isSecondarySchool ? t('common:fmt.period', { n: sem }) : t('common:fmt.semester', { n: sem })}
                     </button>
                   );
                 })}
@@ -384,7 +384,7 @@ export default function Step2Academic({
                         : 'border-line bg-surface-2 text-muted hover:text-fg',
                     )}
                   >
-                    {ch.label}
+                    {t(`common:challenge.${ch.id}`)}
                   </button>
                 );
               })}
@@ -408,7 +408,7 @@ export default function Step2Academic({
                         : 'border-line bg-surface-2 text-muted hover:text-fg',
                     )}
                   >
-                    {preset.label} · {preset.hoursPerWeek}h/sem
+                    {t(`common:extra.${preset.kind}`)} · {t('common:fmt.perWeek', { h: preset.hoursPerWeek })}
                   </button>
                 );
               })}
@@ -421,7 +421,7 @@ export default function Step2Academic({
                     key={act.id}
                     className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-surface-2 px-3 text-xs font-medium text-fg"
                   >
-                    {act.label} ({act.hoursPerWeek}h)
+                    {EXTRA_ACTIVITY_PRESETS.some((p) => p.label === act.label) ? t(`common:extra.${act.kind}`) : act.label} ({act.hoursPerWeek}h)
                     <button
                       type="button"
                       onClick={() => {

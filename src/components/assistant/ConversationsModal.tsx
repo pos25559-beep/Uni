@@ -1,5 +1,6 @@
 import { Check, FolderOpen, MessageSquarePlus, Pencil, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   TUTOR_SUBJECTS,
   groupConversations,
@@ -39,6 +40,7 @@ export default function ConversationsModal({
   onRenameConversation,
   onDeleteConversation,
 }: ConversationsModalProps) {
+  const { t } = useTranslation('assistant');
   const [creating, setCreating] = useState(initialTab === 'new');
   const [newTitle, setNewTitle] = useState('');
   const [newCourseId, setNewCourseId] = useState(defaultCourseId === 'all' ? '' : defaultCourseId);
@@ -53,7 +55,7 @@ export default function ConversationsModal({
   const handleStartNew = async () => {
     const resolvedSubject = customSubject.trim() || newSubject || 'geral';
     await onCreateConversation({
-      title: newTitle.trim() || 'Nova conversa',
+      title: newTitle.trim() || t('convs.newTitle'),
       courseId: newCourseId || undefined,
       subject: resolvedSubject,
     });
@@ -75,17 +77,17 @@ export default function ConversationsModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="Conversas & Assuntos"
+      title={t('convs.title')}
       maxWidthClass="sm:max-w-xl"
     >
       <div className="space-y-4">
         <p className="text-xs leading-relaxed text-muted">
-          Organiza o teu estudo por cadeira, tema ou tipo de preparação e apaga conversas antigas.
+          {t('convs.intro')}
         </p>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs text-muted">
             {conversations.length}{' '}
-            {conversations.length === 1 ? 'conversa guardada' : 'conversas guardadas'}
+            {conversations.length === 1 ? t('convs.countOne') : t('convs.countMany')}
           </p>
           <Button
             size="sm"
@@ -93,17 +95,17 @@ export default function ConversationsModal({
             onClick={() => setCreating((v) => !v)}
           >
             {creating ? <X size={15} /> : <MessageSquarePlus size={15} />}
-            {creating ? 'Fechar criação' : 'Nova conversa por assunto'}
+            {creating ? t('convs.closeCreate') : t('convs.newBySubject')}
           </Button>
         </div>
 
         {creating && (
           <div className="space-y-3 rounded-[22px] border border-line bg-surface-2/65 p-4">
-            <p className="font-display text-sm font-bold text-fg">Criar nova conversa</p>
+            <p className="font-display text-sm font-bold text-fg">{t('convs.create')}</p>
 
             <div>
               <label className="mb-1.5 block text-xs font-medium text-muted">
-                1. Tipo de assunto
+                {t('convs.step1')}
               </label>
               <div className="flex flex-wrap gap-1.5">
                 {TUTOR_SUBJECTS.map((s) => {
@@ -131,7 +133,7 @@ export default function ConversationsModal({
               <Input
                 value={customSubject}
                 onChange={(e) => setCustomSubject(e.target.value)}
-                placeholder="Ou escreve um assunto próprio (ex.: Capítulo 4, Projeto Final)…"
+                placeholder={t('convs.customPh')}
                 className="mt-2"
               />
             </div>
@@ -139,7 +141,7 @@ export default function ConversationsModal({
             {courses.length > 0 && (
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-muted">
-                  2. Associar a uma cadeira (opcional)
+                  {t('convs.step2')}
                 </label>
                 <div className="flex flex-wrap gap-1.5">
                   <button
@@ -152,7 +154,7 @@ export default function ConversationsModal({
                         : 'border-line bg-surface text-muted hover:text-fg',
                     )}
                   >
-                    Geral (sem cadeira)
+                    {t('convs.general')}
                   </button>
                   {courses.map((c) => (
                     <button
@@ -175,18 +177,18 @@ export default function ConversationsModal({
 
             <div>
               <label className="mb-1.5 block text-xs font-medium text-muted">
-                3. Título da conversa (opcional)
+                {t('convs.step3')}
               </label>
               <Input
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="Deixa vazio para dar título automático com a 1.ª pergunta"
+                placeholder={t('convs.titlePh')}
               />
             </div>
 
             <div className="flex justify-end gap-2 pt-1">
               <Button variant="primary" size="sm" onClick={() => void handleStartNew()}>
-                <MessageSquarePlus size={15} /> Começar conversa
+                <MessageSquarePlus size={15} /> {t('convs.start')}
               </Button>
             </div>
           </div>
@@ -195,9 +197,9 @@ export default function ConversationsModal({
         {groups.length === 0 ? (
           <div className="rounded-[22px] border border-dashed border-line px-4 py-8 text-center">
             <FolderOpen size={24} className="mx-auto text-muted" />
-            <p className="mt-2 text-sm font-semibold text-fg">Ainda sem conversas guardadas</p>
+            <p className="mt-2 text-sm font-semibold text-fg">{t('convs.empty')}</p>
             <p className="mt-1 text-xs text-muted">
-              Cria uma conversa acima ou envia logo a tua primeira dúvida no chat.
+              {t('convs.emptyHint')}
             </p>
           </div>
         ) : (
@@ -238,7 +240,7 @@ export default function ConversationsModal({
                               size="sm"
                               variant="primary"
                               iconOnly
-                              aria-label="Guardar título"
+                              aria-label={t('convs.saveTitle')}
                               onClick={() => void commitRename(conv)}
                             >
                               <Check size={15} />
@@ -259,12 +261,12 @@ export default function ConversationsModal({
                               </span>
                               {isActive && (
                                 <span className="shrink-0 rounded-full bg-ink-cta px-2 py-0.5 text-xs font-bold text-ink-cta-fg">
-                                  Ativa
+                                  {t('convs.active')}
                                 </span>
                               )}
                             </div>
                             <p className="mt-0.5 text-xs text-muted">
-                              Assunto: {subjectLabel(conv.subject)}
+                              {t('convs.subjectIs', { s: subjectLabel(conv.subject) })}
                             </p>
                           </button>
                         )}
@@ -281,14 +283,14 @@ export default function ConversationsModal({
                                     setConfirmDeleteId(null);
                                   }}
                                 >
-                                  Apagar
+                                  {t('convs.delete')}
                                 </Button>
                                 <Button
                                   size="sm"
                                   variant="ghost"
                                   onClick={() => setConfirmDeleteId(null)}
                                 >
-                                  Cancelar
+                                  {t('convs.cancel')}
                                 </Button>
                               </>
                             ) : (
@@ -297,8 +299,8 @@ export default function ConversationsModal({
                                   size="sm"
                                   variant="ghost"
                                   iconOnly
-                                  aria-label={`Renomear ${conv.title}`}
-                                  title="Renomear conversa"
+                                  aria-label={t('convs.renameAria', { title: conv.title })}
+                                  title={t('convs.rename')}
                                   onClick={() => {
                                     setEditingId(conv.id);
                                     setEditDraft(conv.title);
@@ -310,8 +312,8 @@ export default function ConversationsModal({
                                   size="sm"
                                   variant="ghost"
                                   iconOnly
-                                  aria-label={`Apagar ${conv.title}`}
-                                  title="Apagar conversa"
+                                  aria-label={t('convs.deleteAria', { title: conv.title })}
+                                  title={t('convs.deleteConv')}
                                   onClick={() => setConfirmDeleteId(conv.id)}
                                   className="text-danger hover:bg-danger/10"
                                 >

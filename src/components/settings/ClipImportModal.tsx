@@ -1,5 +1,5 @@
 import { format, parseISO } from 'date-fns';
-import { pt } from 'date-fns/locale';
+import { appDateLocale as pt } from '../../lib/dateLocale';
 import { FileText, Upload } from 'lucide-react';
 import { useState } from 'react';
 import type { ClipboardEvent, ReactNode } from 'react';

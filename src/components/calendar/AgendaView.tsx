@@ -1,6 +1,6 @@
 // Agenda: lista dos próximos 30 dias agrupada por dia (dias vazios são omitidos).
 import { format, parseISO } from 'date-fns';
-import { pt } from 'date-fns/locale';
+import { appDateLocale as pt, longDatePattern } from '../../lib/dateLocale';
 import { MapPin, Pencil, Trash2 } from 'lucide-react';
 import { useMemo } from 'react';
 import type { Course } from '../../types';
@@ -43,7 +43,7 @@ export default function AgendaView({ items, courseById, today, onEditClass, onDe
       {groups.map(({ date, list }) => (
         <section key={date} className="rise">
           <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold">
-            {capitalizeFirst(format(parseISO(date), "EEEE, d 'de' MMMM", { locale: pt }))}
+            {capitalizeFirst(format(parseISO(date), longDatePattern(), { locale: pt }))}
             {date === today && <Badge tone="accent">Hoje</Badge>}
           </h3>
           <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">

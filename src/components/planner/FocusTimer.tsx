@@ -65,7 +65,6 @@ import FocusShieldPanel from './FocusShieldPanel';
 
 type Phase = FocusTimerPhase;
 const levels: Topic['confidence'][] = [1, 2, 3, 4, 5];
-const levelText = ['Muito fraca', 'Fraca', 'Razoável', 'Boa', 'Dominada'];
 const EXTRA_MS = 5 * 60_000;
 
 const formatClock = (ms: number) => {
@@ -583,7 +582,7 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
       <button
         type="button"
         onClick={handleClose}
-        aria-label="Fechar temporizador"
+        aria-label={t('plan:focus.ui.closeAria')}
         className="fixed right-[max(1rem,env(safe-area-inset-right))] top-[max(1rem,env(safe-area-inset-top))] z-10 flex min-h-11 min-w-11 items-center justify-center rounded-xl p-2 text-muted hover:bg-surface-2 hover:text-fg"
       >
         <X size={20} />
@@ -631,7 +630,7 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
           <div className="mt-3 flex w-full items-center justify-between gap-2 rounded-xl border border-accent/30 bg-accent-soft px-3 py-2 text-left text-xs text-accent-ink">
             <span className="inline-flex items-center gap-1.5 font-medium">
               <RotateCcw size={13} className="shrink-0" />
-              Bloco recuperado de onde paraste. Carrega em Retomar para continuar.
+              {t('plan:focus.ui.recovered')}
             </span>
           </div>
         )}
@@ -647,7 +646,7 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
             <button
               type="button"
               onClick={() => setReturnBanner(null)}
-              aria-label="Dispensar aviso"
+              aria-label={t('plan:focus.ui.dismiss')}
               className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-muted hover:text-fg"
             >
               <X size={14} />
@@ -661,7 +660,7 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
               <div className="flex flex-col items-center">
                 <span className="text-4xl font-semibold tracking-tight tabular">{recordedMin} min</span>
                 <span className="mt-1 text-xs text-muted tabular">
-                  de {Math.round(budgetMs / 60_000)} min planeados
+                  {t('plan:focus.ui.ofPlanned', { n: Math.round(budgetMs / 60_000) })}
                 </span>
               </div>
             ) : (
@@ -674,22 +673,22 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
           <>
             {confirmEarlyFinish ? (
               <div className="w-full rounded-2xl border border-line bg-surface p-4 text-left shadow-[var(--shadow-card)]">
-                <p className="text-sm font-semibold text-fg">Terminar sessão mais cedo?</p>
+                <p className="text-sm font-semibold text-fg">{t('plan:focus.ui.earlyTitle')}</p>
                 <p className="mt-1 text-xs leading-relaxed text-muted">
                   {elapsedMs < 60_000
-                    ? 'Registaste menos de 1 minuto. Podes descartar esta tentativa ou guardar 1 min real.'
-                    : `Ficam ${recordedMin} min reais registados e os restantes ${remainingBudgetMin} min voltam ao teu plano.`}
+                    ? t('plan:focus.ui.earlyUnder1')
+                    : t('plan:focus.ui.earlyBody', { rec: recordedMin, left: remainingBudgetMin })}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Button variant="primary" size="sm" onClick={() => commitFinish(elapsedMs)}>
-                    Guardar {recordedMin} min
+                    {t('plan:focus.ui.saveN', { n: recordedMin })}
                   </Button>
                   <Button variant="secondary" size="sm" onClick={start}>
-                    Continuar a estudar
+                    {t('plan:focus.ui.keepGoing')}
                   </Button>
                   {elapsedMs < 60_000 && (
                     <Button variant="ghost" size="sm" onClick={discardSession}>
-                      Descartar
+                      {t('plan:focus.ui.discard')}
                     </Button>
                   )}
                 </div>
@@ -699,11 +698,11 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
                 <div className="flex flex-wrap items-center justify-center gap-2">
                   {phase === 'running' ? (
                     <Button onClick={pause} className="h-12 px-6">
-                      <Pause size={18} /> Pausar
+                      <Pause size={18} /> {t('plan:focus.ui.pause')}
                     </Button>
                   ) : (
                     <Button variant="primary" onClick={start} className="h-12 px-6">
-                      <Play size={18} /> {phase === 'paused' ? 'Retomar' : 'Iniciar'}
+                      <Play size={18} /> {phase === 'paused' ? t('plan:focus.ui.resume') : t('plan:focus.ui.startBtn')}
                     </Button>
                   )}
                   <Button
@@ -717,11 +716,11 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
                     <Plus size={16} /> 5 min
                   </Button>
                   <Button variant="ghost" onClick={finish} className="h-12 px-4">
-                    <Check size={16} /> Concluir
+                    <Check size={16} /> {t('plan:focus.ui.finish')}
                   </Button>
                 </div>
                 <p className="mt-3 text-xs text-muted tabular">
-                  {elapsedMin} de {Math.round(budgetMs / 60_000)} min
+                  {t('plan:focus.ui.nOf', { a: elapsedMin, b: Math.round(budgetMs / 60_000) })}
                   {distractionCount > 0 && ` · ${distractionCount} ${distractionCount === 1 ? 'saída' : 'saídas'}`}
                 </p>
 
@@ -763,31 +762,30 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
           </>
         ) : (
           <div className="w-full space-y-4">
-            <p className="text-sm font-semibold text-ok">Sessão concluída</p>
+            <p className="text-sm font-semibold text-ok">{t('plan:focus.ui.done')}</p>
 
             <div className="flex flex-wrap items-center justify-center gap-2 rounded-2xl border border-line bg-surface px-3.5 py-2.5 text-xs">
               {distractionCount === 0 ? (
                 <span className="inline-flex items-center gap-1.5 font-semibold text-ok">
                   <ShieldCheck size={15} aria-hidden="true" />
-                  Foco limpo · 0 saídas do ecrã
+                  {t('plan:focus.ui.clean')}
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 font-medium text-fg">
                   <Shield size={15} className="text-muted" aria-hidden="true" />
-                  {distractionCount} {distractionCount === 1 ? 'saída' : 'saídas'} ·{' '}
-                  {formatAwayDuration(awaySeconds)} fora (progresso intacto)
+                  {t('plan:focus.ui.exits', { n: distractionCount, away: formatAwayDuration(awaySeconds) })}
                 </span>
               )}
               {shieldUsed && (
                 <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs text-muted">
-                  Escudo usado
+                  {t('plan:focus.ui.shield')}
                 </span>
               )}
             </div>
 
             {!topic && course && course.topics.length > 0 && (
               <div className="flex flex-wrap items-center gap-1.5 text-left">
-                <span className="text-xs font-medium text-muted">Praticar tópico:</span>
+                <span className="text-xs font-medium text-muted">{t('plan:focus.ui.practiceTopic')}</span>
                 {course.topics.slice(0, 6).map((t) => (
                   <button
                     key={t.id}
@@ -811,7 +809,7 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
                 {uniAgent && course && aiConsent && (
                   <div
                     role="tablist"
-                    aria-label="Modo de prática pós-sessão"
+                    aria-label={t('plan:focus.ui.modeAria')}
                     className="grid grid-cols-2 gap-1 rounded-2xl border border-line bg-surface-2 p-1"
                   >
                     <button
@@ -873,12 +871,12 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
                     onClick={() => setShowManualConfidence((v) => !v)}
                     className="inline-flex min-h-11 items-center gap-1.5 text-xs font-medium text-muted hover:text-fg"
                   >
-                    Ajustar confiança ({confidenceSet ?? activePracticeTopic.confidence}/5)
+                    {t('plan:focus.ui.adjust', { n: confidenceSet ?? activePracticeTopic.confidence })}
                     {showManualConfidence ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                   </button>
                   {showManualConfidence && (
                     <div className="pb-2 pt-1">
-                      <div className="flex justify-center gap-2" role="radiogroup" aria-label="Confiança">
+                      <div className="flex justify-center gap-2" role="radiogroup" aria-label={t('plan:focus.ui.confidence')}>
                         {levels.map((level) => {
                           const active = (confidenceSet ?? activePracticeTopic.confidence) >= level;
                           return (
@@ -887,8 +885,8 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
                               type="button"
                               role="radio"
                               aria-checked={confidenceSet === level}
-                              aria-label={`${level} — ${levelText[level - 1]}`}
-                              title={levelText[level - 1]}
+                              aria-label={`${level} — ${t(`plan:focus.ui.level${level}`)}`}
+                              title={t(`plan:focus.ui.level${level}`)}
                               onClick={() => setConfidence(level)}
                               className={cx(
                                 'size-11 rounded-full border transition',
@@ -900,7 +898,7 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
                         })}
                       </div>
                       <p className="mt-1.5 text-xs text-muted">
-                        {levelText[(confidenceSet ?? activePracticeTopic.confidence) - 1]}
+                        {t(`plan:focus.ui.level${confidenceSet ?? activePracticeTopic.confidence}`)}
                       </p>
                     </div>
                   )}
@@ -908,7 +906,7 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
               </div>
             ) : null}
             <Button variant="primary" onClick={handleClose} className="w-full">
-              Fechar
+              {t('plan:focus.ui.close')}
             </Button>
           </div>
         )}

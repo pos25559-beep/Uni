@@ -376,7 +376,7 @@ export default function Step3Courses({
                     <span className="text-xs font-semibold text-fg">{rec.name}</span>
                   </div>
                   <p className="mt-1 text-xs text-muted">
-                    {formatAcademicYearShort(rec.year, isSecondarySchool)} · {rec.semester}.º sem
+                    {formatAcademicYearShort(rec.year, isSecondarySchool)} · {t('common:fmt.semShort', { n: rec.semester })}
                     {isSecondarySchool ? '' : ` · ${rec.ects || 6} ECTS`}
                   </p>
                 </div>

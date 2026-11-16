@@ -1,6 +1,6 @@
 // Uma coluna do quadro semanal: um dia com as suas sessões e o orçamento.
 import { format } from 'date-fns';
-import { pt } from 'date-fns/locale';
+import { appDateLocale as pt } from '../../lib/dateLocale';
 import { Plus } from 'lucide-react';
 import { weekdayShort } from '../../lib/colors';
 import { fmtMinutes, sessionMinutes } from '../../lib/selectors';
