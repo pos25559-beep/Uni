@@ -33,7 +33,7 @@ export default function GeminiCard() {
 
   const test = async () => {
     const key = apiKey.trim() || (import.meta.env.DEV ? (import.meta.env.VITE_GEMINI_API_KEY ?? '') : '');
-    const wanted = model.trim() || 'gemini-3.8-flash';
+    const wanted = model.trim() || 'gemini-4-hydrogen';
     if (!aiConsent) {
       setLocalError('Ativa primeiro a autorização para o Uni abaixo.');
       return;
@@ -145,14 +145,15 @@ export default function GeminiCard() {
             </div>
           </Field>
 
-          <Field label="Modelo do Uni (predefinido: Gemini 3.8 Flash)">
+          <Field label="Modelo do Uni (predefinido: Gemini 4 Hydrogen)">
             <div className="mb-2 flex flex-wrap gap-1.5">
               {[
-                { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash (Recomendado)' },
+                { id: 'gemini-4-hydrogen', label: 'Gemini 4 Hydrogen (Recomendado)' },
                 { id: 'gemini-4-argon', label: 'Gemini 4 Argon' },
+                { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash' },
                 { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash-Lite (Suplente)' },
               ].map((preset) => {
-                const active = (model || 'gemini-3.8-flash') === preset.id;
+                const active = (model || 'gemini-4-hydrogen') === preset.id;
                 return (
                   <button
                     key={preset.id}
@@ -174,7 +175,7 @@ export default function GeminiCard() {
               value={model}
               autoComplete="off"
               spellCheck={false}
-              placeholder="gemini-3.8-flash"
+              placeholder="gemini-4-hydrogen"
               onChange={(e) => updateSettings({ geminiModel: e.target.value })}
             />
           </Field>

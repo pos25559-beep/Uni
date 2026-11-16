@@ -456,7 +456,7 @@ export const useStore = create<AppState>()(
     }),
     {
       name: 'uni-erp-v5',
-      version: 8,
+      version: 9,
       onRehydrateStorage: () => (state) => {
         rehydrateStoreState(state);
       },

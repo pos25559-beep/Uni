@@ -92,8 +92,8 @@ interface GenerateResponse {
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const MAX_CONTEXT_CHARS = 4500;
 const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
-const DEFAULT_MODEL = 'gemini-3.8-flash';
-const FALLBACK_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'] as const;
+const DEFAULT_MODEL = 'gemini-4-hydrogen';
+const FALLBACK_MODELS = ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'] as const;
 const PRIMARY_TIMEOUT_MS = 10_000;
 const CHAT_ATTACHMENT_PRIMARY_TIMEOUT_MS = 18_000;
 const OCR_PRIMARY_TIMEOUT_MS = 8_000;
@@ -179,8 +179,7 @@ function resolveGeminiConfig() {
   const isLegacyOrInvalid =
     !raw ||
     raw.startsWith('gemini-1.') ||
-    raw.startsWith('gemini-2.') ||
-    raw === 'gemini-4-hydrogen';
+    raw.startsWith('gemini-2.');
   const model = isLegacyOrInvalid ? DEFAULT_MODEL : raw;
   return { customKey, model };
 }
@@ -189,15 +188,26 @@ function isFallbackEligible(err: unknown, outerAborted?: boolean): boolean {
   if (outerAborted) return false;
   if (err instanceof ModelTimeoutError) return true;
   const statusCode = err instanceof HttpStatusError ? err.statusCode : undefined;
-  if (statusCode === 404 || statusCode === 429 || statusCode === 500 || statusCode === 503 || statusCode === 504) {
+  if (
+    statusCode === 400 ||
+    statusCode === 403 ||
+    statusCode === 404 ||
+    statusCode === 429 ||
+    statusCode === 500 ||
+    statusCode === 503 ||
+    statusCode === 504
+  ) {
     return true;
   }
   const lower = (err instanceof Error ? err.message : String(err ?? '')).toLowerCase();
-  if (statusCode === 400 && lower.includes('model')) return true;
   return (
     lower.includes('model not found') ||
     lower.includes('is not found for api version') ||
     lower.includes('is not supported for generatecontent') ||
+    lower.includes('not supported') ||
+    lower.includes('invalid argument') ||
+    lower.includes('billing') ||
+    lower.includes('free tier') ||
     lower.includes('no longer available') ||
     lower.includes('resource_exhausted') ||
     lower.includes('quota exceeded') ||
@@ -208,6 +218,26 @@ function isFallbackEligible(err: unknown, outerAborted?: boolean): boolean {
     lower.includes('timed out') ||
     lower.includes('timeout')
   );
+}
+
+function sanitizeGenerationConfigForModel(
+  model: string,
+  config?: GenerationConfig,
+): GenerationConfig | undefined {
+  if (!config) return undefined;
+  const isGemini4 = model.startsWith('gemini-4');
+  const isFlashLite35 = model.startsWith('gemini-3.5-flash-lite');
+  if (!isGemini4 && !isFlashLite35) {
+    return config;
+  }
+  const next: GenerationConfig = { ...config };
+  delete next.temperature;
+  delete next.topP;
+  delete next.topK;
+  if (isGemini4 && next.maxOutputTokens !== undefined && next.maxOutputTokens < 32768) {
+    next.maxOutputTokens = 32768;
+  }
+  return Object.keys(next).length > 0 ? next : undefined;
 }
 
 function getModelCandidates(primary: string): string[] {
@@ -410,13 +440,14 @@ async function callDirectRest(args: {
       primaryTimeoutMs: args.primaryTimeoutMs,
       outerSignal: args.signal,
       attempt: async (targetModel, ctx) => {
+        const safeConfig = sanitizeGenerationConfigForModel(targetModel, args.generationConfig);
         const res = await fetch(`${API_BASE}/${encodeURIComponent(targetModel)}:generateContent`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-goog-api-key': args.key },
           body: JSON.stringify({
             ...(args.system ? { systemInstruction: { parts: [{ text: args.system }] } } : {}),
             contents: toRestContents(args.contents),
-            generationConfig: args.generationConfig,
+            ...(safeConfig ? { generationConfig: safeConfig } : {}),
           }),
           signal: ctx.signal,
         });
@@ -470,6 +501,7 @@ async function callDirectRestStream(args: {
       primaryTimeoutMs: args.primaryTimeoutMs,
       outerSignal: args.signal,
       attempt: async (targetModel, ctx) => {
+        const safeConfig = sanitizeGenerationConfigForModel(targetModel, args.generationConfig);
         const res = await fetch(
           `${API_BASE}/${encodeURIComponent(targetModel)}:streamGenerateContent?alt=sse`,
           {
@@ -478,7 +510,7 @@ async function callDirectRestStream(args: {
             body: JSON.stringify({
               systemInstruction: { parts: [{ text: args.system }] },
               contents: toRestContents(args.contents),
-              generationConfig: args.generationConfig,
+              ...(safeConfig ? { generationConfig: safeConfig } : {}),
             }),
             signal: ctx.signal,
           },
@@ -551,10 +583,11 @@ async function runNativeGenerate(args: {
       primaryTimeoutMs: args.primaryTimeoutMs,
       outerSignal: args.signal,
       attempt: async (targetModel, ctx) => {
+        const safeConfig = sanitizeGenerationConfigForModel(targetModel, args.generationConfig);
         const gm = getGenerativeModel(ai, {
           model: targetModel,
           ...(args.system ? { systemInstruction: args.system } : {}),
-          generationConfig: args.generationConfig,
+          ...(safeConfig ? { generationConfig: safeConfig } : {}),
         });
         const result = await gm.generateContent(
           { contents: args.contents },
@@ -589,10 +622,11 @@ async function runNativeStream(args: {
       primaryTimeoutMs: args.primaryTimeoutMs,
       outerSignal: args.signal,
       attempt: async (targetModel, ctx) => {
+        const safeConfig = sanitizeGenerationConfigForModel(targetModel, args.generationConfig);
         const gm = getGenerativeModel(ai, {
           model: targetModel,
           systemInstruction: args.system,
-          generationConfig: args.generationConfig,
+          ...(safeConfig ? { generationConfig: safeConfig } : {}),
         });
         const streamRes = await gm.generateContentStream(
           { contents: args.contents },

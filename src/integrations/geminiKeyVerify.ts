@@ -12,7 +12,7 @@ export interface GeminiKeyTestResult {
 /** Valida uma chave pessoal Gemini diretamente contra a Google Generative Language API (lista + teste real de geração). */
 export async function verifyGeminiApiKey(
   rawKey: string,
-  wantedModel = 'gemini-3.8-flash',
+  wantedModel = 'gemini-4-hydrogen',
 ): Promise<GeminiKeyTestResult> {
   const key = rawKey.trim();
   if (!key) {
@@ -34,7 +34,7 @@ export async function verifyGeminiApiKey(
   // Testa também uma chamada mínima real para detetar créditos pré-pagos esgotados (402) ou quota a zero.
   const probeModel = names.includes(wantedModel)
     ? wantedModel
-    : names.find((n) => n.includes('flash') && !n.includes('image') && !n.includes('tts')) ||
+    : names.find((n) => (n.includes('gemini-4') || n.includes('flash')) && !n.includes('image') && !n.includes('tts')) ||
       wantedModel;
   const probeRes = await fetch(
     `${MODEL_GEN_BASE}/${encodeURIComponent(probeModel)}:generateContent`,
@@ -43,7 +43,7 @@ export async function verifyGeminiApiKey(
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
       body: JSON.stringify({
         contents: [{ role: 'user', parts: [{ text: 'OK' }] }],
-        generationConfig: { maxOutputTokens: 2 },
+        ...(probeModel.startsWith('gemini-4') ? {} : { generationConfig: { maxOutputTokens: 2 } }),
       }),
     },
   );

@@ -134,7 +134,7 @@ export function rehydrateStoreState(
 export function migrateStoreState(persistedState: unknown, version: number) {
   const base = (persistedState && typeof persistedState === 'object' ? persistedState : {}) as Record<string, unknown> & Partial<Collections> & {
     isDemo?: boolean;
-    settings?: { userName?: string; semesterName?: string; guestMode?: boolean };
+    settings?: { userName?: string; semesterName?: string; guestMode?: boolean; geminiModel?: string };
     academicProfile?: AcademicProfile;
   };
 
@@ -177,6 +177,15 @@ export function migrateStoreState(persistedState: unknown, version: number) {
     }
     if (version < 7 && nextSettings.guestMode === undefined) {
       nextSettings.guestMode = false;
+    }
+    if (
+      version < 9 &&
+      (!nextSettings.geminiModel ||
+        nextSettings.geminiModel === 'gemini-3.8-flash' ||
+        nextSettings.geminiModel.startsWith('gemini-2.') ||
+        nextSettings.geminiModel.startsWith('gemini-1.'))
+    ) {
+      nextSettings.geminiModel = 'gemini-4-hydrogen';
     }
   }
 
