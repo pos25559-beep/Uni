@@ -8,6 +8,7 @@ import {
   Search,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Course } from '../../types';
 import { Badge, Button, EmptyState, Input, Modal } from '../ui';
 import { cx } from '../../lib/uiHelpers';
@@ -16,13 +17,14 @@ import type { AcademicEmail } from '../../services/googleService';
 import { matchesCourse } from '../../lib/courseAliases';
 import { useStore, newId } from '../../store/useStore';
 import { format, parseISO } from 'date-fns';
-import { pt } from 'date-fns/locale';
+import { appDateLocale as pt, longDateTimePattern } from '../../lib/dateLocale';
 
 interface Props {
   course: Course;
 }
 
 export default function CourseEmailsTab({ course }: Props) {
+  const { t } = useTranslation('courses');
   const {
     emails,
     loading,
@@ -82,7 +84,7 @@ export default function CourseEmailsTab({ course }: Props) {
     upsert('tasks', {
       id: newId(),
       courseId: course.id,
-      title: `Aviso Gmail: ${selectedEmail.subject.slice(0, 60)}`,
+      title: t('emails.taskTitle', { subject: selectedEmail.subject.slice(0, 60) }),
       due: format(new Date(), 'yyyy-MM-dd'),
       done: false,
       priority: 2,
@@ -97,10 +99,10 @@ export default function CourseEmailsTab({ course }: Props) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Mail size={18} className="text-muted" />
-          <h2 className="text-sm font-semibold">Avisos e Correio Académico</h2>
+          <h2 className="text-sm font-semibold">{t('emails.title')}</h2>
           {connected && !needsPermission && (
             <div className="flex items-center gap-2">
-              <Badge tone="accent">{courseEmails.length} mensagens</Badge>
+              <Badge tone="accent">{t('emails.count', { count: courseEmails.length })}</Badge>
               {academicEmail && <span className="text-xs text-muted">({academicEmail})</span>}
             </div>
           )}
@@ -119,7 +121,7 @@ export default function CourseEmailsTab({ course }: Props) {
                     : 'border-line bg-surface-2 text-muted hover:text-fg',
                 )}
               >
-                {showAllFaculty ? 'A mostrar todos os emails' : `Ver todos (${emails.length})`}
+                {showAllFaculty ? t('emails.showingAll') : t('emails.seeAll', { n: emails.length })}
               </button>
             )}
             <div className="relative sm:w-60">
@@ -128,7 +130,7 @@ export default function CourseEmailsTab({ course }: Props) {
                 className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
               />
               <Input
-                placeholder="Procurar nos emails..."
+                placeholder={t('emails.searchPh')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-8 text-xs"
@@ -136,7 +138,7 @@ export default function CourseEmailsTab({ course }: Props) {
             </div>
             <Button variant="secondary" size="sm" onClick={() => loadEmails(true)} disabled={loading}>
               <RefreshCw size={13} className={cx(loading && 'animate-spin')} />
-              Atualizar
+              {t('emails.refresh')}
             </Button>
           </div>
         )}
@@ -149,9 +151,9 @@ export default function CourseEmailsTab({ course }: Props) {
             <div className="flex items-start gap-3">
               <AlertTriangle className="size-5 shrink-0 text-warn mt-0.5" />
               <div>
-                <h3 className="text-sm font-semibold text-fg">Permissão de Leitura do Gmail Necessária</h3>
+                <h3 className="text-sm font-semibold text-fg">{t('emails.permTitle')}</h3>
                 <p className="mt-1 text-xs text-muted leading-relaxed">
-                  A tua conta Google está ligada, mas o token anterior não incluía a autorização de leitura da caixa de entrada do Gmail. Para ler os avisos reais dos professores de {course.name}, clica em autorizar.
+                  {t('emails.permBody', { name: course.name })}
                 </p>
               </div>
             </div>
@@ -160,7 +162,7 @@ export default function CourseEmailsTab({ course }: Props) {
               onClick={() => handleConnect(true)}
               className="shrink-0"
             >
-              <KeyRound size={14} /> Autorizar Permissão de Gmail
+              <KeyRound size={14} /> {t('emails.permBtn')}
             </Button>
           </div>
         </div>
@@ -169,24 +171,24 @@ export default function CourseEmailsTab({ course }: Props) {
       {!connected ? (
         <EmptyState
           icon={<Mail size={24} />}
-          title="Email Académico não ligado"
-          hint="Os teus emails pessoais ficam separados por privacidade. Para ler avisos reais dos docentes nesta cadeira, liga a tua conta institucional Google ou importa um ficheiro .eml."
+          title={t('emails.notConnected')}
+          hint={t('emails.notConnectedHint')}
           action={
             <Button variant="primary" onClick={() => handleConnect(false)}>
-              <Mail size={14} /> Ligar Email Académico
+              <Mail size={14} /> {t('emails.connect')}
             </Button>
           }
         />
       ) : needsPermission ? null : courseEmails.length === 0 ? (
         <EmptyState
           icon={<Mail size={24} />}
-          title={showAllFaculty ? 'Nenhum email encontrado' : 'Nenhum email específico para esta cadeira'}
+          title={showAllFaculty ? t('emails.emptyAll') : t('emails.emptyCourse')}
           hint={
             emails.length > 0
-              ? `Tens ${emails.length} mensagens sincronizadas da faculdade, mas nenhuma menciona "${course.name}" ou a sigla "${course.code}". Podes ver todos os avisos clicando abaixo.`
+              ? t('emails.emptyHintSome', { n: emails.length, name: course.name, code: course.code })
               : !hasLiveToken && academicEmail
-                ? `A conta académica (${academicEmail}) está guardada. Clica em «Atualizar da Google» para ir buscar os avisos mais recentes desta sessão.`
-                : 'Não encontrámos mensagens com avisos de testes, enunciados ou da sigla desta cadeira na tua caixa de correio.'
+                ? t('emails.emptyHintSaved', { email: academicEmail })
+                : t('emails.emptyHintNone')
           }
           action={
             <div className="flex flex-wrap gap-2 justify-center">
@@ -196,11 +198,11 @@ export default function CourseEmailsTab({ course }: Props) {
                   onClick={() => setShowAllFaculty((v) => !v)}
                 >
                   <Mail size={14} />
-                  {showAllFaculty ? 'Ver só desta cadeira' : `Ver todos os avisos da faculdade (${emails.length})`}
+                  {showAllFaculty ? t('emails.onlyCourse') : t('emails.allFaculty', { n: emails.length })}
                 </Button>
               )}
               <Button variant="secondary" onClick={() => loadEmails(true)}>
-                <RefreshCw size={14} /> Atualizar da Google
+                <RefreshCw size={14} /> {t('emails.refreshGoogle')}
               </Button>
             </div>
           }
@@ -229,7 +231,7 @@ export default function CourseEmailsTab({ course }: Props) {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="truncate text-xs font-semibold text-fg">{em.fromName}</span>
-                    {em.isClipNotice && <Badge tone="accent">Aviso académico</Badge>}
+                    {em.isClipNotice && <Badge tone="accent">{t('emails.notice')}</Badge>}
                     {em.unread && <span className="size-2 rounded-full bg-accent" />}
                   </div>
 
@@ -261,15 +263,15 @@ export default function CourseEmailsTab({ course }: Props) {
               <div>
                 {taskAdded && (
                   <span className="flex items-center gap-1 text-xs text-ok">
-                    <CheckCircle2 size={13} /> Tarefa criada nas tuas tarefas!
+                    <CheckCircle2 size={13} /> {t('emails.taskCreated')}
                   </span>
                 )}
               </div>
               <div className="flex items-center gap-2">
                 <Button variant="secondary" onClick={handleCreateTask}>
-                  <CheckCircle2 size={14} /> Criar Tarefa deste Email
+                  <CheckCircle2 size={14} /> {t('emails.createTask')}
                 </Button>
-                <Button onClick={() => setSelectedEmail(null)}>Fechar</Button>
+                <Button onClick={() => setSelectedEmail(null)}>{t('emails.close')}</Button>
               </div>
             </div>
           }
@@ -277,11 +279,11 @@ export default function CourseEmailsTab({ course }: Props) {
           <div className="space-y-4 text-xs">
             <div className="border-b border-line pb-2 text-muted">
               <p>
-                <span className="font-semibold text-fg">De:</span> {selectedEmail.from}
+                <span className="font-semibold text-fg">{t('emails.from')}</span> {selectedEmail.from}
               </p>
               <p className="mt-1">
-                <span className="font-semibold text-fg">Data:</span>{' '}
-                {format(parseISO(selectedEmail.date), "EEEE, d 'de' MMMM 'às' HH:mm", {
+                <span className="font-semibold text-fg">{t('emails.date')}</span>{' '}
+                {format(parseISO(selectedEmail.date), longDateTimePattern(), {
                   locale: pt,
                 })}
               </p>

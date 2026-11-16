@@ -8,23 +8,29 @@ import {
   orderBy,
   onSnapshot,
 } from 'firebase/firestore';
+import { tr } from '../i18n/tr';
 import { db, auth } from './firebase';
 import type { ChatMessage } from '../integrations/gemini';
 import type { Course } from '../types';
 
 export type ConversationSubject = 'geral' | 'duvidas' | 'resumos' | 'exame' | 'exercicios';
 
+const SUBJECT_IDS: ConversationSubject[] = ['geral', 'duvidas', 'resumos', 'exame', 'exercicios'];
+
+/** Assuntos do Tutor; `label` e `hint` seguem a língua ativa (getters). */
 export const TUTOR_SUBJECTS: Array<{
   id: ConversationSubject;
   label: string;
   hint: string;
-}> = [
-  { id: 'geral', label: 'Geral', hint: 'Organização e perguntas abertas' },
-  { id: 'duvidas', label: 'Dúvidas', hint: 'Explicações passo a passo' },
-  { id: 'resumos', label: 'Resumos', hint: 'Sínteses, mapas e apontamentos' },
-  { id: 'exame', label: 'Exame', hint: 'Simulações, recall e tópicos críticos' },
-  { id: 'exercicios', label: 'Exercícios', hint: 'Resolução guiada de fichas' },
-];
+}> = SUBJECT_IDS.map((id) => ({
+  id,
+  get label() {
+    return tr(`assistant:subject.${id}`);
+  },
+  get hint() {
+    return tr(`assistant:subject.${id}Hint`);
+  },
+}));
 
 export interface Conversation {
   id: string;
@@ -37,7 +43,7 @@ export interface Conversation {
 }
 
 export function subjectLabel(subject?: string): string {
-  if (!subject) return 'Geral';
+  if (!subject) return tr('assistant:subject.geral');
   const match = TUTOR_SUBJECTS.find((s) => s.id === subject);
   return match ? match.label : subject;
 }

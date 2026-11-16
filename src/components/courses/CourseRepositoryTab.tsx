@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { FormEvent } from 'react';
 import type { Assessment, Course, Material } from '../../types';
 import { Badge, Button, EmptyState, Input } from '../ui';
@@ -44,21 +45,13 @@ type CategoryFilter =
   | 'relatorio'
   | 'outro';
 
-const categoryLabels: Record<CategoryFilter, string> = {
-  all: 'Todos os Materiais',
-  provas: 'Testes & Exames Antigos',
-  ficha: 'Fichas & Exercícios',
-  slide_oficial: 'Slides & Teórica',
-  sebenta: 'Sebentas & Resumos',
-  relatorio: 'Relatórios & Projetos',
-  outro: 'Outros Ficheiros',
-};
 
 export default function CourseRepositoryTab({
   course,
   assessments,
   onUploadFile,
 }: Props) {
+  const { t } = useTranslation('courses');
   const materials = useStore((s) => s.materials);
   const upsert = useStore((s) => s.upsert);
   const patch = useStore((s) => s.patch);
@@ -188,9 +181,9 @@ export default function CourseRepositoryTab({
 
   const handleAddLink = (e: FormEvent) => {
     e.preventDefault();
-    if (!quickLinkTitle.trim()) return setLinkError('Indica um título.');
+    if (!quickLinkTitle.trim()) return setLinkError(t('repo.errTitle'));
     const link = normalizeUrl(quickLinkUrl);
-    if (!link) return setLinkError('Indica um link válido.');
+    if (!link) return setLinkError(t('repo.errLink'));
     setLinkError(null);
 
     const item: Material = {
@@ -216,15 +209,13 @@ export default function CourseRepositoryTab({
             <div>
               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted">
                 <Sparkles size={14} className="text-accent" />
-                Guia Inteligente para a Próxima Avaliação
+                {t('repo.guideEyebrow')}
               </div>
               <h2 className="mt-1 text-base font-semibold text-fg">
-                Preparação para o {nextAssessment.title}
+                {t('repo.guideTitle', { title: nextAssessment.title })}
               </h2>
               <p className="mt-1 text-xs text-muted">
-                Em {daysUntil(nextAssessment.date)} dias • Peso de {nextAssessment.weight}% na nota
-                final. Resolve prioritariamente os testes de anos anteriores com resolução passo a
-                passo.
+                {t('repo.guideBody', { days: daysUntil(nextAssessment.date), weight: nextAssessment.weight })}
               </p>
             </div>
 
@@ -245,7 +236,7 @@ export default function CourseRepositoryTab({
                   className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-accent/40 bg-accent-soft px-3 text-xs font-semibold text-accent hover:border-accent hover:bg-accent/15 transition"
                 >
                   <HardDrive size={13} />
-                  Explorar Drive no Site
+                  {t('repo.exploreDrive')}
                 </button>
               )}
               {course.sharedDriveUrl && (
@@ -256,7 +247,7 @@ export default function CourseRepositoryTab({
                   className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-line bg-surface-2 px-3 text-xs font-medium text-fg hover:border-muted/50 transition"
                 >
                   <HardDrive size={13} className="text-muted" />
-                  Abrir no Google
+                  {t('repo.openGoogle')}
                   <ExternalLink size={12} className="text-muted" />
                 </a>
               )}
@@ -266,7 +257,7 @@ export default function CourseRepositoryTab({
                 className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-line bg-surface-2 px-3 text-xs font-medium text-fg hover:border-accent hover:text-accent transition"
               >
                 <HardDrive size={13} className="text-muted" />
-                Importar do Disco (HD)
+                {t('repo.importDevice')}
               </button>
             </div>
           </div>
@@ -311,7 +302,7 @@ export default function CourseRepositoryTab({
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
           />
           <Input
-            placeholder="Filtrar por nome, teste, ano ou slide..."
+            placeholder={t('repo.filterPh')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-8 text-xs"
@@ -321,7 +312,7 @@ export default function CourseRepositoryTab({
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="primary" onClick={() => setShowDeviceImport(true)}>
             <HardDrive size={14} />
-            Importar do Disco / HD
+            {t('repo.importDevice')}
           </Button>
           <Button
             variant="secondary"
@@ -331,25 +322,25 @@ export default function CourseRepositoryTab({
             {scanningDrive ? (
               <>
                 <Loader2 size={14} className="animate-spin text-accent" />
-                A Varrer Google Drive...
+                {t('repo.scanning')}
               </>
             ) : (
               <>
                 <Sparkles size={14} className="text-accent" />
-                Varrer Google Drive
+                {t('repo.scan')}
               </>
             )}
           </Button>
           <Button variant="secondary" onClick={onUploadFile}>
             <FileUp size={14} />
-            Ficheiro Único
+            {t('repo.singleFile')}
           </Button>
           <Button
             variant="ghost"
             onClick={() => setShowAddLinkForm((v) => !v)}
           >
             <Plus size={14} />
-            Adicionar Link
+            {t('repo.addLink')}
           </Button>
         </div>
       </div>
@@ -376,10 +367,10 @@ export default function CourseRepositoryTab({
           onSubmit={handleAddLink}
           className="rounded-2xl border border-line bg-surface p-4 text-xs space-y-3"
         >
-          <h4 className="font-semibold text-fg">Adicionar Novo Link de Material</h4>
+          <h4 className="font-semibold text-fg">{t('repo.addLinkTitle')}</h4>
           <div className="flex flex-col sm:flex-row gap-2">
             <Input
-              placeholder="Título (ex: Sebenta Cap. 3, Formulário)"
+              placeholder={t('repo.linkTitlePh')}
               value={quickLinkTitle}
               onChange={(e) => setQuickLinkTitle(e.target.value)}
               className="sm:max-w-64 text-xs"
@@ -391,7 +382,7 @@ export default function CourseRepositoryTab({
               className="flex-1 text-xs"
             />
             <Button type="submit" variant="primary" size="sm">
-              Guardar Link
+              {t('repo.saveLink')}
             </Button>
             <Button
               type="button"
@@ -399,7 +390,7 @@ export default function CourseRepositoryTab({
               size="sm"
               onClick={() => setShowAddLinkForm(false)}
             >
-              Cancelar
+              {t('repo.cancel')}
             </Button>
           </div>
           {linkError && <p className="text-danger text-xs">{linkError}</p>}
@@ -427,7 +418,7 @@ export default function CourseRepositoryTab({
                   : 'border-line bg-surface text-muted hover:text-fg',
               )}
             >
-              <span>{categoryLabels[cat]}</span>
+              <span>{t(`repo.cat.${cat}`)}</span>
               <span className="font-mono text-xs opacity-75">{count}</span>
             </button>
           );
@@ -440,15 +431,15 @@ export default function CourseRepositoryTab({
           icon={<FolderOpen size={24} />}
           title={
             sortedMaterials.length === 0
-              ? 'Nenhum material associado a esta cadeira'
-              : 'Nenhum ficheiro encontrado com este filtro'
+              ? t('repo.emptyNone')
+              : t('repo.emptyFilter')
           }
-          hint="Importa ficheiros ou pastas inteiras do teu Computador (HD) ou faz uma varredura autónoma no Google Drive para associar os materiais do curso."
+          hint={t('repo.emptyHint')}
           action={
             <div className="flex flex-wrap gap-2 justify-center">
               <Button variant="primary" onClick={() => setShowDeviceImport(true)}>
                 <HardDrive size={14} />
-                Importar do Computador (HD)
+                {t('repo.importDevice')}
               </Button>
               <Button
                 variant="secondary"
@@ -456,7 +447,7 @@ export default function CourseRepositoryTab({
                 disabled={scanningDrive}
               >
                 {scanningDrive ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                Varrer Google Drive
+                {t('repo.scan')}
               </Button>
             </div>
           }
@@ -509,8 +500,8 @@ export default function CourseRepositoryTab({
                 <Button
                   size="sm"
                   variant="ghost"
-                  aria-label={item.pinned ? 'Desafixar' : 'Fixar'}
-                  title={item.pinned ? 'Desafixar' : 'Fixar'}
+                  aria-label={item.pinned ? t('repo.unpin') : t('repo.pin')}
+                  title={item.pinned ? t('repo.unpin') : t('repo.pin')}
                   onClick={() => patch('materials', item.id, { pinned: !item.pinned })}
                 >
                   {item.pinned ? <PinOff size={14} /> : <Pin size={14} />}
@@ -520,10 +511,10 @@ export default function CourseRepositoryTab({
                   onClick={() => handleOpenFile(item)}
                   className="rounded-xl border border-line bg-surface-2 px-3 py-1.5 text-xs font-medium text-fg hover:border-muted/50"
                 >
-                  Abrir
+                  {t('repo.open')}
                 </button>
                 <DeleteButton
-                  message={`Remover "${item.title}" do repositório?`}
+                  message={t('repo.removeConfirm', { title: item.title })}
                   onConfirm={() => remove('materials', item.id)}
                 />
               </div>

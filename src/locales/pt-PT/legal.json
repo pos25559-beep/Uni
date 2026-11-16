@@ -1,0 +1,272 @@
+{
+  "common": {
+    "updated": "Atualizado em {{date}}",
+    "nav": {
+      "privacy": "Privacidade",
+      "terms": "Termos",
+      "delete": "Eliminar conta"
+    },
+    "translationNote": ""
+  },
+  "privacy": {
+    "title": "Política de Privacidade",
+    "subtitle": "O que fica contigo, o que é partilhado e com quem, sem letra pequena.",
+    "summaryBadge": "A tua privacidade em 30 segundos",
+    "laws": "RGPD (UE) · LGPD (Brasil) · UK GDPR",
+    "cards": [
+      {
+        "title": "No teu dispositivo",
+        "body": "Cadeiras, notas, tarefas e PDFs ficam guardados localmente por defeito. Sem publicidade e sem venda de dados."
+      },
+      {
+        "title": "Na nuvem só se quiseres",
+        "body": "Só sincronizamos se criares conta. Podes usar a app sem conta."
+      },
+      {
+        "title": "IA com aviso claro",
+        "body": "O Uni só envia conteúdo à Google quando lhe fazes um pedido. No Uni partilhado gratuito, a Google pode usar esse conteúdo para melhorar os seus produtos."
+      }
+    ],
+    "sections": [
+      {
+        "title": "1. Quem é o responsável",
+        "items": [
+          [
+            "Responsável pelo tratamento:",
+            "{{controller}} ({{country}})."
+          ],
+          [
+            "Contacto para privacidade:",
+            "{{email}}. Este é também o canal de comunicação com o encarregado de dados previsto no art. 41.º da LGPD."
+          ]
+        ]
+      },
+      {
+        "title": "2. Que dados tratamos e onde ficam",
+        "items": [
+          [
+            "No dispositivo (por defeito):",
+            "perfil académico, cadeiras, horário, avaliações, tarefas, sessões de foco, notas e ficheiros que importares. Ficam no armazenamento local do navegador ou da app."
+          ],
+          [
+            "Conta e nuvem (opcional):",
+            "se criares conta, guardamos o teu email e os dados da app no Firebase (Google) para sincronizar entre dispositivos."
+          ],
+          [
+            "Ligações Google e Microsoft (opcionais):",
+            "Drive, Agenda, Gmail e OneDrive só com autorização tua, em modo de leitura. Os tokens de acesso ficam no teu dispositivo."
+          ],
+          [
+            "Chave pessoal do Gemini:",
+            "fica só no teu dispositivo e nunca é enviada para a tua conta Unipedia."
+          ],
+          [
+            "Proteção contra abuso:",
+            "o Firebase App Check usa o reCAPTCHA Enterprise da Google para confirmar que os pedidos vêm da app."
+          ]
+        ]
+      },
+      {
+        "title": "3. Inteligência artificial (Uni e Tutor)",
+        "items": [
+          [
+            "O que é enviado:",
+            "a tua pergunta e, se escolheres, excertos de materiais, imagens ou o contexto da cadeira. Nada é enviado sem um pedido teu."
+          ],
+          [
+            "Uni partilhado (quota gratuita da Unipedia):",
+            "usa o nível gratuito da API Gemini. Nesse nível, a Google usa o conteúdo enviado e as respostas para melhorar os seus produtos e tecnologias de aprendizagem automática, e revisores humanos podem lê-los. Não envies dados pessoais, de saúde ou confidenciais."
+          ],
+          [
+            "Com a tua chave pessoal:",
+            "o tratamento pela Google segue o acordo entre ti e a Google. Num projeto Google com faturação ativa, a Google não usa o conteúdo para treinar modelos."
+          ],
+          [
+            "Memória do Uni:",
+            "desligada por omissão. Se a ativares, podes ver, editar e apagar tudo em «O que o Uni sabe»."
+          ],
+          [
+            "Transparência:",
+            "as respostas do Uni são geradas por IA e podem conter erros. Confirma sempre com o programa da cadeira."
+          ]
+        ]
+      },
+      {
+        "title": "4. Idade mínima",
+        "items": [
+          [
+            "Tutor e funções de IA:",
+            "só a partir dos 18 anos. Os termos da API Gemini da Google não permitem a sua utilização por menores de 18 anos."
+          ],
+          [
+            "Restantes funções:",
+            "a partir da idade de consentimento digital do teu país; abaixo dela, só com autorização de quem exerce as responsabilidades parentais."
+          ],
+          [
+            "Portugal:",
+            "13 anos (Lei n.º 58/2019, art. 16.º)."
+          ],
+          [
+            "Espanha:",
+            "14 anos (LOPDGDD, art. 7.º)."
+          ],
+          [
+            "Outros países da UE:",
+            "entre 13 e 16 anos, conforme a lei nacional (RGPD, art. 8.º)."
+          ],
+          [
+            "Reino Unido:",
+            "13 anos (UK GDPR / Data Protection Act 2018)."
+          ],
+          [
+            "Brasil:",
+            "dados de crianças e adolescentes seguem o art. 14 da LGPD e o ECA Digital (Lei n.º 15.211/2025). Menores de 18 anos só com consentimento dos responsáveis."
+          ],
+          [
+            "Estados Unidos:",
+            "não se destina a menores de 13 anos (COPPA)."
+          ]
+        ]
+      },
+      {
+        "title": "5. Bases legais",
+        "items": [
+          [
+            "Funcionamento da app:",
+            "execução do serviço que pedes (RGPD art. 6.º, n.º 1, al. b); LGPD art. 7.º, V)."
+          ],
+          [
+            "Conta na nuvem, IA e ligações Google/Microsoft:",
+            "o teu consentimento (RGPD art. 6.º, n.º 1, al. a); LGPD art. 7.º, I), que podes retirar a qualquer momento nas Definições."
+          ]
+        ]
+      },
+      {
+        "title": "6. Transferências internacionais",
+        "items": [
+          [
+            "Google e Microsoft:",
+            "podem tratar dados nos Estados Unidos. Ambas aderem ao EU-U.S. Data Privacy Framework e usam cláusulas contratuais-tipo da Comissão Europeia."
+          ],
+          [
+            "Brasil:",
+            "as transferências seguem o art. 33 da LGPD, com base em cláusulas contratuais."
+          ]
+        ]
+      },
+      {
+        "title": "7. Durante quanto tempo",
+        "items": [
+          [
+            "No dispositivo:",
+            "até apagares os dados ou desinstalares a app."
+          ],
+          [
+            "Na nuvem:",
+            "até eliminares a conta. Os dados são apagados do Firebase nessa altura."
+          ],
+          [
+            "Na Google (IA):",
+            "conforme os termos da Google aplicáveis ao nível usado."
+          ]
+        ]
+      },
+      {
+        "title": "8. Os teus direitos",
+        "items": [
+          [
+            "Acesso e portabilidade:",
+            "exporta tudo em JSON em Definições → Privacidade e dados."
+          ],
+          [
+            "Retificação e eliminação:",
+            "edita ou apaga dados na app, ou elimina a conta na página «Eliminar conta»."
+          ],
+          [
+            "Retirar consentimento:",
+            "desliga a nuvem, a IA ou as ligações nas Definições."
+          ],
+          [
+            "Outros direitos:",
+            "oposição, limitação e informação (RGPD arts. 15.º a 22.º; LGPD art. 18). Pede por email: respondemos no prazo de um mês (RGPD) ou de 15 dias para confirmação e acesso (LGPD)."
+          ]
+        ]
+      },
+      {
+        "title": "9. Reclamações",
+        "intro": "Podes reclamar junto da autoridade de proteção de dados do teu país:"
+      },
+      {
+        "title": "10. Alterações",
+        "items": [
+          [
+            "",
+            "Se mudarmos esta política de forma relevante, avisamos na app antes de a alteração produzir efeitos."
+          ]
+        ]
+      }
+    ],
+    "authorities": {
+      "pt": "Portugal",
+      "es": "Espanha",
+      "br": "Brasil",
+      "uk": "Reino Unido",
+      "eu": "Outros países da UE"
+    }
+  },
+  "terms": {
+    "title": "Termos de Utilização",
+    "subtitle": "Regras claras e justas para usares a Unipedia nos teus estudos.",
+    "sections": [
+      {
+        "title": "1. O que é a Unipedia",
+        "body": "Uma ferramenta gratuita de apoio ao estudo para estudantes do ensino superior: horários, planos, foco, revisão e tutor com IA. Médias, planos e alertas são orientadores: confirma sempre prazos, salas e regulamentos oficiais na tua instituição."
+      },
+      {
+        "title": "2. Quem pode usar",
+        "body": "As funções de IA exigem 18 anos ou mais. As restantes funções seguem a idade mínima indicada na Política de Privacidade para o teu país."
+      },
+      {
+        "title": "3. Inteligência artificial",
+        "body": "As respostas do Uni são geradas automaticamente e podem falhar em cálculos, datas ou factos. Ao usar a IA aceitas também as regras de utilização da Google para o Gemini. Se usares uma chave pessoal, ela fica só no teu dispositivo e és responsável pelo uso dessa chave."
+      },
+      {
+        "title": "4. O teu conteúdo",
+        "body": "Só carregas materiais que tens o direito de usar e não carregas dados pessoais de terceiros sem autorização. Os teus apontamentos continuam a ser teus."
+      },
+      {
+        "title": "5. Planos curriculares partilhados",
+        "body": "Se partilhares a estrutura de um curso, envia apenas informação pública (nome, código, ECTS e tópicos gerais), sem dados pessoais."
+      },
+      {
+        "title": "6. Disponibilidade",
+        "body": "O serviço é gratuito e pode ter limites de utilização, mudar ou ser interrompido. Avisamos com antecedência sempre que possível."
+      },
+      {
+        "title": "7. Responsabilidade",
+        "body": "Fazemos o possível para que a app funcione bem, mas não garantimos resultados académicos. Nada nestes termos limita os direitos que a lei de defesa do consumidor do teu país te garante."
+      },
+      {
+        "title": "8. Lei aplicável",
+        "body": "Estes termos regem-se pela lei portuguesa, sem prejuízo das normas imperativas do país onde resides. Contacto: {{email}}."
+      }
+    ]
+  },
+  "delete": {
+    "title": "Eliminar conta e dados",
+    "subtitle": "Apaga definitivamente os teus dados deste dispositivo e da nuvem (direito ao apagamento: RGPD art. 17.º; LGPD art. 18, VI).",
+    "removedTitle": "O que é removido",
+    "removed": [
+      "A tua conta Unipedia (se tiveres sessão iniciada).",
+      "Todos os dados na nuvem e neste dispositivo: cadeiras, notas, tarefas, materiais locais e definições."
+    ],
+    "status": "Estado atual:",
+    "signedIn": "Sessão iniciada ({{email}}).",
+    "activeAccount": "conta ativa",
+    "offline": "Só neste dispositivo (sem conta na nuvem).",
+    "deleteAccount": "Eliminar conta definitivamente",
+    "deleteLocal": "Apagar dados deste dispositivo",
+    "byEmail": "Pedir por email",
+    "emailSubject": "Pedido de eliminação de conta Unipedia"
+  }
+}

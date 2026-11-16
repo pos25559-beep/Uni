@@ -2,19 +2,28 @@ import { isNonAcademicDocument, isPreEntryDriveFile, matchesCourse } from './cou
 import { defaultSettings, emptyCollections } from './seed';
 import type { AcademicProfile, Collections, Course, Material, StudyLogEntry, WeeklyCheckIn } from '../types';
 
-const LEGACY_PERSONAL_IDS = [
-  '1v3KSXUxC6E62ekhx4zawYbcF3YEHre1B',
-  '1FrdZ9ifEs_0rpTHZAA4K6YOo2kMOkKI8',
-  '15LIku2BmCeBuOKEblcrOLre80gZ8_N56',
-];
+// Impressões digitais (FNV-1a) de ids e nomes do antigo modo demo pessoal. Guardamos só o
+// hash para não publicar identificadores pessoais no código; serve apenas para os limpar.
+const LEGACY_SEED_HASHES = new Set(['9347a3a9', '473e3d5f', '798931df', '4b1aec8a']);
+
+function fnv1a(s: string): string {
+  let h = 0x811c9dc5;
+  for (const byte of new TextEncoder().encode(s)) {
+    h ^= byte;
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, '0');
+}
 
 function containsLegacyPersonalSeed(text?: string): boolean {
   if (!text) return false;
-  const lower = text.toLowerCase();
-  return (
-    lower.includes('mec bolinhas') ||
-    LEGACY_PERSONAL_IDS.some((id) => text.includes(id))
-  );
+  const ids = text.match(/[A-Za-z0-9_-]{25,}/g) ?? [];
+  if (ids.some((id) => LEGACY_SEED_HASHES.has(fnv1a(id)))) return true;
+  const words = text.toLowerCase().split(/[^a-z0-9à-ú]+/).filter(Boolean);
+  for (let i = 0; i < words.length - 1; i += 1) {
+    if (LEGACY_SEED_HASHES.has(fnv1a(`${words[i]} ${words[i + 1]}`))) return true;
+  }
+  return false;
 }
 
 /**

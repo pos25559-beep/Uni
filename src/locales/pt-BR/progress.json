@@ -56,5 +56,27 @@
     "skinUpdatedToast": "Visual do Uni atualizado!",
     "petRemovedToast": "Companheiro guardado na estante.",
     "petEquippedToast": "Companheiro equipado!"
+  },
+  "retention": {
+    "title": "Retenção e qualidade de foco",
+    "emptyTitle": "Ainda sem revisões registradas",
+    "emptyHint": "Termine um bloco de foco ou pratique um tópico para medir a retenção.",
+    "openPlan": "Abrir Plano e Foco",
+    "avg": "Retenção média:",
+    "due": "{{n}} para revisar hoje",
+    "upToDate": "Revisões em dia",
+    "clean": "Foco limpo:",
+    "cleanOf": "Foco limpo em {{pct}} das sessões",
+    "estimated": "Retenção estimada",
+    "hitRate": "Acerto na prática",
+    "quality": "Qualidade de foco:",
+    "noDistractions": "sem distrações",
+    "exits": "{{n}} saídas/sessão",
+    "noExits": "Sem saídas registradas no Modo Foco",
+    "active": "Prática ativa:",
+    "priorities": "Prioridades de revisão",
+    "pct": "{{n}}% retenção",
+    "dueOne": "revisão pendente",
+    "practice": "Praticar"
   }
 }

@@ -1,10 +1,25 @@
 {
   "forms": {
-    "nuvem": { "label": "Cloud", "hint": "Classic notebook silhouette" },
-    "gota": { "label": "Ink Drop", "hint": "Fluid ink silhouette" },
-    "estrela": { "label": "Star", "hint": "Bright study sticker" },
-    "cristal": { "label": "Crystal", "hint": "Crisp geometric facets" },
-    "folha": { "label": "Leaf", "hint": "Light botanical notebook" }
+    "nuvem": {
+      "label": "Cloud",
+      "hint": "Classic notebook silhouette"
+    },
+    "gota": {
+      "label": "Ink Drop",
+      "hint": "Fluid ink silhouette"
+    },
+    "estrela": {
+      "label": "Star",
+      "hint": "Bright study sticker"
+    },
+    "cristal": {
+      "label": "Crystal",
+      "hint": "Crisp geometric facets"
+    },
+    "folha": {
+      "label": "Leaf",
+      "hint": "Light botanical notebook"
+    }
   },
   "stages": {
     "0": "Egg",
@@ -102,5 +117,51 @@
     "inheritModalHint": "Transfers preferred learning style and positive study habits to another course without copying specific errors or faking mastery.",
     "inheritNoTarget": "Adopt a Uni in another course first to receive this methodology.",
     "inheritDone": "Methodology from {{from}} shared with {{to}}!"
+  },
+  "memory": {
+    "style": {
+      "exemplos": "Examples first",
+      "teoria": "Theory and intuition",
+      "exercicios": "Practice problems"
+    },
+    "title": "What {{name}} knows · {{course}}",
+    "cleared": "This Uni's memory was cleared.",
+    "deleteAll": "Delete all",
+    "done": "Done",
+    "auto": "Automatic memory after chats and recall",
+    "autoHint": "You can pause automatic learning at any time and edit manually below.",
+    "toggle": "Turn automatic memory on or off",
+    "pref": "Explanation preference",
+    "goals": "Goals for this course",
+    "removeGoal": "Remove goal {{x}}",
+    "goalPh": "Add a goal (e.g. 75% on test 2)",
+    "weak": "Weak spots and recurring mistakes",
+    "noWeak": "No weak spots recorded yet.",
+    "removeWeak": "Remove weak spot {{x}}",
+    "topicPh": "Topic",
+    "notePh": "Note (e.g. flips the sign)",
+    "strong": "Strengths",
+    "removeStrong": "Remove strength {{x}}",
+    "strongPh": "Add a strength (e.g. masters the chain rule)",
+    "join": "Add",
+    "sheetFail": "Couldn't generate the sheet right now.",
+    "sheetsTitle": "Permanent sheets · {{course}}",
+    "sheetsInfo": "Sheets are stored locally as permanent text on your device: Uni uses them for questions and Recall even after temporary attachments expire.",
+    "newSheet": "Generate a new sheet from materials",
+    "keyUnlimited": "Personal key · unlimited",
+    "todayN": "{{a}}/{{b}} today",
+    "topic": "Linked topic",
+    "materials": "Course materials ({{a}}/{{b}})",
+    "pasteLabel": "Or paste an excerpt / class notes (optional)",
+    "pastePh": "Paste formulas, theorems or notes to turn into a citable sheet...",
+    "needConsent": "Turn on Uni in Settings or the Tutor first to generate sheets with AI.",
+    "extracting": "Extracting concepts and citations…",
+    "generate": "Generate permanent sheet",
+    "savedN": "Saved sheets ({{n}})",
+    "copy": "Copy {{title}}",
+    "deleteSheet": "Delete sheet {{title}}",
+    "close": "Close",
+    "quizErr": "Couldn't import the quiz",
+    "mentorErr": "Couldn't teach the next course"
   }
 }

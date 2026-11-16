@@ -1,16 +1,38 @@
 import { format, parseISO } from 'date-fns';
-import { pt } from 'date-fns/locale';
 import { ChevronDown, Cloud, ExternalLink, ShieldCheck, Smartphone, Sparkles, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { AnimatedPage, StickerBadge } from '../components/motion/Primitives';
 import AccountDeletionModal from '../components/settings/AccountDeletionModal';
 import { Button, Card, SubpageHeader } from '../components/ui';
+import { appDateLocale, fullDatePattern } from '../lib/dateLocale';
 import { cx } from '../lib/uiHelpers';
 import { auth } from '../lib/firebase';
 import { LEGAL_INFO } from '../lib/legal';
 
-const formattedLegalDate = format(parseISO(LEGAL_INFO.lastUpdated), "d 'de' MMMM 'de' yyyy", { locale: pt });
+/** Item de secção: [rótulo em destaque, texto]. Rótulo vazio = só texto. */
+type LegalItem = [string, string];
+interface PrivacySection {
+  title: string;
+  items?: LegalItem[];
+  intro?: string;
+}
+interface TermsSection {
+  title: string;
+  body: string;
+}
+
+const LEGAL_VARS = {
+  controller: LEGAL_INFO.controllerName,
+  country: LEGAL_INFO.country,
+  email: LEGAL_INFO.contactEmail,
+};
+
+function useLegal() {
+  const { t } = useTranslation('legal');
+  return t;
+}
 
 function LegalShell({
   title,
@@ -21,22 +43,26 @@ function LegalShell({
   subtitle: string;
   children: React.ReactNode;
 }) {
+  const t = useLegal();
+  const date = format(parseISO(LEGAL_INFO.lastUpdated), fullDatePattern(), { locale: appDateLocale });
+  const note = t('common.translationNote');
   return (
     <AnimatedPage className="mx-auto max-w-2xl space-y-5 pb-10">
-      <SubpageHeader title={title} subtitle={`Atualizado em ${formattedLegalDate}`} backTo="/definicoes" />
+      <SubpageHeader title={title} subtitle={t('common.updated', { date })} backTo="/definicoes" />
       <p className="text-sm text-muted">{subtitle}</p>
+      {note && <p className="rounded-2xl bg-surface-2 px-3.5 py-2.5 text-xs text-muted">{note}</p>}
 
       {children}
 
       <footer className="flex flex-wrap items-center gap-4 border-t border-line pt-4 text-xs text-muted">
         <Link to="/privacidade" className="inline-flex min-h-11 items-center hover:text-fg underline-offset-2 hover:underline">
-          Privacidade
+          {t('common.nav.privacy')}
         </Link>
         <Link to="/termos" className="inline-flex min-h-11 items-center hover:text-fg underline-offset-2 hover:underline">
-          Termos
+          {t('common.nav.terms')}
         </Link>
         <Link to="/eliminar-conta" className="inline-flex min-h-11 items-center hover:text-fg underline-offset-2 hover:underline">
-          Eliminar conta
+          {t('common.nav.delete')}
         </Link>
       </footer>
     </AnimatedPage>
@@ -72,175 +98,122 @@ function LegalAccordion({
   );
 }
 
-export function PrivacyPolicyPage() {
+function ItemList({ items }: { items: LegalItem[] }) {
+  if (items.length === 1 && !items[0][0]) return <p>{items[0][1]}</p>;
   return (
-    <LegalShell
-      title="Política de Privacidade"
-      subtitle="Explicação direta sobre o que fica contigo e o que é partilhado — sem letra pequena."
-    >
-      {/* Resumo visual em 30 segundos */}
+    <ul className="list-disc space-y-2 pl-5">
+      {items.map(([label, text], i) => (
+        <li key={i}>
+          {label && <strong className="text-fg">{label}</strong>} {text}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export function PrivacyPolicyPage() {
+  const t = useLegal();
+  const cards = t('privacy.cards', { returnObjects: true }) as Array<{ title: string; body: string }>;
+  const sections = t('privacy.sections', { returnObjects: true, ...LEGAL_VARS }) as PrivacySection[];
+  const cardIcons = [
+    <Smartphone key="d" size={18} className="text-[#157F58] dark:text-[#4ADE80]" />,
+    <Cloud key="c" size={18} className="text-[#1D5FAD] dark:text-[#93C5FD]" />,
+    <Sparkles key="a" size={18} className="text-[#E04F33] dark:text-[#FF7A59]" />,
+  ];
+
+  return (
+    <LegalShell title={t('privacy.title')} subtitle={t('privacy.subtitle')}>
       <div className="space-y-4 rounded-3xl bg-[#BCEEE0] p-5 text-[#141312] dark:bg-[#17312B] dark:text-[#FAF6EC]">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <StickerBadge tone="butter" tilt={-2}>
-            A tua privacidade em 30 segundos
+            {t('privacy.summaryBadge')}
           </StickerBadge>
-          <span className="text-xs font-semibold opacity-75">RGPD (UE) · LGPD (BR)</span>
+          <span className="text-xs font-semibold opacity-75">{t('privacy.laws')}</span>
         </div>
-
         <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl bg-white/75 p-3.5 dark:bg-black/25">
-            <Smartphone size={18} className="text-[#157F58] dark:text-[#4ADE80]" />
-            <p className="mt-2 font-display text-sm font-bold">No teu telemóvel</p>
-            <p className="mt-1 text-xs opacity-80">
-              Cadeiras, notas, tarefas e PDFs ficam guardados localmente por defeito. Zero publicidade.
-            </p>
-          </div>
-          <div className="rounded-2xl bg-white/75 p-3.5 dark:bg-black/25">
-            <Cloud size={18} className="text-[#1D5FAD] dark:text-[#93C5FD]" />
-            <p className="mt-2 font-display text-sm font-bold">Na nuvem só se quiseres</p>
-            <p className="mt-1 text-xs opacity-80">
-              Só sincronizamos se criares conta no ecrã Entrar. Podes usar tudo sem conta.
-            </p>
-          </div>
-          <div className="rounded-2xl bg-white/75 p-3.5 dark:bg-black/25">
-            <Sparkles size={18} className="text-[#E04F33] dark:text-[#FF7A59]" />
-            <p className="mt-2 font-display text-sm font-bold">Tutor IA transparente</p>
-            <p className="mt-1 text-xs opacity-80">
-              Só envia resumos ou prints quando ativas o consentimento e fazes uma pergunta.
-            </p>
-          </div>
+          {cards.map((card, i) => (
+            <div key={card.title} className="rounded-2xl bg-white/75 p-3.5 dark:bg-black/25">
+              {cardIcons[i]}
+              <p className="mt-2 font-display text-sm font-bold">{card.title}</p>
+              <p className="mt-1 text-xs opacity-80">{card.body}</p>
+            </div>
+          ))}
         </div>
       </div>
 
-      <LegalAccordion title="1. Quem gere a app e proteção de menores" defaultOpen>
-        <div className="space-y-2">
-          <p>
-            <strong className="text-fg">Responsável:</strong> {LEGAL_INFO.controllerName} ({LEGAL_INFO.country}) ·{' '}
-            <a className="font-semibold text-accent-ink underline" href={`mailto:${LEGAL_INFO.contactEmail}`}>
-              {LEGAL_INFO.contactEmail}
-            </a>
-          </p>
-          <p>
-            <strong className="text-fg">Idade mínima &amp; Menores (RGPD Art. 8.º / Lei n.º 58/2019 &amp; COPPA):</strong> pelo menos{' '}
-            <strong className="text-fg">{LEGAL_INFO.minimumAgePT} anos</strong> em Portugal (e autorização do responsável legal quando exigida pela legislação local abaixo dos 16 anos na UE ou 13 anos sob a COPPA). Os Unis seguem a mesma constituição pedagógica e segura em todas as idades, sem perfis afetivos nem gamificação manipuladora.
-          </p>
-        </div>
-      </LegalAccordion>
-
-      <LegalAccordion title="2. Caderno de Memória do Uni (&quot;O que o Uni sabe&quot;)">
-        <ul className="list-disc space-y-2 pl-5">
-          <li>
-            <strong className="text-fg">Desligado por omissão:</strong> a aprendizagem automática de dificuldades no Caderno do Uni só funciona se a ativares explicitamente por cadeira.
-          </li>
-          <li>
-            <strong className="text-fg">100% visível, editável e apagável:</strong> podes consultar, editar ou eliminar qualquer nota em <em>O que o Uni sabe</em>, e revogar a memória a qualquer momento.
-          </li>
-          <li>
-            <strong className="text-fg">Sem treino de modelos:</strong> as tuas fichas, cadernos e respostas de recall nunca são usadas para treinar modelos públicos.
-          </li>
-        </ul>
-      </LegalAccordion>
-
-      <LegalAccordion title="3. Os teus direitos (RGPD · UE e LGPD · Brasil)">
-        <ul className="list-disc space-y-2 pl-5">
-          <li>
-            <strong className="text-fg">Exportar tudo:</strong> em{' '}
-            <Link to="/definicoes" className="font-semibold text-accent-ink underline">
-              Definições → Privacidade &amp; Dados
-            </Link>{' '}
-            descarregas uma cópia JSON completa (incluindo todos os Unis e fichas locais) a qualquer momento.
-          </li>
-          <li>
-            <strong className="text-fg">Desligar Tutor IA ou Nuvem:</strong> podes revogar qualquer consentimento com um toque nas Definições.
-          </li>
-          <li>
-            <strong className="text-fg">Conformidade LGPD (Brasil — Lei n.º 13.709/2018):</strong> estudantes no Brasil dispõem dos direitos de confirmação, acesso, retificação, portabilidade e eliminação dos dados pessoais previstos no art. 18.º da LGPD pelo mesmo canal e pelo portal{' '}
-            <Link to="/eliminar-conta" className="font-semibold text-accent-ink underline">
-              Eliminar conta
-            </Link>.
-          </li>
-          <li>
-            <strong className="text-fg">Autoridade de controlo (UE/PT):</strong>{' '}
-            <a
-              href={LEGAL_INFO.supervisoryAuthority.url}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 font-semibold text-accent-ink underline"
-            >
-              {LEGAL_INFO.supervisoryAuthority.name}
-              <ExternalLink size={12} />
-            </a>
-          </li>
-        </ul>
-      </LegalAccordion>
-
-      <LegalAccordion title="4. Detalhes técnicos e bases legais">
-        <div className="space-y-2 text-xs leading-relaxed">
-          <p>
-            <strong className="text-fg">Bases legais (RGPD Art. 6.º):</strong> execução local do serviço solicitado (alínea b) e consentimento explícito para sincronização Cloud (Firebase), OAuth Google/OneDrive (só leitura) e Google Gemini IA (alínea a + EU AI Act Art. 50.º).
-          </p>
-          <p>
-            Serviços Google (Firebase / Gemini / Google OAuth) e Microsoft operam sob o EU-U.S. Data Privacy Framework e Cláusulas Contratuais-Tipo.
-          </p>
-        </div>
-      </LegalAccordion>
+      {sections.map((section, i) => (
+        <LegalAccordion key={section.title} title={section.title} defaultOpen={i === 0}>
+          {section.items && <ItemList items={section.items} />}
+          {section.intro && (
+            <div className="space-y-2">
+              <p>{section.intro}</p>
+              <ul className="space-y-1.5">
+                {LEGAL_INFO.authorities.map((a) => (
+                  <li key={a.id}>
+                    <span className="text-fg">{t(`privacy.authorities.${a.id}`)}:</span>{' '}
+                    <a
+                      href={a.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 font-semibold text-accent-ink underline"
+                    >
+                      {a.name}
+                      <ExternalLink size={12} />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </LegalAccordion>
+      ))}
     </LegalShell>
   );
 }
 
 export function TermsOfUsePage() {
+  const t = useLegal();
+  const sections = t('terms.sections', { returnObjects: true, ...LEGAL_VARS }) as TermsSection[];
   return (
-    <LegalShell
-      title="Termos de Utilização"
-      subtitle="Regras claras e justas para usares a Unipedia nos teus estudos."
-    >
-      <LegalAccordion title="1. Apoio ao estudo (caráter orientador)" defaultOpen>
-        A Unipedia ajuda-te a organizar horários, tarefas, apontamentos e metas. Médias, planos e alertas de teste são orientadores: confirma sempre prazos, salas e regulamentos oficiais na tua escola ou universidade.
-      </LegalAccordion>
-
-      <LegalAccordion title="2. Uso de Inteligência Artificial (Tutor)">
-        O Tutor utiliza modelos Gemini apenas com a tua chave e consentimento ativo. Se usares uma chave pessoal, ela fica guardada apenas no teu dispositivo e nunca é enviada para a tua conta Unipedia. Respostas de IA podem falhar em cálculos ou datas — valida sempre com o programa da cadeira.
-      </LegalAccordion>
-
-      <LegalAccordion title="3. Planos curriculares partilhados">
-        Caso partilhes a estrutura de um curso no catálogo comunitário, comprometes-te a enviar apenas informação pública das cadeiras (nome, código, ECTS e tópicos gerais), sem dados pessoais de terceiros.
-      </LegalAccordion>
+    <LegalShell title={t('terms.title')} subtitle={t('terms.subtitle')}>
+      {sections.map((section, i) => (
+        <LegalAccordion key={section.title} title={section.title} defaultOpen={i === 0}>
+          {section.body}
+        </LegalAccordion>
+      ))}
     </LegalShell>
   );
 }
 
 export function DeleteAccountPage() {
+  const t = useLegal();
   const [modalOpen, setModalOpen] = useState(false);
   const user = auth.currentUser;
+  const removed = t('delete.removed', { returnObjects: true }) as string[];
 
   return (
-    <LegalShell
-      title="Eliminar Conta e Dados"
-      subtitle="Apaga definitivamente os teus dados deste dispositivo e da nuvem (Direito ao Esquecimento · RGPD Art. 17.º)."
-    >
-      <Card
-        title="O que é removido"
-        action={<ShieldCheck size={18} className="text-ok" />}
-      >
+    <LegalShell title={t('delete.title')} subtitle={t('delete.subtitle')}>
+      <Card title={t('delete.removedTitle')} action={<ShieldCheck size={18} className="text-ok" />}>
         <div className="space-y-3 text-sm text-muted">
           <ul className="list-disc space-y-1.5 pl-5">
-            <li>Credencial de autenticação na conta Unipedia (se tiveres sessão iniciada).</li>
-            <li>Todos os dados guardados na nuvem e neste telemóvel (cadeiras, notas, tarefas, materiais locais e definições).</li>
+            {removed.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
           </ul>
           <p className="rounded-2xl bg-surface-2 px-3.5 py-2.5 text-xs">
-            <strong className="text-fg">Estado atual:</strong>{' '}
-            {user ? `Sessão iniciada (${user.email ?? 'conta ativa'}).` : 'Modo offline neste dispositivo (sem conta Cloud).'}
+            <strong className="text-fg">{t('delete.status')}</strong>{' '}
+            {user ? t('delete.signedIn', { email: user.email ?? t('delete.activeAccount') }) : t('delete.offline')}
           </p>
           <div className="flex flex-wrap gap-2 pt-1">
             <Button variant="danger" onClick={() => setModalOpen(true)}>
               <Trash2 size={16} />
-              {user ? 'Eliminar conta definitivamente' : 'Apagar dados deste dispositivo'}
+              {user ? t('delete.deleteAccount') : t('delete.deleteLocal')}
             </Button>
             <a
-              href={`mailto:${LEGAL_INFO.contactEmail}?subject=${encodeURIComponent('Pedido RGPD — Eliminação de Conta Unipedia')}`}
+              href={`mailto:${LEGAL_INFO.contactEmail}?subject=${encodeURIComponent(t('delete.emailSubject'))}`}
               className="inline-flex min-h-[44px] items-center rounded-full border border-line bg-surface px-4 text-sm font-semibold text-fg hover:bg-surface-2"
             >
-              Pedir por email
+              {t('delete.byEmail')}
             </a>
           </div>
         </div>

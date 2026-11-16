@@ -1,5 +1,6 @@
 import { BookOpen, Brain, CheckCircle2, Plus } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { KeyboardEvent } from 'react';
 import { statusLabel } from '../../lib/colors';
 import { todayStr } from '../../lib/selectors';
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export default function TopicsTab({ course }: Props) {
+  const { t: tc, i18n } = useTranslation('courses');
   const updateTopic = useStore((s) => s.updateTopic);
   const patch = useStore((s) => s.patch);
   const [draft, setDraft] = useState('');
@@ -46,8 +48,8 @@ export default function TopicsTab({ course }: Props) {
       {topics.length === 0 ? (
         <EmptyState
           icon={<BookOpen size={28} />}
-          title="Ainda não há matéria"
-          hint="Acrescenta os tópicos da cadeira para acompanhar o progresso e a confiança em cada um."
+          title={tc('topics.empty')}
+          hint={tc('topics.emptyHint')}
         />
       ) : (
         <ul className="space-y-2">
@@ -61,16 +63,16 @@ export default function TopicsTab({ course }: Props) {
                   : 'bg-ok/12 text-ok border-ok/25';
             const retLabel =
               ret.state === 'at_risk'
-                ? `Em risco · ${ret.retentionPct}%`
+                ? tc('topics.atRisk', { n: ret.retentionPct })
                 : ret.state === 'review_soon'
-                  ? `Rever · ${ret.retentionPct}%`
-                  : `Retenção ${ret.retentionPct}%`;
+                  ? tc('topics.review', { n: ret.retentionPct })
+                  : tc('topics.retention', { n: ret.retentionPct });
 
             return (
               <li key={t.id} className="rounded-xl border border-line bg-surface-2/50 p-3">
               <div className="flex flex-col gap-3 md:flex-row md:items-center">
                 <input
-                  aria-label="Título do tópico"
+                  aria-label={tc('topics.titleAria')}
                   defaultValue={t.title}
                   onBlur={(e) => {
                     const v = e.target.value.trim();
@@ -85,7 +87,7 @@ export default function TopicsTab({ course }: Props) {
                 />
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                   <Select
-                    aria-label="Estado"
+                    aria-label={tc('topics.status')}
                     className="h-8 w-auto min-w-36 text-xs"
                     value={t.status}
                     onChange={(e) => {
@@ -98,12 +100,12 @@ export default function TopicsTab({ course }: Props) {
                     ))}
                   </Select>
 
-                  <div className="flex items-center gap-1" role="group" aria-label="Confiança">
+                  <div className="flex items-center gap-1" role="group" aria-label={tc('topics.confidence')}>
                     {([1, 2, 3, 4, 5] as const).map((n) => (
                       <button
                         key={n}
                         type="button"
-                        aria-label={`Confiança ${n} de 5`}
+                        aria-label={tc('topics.confN', { n })}
                         aria-pressed={t.confidence >= n}
                         onClick={() => updateTopic(course.id, t.id, { confidence: n })}
                         className={cx(
@@ -115,8 +117,8 @@ export default function TopicsTab({ course }: Props) {
                   </div>
 
                   <span className="text-xs text-muted tabular">
-                    {lastStudiedLabel(t.lastStudied)}
-                    {t.nextReviewDate ? ` · rev ${t.nextReviewDate.slice(5)}` : ''}
+                    {lastStudiedLabel(t.lastStudied, i18n.language)}
+                    {t.nextReviewDate ? tc('topics.rev', { d: t.nextReviewDate.slice(5) }) : ''}
                   </span>
 
                   {(t.lastStudied || t.status !== 'todo') && (
@@ -127,8 +129,8 @@ export default function TopicsTab({ course }: Props) {
                       )}
                       title={
                         ret.due
-                          ? 'Revisão devida para consolidar retenção'
-                          : `Estabilidade estimada de ${ret.stabilityDays}d`
+                          ? tc('topics.due')
+                          : tc('topics.stability', { n: ret.stabilityDays })
                       }
                     >
                       {retLabel}
@@ -141,7 +143,7 @@ export default function TopicsTab({ course }: Props) {
                       variant="secondary"
                       onClick={() => setPracticeTopicId(t.id)}
                     >
-                      <Brain size={14} /> Praticar
+                      <Brain size={14} /> {tc('topics.practice')}
                     </Button>
                     <Button
                       size="sm"
@@ -158,10 +160,10 @@ export default function TopicsTab({ course }: Props) {
                         });
                       }}
                     >
-                      <CheckCircle2 size={14} /> Estudei hoje
+                      <CheckCircle2 size={14} /> {tc('topics.studied')}
                     </Button>
                     <DeleteButton
-                      message={`Apagar o tópico "${t.title}"?`}
+                      message={tc('topics.delete', { title: t.title })}
                       onConfirm={() => removeTopic(t.id)}
                     />
                   </div>
@@ -175,8 +177,8 @@ export default function TopicsTab({ course }: Props) {
 
       <div className="flex gap-2">
         <Input
-          aria-label="Novo tópico"
-          placeholder="Novo tópico… (Enter para adicionar)"
+          aria-label={tc('topics.newAria')}
+          placeholder={tc('topics.newPh')}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onAddKey}

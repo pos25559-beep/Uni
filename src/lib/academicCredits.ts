@@ -1,3 +1,4 @@
+import { tr } from '../i18n/tr';
 import type { ExtraActivity, ThemePalette } from '../types';
 
 export interface PaletteOption {
@@ -128,54 +129,54 @@ export function inferAcademicStageFromEcts(
 
   let estimatedYear: 1 | 2 | 3 | 4 | 5 = 1;
   let recommendedCycle: 'licenciatura' | 'mestrado' | 'misto' = 'licenciatura';
-  let stageSummary = '1.º Ano · Início do percurso';
+  let stageSummary = tr('common:stage.start');
 
   if (targetTotalEcts === 120) {
     recommendedCycle = 'mestrado';
     estimatedYear = completedEcts >= 60 ? 5 : 4;
     stageSummary =
       estimatedYear === 4
-        ? '1.º Ano de Mestrado (base de 120 ECTS)'
-        : '2.º Ano de Mestrado · Reta final para Dissertação';
+        ? tr('common:stage.m120y4')
+        : tr('common:stage.m120y5');
   } else if (targetTotalEcts === 300) {
     if (completedEcts < 60) {
       estimatedYear = 1;
       recommendedCycle = 'licenciatura';
-      stageSummary = '1.º Ano de 300 ECTS (início da Licenciatura)';
+      stageSummary = tr('common:stage.i300y1');
     } else if (completedEcts < 120) {
       estimatedYear = 2;
       recommendedCycle = 'licenciatura';
-      stageSummary = '2.º Ano de 300 ECTS (metade da Licenciatura)';
+      stageSummary = tr('common:stage.i300y2');
     } else if (completedEcts < 180) {
       estimatedYear = 3;
       recommendedCycle = completedEcts >= 144 ? 'misto' : 'licenciatura';
       stageSummary =
         recommendedCycle === 'misto'
-          ? 'Fim da Licenciatura (pode já antecipar cadeiras de Mestrado)'
-          : '3.º Ano de 300 ECTS (conclusão do 1.º Ciclo)';
+          ? tr('common:stage.i300mixed')
+          : tr('common:stage.i300y3');
     } else if (completedEcts < 240) {
       estimatedYear = 4;
       recommendedCycle = 'mestrado';
-      stageSummary = '4.º Ano · 1.º Ano de Mestrado (180+ ECTS concluídos)';
+      stageSummary = tr('common:stage.i300y4');
     } else {
       estimatedYear = 5;
       recommendedCycle = 'mestrado';
-      stageSummary = '5.º Ano · 2.º Ano de Mestrado e Dissertação';
+      stageSummary = tr('common:stage.i300y5');
     }
   } else {
     recommendedCycle = 'licenciatura';
     if (completedEcts < 60) {
       estimatedYear = 1;
-      stageSummary = '1.º Ano de 180 ECTS';
+      stageSummary = tr('common:stage.b180y1');
     } else if (completedEcts < 120) {
       estimatedYear = 2;
-      stageSummary = '2.º Ano de 180 ECTS';
+      stageSummary = tr('common:stage.b180y2');
     } else {
       estimatedYear = 3;
       stageSummary =
         remainingEcts <= 30
-          ? 'Finalista de Licenciatura (últimos créditos de 180 ECTS)'
-          : '3.º Ano de 180 ECTS';
+          ? tr('common:stage.b180final')
+          : tr('common:stage.b180y3');
     }
   }
 

@@ -1,3 +1,4 @@
+import { tr } from '../i18n/tr';
 import type { AssessmentKind, CourseColor, MaterialProvider, TopicStatus } from '../types';
 
 /**
@@ -104,17 +105,46 @@ export const colorNames = (Object.keys(courseColors) as CourseColor[]).filter(
   (c) => c !== 'violet',
 );
 
-export const kindLabel: Record<AssessmentKind, string> = {
+/**
+ * Mapa de rótulos que segue a língua ativa: cada leitura traduz a chave em `common:labels.<grupo>`.
+ * Mantém a forma de objeto/array para não alterar quem já usa `kindLabel[kind]`, `Object.entries`, `.map`.
+ */
+function localizedRecord<K extends string>(group: string, base: Record<K, string>): Record<K, string> {
+  return new Proxy(base, {
+    get(target, prop, receiver) {
+      if (typeof prop === 'string' && prop in target) return tr(`common:labels.${group}.${prop}`);
+      return Reflect.get(target, prop, receiver);
+    },
+    getOwnPropertyDescriptor(target, prop) {
+      const desc = Reflect.getOwnPropertyDescriptor(target, prop);
+      if (desc && typeof prop === 'string') (desc as PropertyDescriptor).value = tr(`common:labels.${group}.${prop}`);
+      return desc;
+    },
+  });
+}
+
+function localizedList(group: string, base: string[]): string[] {
+  return new Proxy(base, {
+    get(target, prop, receiver) {
+      if (typeof prop === 'string' && /^\d+$/.test(prop) && Number(prop) < target.length) {
+        return tr(`common:labels.${group}.${prop}`);
+      }
+      return Reflect.get(target, prop, receiver);
+    },
+  });
+}
+
+export const kindLabel: Record<AssessmentKind, string> = localizedRecord('kind', {
   exame: 'Exame', teste: 'Teste', trabalho: 'Trabalho', projeto: 'Projeto', quiz: 'Quiz',
-};
+});
 
-export const statusLabel: Record<TopicStatus, string> = {
+export const statusLabel: Record<TopicStatus, string> = localizedRecord('status', {
   todo: 'Por estudar', learning: 'A aprender', review: 'Em revisão', done: 'Dominado',
-};
+});
 
-export const providerLabel: Record<MaterialProvider, string> = {
+export const providerLabel: Record<MaterialProvider, string> = localizedRecord('provider', {
   gdrive: 'Google Drive', onedrive: 'OneDrive', notebooklm: 'Caderno externo', clip: 'Portal', link: 'Link', upload: 'Ficheiro',
-};
+});
 
-export const weekdayShort = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-export const weekdayLong = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+export const weekdayShort = localizedList('weekdayShort', ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']);
+export const weekdayLong = localizedList('weekdayLong', ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']);

@@ -11,6 +11,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { formatAcademicYearShort } from '../../../lib/portugalCurriculum';
 import type { CompletedCourseRecord } from '../../../types';
 import type { SmartImportInitialMode } from '../../courses/SmartScheduleImportModal';
@@ -134,6 +135,7 @@ export default function Step3Courses({
   onConfirmAiAndReadPrint,
   onCancelAiPrintConsent,
 }: Step3CoursesProps) {
+  const { t } = useTranslation('onboarding');
   const [showManualAdd, setShowManualAdd] = useState(records.length === 0);
   const isMinimal = useStore((s) => (s.settings.appTone ?? 'vibrante') === 'serio');
 
@@ -158,21 +160,21 @@ export default function Step3Courses({
             <div>
               <div className="flex items-center gap-2">
                 <BookOpen size={18} className="text-accent-ink dark:text-accent" />
-                <h2 className="font-display text-xl font-bold">As tuas cadeiras</h2>
+                <h2 className="font-display text-xl font-bold">{t('s3.title')}</h2>
               </div>
               <p className="mt-1 text-xs leading-relaxed opacity-80 sm:text-sm">
-                Marca o que estás a fazer agora, já concluíste ou fica para depois. Podes também importar o teu horário.
+                {t('s3.intro')}
               </p>
             </div>
             <div className="flex items-center gap-2">
               {!isMinimal && (
                 <StickerBadge tone="butter" tilt={2}>
-                  Plano
+                  {t('s3.badge')}
                 </StickerBadge>
               )}
               {records.length > 0 && (
                 <Button size="sm" variant="secondary" onClick={onResetDefaults}>
-                  <RotateCcw size={14} /> Repor plano base
+                  <RotateCcw size={14} /> {t('s3.reset')}
                 </Button>
               )}
             </div>
@@ -197,7 +199,7 @@ export default function Step3Courses({
         {/* Atalhos de importação */}
         <div className={cx('flex flex-wrap gap-2', isMinimal && 'mt-4')}>
           <Button size="sm" variant="secondary" onClick={() => onOpenScheduleImport('photo')}>
-            <CalendarDays size={14} /> Importar horário
+            <CalendarDays size={14} /> {t('s3.importSchedule')}
           </Button>
           <label
             className={cx(
@@ -206,7 +208,7 @@ export default function Step3Courses({
             )}
           >
             {ocrBusy ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
-            <span>{ocrBusy ? 'A ler print…' : 'Ler print do horário'}</span>
+            <span>{ocrBusy ? t('s3.readingPrint') : t('s3.readPrint')}</span>
             <input
               type="file"
               accept="image/*"
@@ -224,22 +226,22 @@ export default function Step3Courses({
             variant="ghost"
             onClick={() => setShowPastePlan(!showPastePlan)}
           >
-            <ClipboardPaste size={14} /> Colar texto do portal
+            <ClipboardPaste size={14} /> {t('s3.pastePortal')}
           </Button>
         </div>
 
         {scheduleDoneInfo && (
           <div className="mt-3 space-y-2 rounded-2xl border border-ok/25 bg-ok/10 px-3.5 py-2.5 text-xs">
             <p className="flex items-center gap-1.5 font-semibold text-ok">
-              <CheckCircle2 size={14} /> {scheduleDoneInfo.classesCount} aula(s)
+              <CheckCircle2 size={14} /> {t('s3.classesImported', { count: scheduleDoneInfo.classesCount })}
               {scheduleDoneInfo.assessmentsCount
-                ? ` e ${scheduleDoneInfo.assessmentsCount} avaliação(ões)`
+                ? t('s3.andAssessments', { count: scheduleDoneInfo.assessmentsCount })
                 : ''}{' '}
-              importadas com sucesso.
+              {t('s3.importedOk')}
             </p>
             {scheduleDoneInfo.courseLabels && scheduleDoneInfo.courseLabels.length > 0 && (
               <p className="text-xs leading-relaxed text-fg/85">
-                <span className="font-semibold text-fg">Cadeiras reconhecidas:</span>{' '}
+                <span className="font-semibold text-fg">{t('s3.recognised')}</span>{' '}
                 {scheduleDoneInfo.courseLabels.join(' · ')}
               </p>
             )}
@@ -268,18 +270,18 @@ export default function Step3Courses({
         {pendingAiConsentCount > 0 && onConfirmAiAndReadPrint && (
           <div className="mt-3 space-y-2 rounded-2xl border border-accent/35 bg-accent-soft/60 p-3.5 text-xs">
             <p className="font-semibold text-fg">
-              Autorizar o Uni a ler {pendingAiConsentCount === 1 ? 'este print' : `estes ${pendingAiConsentCount} prints`} agora?
+              {pendingAiConsentCount === 1 ? t('s3.aiAskOne') : t('s3.aiAskMany', { count: pendingAiConsentCount })}
             </p>
             <p className="leading-relaxed text-muted">
-              A leitura automática usa o Tutor Uni (Gemini) para reconhecer cadeiras, aulas e avaliações na imagem. Podes desligar a qualquer momento nas Definições.
+              {t('s3.aiBody')}
             </p>
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="primary" onClick={onConfirmAiAndReadPrint}>
-                Autorizar IA & ler print agora
+                {t('s3.aiConfirm')}
               </Button>
               {onCancelAiPrintConsent && (
                 <Button size="sm" variant="ghost" onClick={onCancelAiPrintConsent}>
-                  Cancelar
+                  {t('s3.cancel')}
                 </Button>
               )}
             </div>
@@ -289,7 +291,7 @@ export default function Step3Courses({
         {showPastePlan && (
           <div className="mt-4 space-y-2.5 rounded-2xl border border-line bg-surface-2/60 p-3.5">
             <p className="text-xs text-muted">
-              Cola a lista de cadeiras do portal académico ou escreve uma cadeira por linha:
+              {t('s3.pasteHint')}
             </p>
             <textarea
               rows={4}
@@ -300,13 +302,13 @@ export default function Step3Courses({
             />
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="primary" onClick={() => onApplyPasted('merge')}>
-                Juntar à lista
+                {t('s3.merge')}
               </Button>
               <Button size="sm" variant="secondary" onClick={() => onApplyPasted('replace')}>
-                Substituir lista
+                {t('s3.replace')}
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setShowPastePlan(false)}>
-                Fechar
+                {t('s3.close')}
               </Button>
             </div>
           </div>
@@ -327,7 +329,7 @@ export default function Step3Courses({
                   : 'border-line bg-surface-2 text-muted hover:text-fg',
               )}
             >
-              Todos os anos
+              {t('s3.allYears')}
             </button>
             {availableRecordYears.map((yr) => (
               <button
@@ -351,13 +353,13 @@ export default function Step3Courses({
             onClick={() => setShowOtherTermsHistory(!showOtherTermsHistory)}
             className="min-h-11 px-2 text-xs font-semibold text-accent-ink hover:underline"
           >
-            {showOtherTermsHistory ? 'Mostrar só semestre atual' : 'Ver outros semestres'}
+            {showOtherTermsHistory ? t('s3.onlyCurrent') : t('s3.otherTerms')}
           </button>
         </div>
 
         {mainFilteredRecords.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-line bg-surface-2/40 px-4 py-6 text-center text-xs text-muted">
-            Ainda não tens cadeiras na lista. Adiciona abaixo ou importa pelo horário.
+            {t('s3.empty')}
           </div>
         ) : (
           <ul className="space-y-2.5">
@@ -374,7 +376,7 @@ export default function Step3Courses({
                     <span className="text-xs font-semibold text-fg">{rec.name}</span>
                   </div>
                   <p className="mt-1 text-xs text-muted">
-                    {formatAcademicYearShort(rec.year, isSecondarySchool)} · {rec.semester}.º sem
+                    {formatAcademicYearShort(rec.year, isSecondarySchool)} · {t('common:fmt.semShort', { n: rec.semester })}
                     {isSecondarySchool ? '' : ` · ${rec.ects || 6} ECTS`}
                   </p>
                 </div>
@@ -398,7 +400,7 @@ export default function Step3Courses({
                             : 'border-line bg-surface text-muted hover:text-fg',
                         )}
                       >
-                        {opt.label}
+                        {t(`s3.status.${opt.id}`)}
                       </button>
                     );
                   })}
@@ -407,8 +409,8 @@ export default function Step3Courses({
                     <Input
                       type="text"
                       inputMode="decimal"
-                      aria-label={`Nota de ${rec.name}`}
-                      placeholder="Nota"
+                      aria-label={t('s3.gradeOf', { name: rec.name })}
+                      placeholder={t('s3.grade')}
                       value={rec.grade ?? ''}
                       onChange={(e) => onUpdateGrade(rec.id, e.target.value)}
                       className="w-20 text-center tabular"
@@ -438,15 +440,15 @@ export default function Step3Courses({
               className="min-h-11 text-xs font-semibold text-accent-ink hover:underline"
             >
               {showOptionalCourses
-                ? 'Esconder cadeiras opcionais'
-                : `+ Ver ${optionalAvailableRecords.length} cadeiras opcionais`}
+                ? t('s3.hideOptional')
+                : t('s3.showOptional', { count: optionalAvailableRecords.length })}
             </button>
             {showOptionalCourses && (
               <div className="mt-2 space-y-2 rounded-2xl border border-line bg-surface-2/40 p-3">
                 <Input
                   value={optionalSearch}
                   onChange={(e) => setOptionalSearch(e.target.value)}
-                  placeholder="Procurar cadeira opcional…"
+                  placeholder={t('s3.searchOptional')}
                 />
                 <div className="flex flex-wrap gap-2">
                   {optionalAvailableRecords.slice(0, 18).map((opt) => (
@@ -469,36 +471,36 @@ export default function Step3Courses({
         <div className="border-t border-line pt-3">
           {!showManualAdd ? (
             <Button size="sm" variant="secondary" onClick={() => setShowManualAdd(true)}>
-              <Plus size={15} /> Outra cadeira manualmente
+              <Plus size={15} /> {t('s3.otherManual')}
             </Button>
           ) : (
             <div className="space-y-3 rounded-2xl border border-line bg-surface-2/60 p-3.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-fg">Adicionar cadeira manualmente</span>
+                <span className="text-xs font-bold text-fg">{t('s3.manualTitle')}</span>
                 <button
                   type="button"
                   onClick={() => setShowManualAdd(false)}
                   className="min-h-9 px-2 text-xs text-muted hover:text-fg"
                 >
-                  Fechar
+                  {t('s3.close')}
                 </button>
               </div>
               <div className="grid gap-2.5 sm:grid-cols-[110px_1fr_90px_90px]">
-                <Field label="Sigla">
+                <Field label={t('s3.code')}>
                   <Input
                     value={newCourseCode}
                     onChange={(e) => setNewCourseCode(e.target.value)}
                     placeholder="CALC1"
                   />
                 </Field>
-                <Field label="Nome da cadeira">
+                <Field label={t('s3.courseName')}>
                   <Input
                     value={newCourseName}
                     onChange={(e) => setNewCourseName(e.target.value)}
-                    placeholder="Ex.: Análise Matemática I"
+                    placeholder={t('s3.courseNamePh')}
                   />
                 </Field>
-                <Field label="Ano">
+                <Field label={t('s3.year')}>
                   <Select
                     value={newCourseYear}
                     onChange={(e) => setNewCourseYear(Number(e.target.value))}
@@ -523,7 +525,7 @@ export default function Step3Courses({
                 )}
               </div>
               <Button size="sm" variant="primary" onClick={onAddCustomRecord}>
-                <Plus size={14} /> Adicionar à lista
+                <Plus size={14} /> {t('s3.addToList')}
               </Button>
             </div>
           )}
@@ -538,7 +540,7 @@ export default function Step3Courses({
               className="size-5 shrink-0 accent-accent"
             />
             <span className="text-fg">
-              Atualizar as cadeiras ativas do meu espaço de estudo com esta lista ({doingCount})
+              {t('s3.updateActive', { count: doingCount })}
             </span>
           </label>
         )}
