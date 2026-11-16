@@ -1113,6 +1113,25 @@ export function buildDocumentContext(
   return sections.join('\n\n');
 }
 
+/** Língua ativa da app (Definições), usada nas gerações que não recebem `language`. */
+export function getActiveAppLanguage(): AppLanguage {
+  return normalizeAppLanguage(useStore.getState().settings.language);
+}
+
+/** Instrução curta e inequívoca de língua de saída para prompts de geração. */
+export function outputLanguageInstruction(lang: AppLanguage = getActiveAppLanguage()): string {
+  switch (lang) {
+    case 'en':
+      return 'Write ALL user-facing text in clear English (en). Keep JSON keys exactly as specified.';
+    case 'es':
+      return 'Escribe TODO el texto para el estudiante en español (es), con términos como «asignatura» y «examen». Mantén las claves JSON tal como se indican.';
+    case 'pt-BR':
+      return 'Escreva TODO o texto para o estudante em português do Brasil (pt-BR), com termos como «disciplina» e «prova». Mantenha as chaves JSON como indicado.';
+    default:
+      return 'Escreve TODO o texto para o estudante em português europeu (pt-PT), com termos como «cadeira» e «teste/exame». Mantém as chaves JSON como indicado.';
+  }
+}
+
 const PERSONA_INSTRUCTIONS_BY_LANG: Record<AppLanguage, Record<UniPersonaMode, string>> = {
   'pt-PT': {
     amigo:
@@ -1164,7 +1183,6 @@ const PERSONA_INSTRUCTIONS_BY_LANG: Record<AppLanguage, Record<UniPersonaMode, s
   },
 };
 
-const PERSONA_INSTRUCTIONS: Record<UniPersonaMode, string> = PERSONA_INSTRUCTIONS_BY_LANG['pt-PT'];
 
 const AREA_VOICE_HINTS: Record<UniAccessoryId, string> = {
   default: 'Companheiro versátil do caderno escolar.',
@@ -1335,12 +1353,13 @@ export async function generateNotebookBrief(args: {
         : 'Faz um **Resumo Executivo por Tópicos** direto e memorável, citando de onde veio cada ideia como [Fonte N] ou nome do ficheiro.';
 
   const system = `És o Uni a organizar um Caderno de Estudo interno da Unipedia${args.courseName ? ` para ${args.courseName}` : ''}.
-${PERSONA_INSTRUCTIONS[args.persona ?? 'amigo']}
+${PERSONA_INSTRUCTIONS_BY_LANG[getActiveAppLanguage()][args.persona ?? 'amigo']}
 ${AREA_VOICE_HINTS[args.accessory ?? 'default']}
 Regras estritas:
 - Baseia-te exclusivamente nas fontes e anexos fornecidos pelo estudante.
 - Cita sempre as fontes relevantes no texto usando [Fonte 1], [Fonte 2] ou o nome do documento.
-- Escreve em português europeu (pt-PT) com Markdown limpo.`;
+- Usa Markdown limpo.
+- ${outputLanguageInstruction()}`;
 
   const userPrompt = formattedSources
     ? `${goalPrompt}\n\nFONTES DO CADERNO:\n${formattedSources}`
@@ -1397,7 +1416,8 @@ export async function generateMaterialPracticeSet(args: {
       ? `\nEvita repetir perguntas já feitas:\n- ${args.existingPrompts.slice(0, 5).join('\n- ')}`
       : '';
 
-  const prompt = `Cria exatamente ${count} cartões curtos de prática ativa (active recall / estilo pergunta de teste) em português europeu sobre "${args.topicTitle}"${args.courseName ? ` (${args.courseName})` : ''}.
+  const prompt = `Cria exatamente ${count} cartões curtos de prática ativa (active recall / estilo pergunta de teste) sobre "${args.topicTitle}"${args.courseName ? ` (${args.courseName})` : ''}.
+${outputLanguageInstruction()}
 ${args.diaryContext ? `\nContexto real do estudante (Diário / até onde deu a matéria):\n${args.diaryContext}` : ''}
 ${sourcesBlock ? `\nCONTEÚDO REAL DOS MATERIAIS DA CADEIRA:\n${sourcesBlock}` : ''}
 ${!sourcesBlock && args.attachments && args.attachments.length > 0 ? '\nAnalisa os ficheiros anexados da cadeira e extrai perguntas fiéis à matéria real.' : ''}
@@ -1449,7 +1469,8 @@ export async function generateRecallChallenge(
   courseName?: string,
 ): Promise<RecallChallenge> {
   const { customKey, model } = resolveGeminiConfig();
-  const prompt = `Cria 1 pergunta curta de recordação ativa (active recall) em português europeu sobre "${topicTitle}"${courseName ? ` (${courseName})` : ''}.
+  const prompt = `Cria 1 pergunta curta de recordação ativa (active recall) sobre "${topicTitle}"${courseName ? ` (${courseName})` : ''}.
+${outputLanguageInstruction()}
 Devolve APENAS JSON válido no formato: {"question": "pergunta objetiva em 1-2 frases para testar compreensão sem consultar apontamentos", "hint": "pista curta ou critério de resposta correta em 1 frase"}`;
   const contents: Content[] = [{ role: 'user', parts: [{ type: 'text', text: prompt }] }];
   const generationConfig: GenerationConfig = {
@@ -1660,7 +1681,7 @@ export async function converseCheckInWithGemini(args: {
 
   const system = `És o Uni num mini-chat humano de check-in com um estudante universitário em Portugal. ${personaHint}
 Modo de conversa: ${args.baseUnderstanding.kind} (${args.courseName ?? 'geral'}${args.assessmentTitle ? ` · ${args.assessmentTitle}` : ''}).
-Responde em 2 a 3 frases curtas, humanas e naturais em português de Portugal, confirmando exatamente o que entendeste (matéria até que slide/aula, dúvidas, cansaço ou ansiedade) e perguntando se quer ajustar algo antes de confirmar. NÃO uses listas longas nem questionários formais.
+Responde em 2 a 3 frases curtas, humanas e naturais (${outputLanguageInstruction()}), confirmando exatamente o que entendeste (matéria até que slide/aula, dúvidas, cansaço ou ansiedade) e perguntando se quer ajustar algo antes de confirmar. NÃO uses listas longas nem questionários formais.
 
 Tópicos existentes na cadeira:
 ${topicsList}
@@ -1717,8 +1738,9 @@ export async function extractTopicSheetFromSources(args: {
     throw new Error('Seleciona pelo menos um material com conteúdo ou anexa um ficheiro antes de gerar a ficha.');
   }
 
-  const prompt = `Cria uma ficha de estudo permanente e citável em português europeu (pt-PT) sobre "${args.topicTitle}"${args.courseName ? ` (${args.courseName})` : ''}.
+  const prompt = `Cria uma ficha de estudo permanente e citável sobre "${args.topicTitle}"${args.courseName ? ` (${args.courseName})` : ''}.
 Regras obrigatórias:
+- ${outputLanguageInstruction()}
 - Usa EXCLUSIVAMENTE as fontes fornecidas.
 - Inclui: 1) Ideia central, 2) Definições e fórmulas-chave (com LaTeX se aplicável), 3) Armadilhas típicas de teste e 4) Exemplo resolvido ou caso prático curto.
 - Cita sempre a origem entre parênteses retos: [Fonte: nome exato]. Se faltar algo nas fontes, não inventes.

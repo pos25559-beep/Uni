@@ -126,5 +126,53 @@
     "installTitle": "Instalar aplicação Unipedia",
     "installHint": "Acede offline e como app dedicada no teu dispositivo.",
     "installBtn": "Instalar Unipedia"
+  },
+  "notif": {
+    "off": "Lembretes inteligentes desativados.",
+    "blocked": "Permissão bloqueada no dispositivo. Podes ativar nas definições do browser ou Android.",
+    "on": "Lembretes inteligentes do Uni ativados!",
+    "savedInApp": "Preferências guardadas! Vais receber avisos discretos dentro da app.",
+    "sent": "Notificação enviada: \"{{title}}\"",
+    "title": "Lembretes inteligentes do Uni",
+    "intro": "Protege a tua sequência, revisões SRS, provas e aulas — sem spam.",
+    "master": "Ativar notificações adaptativas",
+    "deniedHint": "Bloqueadas no navegador/Android — usa apenas avisos discretos na app.",
+    "activeHint": "Ativo · máximo {{max}}/dia · silêncio {{start}}–{{end}}",
+    "optIn": "Opt-in: só agenda lembretes quando ligas este interruptor.",
+    "masterAria": "Ativar notificações adaptativas do Uni",
+    "cat": {
+      "streak": "Sequência diária",
+      "streakAria": "Proteção de sequência diária",
+      "srs": "Revisões SRS do dia",
+      "srsAria": "Resumo de revisões espaçadas",
+      "exams": "Testes e exames",
+      "examsAria": "Contagem decrescente de provas",
+      "classes": "Aulas com sala",
+      "classesAria": "Avisos antes das aulas",
+      "postClass": "Pergunta pós-aula",
+      "postClassAria": "Pergunta pós-aula sobre a matéria dada",
+      "evening": "Fim do dia (diário)",
+      "eveningAria": "Balanço do final do dia",
+      "sunday": "Balanço de domingo",
+      "sundayAria": "Balanço semanal ao domingo",
+      "examPrep": "Alinhamento Modo Teste",
+      "examPrepAria": "Perguntar até que matéria sai em Modo Teste"
+    },
+    "field": {
+      "hour": "Hora do empurrão diário",
+      "before": "Antes da aula",
+      "max": "Máximo por dia",
+      "after": "Após a aula",
+      "eveningHour": "Hora fim do dia",
+      "quietFrom": "Silêncio desde",
+      "quietTo": "Silêncio até"
+    },
+    "minBefore": "{{count}} minutos antes",
+    "perDay": "{{count}} aviso(s)/dia",
+    "minAfter": "{{count}} min depois",
+    "test": "Testar notificação agora",
+    "preview": "Pré-visualização ao vivo",
+    "scheduled": "{{count}} agendada(s) nas próximas 72h",
+    "example": "Exemplo imediato"
   }
 }

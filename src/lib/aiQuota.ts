@@ -1,5 +1,6 @@
 // Controlo local de quota diária para proteger a cota gratuita do Uni nativo.
 // Quando o utilizador usa chave própria (Avançado), os limites locais são ignorados.
+import i18n, { resources } from '../i18n';
 import { todayStr } from './selectors';
 
 export const DAILY_CHAT_LIMIT = 15;
@@ -42,17 +43,25 @@ export interface DailyAiMetricsSnapshot {
   voiceSeconds: number;
 }
 
+type QuotaMessageKey = keyof (typeof resources)['pt-PT']['common']['quota'];
+
+/** Traduz mensagens de quota; sem i18n inicializado (testes), usa pt-PT. */
+function quotaMessage(key: QuotaMessageKey, vars: Record<string, number> = {}): string {
+  if (i18n.isInitialized) return i18n.t(`common:quota.${key}`, vars);
+  return resources['pt-PT'].common.quota[key].replace(/\{\{(\w+)\}\}/g, (_, name: string) =>
+    String(vars[name] ?? ''),
+  );
+}
+
 export class UniDailyLimitReachedError extends Error {
   constructor(kind: QuotaKind) {
     const label =
       kind === 'chat'
-        ? `Atingiste o limite diário de ${DAILY_CHAT_LIMIT} mensagens gratuitas com o Uni.`
+        ? quotaMessage('chatLimit', { limit: DAILY_CHAT_LIMIT })
         : kind === 'notebook'
-          ? `Atingiste o limite diário de ${DAILY_NOTEBOOK_LIMIT} gerações no Caderno do Uni.`
-          : `Atingiste o limite diário de ${DAILY_RECALL_LIMIT} avaliações de Recall gratuitas com o Uni.`;
-    super(
-      `${label} A quota renova à meia-noite — se precisares de estudo intensivo agora, podes colar uma chave pessoal em Definições → Tutor → Avançado.`,
-    );
+          ? quotaMessage('notebookLimit', { limit: DAILY_NOTEBOOK_LIMIT })
+          : quotaMessage('recallLimit', { limit: DAILY_RECALL_LIMIT });
+    super(`${label} ${quotaMessage('renewHint')}`);
     this.name = 'UniDailyLimitReachedError';
   }
 }
@@ -222,8 +231,7 @@ export function canStartLiveVoiceSession(hasCustomKey: boolean): {
   if (!hasCustomKey) {
     return {
       allowed: false,
-      reason:
-        'A Voz em tempo real (gemini-3.8-live) requer a tua chave Gemini pessoal em Definições → Tutor → Avançado.',
+      reason: quotaMessage('voiceNeedsKey'),
     };
   }
   return { allowed: true };

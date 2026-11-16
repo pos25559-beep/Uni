@@ -1,4 +1,5 @@
 import { Capacitor } from '@capacitor/core';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowRight,
   Cloud,
@@ -45,34 +46,31 @@ import { migrateLocalDataToCloud } from '../lib/firestoreSync';
 import { hapticSuccess, hapticTap } from '../lib/nativeBridge';
 import { googleService } from '../services/googleService';
 import { useStore } from '../store/useStore';
+import i18n from '../i18n';
 
-const UNI_GREETINGS = [
-  'Pronto para organizar o teu semestre!',
-  'Aqui os prazos não apanham ninguém de surpresa.',
-  'Pssst: o teu caderno fica guardado com segurança.',
-  'Toca-me sempre que precisares de ajuda para estudar!',
-];
+const UNI_GREETING_KEYS = ['auth.greet1', 'auth.greet2', 'auth.greet3', 'auth.greet4'] as const;
 
 function friendlyAuthError(code?: string, fallback?: string): string {
   switch (code) {
     case 'auth/invalid-credential':
     case 'auth/wrong-password':
     case 'auth/user-not-found':
-      return 'Email ou palavra-passe incorretos. Verifica os dados ou cria uma conta nova.';
+      return i18n.t('auth.err.invalid');
     case 'auth/email-already-in-use':
-      return 'Este email já tem conta. Experimenta entrar no separador "Entrar".';
+      return i18n.t('auth.err.inUse');
     case 'auth/weak-password':
-      return 'Escolhe uma palavra-passe com pelo menos 6 caracteres.';
+      return i18n.t('auth.err.weak');
     case 'auth/too-many-requests':
-      return 'Muitas tentativas seguidas. Aguarda um pouco ou repõe a tua palavra-passe.';
+      return i18n.t('auth.err.tooMany');
     case 'auth/operation-not-allowed':
-      return 'Este método de entrada precisa de estar ativo no Firebase Auth (tenta novamente ou usa o link mágico por email).';
+      return i18n.t('auth.err.notAllowed');
     default:
-      return fallback || 'Não foi possível entrar neste momento. Tenta novamente.';
+      return fallback || i18n.t('auth.err.generic');
   }
 }
 
 export default function LoginPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const guestMode = Boolean(useStore((s) => s.settings.guestMode));
@@ -147,7 +145,7 @@ export default function LoginPage() {
             await migrateLocalDataToCloud().catch(() => {});
             const done = Boolean(useStore.getState().academicProfile?.onboardingCompleted);
             void hapticSuccess();
-            showToast('Sessão iniciada por link no email!');
+            showToast(i18n.t('auth.toast.linkSignedIn'));
             navigate(resolveTarget(done));
           })
           .catch((err: unknown) => {
@@ -173,7 +171,7 @@ export default function LoginPage() {
   const handleUniTap = () => {
     void hapticTap();
     if (showUniBubble) {
-      setUniTipIndex((i) => (i + 1) % UNI_GREETINGS.length);
+      setUniTipIndex((i) => (i + 1) % UNI_GREETING_KEYS.length);
     } else {
       setShowUniBubble(true);
     }
@@ -182,13 +180,13 @@ export default function LoginPage() {
   const submitEmail = async (e: FormEvent) => {
     e.preventDefault();
     if (!email.trim()) {
-      setError('Insere um email válido.');
+      setError(t('auth.err.email'));
       return;
     }
 
     if (authMethod === 'magic') {
       if (mode === 'signup' && !ageConfirmed) {
-        setError('Confirma a idade mínima e a Política de Privacidade para criar conta.');
+        setError(t('auth.err.consent'));
         return;
       }
       setBusy(true);
@@ -211,14 +209,14 @@ export default function LoginPage() {
             await migrateLocalDataToCloud().catch(() => {});
             const done = Boolean(useStore.getState().academicProfile?.onboardingCompleted);
             void hapticSuccess();
-            showToast('Sessão iniciada!');
+            showToast(t('auth.toast.signedIn'));
             navigate(postLoginTarget(done));
             return;
           }
         }
         await sendMagicEmailLink(email);
         void hapticSuccess();
-        setInfo(`Enviámos um link mágico para ${email.trim()}. Abre esse email neste dispositivo para entrar sem palavra-passe.`);
+        setInfo(t('auth.info.magicSent', { email: email.trim() }));
       } catch (err: unknown) {
         const eObj = err as { code?: string; message?: string };
         setError(friendlyAuthError(eObj?.code, eObj?.message));
@@ -229,11 +227,11 @@ export default function LoginPage() {
     }
 
     if (password.length < 6) {
-      setError('Insere uma palavra-passe com pelo menos 6 caracteres.');
+      setError(t('auth.err.password'));
       return;
     }
     if (mode === 'signup' && !ageConfirmed) {
-      setError('Confirma a idade mínima e a Política de Privacidade para criar conta.');
+      setError(t('auth.err.consent'));
       return;
     }
     setBusy(true);
@@ -262,7 +260,7 @@ export default function LoginPage() {
       await migrateLocalDataToCloud().catch(() => {});
       const done = Boolean(useStore.getState().academicProfile?.onboardingCompleted);
       void hapticSuccess();
-      showToast(mode === 'signup' ? 'Conta criada! Vamos configurar o teu curso.' : 'Sessão iniciada!');
+      showToast(mode === 'signup' ? t('auth.toast.created') : t('auth.toast.signedIn'));
       navigate(postLoginTarget(done));
     } catch (err: unknown) {
       const eObj = err as { code?: string; message?: string };
@@ -274,14 +272,14 @@ export default function LoginPage() {
 
   const handleForgotPassword = async () => {
     if (!email.trim()) {
-      setError('Escreve primeiro o teu email em cima para receberes o link de reposição.');
+      setError(t('auth.err.resetNeedsEmail'));
       return;
     }
     setBusy(true);
     setError(null);
     try {
       await resetPasswordWithEmail(email);
-      setInfo('Enviámos um email para redefinir a palavra-passe. Verifica também o spam.');
+      setInfo(t('auth.info.resetSent'));
     } catch (err: unknown) {
       const eObj = err as { code?: string; message?: string };
       setError(friendlyAuthError(eObj?.code, eObj?.message));
@@ -316,7 +314,7 @@ export default function LoginPage() {
         .syncGoogleEcosystemAfterLogin(st.courses, st.settings.sharedHubDriveUrls ?? [])
         .catch(() => {});
       void hapticSuccess();
-      showToast('Bem-vindo! Conta Google e serviços associados.');
+      showToast(t('auth.toast.google'));
       navigate(postLoginTarget(Boolean(st.academicProfile?.onboardingCompleted)));
     } catch (err: unknown) {
       const eObj = err as { code?: string; message?: string };
@@ -350,7 +348,7 @@ export default function LoginPage() {
       await logoutFirebase();
       setUser(null);
       updateSettings({ guestMode: false, userName: '' });
-      showToast('Sessão terminada.', 'neutral');
+      showToast(t('auth.toast.signedOut'), 'neutral');
     } finally {
       setBusy(false);
     }
@@ -359,7 +357,7 @@ export default function LoginPage() {
   return (
     <AnimatedPage className={`mx-auto max-w-md ${showBack ? 'space-y-4 pb-8' : 'space-y-3 pb-2'}`}>
       {showBack ? (
-        <SubpageHeader title="A tua conta" subtitle="Inicia sessão ou gere o teu acesso" />
+        <SubpageHeader title={t('auth.header.title')} subtitle={t('auth.header.subtitle')} />
       ) : (
         <div className="flex items-center justify-between gap-2 pt-0.5">
           <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
@@ -376,14 +374,14 @@ export default function LoginPage() {
               className="inline-flex min-h-[36px] shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-surface-2 px-3 text-xs font-semibold text-muted transition hover:text-fg"
             >
               <Sparkles size={13} className="shrink-0 text-accent" />
-              <span>Início</span>
+              <span>{t('auth.nav.home')}</span>
             </Link>
             <Link
               to="/privacidade"
               className="inline-flex min-h-[36px] shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-surface-2 px-3 text-xs font-semibold text-muted transition hover:text-fg"
             >
               <ShieldCheck size={14} className="shrink-0 text-ok" />
-              <span>Privacidade</span>
+              <span>{t('auth.nav.privacy')}</span>
             </Link>
           </div>
         </div>
@@ -409,14 +407,14 @@ export default function LoginPage() {
             <div className="relative z-10 flex items-center justify-between gap-3">
               <div className="min-w-0 space-y-1">
                 <StickerBadge tone="mint" tilt={-2}>
-                  Olá! Eu sou o Uni
+                  {t('auth.hero.badge')}
                 </StickerBadge>
                 <h1 className="font-display text-[22px] font-extrabold leading-[1.12] tracking-tight sm:text-[25px]">
-                  O teu semestre{' '}
-                  <span className="font-serif font-normal italic">sempre em dia</span>
+                  {t('auth.hero.title')}{' '}
+                  <span className="font-serif font-normal italic">{t('auth.hero.titleAccent')}</span>
                 </h1>
                 <p className="text-xs leading-snug opacity-85">
-                  Organiza cadeiras, horários e sessões de estudo numa só conta ou começa já no teu telemóvel.
+                  {t('auth.hero.body')}
                 </p>
               </div>
 
@@ -426,7 +424,7 @@ export default function LoginPage() {
                   accessory={uniPreference && uniPreference !== 'auto' ? uniPreference : 'default'}
                   size={68}
                   onClick={handleUniTap}
-                  ariaLabel="Interagir com o Uni, o companheiro de estudo"
+                  ariaLabel={t('auth.hero.uniAria')}
                 />
               </div>
             </div>
@@ -442,12 +440,12 @@ export default function LoginPage() {
                   className="absolute inset-x-4 top-[calc(100%-6px)] z-30 flex items-center justify-between gap-2 rounded-2xl border border-[#141312]/10 bg-[#FAF8F2] px-3.5 py-2.5 text-xs font-medium text-[#141312] shadow-float dark:border-white/15 dark:bg-[#23201B] dark:text-[#FAF6EC]"
                 >
                   <span className="leading-snug">
-                    “{passFocused && !showPass ? 'Prometo que não estou a espreitar a tua palavra-passe!' : UNI_GREETINGS[uniTipIndex]}”
+                    “{passFocused && !showPass ? t('auth.peek') : t(UNI_GREETING_KEYS[uniTipIndex])}”
                   </span>
                   <button
                     type="button"
                     onClick={() => setShowUniBubble(false)}
-                    aria-label="Fechar mensagem do Uni"
+                    aria-label={t('auth.hero.closeBubble')}
                     className="flex size-7 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-fg"
                   >
                     <X size={13} />
@@ -471,21 +469,21 @@ export default function LoginPage() {
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-display text-base font-bold text-fg">
-                    {user.displayName || 'Estudante'}
+                    {user.displayName || t('auth.account.student')}
                   </p>
-                  <p className="truncate text-xs text-muted">{user.email || 'Sessão ativa'}</p>
+                  <p className="truncate text-xs text-muted">{user.email || t('auth.account.active')}</p>
                 </div>
                 <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent">
-                  <Cloud size={13} /> Sincronizada
+                  <Cloud size={13} /> {t('auth.account.synced')}
                 </span>
               </div>
 
               <div className="flex flex-wrap gap-2 pt-2">
                 <Button variant="primary" className="flex-1" onClick={() => navigate('/')}>
-                  Ir para o meu dia <ArrowRight size={16} />
+                  {t('auth.account.goToday')} <ArrowRight size={16} />
                 </Button>
                 <Button variant="danger" loading={busy} onClick={handleLogout}>
-                  <LogOut size={16} /> Sair
+                  <LogOut size={16} /> {t('auth.account.signOut')}
                 </Button>
               </div>
             </Card>
@@ -500,8 +498,8 @@ export default function LoginPage() {
                   setInfo(null);
                 }}
                 items={[
-                  { id: 'signin', label: 'Entrar' },
-                  { id: 'signup', label: 'Criar conta' },
+                  { id: 'signin', label: t('auth.tabs.signin') },
+                  { id: 'signup', label: t('auth.tabs.signup') },
                 ]}
               />
 
@@ -516,7 +514,7 @@ export default function LoginPage() {
                       transition={UNIPEDIA_SPRING}
                       className="overflow-hidden"
                     >
-                      <Field label="Como queres ser chamado?">
+                      <Field label={t('auth.form.nameLabel')}>
                         <div className="relative">
                           <UserIcon
                             size={16}
@@ -525,7 +523,7 @@ export default function LoginPage() {
                           <Input
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            placeholder="O teu primeiro nome"
+                            placeholder={t('auth.form.namePlaceholder')}
                             autoComplete="name"
                             className="pl-10"
                           />
@@ -545,7 +543,7 @@ export default function LoginPage() {
                       onFocus={() => setEmailFocused(true)}
                       onBlur={() => setEmailFocused(false)}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="nome@email.com"
+                      placeholder={t('auth.form.emailPlaceholder')}
                       autoComplete="email"
                       className="pl-10"
                     />
@@ -555,7 +553,7 @@ export default function LoginPage() {
                 {/* Banner quando está no modo Link Direto (sem palavra-passe) */}
                 {authMethod === 'magic' && (
                   <div className="flex items-center justify-between gap-2 rounded-[14px] bg-surface-2/65 px-3 py-2 text-xs">
-                    <span className="text-muted">Entrada direta por link no email (sem palavra-passe)</span>
+                    <span className="text-muted">{t('auth.form.magicBanner')}</span>
                     <button
                       type="button"
                       onClick={() => {
@@ -566,13 +564,13 @@ export default function LoginPage() {
                       }}
                       className="font-semibold text-accent hover:underline"
                     >
-                      Usar palavra-passe
+                      {t('auth.form.usePassword')}
                     </button>
                   </div>
                 )}
 
                 {authMethod === 'password' && (
-                  <Field label="Palavra-passe">
+                  <Field label={t('auth.form.passwordLabel')}>
                     <div className="relative">
                       <Lock size={16} className="pointer-events-none absolute top-3.5 left-3.5 text-muted" />
                       <Input
@@ -583,14 +581,14 @@ export default function LoginPage() {
                         onFocus={() => setPassFocused(true)}
                         onBlur={() => setPassFocused(false)}
                         onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Mínimo 6 caracteres"
+                        placeholder={t('auth.form.passwordPlaceholder')}
                         autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                         className="pr-12 pl-10"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPass((v) => !v)}
-                        aria-label={showPass ? 'Ocultar palavra-passe' : 'Mostrar palavra-passe'}
+                        aria-label={showPass ? t('auth.form.hidePassword') : t('auth.form.showPassword')}
                         className="absolute inset-y-0 right-1 flex w-11 items-center justify-center rounded-full text-muted hover:text-fg"
                       >
                         {showPass ? <EyeOff size={17} /> : <Eye size={17} />}
@@ -606,7 +604,7 @@ export default function LoginPage() {
                       onClick={() => void handleForgotPassword()}
                       className="inline-link text-xs font-semibold text-accent underline underline-offset-2"
                     >
-                      Esqueci-me da palavra-passe
+                      {t('auth.form.forgot')}
                     </button>
                   </div>
                 )}
@@ -624,13 +622,13 @@ export default function LoginPage() {
                       className="mt-0.5 h-4 w-4 shrink-0 rounded border-line accent-accent"
                     />
                     <span>
-                      Confirmo ter pelo menos <strong>{LEGAL_INFO.minimumAgePT} anos</strong> (ou autorização) e aceito a{' '}
+                      {t('auth.form.ageBefore')} <strong>{t('auth.form.years', { age: LEGAL_INFO.minimumAgePT })}</strong> {t('auth.form.ageAfter')}{' '}
                       <Link to="/privacidade" className="inline-link font-semibold text-accent underline">
-                        Privacidade
+                        {t('auth.form.privacy')}
                       </Link>{' '}
-                      e os{' '}
+                      {t('auth.form.and')}{' '}
                       <Link to="/termos" className="inline-link font-semibold text-accent underline">
-                        Termos
+                        {t('auth.form.terms')}
                       </Link>
                       .
                     </span>
@@ -664,11 +662,11 @@ export default function LoginPage() {
                   <Button type="submit" variant="primary" loading={busy} className="w-full">
                     {authMethod === 'magic'
                       ? magicLinkNeedsEmail
-                        ? 'Confirmar email do link'
-                        : 'Enviar link de entrada para o email'
+                        ? t('auth.form.confirmMagic')
+                        : t('auth.form.sendMagic')
                       : mode === 'signup'
-                        ? 'Criar a minha conta'
-                        : 'Entrar'}
+                        ? t('auth.form.createMine')
+                        : t('auth.tabs.signin')}
                     <ArrowRight size={16} />
                   </Button>
                 </motion.div>
@@ -682,7 +680,7 @@ export default function LoginPage() {
                     onClick={() => void handleOptionalGoogle()}
                     className="w-full"
                   >
-                    Continuar com Google
+                    {t('auth.form.google')}
                   </Button>
                 </div>
               )}
@@ -704,7 +702,7 @@ export default function LoginPage() {
                   }}
                   className="min-h-[36px] rounded-xl px-2 text-xs font-semibold text-accent hover:underline"
                 >
-                  {authMethod === 'password' ? 'Link sem palavra-passe' : 'Usar palavra-passe'}
+                  {authMethod === 'password' ? t('auth.footer.magicLink') : t('auth.form.usePassword')}
                 </button>
                 <span aria-hidden="true" className="text-xs text-muted">·</span>
                 <button
@@ -712,17 +710,17 @@ export default function LoginPage() {
                   onClick={handleContinueOffline}
                   className="min-h-11 rounded-xl px-3 text-xs font-semibold text-fg hover:underline"
                 >
-                  Usar só neste telemóvel
+                  {t('auth.footer.localOnly')}
                 </button>
               </div>
               <p className="text-xs text-muted">
-                Ao continuar aceitas a{' '}
+                {t('auth.footer.acceptBefore')}{' '}
                 <Link to="/privacidade" className="inline-link font-semibold text-accent underline">
-                  Privacidade
+                  {t('auth.form.privacy')}
                 </Link>{' '}
-                e os{' '}
+                {t('auth.form.and')}{' '}
                 <Link to="/termos" className="inline-link font-semibold text-accent underline">
-                  Termos
+                  {t('auth.form.terms')}
                 </Link>
                 .
               </p>

@@ -1,5 +1,8 @@
 import { BookOpen, ClipboardPaste, Copy, Download, ExternalLink, FileText, Image as ImageIcon, Loader2, Paperclip, Sparkles, Trash2, X } from 'lucide-react';
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n';
+import { resolveIntlLocale } from '../../lib/grading';
 import {
   fileToChatAttachment,
   generateNotebookBrief,
@@ -33,7 +36,7 @@ function deriveSheetTitle(markdown: string, mode: 'guide' | 'quiz' | 'summary', 
   if (heading) {
     return heading.replace(/^#+\s*/, '').slice(0, 72);
   }
-  const modeLabel = mode === 'guide' ? 'Guia de Estudo' : mode === 'quiz' ? 'Quiz com Citações' : 'Resumo Rápido';
+  const modeLabel = i18n.t(`assistant:notebook.mode.${mode}`);
   return courseName ? `${modeLabel} · ${courseName}` : modeLabel;
 }
 
@@ -58,6 +61,7 @@ export default function UniNotebookDrawer({
   persona: UniPersonaMode;
   onSendToChat: (markdown: string) => void;
 }) {
+  const { t } = useTranslation('assistant');
   const personalNotebookUrl = useStore((s) => s.settings.personalNotebookUrl?.trim() ?? '');
   const [notesSource, setNotesSource] = useState('');
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
@@ -95,7 +99,7 @@ export default function UniNotebookDrawer({
     if (!picked.length) return;
     const slots = Math.max(0, maxLocalUploadSlots - attachments.length);
     if (slots === 0) {
-      showToast(`Podes juntar até ${maxLocalUploadSlots} ficheiros por geração.`);
+      showToast(t('notebook.maxFiles', { count: maxLocalUploadSlots }));
       return;
     }
     const next: ChatAttachment[] = [];
@@ -103,7 +107,7 @@ export default function UniNotebookDrawer({
       try {
         next.push(await fileToChatAttachment(file));
       } catch (err) {
-        showToast(err instanceof Error ? err.message : 'Ficheiro não suportado.');
+        showToast(err instanceof Error ? err.message : t('notebook.unsupported'));
       }
     }
     if (next.length > 0) setAttachments((prev) => [...prev, ...next]);
@@ -125,7 +129,7 @@ export default function UniNotebookDrawer({
             };
 
       if (resolved.needsDriveAuth) {
-        showToast('Autoriza o Google Drive no Tutor/Materiais para o Caderno ler PDFs do Drive diretamente.');
+        showToast(t('notebook.driveAuth'));
       }
 
       const sources: NotebookSourceInput[] = [];
@@ -140,13 +144,13 @@ export default function UniNotebookDrawer({
         sources.push({
           title: m.title,
           content: m.url
-            ? `Material de referência (${m.provider}): ${m.title} — ${m.url}`
-            : `Material guardado: ${m.title}`,
+            ? t('notebook.refMaterial', { provider: m.provider, title: m.title, url: m.url })
+            : t('notebook.savedMaterial', { title: m.title }),
         });
       }
       if (notesSource.trim()) {
         sources.push({
-          title: courseName ? `Notas / Aula (${courseName})` : 'As minhas notas de estudo',
+          title: courseName ? t('notebook.notesCourse', { course: courseName }) : t('notebook.myNotes'),
           content: notesSource.trim(),
         });
       }
@@ -183,7 +187,7 @@ export default function UniNotebookDrawer({
       setActiveSheetId(saved.id);
       setSavedSheets((prev) => [saved, ...prev.filter((item) => item.id !== saved.id)]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Não foi possível gerar este caderno agora.');
+      setError(e instanceof Error ? e.message : t('notebook.genError'));
     } finally {
       setBusy(false);
     }
@@ -195,9 +199,9 @@ export default function UniNotebookDrawer({
     if (!exportableMarkdown) return;
     try {
       await navigator.clipboard?.writeText(exportableMarkdown);
-      showToast('Markdown copiado para a área de transferência!');
+      showToast(t('notebook.copied'));
     } catch {
-      showToast('Não foi possível copiar agora.', 'danger');
+      showToast(t('notebook.copyFail'), 'danger');
     }
   };
 
@@ -205,17 +209,17 @@ export default function UniNotebookDrawer({
     if (!exportableMarkdown) return;
     setExportingPdf(true);
     try {
-      const modeTitle = mode === 'guide' ? 'Guia de Estudo' : mode === 'quiz' ? 'Quiz com Citações' : 'Resumo Rápido';
+      const modeTitle = t(`notebook.mode.${mode}`);
       const bytes = await buildNotebookPdfBytes({
-        title: courseName ? `${modeTitle} · ${courseName}` : `Caderno do Uni · ${modeTitle}`,
-        subtitle: `Gerado na Unipedia · ${new Date().toLocaleDateString('pt-PT')}`,
+        title: courseName ? `${modeTitle} · ${courseName}` : `${t('notebook.title')} · ${modeTitle}`,
+        subtitle: t('notebook.generatedOn', { date: new Date().toLocaleDateString(resolveIntlLocale(i18n.language)) }),
         markdown: exportableMarkdown,
       });
       const slug = (courseName || 'caderno-uni').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       downloadPdfFile(`unipedia-${slug || 'caderno'}.pdf`, bytes);
-      showToast('PDF exportado com sucesso!');
+      showToast(t('notebook.pdfOk'));
     } catch {
-      showToast('Não foi possível gerar o PDF agora.', 'danger');
+      showToast(t('notebook.pdfFail'), 'danger');
     } finally {
       setExportingPdf(false);
     }
@@ -225,7 +229,7 @@ export default function UniNotebookDrawer({
     <Modal
       open={open}
       onClose={onClose}
-      title={courseName ? `Caderno do Uni · ${courseName}` : 'Caderno do Uni'}
+      title={courseName ? `${t('notebook.title')} · ${courseName}` : t('notebook.title')}
       footer={
         <div className="flex w-full flex-wrap items-center justify-between gap-2">
           {personalNotebookUrl ? (
@@ -234,7 +238,7 @@ export default function UniNotebookDrawer({
               variant="secondary"
               onClick={() => void openInAppBrowser(personalNotebookUrl)}
             >
-              <ExternalLink size={14} /> Abrir caderno externo
+              <ExternalLink size={14} /> {t('notebook.openExternal')}
             </Button>
           ) : (
             <span />
@@ -243,7 +247,7 @@ export default function UniNotebookDrawer({
             {exportableMarkdown && (
               <>
                 <Button size="sm" variant="secondary" onClick={() => void handleCopyMarkdown()}>
-                  <Copy size={14} /> Copiar .md
+                  <Copy size={14} /> {t('notebook.copyMd')}
                 </Button>
                 <Button
                   size="sm"
@@ -251,7 +255,7 @@ export default function UniNotebookDrawer({
                   onClick={() => void handleExportPdf()}
                   disabled={exportingPdf}
                 >
-                  <Download size={14} /> {exportingPdf ? 'A gerar PDF…' : 'Exportar PDF'}
+                  <Download size={14} /> {exportingPdf ? t('notebook.pdfBusy') : t('notebook.pdfExport')}
                 </Button>
               </>
             )}
@@ -264,11 +268,11 @@ export default function UniNotebookDrawer({
                   onClose();
                 }}
               >
-                Usar no Tutor
+                {t('notebook.useInTutor')}
               </Button>
             )}
             <Button size="sm" onClick={onClose}>
-              Fechar
+              {t('notebook.close')}
             </Button>
           </div>
         </div>
@@ -278,16 +282,16 @@ export default function UniNotebookDrawer({
         <div className="flex items-center gap-3 rounded-2xl bg-[#FCE99F]/70 p-3.5 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]">
           <UniBuddy mood={busy ? 'thinking' : 'curious'} accessory={accessory} size={46} interactive={false} />
           <div className="min-w-0 text-xs">
-            <p className="font-bold">Caderno do Uni dentro da app</p>
+            <p className="font-bold">{t('notebook.introTitle')}</p>
             <p className="opacity-80">
-              Cola apontamentos da aula ou resumos de estudo e junta PDFs ou fotos para gerar fichas e quizzes com citações.
+              {t('notebook.introBody')}
             </p>
           </div>
         </div>
 
         {attachedMaterials.length > 0 && (
           <div className="space-y-1.5">
-            <p className="text-xs font-semibold text-muted">Fontes anexadas ({attachedMaterials.length})</p>
+            <p className="text-xs font-semibold text-muted">{t('notebook.attachedSources', { count: attachedMaterials.length })}</p>
             <div className="flex flex-wrap gap-1.5">
               {attachedMaterials.map((m) => (
                 <span
@@ -305,7 +309,7 @@ export default function UniNotebookDrawer({
         <div>
           <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
             <label className="min-w-0 text-xs font-semibold text-muted">
-              Cola apontamentos, resumos ou anexa PDF
+              {t('notebook.pasteLabel')}
             </label>
             <input
               ref={fileInputRef}
@@ -322,19 +326,19 @@ export default function UniNotebookDrawer({
                   try {
                     const clip = (await navigator.clipboard.readText()).trim();
                     if (!clip) {
-                      showToast('A área de transferência está vazia.');
+                      showToast(t('notebook.clipboardEmpty'));
                       return;
                     }
                     setNotesSource((prev) => (prev.trim() ? `${prev.trim()}\n\n${clip}` : clip));
-                    showToast('Texto colado no caderno.');
+                    showToast(t('notebook.pasted'));
                   } catch {
-                    showToast('Copia o texto dos teus apontamentos e cola manualmente na caixa abaixo.');
+                    showToast(t('notebook.pasteManual'));
                   }
                 }}
                 disabled={busy}
                 className="inline-flex min-h-11 shrink-0 whitespace-nowrap items-center gap-1 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg transition hover:border-line-strong disabled:opacity-45"
               >
-                <ClipboardPaste size={12} /> Colar texto
+                <ClipboardPaste size={12} /> {t('notebook.pasteBtn')}
               </button>
               <button
                 type="button"
@@ -342,14 +346,14 @@ export default function UniNotebookDrawer({
                 disabled={busy || attachments.length >= 3}
                 className="inline-flex min-h-11 shrink-0 whitespace-nowrap items-center gap-1 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg transition hover:border-line-strong disabled:opacity-45"
               >
-                <Paperclip size={12} /> Anexar ficheiro
+                <Paperclip size={12} /> {t('notebook.attachBtn')}
               </button>
             </div>
           </div>
           <Textarea
             value={notesSource}
             onChange={(e) => setNotesSource(e.target.value)}
-            placeholder="Ex.: apontamentos da aula, Teorema de Rolle, resolução de exercícios..."
+            placeholder={t('notebook.placeholder')}
             className="min-h-28"
           />
           {attachments.length > 0 && (
@@ -368,7 +372,7 @@ export default function UniNotebookDrawer({
                   <button
                     type="button"
                     onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== idx))}
-                    aria-label={`Remover ${att.name}`}
+                    aria-label={t('notebook.remove', { name: att.name })}
                     className="grid size-9 place-items-center rounded-full text-muted hover:bg-surface hover:text-fg"
                   >
                     <X size={13} />
@@ -382,7 +386,7 @@ export default function UniNotebookDrawer({
         {courseTopics.length > 0 && (
           <div>
             <p className="mb-1.5 text-xs font-semibold text-muted">
-              Associar ficha a um tópico (ajuda o Tutor e o Foco)
+              {t('notebook.linkTopic')}
             </p>
             <div className="flex max-h-24 flex-wrap gap-1.5 overflow-y-auto">
               <button
@@ -395,7 +399,7 @@ export default function UniNotebookDrawer({
                     : 'border-line bg-surface-2 text-muted hover:text-fg',
                 )}
               >
-                Geral
+                {t('notebook.general')}
               </button>
               {courseTopics.slice(0, 10).map((t) => (
                 <button
@@ -420,9 +424,9 @@ export default function UniNotebookDrawer({
           <div className="flex flex-wrap items-center gap-1.5">
             {(
               [
-                ['guide', 'Guia de Estudo'],
-                ['quiz', 'Quiz com Citações'],
-                ['summary', 'Resumo Rápido'],
+                ['guide', t('notebook.mode.guide')],
+                ['quiz', t('notebook.mode.quiz')],
+                ['summary', t('notebook.mode.summary')],
               ] as const
             ).map(([id, label]) => (
               <button
@@ -442,8 +446,8 @@ export default function UniNotebookDrawer({
           </div>
           <span className="text-xs font-medium text-muted">
             {customKeyActive
-              ? 'Chave pessoal · ilimitado'
-              : `${quota.notebookRemaining}/${quota.notebookLimit} gerações hoje`}
+              ? t('notebook.keyUnlimited')
+              : t('notebook.genToday', { remaining: quota.notebookRemaining, limit: quota.notebookLimit })}
           </span>
         </div>
 
@@ -456,7 +460,7 @@ export default function UniNotebookDrawer({
           className="w-full"
         >
           {busy ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
-          {busy ? 'O Uni está a organizar as fontes…' : 'Gerar a partir das fontes'}
+          {busy ? t('notebook.busy') : t('notebook.generate')}
         </Button>
 
         {error && (
@@ -466,7 +470,7 @@ export default function UniNotebookDrawer({
         {output && (
           <div className="max-h-64 overflow-y-auto rounded-[20px] border border-line bg-surface-2/60 p-4 text-sm">
             <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-accent">
-              <BookOpen size={13} /> Resultado do Caderno
+              <BookOpen size={13} /> {t('notebook.result')}
             </div>
             <Markdown text={output} />
           </div>
@@ -476,14 +480,14 @@ export default function UniNotebookDrawer({
           <div className="space-y-2 border-t border-line pt-3">
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs font-semibold text-muted">
-                Fichas guardadas localmente ({savedSheets.length})
+                {t('notebook.savedSheets', { count: savedSheets.length })}
               </p>
             </div>
             <div className="max-h-44 space-y-1.5 overflow-y-auto pr-1">
               {savedSheets.map((sheet) => {
                 const isSelected = activeSheetId === sheet.id;
                 const modeLabel =
-                  sheet.mode === 'guide' ? 'Guia' : sheet.mode === 'quiz' ? 'Quiz' : 'Resumo';
+                  t(`notebook.short.${sheet.mode}`);
                 return (
                   <div
                     key={sheet.id}
@@ -512,7 +516,7 @@ export default function UniNotebookDrawer({
                     </button>
                     <button
                       type="button"
-                      aria-label={`Apagar ficha ${sheet.title}`}
+                      aria-label={t('notebook.deleteSheet', { title: sheet.title })}
                       onClick={async () => {
                         await deleteTopicSheet(sheet.id);
                         setSavedSheets((prev) => prev.filter((item) => item.id !== sheet.id));
