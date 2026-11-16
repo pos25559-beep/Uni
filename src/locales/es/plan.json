@@ -181,7 +181,19 @@
     "willAdd": "Vas a añadir a tu semestre (sin duplicar elementos existentes):",
     "courses": "Asignaturas",
     "classes": "Clases",
-    "exams": "Exámenes"
+    "exams": "Exámenes",
+    "kind": {
+      "aula": "Clase",
+      "aulaPlural": "Clases",
+      "avaliacao": "Evaluación",
+      "avaliacaoPlural": "Evaluaciones",
+      "estudo": "Estudio",
+      "estudoPlural": "Estudio",
+      "evento": "Evento",
+      "eventoPlural": "Eventos",
+      "tarefa": "Tarea",
+      "tarefaPlural": "Tareas"
+    }
   },
   "session": {
     "past": "pasó",
@@ -208,5 +220,44 @@
     "startAria": "Hora de inicio de la sesión",
     "duration": "Duración (minutos)",
     "durationHint": "Indica entre 5 y 480 minutos."
+  },
+  "builder": {
+    "strategy": {
+      "balanced": "Equilibrado",
+      "balancedHint": "Adapta exámenes, SRS y dificultad",
+      "exams_first": "Foco exámenes",
+      "exams_firstHint": "Intensifica exámenes en los próximos 14 d",
+      "srs_focus": "Memoria SRS",
+      "srs_focusHint": "Hasta 2 repasos espaciados/día",
+      "catch_up": "Recuperar",
+      "catch_upHint": "Prioriza atrasos en huecos libres"
+    },
+    "period": {
+      "auto": "Automático",
+      "morning": "Mañana",
+      "afternoon": "Tarde",
+      "evening": "Noche",
+      "autoSub": "17 h+ laborables / 10 h+ finde"
+    },
+    "title": "Estudio del plan de estudio",
+    "keepDone": "Las sesiones completadas y manuales se mantienen.",
+    "adjustLater": "Puedes ajustar cualquier bloque después de generar.",
+    "cancel": "Cancelar",
+    "apply": "Aplicar ({{n}} bloques)",
+    "preview": "Vista previa",
+    "sessionsTotal": "{{n}} sesiones · {{time}}",
+    "badge": "{{d}} días · bloques {{m}} m",
+    "allPaused": "Has pausado todas las asignaturas: reactiva al menos una.",
+    "allCovered": "Todos los temas ya están cubiertos o no hay huecos libres en este periodo.",
+    "goal": "Objetivo del plan",
+    "horizon": "Horizonte",
+    "days": "{{d}} días",
+    "block": "Duración del bloque",
+    "periodTitle": "Periodo preferido",
+    "dailyGoal": "Meta diaria:",
+    "focusByCourse": "Foco por asignatura",
+    "toggleHint": "Toca para cambiar: Normal → Reforzar → Pausa",
+    "overdue": "Reprogramar automáticamente {{count}} sesión(es) atrasada(s) en los próximos días libres",
+    "reset": "Restablecer valores recomendados"
   }
 }

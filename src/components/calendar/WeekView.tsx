@@ -1,6 +1,6 @@
 // Vista semanal: eixo horário 08:00–22:00, itens posicionados por hora e uma faixa para os dias inteiros.
 import { format } from 'date-fns';
-import { pt } from 'date-fns/locale';
+import { appDateLocale as pt, longDatePattern } from '../../lib/dateLocale';
 import { Clock, MapPin } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { weekdayLong, weekdayShort } from '../../lib/colors';
@@ -130,7 +130,7 @@ export default function WeekView({ days, byDay, courseById, today, selected, onS
             <span>
               {weekdayLong[activeMobileDate.getDay()]!.charAt(0).toUpperCase() +
                 weekdayLong[activeMobileDate.getDay()]!.slice(1)}{' '}
-              · {format(activeMobileDate, "d 'de' MMMM", { locale: pt })}
+              · {format(activeMobileDate, longDatePattern(false), { locale: pt })}
             </span>
             <span className="font-mono tabular">
               {mobileDayItems.length} {mobileDayItems.length === 1 ? 'item' : 'itens'}

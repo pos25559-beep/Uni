@@ -1,6 +1,6 @@
 // Funções puras que preparam os dados dos gráficos de Progresso. Sem React.
 import { addDays, format, parseISO, startOfDay, startOfWeek } from 'date-fns';
-import { pt } from 'date-fns/locale';
+import { appDateLocale as pt } from '../../lib/dateLocale';
 import { courseColors } from '../../lib/colors';
 import {
   daysUntil, gradeSummary, readiness, sessionMinutes, toDateStr, topicProgress, upcomingAssessments,

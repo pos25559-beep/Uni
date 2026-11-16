@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test": "vitest run src",
+    "i18n:report": "node scripts/i18n-report.mjs",
     "guard:ui": "node scripts/ui-guard.mjs --strict",
     "a11y:smoke": "python3 scripts/a11y-smoke.py",
     "check": "tsc -b --noEmit && npm run lint && npm run guard:ui && npm test && npm run build",

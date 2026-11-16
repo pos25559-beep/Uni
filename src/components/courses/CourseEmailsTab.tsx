@@ -16,7 +16,7 @@ import type { AcademicEmail } from '../../services/googleService';
 import { matchesCourse } from '../../lib/courseAliases';
 import { useStore, newId } from '../../store/useStore';
 import { format, parseISO } from 'date-fns';
-import { pt } from 'date-fns/locale';
+import { appDateLocale as pt } from '../../lib/dateLocale';
 
 interface Props {
   course: Course;

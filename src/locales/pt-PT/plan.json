@@ -181,7 +181,19 @@
     "willAdd": "Vais adicionar ao teu semestre (sem duplicar itens existentes):",
     "courses": "Cadeiras",
     "classes": "Aulas",
-    "exams": "Provas"
+    "exams": "Provas",
+    "kind": {
+      "aula": "Aula",
+      "aulaPlural": "Aulas",
+      "avaliacao": "Avaliação",
+      "avaliacaoPlural": "Avaliações",
+      "estudo": "Estudo",
+      "estudoPlural": "Estudo",
+      "evento": "Evento",
+      "eventoPlural": "Eventos",
+      "tarefa": "Tarefa",
+      "tarefaPlural": "Tarefas"
+    }
   },
   "session": {
     "past": "passou",
@@ -208,5 +220,44 @@
     "startAria": "Hora de início da sessão",
     "duration": "Duração (minutos)",
     "durationHint": "Indica entre 5 e 480 minutos."
+  },
+  "builder": {
+    "strategy": {
+      "balanced": "Equilibrado",
+      "balancedHint": "Adapta provas, SRS e dificuldade",
+      "exams_first": "Foco provas",
+      "exams_firstHint": "Intensifica exames nos próximos 14d",
+      "srs_focus": "Memória SRS",
+      "srs_focusHint": "Até 2 revisões espaçadas/dia",
+      "catch_up": "Recuperar",
+      "catch_upHint": "Prioriza atrasos nos slots livres"
+    },
+    "period": {
+      "auto": "Automático",
+      "morning": "Manhã",
+      "afternoon": "Tarde",
+      "evening": "Noite",
+      "autoSub": "17h+ útil / 10h+ fds"
+    },
+    "title": "Estúdio do Plano de Estudo",
+    "keepDone": "Sessões concluídas e manuais mantêm-se intactas.",
+    "adjustLater": "Podes ajustar qualquer bloco depois de gerar.",
+    "cancel": "Cancelar",
+    "apply": "Aplicar ({{n}} blocos)",
+    "preview": "Pré-visualização",
+    "sessionsTotal": "{{n}} sessões · {{time}}",
+    "badge": "{{d}} dias · blocos {{m}}m",
+    "allPaused": "Pausaste todas as cadeiras — reativa pelo menos uma.",
+    "allCovered": "Todos os tópicos marcados já estão cobertos ou sem janelas livres neste período.",
+    "goal": "Objetivo do plano",
+    "horizon": "Horizonte",
+    "days": "{{d}} dias",
+    "block": "Duração do bloco",
+    "periodTitle": "Período preferido",
+    "dailyGoal": "Meta diária:",
+    "focusByCourse": "Foco por cadeira",
+    "toggleHint": "Toca para alternar: Normal → Reforçar → Pausa",
+    "overdue": "Reagendar automaticamente {{count}} sessão(ões) em atraso nos próximos dias livres",
+    "reset": "Repor padrões recomendados"
   }
 }

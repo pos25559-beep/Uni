@@ -2,7 +2,7 @@
 import {
   addDays, addMonths, addWeeks, format, startOfDay, startOfMonth, startOfWeek,
 } from 'date-fns';
-import { pt } from 'date-fns/locale';
+import { appDateLocale as pt } from '../lib/dateLocale';
 import { CalendarPlus, ChevronLeft, ChevronRight, Download, MoreHorizontal, Share2, Upload, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
