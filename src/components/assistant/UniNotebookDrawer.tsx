@@ -121,7 +121,7 @@ export default function UniNotebookDrawer({
               textExcerpts: [],
               readTitles: [],
               skipped: [],
-              needsDriveAuth: false,
+              needsDriveAuth: false, contextTokens: 0, contextTokenBudget: null,
             };
 
       if (resolved.needsDriveAuth) {
