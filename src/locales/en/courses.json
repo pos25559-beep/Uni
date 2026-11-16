@@ -118,5 +118,24 @@
     "cancel": "Cancel",
     "yes": "Yes, I took it",
     "gradeAria": "Grade (0 to {{max}})"
+  },
+  "topics": {
+    "atRisk": "At risk · {{n}}%",
+    "review": "Review · {{n}}%",
+    "retention": "Retention {{n}}%",
+    "empty": "No topics yet",
+    "emptyHint": "Add the course topics to track progress and confidence for each one.",
+    "titleAria": "Topic title",
+    "status": "Status",
+    "confidence": "Confidence",
+    "confN": "Confidence {{n}} of 5",
+    "rev": " · review {{d}}",
+    "due": "Review due to consolidate retention",
+    "stability": "Estimated stability {{n}}d",
+    "practice": "Practise",
+    "studied": "Studied today",
+    "delete": "Delete the topic \"{{title}}\"?",
+    "newAria": "New topic",
+    "newPh": "New topic… (Enter to add)"
   }
 }

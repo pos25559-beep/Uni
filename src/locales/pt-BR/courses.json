@@ -118,5 +118,24 @@
     "cancel": "Cancelar",
     "yes": "Sim, já fiz",
     "gradeAria": "Nota (0 a {{max}})"
+  },
+  "topics": {
+    "atRisk": "Em risco · {{n}}%",
+    "review": "Revisar · {{n}}%",
+    "retention": "Retenção {{n}}%",
+    "empty": "Ainda não há matéria",
+    "emptyHint": "Adicione os tópicos da disciplina para acompanhar o progresso e a confiança em cada um.",
+    "titleAria": "Título do tópico",
+    "status": "Status",
+    "confidence": "Confiança",
+    "confN": "Confiança {{n}} de 5",
+    "rev": " · rev {{d}}",
+    "due": "Revisão pendente para consolidar a retenção",
+    "stability": "Estabilidade estimada de {{n}}d",
+    "practice": "Praticar",
+    "studied": "Estudei hoje",
+    "delete": "Apagar o tópico \"{{title}}\"?",
+    "newAria": "Novo tópico",
+    "newPh": "Novo tópico… (Enter para adicionar)"
   }
 }

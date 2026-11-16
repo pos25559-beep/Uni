@@ -118,5 +118,24 @@
     "cancel": "Cancelar",
     "yes": "Sí, ya la hice",
     "gradeAria": "Nota (0 a {{max}})"
+  },
+  "topics": {
+    "atRisk": "En riesgo · {{n}} %",
+    "review": "Repasar · {{n}} %",
+    "retention": "Retención {{n}} %",
+    "empty": "Aún no hay temario",
+    "emptyHint": "Añade los temas de la asignatura para seguir tu progreso y confianza en cada uno.",
+    "titleAria": "Título del tema",
+    "status": "Estado",
+    "confidence": "Confianza",
+    "confN": "Confianza {{n}} de 5",
+    "rev": " · rep {{d}}",
+    "due": "Repaso pendiente para consolidar la retención",
+    "stability": "Estabilidad estimada de {{n}} d",
+    "practice": "Practicar",
+    "studied": "Estudié hoy",
+    "delete": "¿Eliminar el tema \"{{title}}\"?",
+    "newAria": "Nuevo tema",
+    "newPh": "Nuevo tema… (Intro para añadir)"
   }
 }
