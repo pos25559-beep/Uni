@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   BookMarked,
   CalendarClock,
@@ -60,6 +61,7 @@ export default function PostOnboardingHubModal({
   onClose,
   onPlanGenerated,
 }: Props) {
+  const { t } = useTranslation('onboarding');
   const courses = useStore((s) => s.courses);
   const classes = useStore((s) => s.classes);
   const assessments = useStore((s) => s.assessments);
@@ -134,7 +136,7 @@ export default function PostOnboardingHubModal({
   const handleAddQuickAssessment = () => {
     const targetCourseId = examCourseId || courses[0]?.id;
     if (!targetCourseId) {
-      showToast('Adiciona primeiro pelo menos uma cadeira ativa.');
+      showToast(t('hub.ui.needCourse'));
       return;
     }
     const cleanTitle = examTitle.trim() || kindLabel[examKind];
@@ -151,18 +153,18 @@ export default function PostOnboardingHubModal({
       source: 'local',
     });
     void hapticSuccess();
-    showToast(`${cleanTitle} guardado para a tua cadeira!`);
+    showToast(t('hub.ui.savedFor', { title: cleanTitle }));
     setExamTitle('');
   };
 
   const handleAddSharedDriveUrl = () => {
     const normalized = normalizeSharedDriveUrl(sharedDriveInput);
     if (!normalized) {
-      showToast('Cola um link válido do Google Drive (pasta ou disco partilhado).');
+      showToast(t('hub.ui.badDrive'));
       return;
     }
     if (sharedUrls.includes(normalized)) {
-      showToast('Esta pasta partilhada já está na tua lista.');
+      showToast(t('hub.ui.dupDrive'));
       setSharedDriveInput('');
       return;
     }
@@ -170,7 +172,7 @@ export default function PostOnboardingHubModal({
     updateSettings({ sharedHubDriveUrls: nextUrls });
     setSharedDriveInput('');
     void hapticSuccess();
-    showToast('Pasta partilhada adicionada ao Hub!');
+    showToast(t('hub.ui.driveAdded'));
   };
 
   const handleRemoveSharedDriveUrl = (urlToRemove: string) => {
@@ -182,19 +184,19 @@ export default function PostOnboardingHubModal({
   const handleSaveNotebooks = () => {
     const personalClean = normalizeSafeHubUrl(personalNotebookInput);
     if (personalNotebookInput.trim() && !personalClean) {
-      showToast('Link inválido para o teu Caderno externo pessoal.');
+      showToast(t('hub.ui.badPersonalNb'));
       return;
     }
 
     const courseNbClean = normalizeSafeHubUrl(courseNotebookInput);
     if (courseNotebookInput.trim() && !courseNbClean) {
-      showToast('Link inválido para o Caderno externo da cadeira.');
+      showToast(t('hub.ui.badCourseNb'));
       return;
     }
 
     const coursePortalClean = normalizeSafeHubUrl(coursePortalInput);
     if (coursePortalInput.trim() && !coursePortalClean) {
-      showToast('Link inválido para o portal da cadeira.');
+      showToast(t('hub.ui.badPortal'));
       return;
     }
 
@@ -216,7 +218,7 @@ export default function PostOnboardingHubModal({
           upsert('materials', {
             id: newId(),
             courseId: targetCourse.id,
-            title: `Caderno externo · ${targetCourse.shortName}`,
+            title: t('hub.ui.nbTitle', { course: targetCourse.shortName }),
             category: 'sebenta',
             provider: 'notebooklm',
             url: courseNbClean,
@@ -228,7 +230,7 @@ export default function PostOnboardingHubModal({
     }
 
     void hapticSuccess();
-    showToast('Ligações do Caderno externo e portal guardadas!');
+    showToast(t('hub.ui.linksSaved'));
   };
 
   const handleGeneratePlanNow = () => {
@@ -259,9 +261,9 @@ export default function PostOnboardingHubModal({
     showToast(
       nextSessions.length > 0
         ? starterOnly
-          ? `Modo Arranque ativo: ${nextSessions.length} blocos ligeiros criados para os próximos 14 dias.`
-          : `Plano criado com ${nextSessions.length} sessões prontas para arrancar!`
-        : 'Hub guardado! Adiciona cadeiras ativas para gerar blocos de estudo.',
+          ? t('hub.ui.kickoff', { n: nextSessions.length })
+          : t('hub.ui.planCreated', { n: nextSessions.length })
+        : t('hub.ui.hubSaved'),
     );
     onPlanGenerated?.(nextSessions.length, starterOnly);
     onClose();
@@ -282,10 +284,10 @@ export default function PostOnboardingHubModal({
   const renderStepRow = (step: HubStepStatus, orderIdx: number) => {
     const isExpanded = expandedStep === step.key;
     const statusText = step.ready
-      ? step.countLabel ?? 'Ligado'
+      ? step.countLabel ?? t('hub.ui.connected')
       : step.requiredForFlow
-        ? 'Recomendado'
-        : 'Por ligar';
+        ? t('hub.ui.recommended')
+        : t('hub.ui.notConnected');
 
     return (
       <div
@@ -335,14 +337,14 @@ export default function PostOnboardingHubModal({
                   variant="primary"
                   onClick={() => setSubModal('smart_photo')}
                 >
-                  <Camera size={14} /> Foto ou Google Agenda
+                  <Camera size={14} /> {t('hub.ui.photoGcal')}
                 </Button>
                 <Button
                   size="sm"
                   variant="secondary"
                   onClick={() => setSubModal('clip')}
                 >
-                  <Link2 size={14} /> Colar texto / Ficheiro .ics
+                  <Link2 size={14} /> {t('hub.ui.pasteIcs')}
                 </Button>
               </div>
             )}
@@ -355,25 +357,25 @@ export default function PostOnboardingHubModal({
                     variant="primary"
                     onClick={() => setSubModal('test_photo')}
                   >
-                    <Camera size={14} /> Ler print dos testes com o Uni
+                    <Camera size={14} /> {t('hub.ui.readTests')}
                   </Button>
                   <Button
                     size="sm"
                     variant="secondary"
                     onClick={() => setSubModal('test_gcal')}
                   >
-                    <CalendarDays size={14} /> Extrair da Google Agenda
+                    <CalendarDays size={14} /> {t('hub.ui.fromGcal')}
                   </Button>
                 </div>
 
                 <div className="grid gap-2.5 sm:grid-cols-2">
-                  <Field label="Cadeira">
+                  <Field label={t('hub.ui.course')}>
                     <Select
                       value={examCourseId}
                       onChange={(e) => setExamCourseId(e.target.value)}
                     >
                       {courses.length === 0 ? (
-                        <option value="">Sem cadeiras ativas</option>
+                        <option value="">{t('hub.ui.noActive')}</option>
                       ) : (
                         courses.map((c) => (
                           <option key={c.id} value={c.id}>
@@ -383,14 +385,14 @@ export default function PostOnboardingHubModal({
                       )}
                     </Select>
                   </Field>
-                  <Field label="Nome da avaliação">
+                  <Field label={t('hub.ui.assessName')}>
                     <Input
                       value={examTitle}
                       onChange={(e) => setExamTitle(e.target.value)}
-                      placeholder="Ex: 1.º Teste / Exame"
+                      placeholder={t('hub.ui.assessPh')}
                     />
                   </Field>
-                  <Field label="Tipo">
+                  <Field label={t('hub.ui.type')}>
                     <Select
                       value={examKind}
                       onChange={(e) => setExamKind(e.target.value as AssessmentKind)}
@@ -402,9 +404,9 @@ export default function PostOnboardingHubModal({
                       ))}
                     </Select>
                   </Field>
-                  <Field label="Data e hora">
+                  <Field label={t('hub.ui.dateTime')}>
                     <DateTimeField
-                      aria-label="Data e hora da avaliação"
+                      aria-label={t('hub.ui.dateTimeAria')}
                       value={examDate}
                       onChange={setExamDate}
                     />
@@ -412,7 +414,7 @@ export default function PostOnboardingHubModal({
                 </div>
                 <div className="flex flex-wrap items-end justify-between gap-2">
                   <div className="w-28">
-                    <Field label="Peso (%)">
+                    <Field label={t('hub.ui.weight')}>
                       <Input
                         type="number"
                         min={0}
@@ -423,7 +425,7 @@ export default function PostOnboardingHubModal({
                     </Field>
                   </div>
                   <Button size="sm" variant="secondary" onClick={handleAddQuickAssessment}>
-                    <Plus size={14} /> Guardar avaliação manual
+                    <Plus size={14} /> {t('hub.ui.saveManual')}
                   </Button>
                 </div>
               </div>
@@ -437,14 +439,14 @@ export default function PostOnboardingHubModal({
                     variant="primary"
                     onClick={() => setSubModal('gdrive')}
                   >
-                    <FolderGit2 size={14} /> Explorar Google Drive
+                    <FolderGit2 size={14} /> {t('hub.ui.exploreDrive')}
                   </Button>
                   <Button
                     size="sm"
                     variant="secondary"
                     onClick={() => setSubModal('device')}
                   >
-                    <HardDrive size={14} /> PDFs / Pastas do PC ou HD
+                    <HardDrive size={14} /> {t('hub.ui.localFiles')}
                   </Button>
                   <Button
                     size="sm"
@@ -457,14 +459,14 @@ export default function PostOnboardingHubModal({
                     ) : (
                       <Sparkles size={14} />
                     )}
-                    {isPersonalConnected ? 'Varrer Drives agora' : 'Ligar Drive & Varrer'}
+                    {isPersonalConnected ? t('hub.ui.scanNow') : t('hub.ui.connectScan')}
                   </Button>
                 </div>
 
                 <div className="space-y-2 pt-1">
                   <div className="flex flex-wrap items-end gap-2">
                     <div className="min-w-0 flex-1">
-                      <Field label="Link de pasta partilhada (Google Drive)">
+                      <Field label={t('hub.ui.sharedLink')}>
                         <Input
                           value={sharedDriveInput}
                           onChange={(e) => setSharedDriveInput(e.target.value)}
@@ -473,7 +475,7 @@ export default function PostOnboardingHubModal({
                       </Field>
                     </div>
                     <Button size="sm" variant="secondary" onClick={handleAddSharedDriveUrl}>
-                      <FolderPlus size={14} /> Juntar pasta
+                      <FolderPlus size={14} /> {t('hub.ui.joinFolder')}
                     </Button>
                   </div>
                   {sharedUrls.length > 0 && (
@@ -487,7 +489,7 @@ export default function PostOnboardingHubModal({
                           <button
                             type="button"
                             onClick={() => handleRemoveSharedDriveUrl(url)}
-                            aria-label="Remover pasta partilhada"
+                            aria-label={t('hub.ui.removeShared')}
                             className="grid size-8 shrink-0 place-items-center rounded-full text-muted transition hover:bg-danger/10 hover:text-danger"
                           >
                             <Trash2 size={13} />
@@ -504,11 +506,11 @@ export default function PostOnboardingHubModal({
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
                   <span>
-                    Liga os portais da faculdade e, se usares, o URL privado de um <strong className="text-fg">caderno externo</strong>.
+                    {t('hub.ui.portalsIntro')}
                   </span>
                 </div>
 
-                <Field label="Link geral de caderno externo (opcional)">
+                <Field label={t('hub.ui.generalNb')}>
                   <Input
                     value={personalNotebookInput}
                     onChange={(e) => setPersonalNotebookInput(e.target.value)}
@@ -518,7 +520,7 @@ export default function PostOnboardingHubModal({
 
                 {courses.length > 0 && (
                   <div className="grid gap-2.5 sm:grid-cols-2">
-                    <Field label="Cadeira a ligar">
+                    <Field label={t('hub.ui.courseToLink')}>
                       <Select
                         value={notebookCourseId}
                         onChange={(e) => {
@@ -536,7 +538,7 @@ export default function PostOnboardingHubModal({
                         ))}
                       </Select>
                     </Field>
-                    <Field label="Caderno externo da cadeira (opcional)">
+                    <Field label={t('hub.ui.courseNb')}>
                       <Input
                         value={courseNotebookInput}
                         onChange={(e) => setCourseNotebookInput(e.target.value)}
@@ -544,11 +546,11 @@ export default function PostOnboardingHubModal({
                       />
                     </Field>
                     <div className="sm:col-span-2">
-                      <Field label="Portal / Página oficial da cadeira (Moodle ou faculdade, opcional)">
+                      <Field label={t('hub.ui.portal')}>
                         <Input
                           value={coursePortalInput}
                           onChange={(e) => setCoursePortalInput(e.target.value)}
-                          placeholder="https://moodle... ou página oficial da cadeira"
+                          placeholder={t('hub.ui.portalPh')}
                         />
                       </Field>
                     </div>
@@ -557,7 +559,7 @@ export default function PostOnboardingHubModal({
 
                 <div className="flex justify-end">
                   <Button size="sm" variant="primary" onClick={handleSaveNotebooks}>
-                    <BookMarked size={14} /> Guardar ligações
+                    <BookMarked size={14} /> {t('hub.ui.saveLinks')}
                   </Button>
                 </div>
               </div>
@@ -573,16 +575,16 @@ export default function PostOnboardingHubModal({
       <Modal
         open={open}
         onClose={handleContinueLater}
-        title="O teu Hub de Estudo com o Uni"
+        title={t('hub.ui.title')}
         maxWidthClass="sm:max-w-2xl"
         footer={
           <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
             <Button variant="ghost" onClick={handleContinueLater}>
-              Continuar depois
+              {t('hub.ui.later')}
             </Button>
             <Button variant="primary" onClick={handleGeneratePlanNow}>
               <Sparkles size={15} />
-              {assessmentsReady ? 'Gerar o meu Plano agora' : 'Arrancar Plano de Semestre'}
+              {assessmentsReady ? t('hub.ui.generate') : t('hub.ui.kickoffBtn')}
             </Button>
           </div>
         }
@@ -599,7 +601,7 @@ export default function PostOnboardingHubModal({
                   {flowMeta.title}
                 </p>
                 <span className="text-xs font-semibold tabular-nums text-accent">
-                  {progress.readyCount}/{progress.totalCount} ligadas
+                  {t('hub.ui.linkedN', { a: progress.readyCount, b: progress.totalCount })}
                 </span>
               </div>
               <p className="text-xs leading-relaxed opacity-85">
@@ -611,7 +613,7 @@ export default function PostOnboardingHubModal({
           {/* Seleção limpa dos 4 momentos */}
           <div className="space-y-2">
             <p className="text-sm font-semibold text-fg">
-              Em que momento do semestre estás?
+              {t('hub.ui.moment')}
             </p>
             <div className="grid gap-2 sm:grid-cols-2">
               {Object.values(HUB_FLOWS).map((flow) => {
@@ -646,7 +648,7 @@ export default function PostOnboardingHubModal({
           {/* Lista unificada de fontes (estilo papelaria sem caixas aninhadas) */}
           <div className="space-y-2">
             <p className="text-sm font-semibold text-fg">
-              Liga apenas o que já tiveres à mão
+              {t('hub.ui.onlyWhatYouHave')}
             </p>
             <div className="divide-y divide-line overflow-hidden rounded-[22px] bg-surface-2/40 dark:bg-surface-2/35">
               {progress.steps.map((step, idx) => renderStepRow(step, idx))}
@@ -655,7 +657,7 @@ export default function PostOnboardingHubModal({
 
           {!assessmentsReady && (
             <p className="rounded-2xl bg-pastel-sky/40 px-4 py-3 text-xs leading-relaxed text-[#141312] dark:bg-surface-2 dark:text-fg">
-              Sem testes marcados ainda? Ao arrancar o plano agora, o Uni distribui blocos ligeiros pelas tuas cadeiras ativas e recalcula tudo mal enviares um print ou data de teste.
+              {t('hub.ui.noTests')}
             </p>
           )}
         </div>

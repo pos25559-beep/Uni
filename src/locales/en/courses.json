@@ -101,5 +101,41 @@
     "selfCard": "Card self-assessment",
     "selfTopic": "Quick topic self-assessment",
     "explain": "Without looking at your notes, try to explain the core idea of «{{topic}}» in your own words — or create/generate a practice deck above."
+  },
+  "assess": {
+    "summary": "Grades summary",
+    "new": "New assessment",
+    "avg": "Current weighted average",
+    "graded": "Weight already graded",
+    "ok100": "Weights add up to 100%",
+    "total": "Total weight {{n}}% (should be 100%)",
+    "empty": "No assessments",
+    "emptyHint": "Add tests, exams and assignments with their weights to work out your final grade.",
+    "edit": "Edit assessment",
+    "delete": "Delete the assessment \"{{title}}\"?",
+    "doneTitle": "Have you already taken this assessment?",
+    "futureBody": "{{title}} is scheduled in {{n}} day(s). Saving the grade {{grade}} marks this assessment as done in your plan.",
+    "cancel": "Cancel",
+    "yes": "Yes, I took it",
+    "gradeAria": "Grade (0 to {{max}})"
+  },
+  "topics": {
+    "atRisk": "At risk · {{n}}%",
+    "review": "Review · {{n}}%",
+    "retention": "Retention {{n}}%",
+    "empty": "No topics yet",
+    "emptyHint": "Add the course topics to track progress and confidence for each one.",
+    "titleAria": "Topic title",
+    "status": "Status",
+    "confidence": "Confidence",
+    "confN": "Confidence {{n}} of 5",
+    "rev": " · review {{d}}",
+    "due": "Review due to consolidate retention",
+    "stability": "Estimated stability {{n}}d",
+    "practice": "Practise",
+    "studied": "Studied today",
+    "delete": "Delete the topic \"{{title}}\"?",
+    "newAria": "New topic",
+    "newPh": "New topic… (Enter to add)"
   }
 }

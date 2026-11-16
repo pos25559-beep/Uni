@@ -1,5 +1,7 @@
 import { ClipboardList, Pencil, Plus, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { tr } from '../../i18n/tr';
 import type { KeyboardEvent } from 'react';
 import { kindLabel } from '../../lib/colors';
 import { GRADE_SCALES } from '../../lib/grading';
@@ -16,6 +18,7 @@ interface Props {
 }
 
 export default function AssessmentsTab({ course }: Props) {
+  const { t } = useTranslation('courses');
   const allAssessments = useStore((s) => s.assessments);
   const gradingScale = useStore((s) => s.settings.gradingScale) ?? 'pt20';
   const appLang = useStore((s) => s.settings.language) ?? 'pt-PT';
@@ -37,21 +40,21 @@ export default function AssessmentsTab({ course }: Props) {
 
   return (
     <div className="space-y-4">
-      <Card title="Resumo de notas" action={
+      <Card title={t('assess.summary')} action={
         <Button variant="primary" size="sm" onClick={() => setForm('new')}>
-          <Plus size={14} /> Nova avaliação
+          <Plus size={14} /> {t('assess.new')}
         </Button>
       }>
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
-            <p className="text-xs text-muted">Média ponderada atual</p>
+            <p className="text-xs text-muted">{t('assess.avg')}</p>
             <p className="mt-1 text-xl font-semibold tabular">
               {fmtGrade(summary.current, gradingScale, appLang)}
             </p>
           </div>
           <div className="sm:col-span-2">
             <div className="flex items-center justify-between text-xs text-muted">
-              <span>Peso já avaliado</span>
+              <span>{t('assess.graded')}</span>
               <span className="tabular">{Math.round(summary.gradedWeight)}%</span>
             </div>
             <Progress value={summary.gradedWeight / 100} className="mt-2" />
@@ -59,9 +62,9 @@ export default function AssessmentsTab({ course }: Props) {
         </div>
         <div className="mt-4">
           {weightOk ? (
-            <Badge tone="ok"><CheckCircle2 size={12} /> Pesos somam 100%</Badge>
+            <Badge tone="ok"><CheckCircle2 size={12} /> {t('assess.ok100')}</Badge>
           ) : (
-            <Badge tone="warn"><AlertTriangle size={12} /> Peso total {Math.round(summary.totalWeight)}% (deve somar 100%)</Badge>
+            <Badge tone="warn"><AlertTriangle size={12} /> {t('assess.total', { n: Math.round(summary.totalWeight) })}</Badge>
           )}
         </div>
       </Card>
@@ -69,9 +72,9 @@ export default function AssessmentsTab({ course }: Props) {
       {mine.length === 0 ? (
         <EmptyState
           icon={<ClipboardList size={28} />}
-          title="Sem avaliações"
-          hint="Regista testes, exames e trabalhos com o respetivo peso para calcular a nota final."
-          action={<Button variant="primary" onClick={() => setForm('new')}><Plus size={16} /> Nova avaliação</Button>}
+          title={t('assess.empty')}
+          hint={t('assess.emptyHint')}
+          action={<Button variant="primary" onClick={() => setForm('new')}><Plus size={16} /> {t('assess.new')}</Button>}
         />
       ) : (
         <ul className="space-y-2">
@@ -104,11 +107,11 @@ export default function AssessmentsTab({ course }: Props) {
                   }}
                 />
                 <div className="flex items-center gap-1">
-                  <Button size="sm" variant="ghost" aria-label="Editar avaliação" title="Editar" onClick={() => setForm(a)}>
+                  <Button size="sm" variant="ghost" aria-label={t('assess.edit')} title={t('assess.edit')} onClick={() => setForm(a)}>
                     <Pencil size={14} />
                   </Button>
                   <DeleteButton
-                    message={`Apagar a avaliação "${a.title}"?`}
+                    message={t('assess.delete', { title: a.title })}
                     onConfirm={() => remove('assessments', a.id)}
                   />
                 </div>
@@ -129,20 +132,16 @@ export default function AssessmentsTab({ course }: Props) {
       <Modal
         open={Boolean(pendingFutureGrade)}
         onClose={() => setPendingFutureGrade(null)}
-        title="Já realizaste esta avaliação?"
+        title={t('assess.doneTitle')}
       >
         {pendingFutureGrade && (
           <div className="space-y-4 text-sm">
             <p className="text-muted leading-relaxed">
-              <strong className="text-fg">{pendingFutureGrade.assessment.title}</strong> está marcada para daqui a{' '}
-              <strong className="text-fg">
-                {pendingFutureGrade.daysLeft} {pendingFutureGrade.daysLeft === 1 ? 'dia' : 'dias'}
-              </strong>
-              . Ao guardar a nota <strong className="text-fg tabular">{fmtGrade(pendingFutureGrade.grade)}</strong>, esta avaliação passa a contar como concluída no plano.
+              {t('assess.futureBody', { title: pendingFutureGrade.assessment.title, n: pendingFutureGrade.daysLeft, grade: fmtGrade(pendingFutureGrade.grade) })}
             </p>
             <div className="flex flex-wrap justify-end gap-2">
               <Button variant="ghost" onClick={() => setPendingFutureGrade(null)}>
-                Cancelar
+                {t('assess.cancel')}
               </Button>
               <Button
                 variant="primary"
@@ -151,7 +150,7 @@ export default function AssessmentsTab({ course }: Props) {
                   setPendingFutureGrade(null);
                 }}
               >
-                Sim, já realizei
+                {t('assess.yes')}
               </Button>
             </div>
           </div>
@@ -199,7 +198,7 @@ function GradeInput({
         <Input
           type="text"
           inputMode="decimal"
-          aria-label={`Nota (0 a ${max})`}
+          aria-label={tr('courses:assess.gradeAria', { max })}
           aria-invalid={Boolean(error)}
           placeholder="—"
           value={text}

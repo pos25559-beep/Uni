@@ -8,6 +8,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { askGemini, buildStudyContext, SYSTEM_PROMPT, type ChatMessage } from '../../integrations/gemini';
 import { generatePlan } from '../../lib/planner';
 import { todayStr } from '../../lib/selectors';
@@ -46,6 +47,7 @@ export default function WeeklyTutorModal({
   onClose,
   initialTab = 'checkin',
 }: WeeklyTutorModalProps) {
+  const { t } = useTranslation('assistant');
   const courses = useStore((s) => s.courses);
   const assessments = useStore((s) => s.assessments);
   const classes = useStore((s) => s.classes);
@@ -125,19 +127,19 @@ export default function WeeklyTutorModal({
       extraActivities: academicProfile.extraActivities,
     });
     replaceGeneratedSessions(today, plan);
-    setSavedMsg(`Check-in guardado e ${plan.length} sessões adaptadas ao teu ritmo.`);
+    setSavedMsg(t('weekly.saved', { n: plan.length }));
 
     if (openChatAfter) {
       setTab('chat');
       void sendToTutor(
-        `Acabei de fazer o meu check-in semanal (estado: ${mood}). ` +
+        t('weekly.msgStart', { mood: t(`weekly.mood.${mood}`) }) +
           (checkIn.classDifficulties.length > 0
-            ? `Não entendi bem na aula: ${checkIn.classDifficulties.join(', ')}. `
+            ? t('weekly.msgDiff', { list: checkIn.classDifficulties.join(', ') })
             : '') +
           (checkIn.pendingNextWeek.length > 0
-            ? `Ficou pendente para a próxima semana: ${checkIn.pendingNextWeek.join(', ')}. `
+            ? t('weekly.msgPending', { list: checkIn.pendingNextWeek.join(', ') })
             : '') +
-          'Qual é o melhor plano de ataque para esta semana?',
+          t('weekly.msgEnd'),
       );
     }
   };
@@ -184,7 +186,7 @@ export default function WeeklyTutorModal({
         },
       ]);
     } catch (err) {
-      setChatError(err instanceof Error ? err.message : 'Erro ao contactar o Uni Tutor.');
+      setChatError(err instanceof Error ? err.message : t('weekly.error'));
     } finally {
       setChatBusy(false);
     }
@@ -194,20 +196,20 @@ export default function WeeklyTutorModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={`Tutor Semanal Unipedia · Semana de ${currentWeekKey}`}
+      title={t('weekly.title', { week: currentWeekKey })}
       maxWidthClass="sm:max-w-2xl"
       footer={
         <div className="flex w-full flex-wrap items-center justify-between gap-2">
           <Button variant="ghost" onClick={onClose}>
-            Fechar
+            {t('weekly.close')}
           </Button>
           {tab === 'checkin' && (
             <div className="flex flex-wrap gap-2">
               <Button onClick={() => handleSaveAndRecalculate(false)}>
-                Guardar & recalcular plano
+                {t('weekly.saveRecalc')}
               </Button>
               <Button variant="primary" onClick={() => handleSaveAndRecalculate(true)}>
-                <Sparkles size={15} /> Guardar & falar com Tutor
+                <Sparkles size={15} /> {t('weekly.saveTalk')}
               </Button>
             </div>
           )}
@@ -224,7 +226,7 @@ export default function WeeklyTutorModal({
             tab === 'checkin' ? 'bg-accent text-accent-fg' : 'text-muted hover:text-fg',
           )}
         >
-          <RefreshCw size={14} /> Check-in da semana
+          <RefreshCw size={14} /> {t('weekly.tabCheckin')}
         </button>
         <button
           type="button"
@@ -234,7 +236,7 @@ export default function WeeklyTutorModal({
             tab === 'chat' ? 'bg-accent text-accent-fg' : 'text-muted hover:text-fg',
           )}
         >
-          <MessageSquare size={14} /> Conversar com o Tutor
+          <MessageSquare size={14} /> {t('weekly.tabChat')}
         </button>
       </div>
 
@@ -242,7 +244,7 @@ export default function WeeklyTutorModal({
         {tab === 'checkin' ? (
             <div className="space-y-4">
               <div>
-                <span className="mb-1.5 block text-xs font-medium text-muted">Como correu esta semana?</span>
+                <span className="mb-1.5 block text-xs font-medium text-muted">{t('weekly.how')}</span>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {MOODS.map((m) => (
                     <button
@@ -256,45 +258,45 @@ export default function WeeklyTutorModal({
                           : 'border-line bg-surface-2 text-muted hover:text-fg',
                       )}
                     >
-                      {m.label}
+                      {t(`weekly.mood.${m.value}`)}
                     </button>
                   ))}
                 </div>
               </div>
 
               <Field
-                label="O que percebeste bem esta semana?"
-                hint="Separa por vírgulas (ex.: Equação de Bernoulli, Integrais de linha)"
+                label={t('weekly.understood')}
+                hint={t('weekly.understoodHint')}
               >
                 <Input
                   value={understoodText}
                   onChange={(e) => setUnderstoodText(e.target.value)}
-                  placeholder="Tópicos que já dominas..."
+                  placeholder={t('weekly.understoodPh')}
                 />
               </Field>
 
               <Field
-                label="O que NÃO entendeste bem na aula?"
-                hint="Estes tópicos vão receber mais tempo no teu plano de estudo."
+                label={t('weekly.notUnderstood')}
+                hint={t('weekly.notUnderstoodHint')}
               >
                 <Input
                   value={difficultiesText}
                   onChange={(e) => setDifficultiesText(e.target.value)}
-                  placeholder="Ex.: Teorema de Stokes, Encurvadura de colunas..."
+                  placeholder={t('weekly.notUnderstoodPh')}
                 />
               </Field>
 
-              <Field label="O que ficou em atraso para a próxima semana?">
+              <Field label={t('weekly.pending')}>
                 <Input
                   value={pendingText}
                   onChange={(e) => setPendingText(e.target.value)}
-                  placeholder="Ex.: Ficha 4 de MdF, Série de exercícios 3..."
+                  placeholder={t('weekly.pendingPh')}
                 />
               </Field>
 
               <div>
                 <span className="mb-1.5 block text-xs font-medium text-muted">
-                  Cadeiras com maior dificuldade esta semana
+                  {t('weekly.hardCourses')}
                 </span>
                 <div className="flex flex-wrap gap-1.5">
                   {courses.map((c) => {
@@ -319,11 +321,11 @@ export default function WeeklyTutorModal({
                 </div>
               </div>
 
-              <Field label="Notas livres para o Tutor">
+              <Field label={t('weekly.notes')}>
                 <Textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Ex.: Esta semana tive pouco tempo por causa do laboratório, preciso de focar no teste de sexta..."
+                  placeholder={t('weekly.notesPh')}
                   className="min-h-20"
                 />
               </Field>
@@ -334,9 +336,9 @@ export default function WeeklyTutorModal({
             <div className="flex h-96 flex-col gap-3">
               <div className="flex flex-wrap gap-1.5">
                 {[
-                  'Analisa o meu check-in semanal e define as 3 prioridades de amanhã',
-                  'Explica-me de forma simples o que não percebi na aula',
-                  'Faz-me 1 pergunta de treino sobre a matéria mais urgente',
+                  t('weekly.q1'),
+                  t('weekly.q2'),
+                  t('weekly.q3'),
                 ].map((q) => (
                   <button
                     key={q}
@@ -352,8 +354,7 @@ export default function WeeklyTutorModal({
               <div className="flex-1 space-y-3 overflow-y-auto rounded-xl border border-line bg-surface-2 p-3">
                 {chatMsgs.length === 0 ? (
                   <p className="text-xs text-muted">
-                    O teu tutor conhece o teu curso, histórico de notas, dificuldades declaradas,
-                    Modo Teste e check-ins semanais. Escreve uma pergunta ou escolhe uma sugestão acima.
+                    {t('weekly.chatEmpty')}
                   </p>
                 ) : (
                   chatMsgs.map((m) => (
@@ -389,7 +390,7 @@ export default function WeeklyTutorModal({
                       void sendToTutor();
                     }
                   }}
-                  placeholder="Pergunta ao teu tutor semanal..."
+                  placeholder={t('weekly.chatPh')}
                 />
                 <Button variant="primary" onClick={() => void sendToTutor()} disabled={chatBusy || !promptInput.trim()}>
                   <Send size={15} />

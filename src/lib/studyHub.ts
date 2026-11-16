@@ -1,3 +1,4 @@
+import { tr } from '../i18n/tr';
 import type {
   AcademicProfile,
   Assessment,
@@ -22,51 +23,36 @@ export interface HubFlowMeta {
   requiredKeys: HubStepKey[];
 }
 
+const hubFlow = (
+  id: HubFlowId,
+  stepOrder: HubStepKey[],
+  requiredKeys: HubStepKey[],
+): HubFlowMeta => ({
+  id,
+  get title() {
+    return tr(`onboarding:hub.flow.${id}.title`);
+  },
+  get shortLabel() {
+    return tr(`onboarding:hub.flow.${id}.short`);
+  },
+  get badge() {
+    return tr(`onboarding:hub.flow.${id}.badge`);
+  },
+  get description() {
+    return tr(`onboarding:hub.flow.${id}.description`);
+  },
+  get uniMessage() {
+    return tr(`onboarding:hub.flow.${id}.message`);
+  },
+  stepOrder,
+  requiredKeys,
+});
+
 export const HUB_FLOWS: Record<HubFlowId, HubFlowMeta> = {
-  caloiro_inicio: {
-    id: 'caloiro_inicio',
-    title: 'Caloiro · Início de semestre',
-    shortLabel: 'Caloiro (Início)',
-    badge: 'Modo Arranque',
-    description: 'Ainda sem horários, datas de provas ou Drives partilhados.',
-    uniMessage:
-      'Bem-vindo ao teu 1.º semestre! Mesmo que ainda não tenhas horários nem datas de testes ou apontamentos, crio já um Plano Arranque leve para as tuas cadeiras — e deixo este Hub pronto para ligares tudo assim que sair.',
-    stepOrder: ['schedule', 'assessments', 'drive_hd', 'notebook'],
-    requiredKeys: [],
-  },
-  caloiro_meio: {
-    id: 'caloiro_meio',
-    title: 'Caloiro · Semestre a decorrer',
-    shortLabel: 'Caloiro (Em curso)',
-    badge: 'Foco Prazos',
-    description: 'Já tens aulas e datas de provas, mas poucos documentos ou Drives.',
-    uniMessage:
-      'Como o semestre já arrancou, o mais importante é confirmar os teus horários e datas dos próximos testes para o plano priorizar o que vence primeiro. Depois juntamos os PDFs dos professores e Drives.',
-    stepOrder: ['schedule', 'assessments', 'drive_hd', 'notebook'],
-    requiredKeys: ['schedule', 'assessments'],
-  },
-  veterano_inicio: {
-    id: 'veterano_inicio',
-    title: 'Veterano · Início de semestre',
-    shortLabel: 'Veterano (Início)',
-    badge: 'Drives & Base',
-    description: 'Já tens pastas, Drives ou cadernos externos; faltam horários e testes.',
-    uniMessage:
-      'Boa! Enquanto não saem os horários e o calendário oficial de avaliações, liga já os teus Drives partilhados, PDFs do HD e portais para concentrar tudo no mesmo Hub e gerar um plano contínuo.',
-    stepOrder: ['drive_hd', 'notebook', 'schedule', 'assessments'],
-    requiredKeys: ['drive_hd', 'notebook'],
-  },
-  veterano_meio: {
-    id: 'veterano_meio',
-    title: 'Veterano · Semestre a decorrer',
-    shortLabel: 'Veterano (Completo)',
-    badge: 'Hub Total',
-    description: 'Juntar horários, testes, Drives partilhados, HD e portais.',
-    uniMessage:
-      'Vamos reunir o teu semestre inteiro num só lugar: horários da faculdade, datas de avaliações, Drives partilhados de colegas, PDFs oficiais do disco e o teu Caderno do Uni.',
-    stepOrder: ['schedule', 'assessments', 'drive_hd', 'notebook'],
-    requiredKeys: ['schedule', 'assessments', 'drive_hd'],
-  },
+  caloiro_inicio: hubFlow('caloiro_inicio', ['schedule', 'assessments', 'drive_hd', 'notebook'], []),
+  caloiro_meio: hubFlow('caloiro_meio', ['schedule', 'assessments', 'drive_hd', 'notebook'], ['schedule', 'assessments']),
+  veterano_inicio: hubFlow('veterano_inicio', ['drive_hd', 'notebook', 'schedule', 'assessments'], ['drive_hd', 'notebook']),
+  veterano_meio: hubFlow('veterano_meio', ['schedule', 'assessments', 'drive_hd', 'notebook'], ['schedule', 'assessments', 'drive_hd']),
 };
 
 export interface HubInferenceInput {
@@ -173,43 +159,43 @@ export function getHubProgress(
   const rawByKey: Record<HubStepKey, Omit<HubStepStatus, 'requiredForFlow'>> = {
     schedule: {
       key: 'schedule',
-      title: 'Horários & Aulas',
+      title: tr('onboarding:hub.step.schedule'),
       hint: scheduleReady
-        ? `${input.classes.length} bloco(s) de aula sincronizado(s)`
-        : 'Importa por foto do horário, Google Agenda ou ficheiro do portal.',
+        ? tr('onboarding:hub.step.scheduleReady', { n: input.classes.length })
+        : tr('onboarding:hub.step.scheduleHint'),
       ready: scheduleReady,
-      countLabel: scheduleReady ? `${input.classes.length} aulas` : undefined,
+      countLabel: scheduleReady ? tr('onboarding:hub.step.scheduleCount', { n: input.classes.length }) : undefined,
     },
     assessments: {
       key: 'assessments',
-      title: 'Datas de Provas & Entregas',
+      title: tr('onboarding:hub.step.assessments'),
       hint: assessmentsReady
-        ? `${input.assessments.filter((a) => a.grade === undefined).length} avaliação(ões) agendada(s)`
+        ? tr('onboarding:hub.step.assessmentsReady', { n: input.assessments.filter((a) => a.grade === undefined).length })
         : flow.id.endsWith('_inicio')
-          ? 'Quando saírem as datas, adiciona aqui ou envia um print ao Uni.'
-          : 'Envia um print dos testes ao Uni, adiciona à mão ou liga à Google Agenda.',
+          ? tr('onboarding:hub.step.assessmentsHintStart')
+          : tr('onboarding:hub.step.assessmentsHint'),
       ready: assessmentsReady,
       countLabel: assessmentsReady
-        ? `${input.assessments.filter((a) => a.grade === undefined).length} datas`
+        ? tr('onboarding:hub.step.assessmentsCount', { n: input.assessments.filter((a) => a.grade === undefined).length })
         : undefined,
     },
     drive_hd: {
       key: 'drive_hd',
-      title: 'Drives Partilhados, PDFs & HD',
+      title: tr('onboarding:hub.step.drive'),
       hint: driveReady
-        ? `${driveCount} fonte(s) de materiais e pastas ligada(s)`
-        : 'Liga o Google Drive, cola o link do Drive partilhado do curso ou importa PDFs do teu HD.',
+        ? tr('onboarding:hub.step.driveReady', { n: driveCount })
+        : tr('onboarding:hub.step.driveHint'),
       ready: driveReady,
-      countLabel: driveReady ? `${driveCount} ligado(s)` : undefined,
+      countLabel: driveReady ? tr('onboarding:hub.step.connectedN', { n: driveCount }) : undefined,
     },
     notebook: {
       key: 'notebook',
-      title: 'Caderno & Portais Académicos',
+      title: tr('onboarding:hub.step.notebook'),
       hint: notebookReady
-        ? `${notebookCount} caderno(s) ou portal ligado(s)`
-        : 'Guarda o link do teu portal da cadeira ou caderno externo opcional para abrir com 1 clique.',
+        ? tr('onboarding:hub.step.notebookReady', { n: notebookCount })
+        : tr('onboarding:hub.step.notebookHint'),
       ready: notebookReady,
-      countLabel: notebookReady ? `${notebookCount} ligado(s)` : undefined,
+      countLabel: notebookReady ? tr('onboarding:hub.step.connectedN', { n: notebookCount }) : undefined,
     },
   };
 

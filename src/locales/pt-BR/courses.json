@@ -101,5 +101,41 @@
     "selfCard": "Autoavaliação do cartão",
     "selfTopic": "Autoavaliação rápida do tópico",
     "explain": "Sem olhar as anotações, tente explicar com suas palavras a ideia central de «{{topic}}» — ou crie/gere um baralho de prática acima."
+  },
+  "assess": {
+    "summary": "Resumo de notas",
+    "new": "Nova avaliação",
+    "avg": "Média ponderada atual",
+    "graded": "Peso já avaliado",
+    "ok100": "Pesos somam 100%",
+    "total": "Peso total {{n}}% (deve somar 100%)",
+    "empty": "Sem avaliações",
+    "emptyHint": "Registre provas, exames e trabalhos com o respectivo peso para calcular a nota final.",
+    "edit": "Editar avaliação",
+    "delete": "Apagar a avaliação \"{{title}}\"?",
+    "doneTitle": "Você já fez esta avaliação?",
+    "futureBody": "{{title}} está marcada para daqui a {{n}} dia(s). Ao salvar a nota {{grade}}, esta avaliação passa a contar como concluída no plano.",
+    "cancel": "Cancelar",
+    "yes": "Sim, já fiz",
+    "gradeAria": "Nota (0 a {{max}})"
+  },
+  "topics": {
+    "atRisk": "Em risco · {{n}}%",
+    "review": "Revisar · {{n}}%",
+    "retention": "Retenção {{n}}%",
+    "empty": "Ainda não há matéria",
+    "emptyHint": "Adicione os tópicos da disciplina para acompanhar o progresso e a confiança em cada um.",
+    "titleAria": "Título do tópico",
+    "status": "Status",
+    "confidence": "Confiança",
+    "confN": "Confiança {{n}} de 5",
+    "rev": " · rev {{d}}",
+    "due": "Revisão pendente para consolidar a retenção",
+    "stability": "Estabilidade estimada de {{n}}d",
+    "practice": "Praticar",
+    "studied": "Estudei hoje",
+    "delete": "Apagar o tópico \"{{title}}\"?",
+    "newAria": "Novo tópico",
+    "newPh": "Novo tópico… (Enter para adicionar)"
   }
 }

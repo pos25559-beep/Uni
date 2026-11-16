@@ -1,10 +1,25 @@
 {
   "forms": {
-    "nuvem": { "label": "Nuvem", "hint": "Silhueta clássica de caderno" },
-    "gota": { "label": "Gota", "hint": "Forma fluida de tinta" },
-    "estrela": { "label": "Estrela", "hint": "Autocolante vivo de foco" },
-    "cristal": { "label": "Cristal", "hint": "Facetas de precisão" },
-    "folha": { "label": "Folha", "hint": "Caderno botânico leve" }
+    "nuvem": {
+      "label": "Nuvem",
+      "hint": "Silhueta clássica de caderno"
+    },
+    "gota": {
+      "label": "Gota",
+      "hint": "Forma fluida de tinta"
+    },
+    "estrela": {
+      "label": "Estrela",
+      "hint": "Autocolante vivo de foco"
+    },
+    "cristal": {
+      "label": "Cristal",
+      "hint": "Facetas de precisão"
+    },
+    "folha": {
+      "label": "Folha",
+      "hint": "Caderno botânico leve"
+    }
   },
   "stages": {
     "0": "Ovo",
@@ -102,5 +117,51 @@
     "inheritModalHint": "Transfere o estilo de aprendizagem preferido e hábitos fortes para outra cadeira (nunca copia erros específicos nem apaga a mestria da nova cadeira).",
     "inheritNoTarget": "Adota primeiro um Uni noutra cadeira para receber a metodologia.",
     "inheritDone": "Metodologia de {{from}} ensinada ao Uni de {{to}}!"
+  },
+  "memory": {
+    "style": {
+      "exemplos": "Exemplos primeiro",
+      "teoria": "Teoria e intuição",
+      "exercicios": "Exercícios práticos"
+    },
+    "title": "O que {{name}} sabe · {{course}}",
+    "cleared": "Memória deste Uni limpa com sucesso.",
+    "deleteAll": "Apagar tudo",
+    "done": "Concluir",
+    "auto": "Memória automática após conversas e recall",
+    "autoHint": "Podes pausar a aprendizagem automática a qualquer momento e editar manualmente abaixo.",
+    "toggle": "Ativar ou pausar memória automática",
+    "pref": "Preferência de explicação",
+    "goals": "Objetivos nesta cadeira",
+    "removeGoal": "Remover objetivo {{x}}",
+    "goalPh": "Adicionar objetivo (ex: nota 15 no 2.º teste)",
+    "weak": "Pontos fracos e erros recorrentes",
+    "noWeak": "Ainda não existem pontos fracos registados.",
+    "removeWeak": "Remover ponto fraco {{x}}",
+    "topicPh": "Tópico",
+    "notePh": "Nota (ex: troca o sinal)",
+    "strong": "Pontos fortes",
+    "removeStrong": "Remover ponto forte {{x}}",
+    "strongPh": "Adicionar ponto forte (ex: domina regra da cadeia)",
+    "join": "Juntar",
+    "sheetFail": "Não foi possível gerar a ficha agora.",
+    "sheetsTitle": "Fichas permanentes · {{course}}",
+    "sheetsInfo": "As fichas ficam guardadas localmente em texto permanente no teu dispositivo: o Uni usa-as como base nas perguntas e no Recall mesmo quando os anexos temporários expiram.",
+    "newSheet": "Gerar nova ficha dos materiais",
+    "keyUnlimited": "Chave pessoal · ilimitado",
+    "todayN": "{{a}}/{{b}} hoje",
+    "topic": "Tópico associado",
+    "materials": "Materiais da cadeira ({{a}}/{{b}})",
+    "pasteLabel": "Ou cola excerto / notas da aula (opcional)",
+    "pastePh": "Cola fórmulas, teoremas ou apontamentos para estruturar numa ficha citável...",
+    "needConsent": "Ativa o Uni primeiro nas Definições ou no Tutor para gerar fichas com IA.",
+    "extracting": "A extrair conceitos e citações…",
+    "generate": "Gerar ficha permanente",
+    "savedN": "Fichas guardadas ({{n}})",
+    "copy": "Copiar {{title}}",
+    "deleteSheet": "Apagar ficha {{title}}",
+    "close": "Fechar",
+    "quizErr": "Erro ao importar quiz",
+    "mentorErr": "Erro ao ensinar cadeira seguinte"
   }
 }
