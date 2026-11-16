@@ -30,7 +30,7 @@ A declarar no Google Play Console:
 - **Política de Privacidade (RGPD)**: `https://campus-erp-84964.web.app/privacidade`
 - **Eliminação de Conta & Dados**: `https://campus-erp-84964.web.app/eliminar-conta`
 - **Termos de Utilização**: `https://campus-erp-84964.web.app/termos`
-- **Contacto do Responsável**: `pos25559@gmail.com` (*Pedro Silva — Projeto Unipedia, Portugal*)
+- **Contacto do Responsável**: `contacto.unipedia@gmail.com` (*Pedro de Oliveira Silva, pessoa singular, Portugal*)
 
 > **Nota de Deploy**: Após `npm run check`, publicar `dist/` e as regras no Firebase (`npx firebase-tools deploy --only firestore:rules,hosting --project campus-erp-84964`) para garantir que `/privacidade`, `/termos` e `/eliminar-conta` respondem com HTTP 200 e as regras de validação coincidem com os campos da app.
 

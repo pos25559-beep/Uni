@@ -1,9 +1,9 @@
 /** Identidade legal e contactos oficiais da Unipedia para RGPD e Google Play Store. */
 export const LEGAL_INFO = {
   appName: 'Unipedia',
-  controllerName: 'Projeto Unipedia',
+  controllerName: 'Pedro de Oliveira Silva',
   country: 'Portugal',
-  contactEmail: 'privacidade@unipedia.app',
+  contactEmail: 'contacto.unipedia@gmail.com',
   minimumAgePT: 13,
   lastUpdated: '2026-11-16',
   policyVersion: '2026-11-16-v3',
