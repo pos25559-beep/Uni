@@ -20,7 +20,9 @@ A Unipedia completa não é uma agenda bonita nem um chat com mascote. É um **t
 
 ## Uma semana com a Unipedia completa
 
-**Domingo à noite, primeira vez.** A Marta, 2.º ano de Engenharia Mecânica, instala a app. Escolhe a faculdade e o curso; as cinco cadeiras aparecem sozinhas. Tira uma foto ao horário e outra ao calendário de avaliações afixado no CLIP. Em 90 segundos tem aulas e cinco testes marcados. A app mostra um plano de quatro semanas e uma frase: «Cabe tudo com 2 h por dia, mas a semana de 7 de dezembro tem três testes: comecei Cálculo uma semana mais cedo.» Ela carrega em «Parece-me bem».
+**Domingo à noite, primeira vez.** A Marta, 2.º ano de Engenharia Mecânica, instala a app. Escolhe a faculdade e o curso; as cinco cadeiras aparecem sozinhas. Tira uma foto ao horário (isto já funciona hoje) e em 90 segundos tem cadeiras e aulas marcadas. Ainda não há datas de testes; a app arranca com estudo equilibrado e não insiste.
+
+**Três semanas depois.** Os docentes publicam o calendário de avaliações. A app pergunta «Já tens as datas dos testes?»; a Marta tira uma foto e confirma cinco testes numa folha. O plano refaz-se e mostra uma frase: «Cabe tudo com 2 h por dia, mas a semana de 7 de dezembro tem três testes: comecei Cálculo uma semana mais cedo.» Ela carrega em «Parece-me bem».
 
 **Segunda, 18:10.** Sai da última aula. O ecrã de bloqueio diz «Cálculo III · Campos vetoriais · 50 min». Abre, vê uma coisa: o bloco, com o porquê por baixo («o teste vale 40 % e é daqui a 6 dias»). Carrega em «Começar». O telemóvel entra em Não Incomodar.
 
@@ -54,7 +56,7 @@ Nada desta semana exige uma funcionalidade exótica. Exige que as peças que já
 
 ### O que eu acrescentava
 
-1. **Entrada do semestre em duas fotos.** Horário e calendário de avaliações lidos de imagem, com revisão numa folha antes de gravar. É a porta de entrada universal; a importação do CLIP por HTML sai.
+1. **Os testes a chegarem ao plano quando passam a existir.** A leitura do horário por foto já está feita: no onboarding, uma imagem identifica as cadeiras e as aulas, e o mesmo leitor já sabe ler avaliações. As datas dos testes ficam para depois de propósito, porque no início do semestre ainda não existem. O que falta é o regresso: a app lembrar-se de as pedir na altura certa (2 a 3 semanas depois do arranque, ou quando o estudante escreve «teste» numa nota ou no Diário), e «Adicionar provas» abrir diretamente a foto do calendário de avaliações ou uma linha manual por teste. A importação do CLIP por HTML sai.
 2. **Plano com contas à vista.** Por teste: minutos necessários (a partir dos tópicos e da confiança), minutos marcados, e o que fica de fora se não couber. É isto que faz o estudante confiar.
 3. **Replaneamento automático** ao abrir a app, limitado pelas datas dos testes e pela meta diária, sempre com «Desfazer».
 4. **Recall que funciona sem IA.** Resposta escrita, três perguntas-guia por tipo de tópico (definir, aplicar, relacionar), e cartão criado a partir da própria resposta. A IA melhora as perguntas; não é condição para haver recall.
@@ -157,7 +159,7 @@ A marca existe para ajudar alunos. Isso mede-se, e a app deve ser desenhada para
 
 ## Como saber que chegámos
 
-- Um estudante novo tem o semestre e um plano em **menos de 2 minutos**, sem escrever o nome de uma cadeira.
+- Um estudante novo tem o semestre e um plano em **menos de 2 minutos**, sem escrever o nome de uma cadeira; e quando as datas saem, os testes entram em **menos de 1 minuto**.
 - **Mais de 60 %** dos blocos planeados são feitos ou conscientemente adiados.
 - **Mais de 70 %** das revisões devidas são feitas na semana em que vencem.
 - A prontidão estimada fica a **menos de 2 valores** da nota real, em média.

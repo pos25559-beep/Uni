@@ -17,7 +17,7 @@
 
 ## Resumo em cinco linhas
 
-1. O ciclo plano → foco → recall existe e está bem desenhado visualmente, mas **não arranca sozinho**: a app nunca pede as datas dos testes e o caminho para as inserir está escondido. Sem testes, o plano é genérico.
+1. O ciclo plano → foco → recall existe e está bem desenhado visualmente, mas **não arranca sozinho**: o onboarding deixa os testes para depois (de propósito), só que a app nunca volta a pedi-los e o caminho para os inserir está escondido. Sem testes, o plano é genérico.
 2. O **planeador falha nos casos reais** de um estudante de engenharia: aulas à tarde/noite, três testes na mesma semana, matéria que não cabe. Não avisa quando o plano não chega.
 3. O **Tutor ainda não é melhor do que o Gemini genérico**: envia os PDFs inteiros em cada mensagem, não tem método para exercícios de engenharia e as proteções do ADR-001 não estão feitas (nenhuma das três do piloto).
 4. Há **três riscos sérios fora do ecrã**: `npm run check` está vermelho, os dados vivem numa única chave de `localStorage` com erros engolidos, e o consentimento de IA diz ao estudante uma coisa que o ADR-001 desmente.
@@ -29,12 +29,12 @@
 
 Esforço: **S** até meio dia · **M** 1 a 3 dias · **L** uma semana ou mais.
 
-### 1. As datas dos testes nunca são pedidas e o sítio para as pôr está escondido — M
+### 1. Quando as datas dos testes saem, o sítio para as pôr está escondido — S a M
 
-- **Onde:** onboarding (4 passos, nenhum pede avaliações); `Planner.tsx` (botão «Adicionar provas»); pasta da cadeira.
-- **O que acontece:** depois do onboarding o plano entra em «Modo Arranque de Semestre» (estudo igual para todas as cadeiras). O botão «Adicionar provas» leva à **lista de cadeiras**, sem mais indicação. O caminho real é: abrir pasta → separador «Matéria & Notas» → descer abaixo dos tópicos → «Nova avaliação». São 5 toques e um nome de separador que não sugere «testes». ![Onde se adiciona um teste](img/06-onde-se-adiciona-teste.png)
-- **Porque importa:** o objetivo da Fase 2 («5 cadeiras, testes em 4 semanas, plano em menos de 1 minuto») é impossível hoje. Sem datas, tudo o que o planeador sabe fazer bem fica desligado.
-- **Proposta:** folha única «Os teus testes» (cadeira, data, peso; uma linha por teste, repetível), aberta por «Adicionar provas», pelo criador de plano quando não há testes, e como passo opcional no fim do onboarding. Importar por foto do calendário de avaliações na mesma folha.
+- **Onde:** `Planner.tsx:424` e `:473` (botão «Adicionar provas»); pasta da cadeira; `SmartScheduleImportModal.tsx` (modo `focus: 'assessments'`).
+- **O que acontece:** o onboarding não pede testes, e bem: no início do semestre as datas ainda não existem (decisão do Pedro), e a foto do horário já cria cadeiras e aulas. O problema é o regresso. O plano fica em «Modo Arranque de Semestre» e o botão «Adicionar provas» leva à **lista de cadeiras**, sem mais indicação. O caminho manual é: abrir pasta → separador «Matéria & Notas» → descer abaixo dos tópicos → «Nova avaliação» (5 toques, e o nome do separador não sugere «testes»). A leitura de avaliações por foto **já existe**, mas só se abre a partir de «Primeiros passos», da importação em Cadeiras e do Calendário; o botão do Plano não a usa. Nada lembra o estudante de voltar quando as datas saem. ![Onde se adiciona um teste](img/06-onde-se-adiciona-teste.png)
+- **Porque importa:** o objetivo da Fase 2 («5 cadeiras, testes em 4 semanas, plano em menos de 1 minuto») depende de os testes entrarem depressa. Sem datas, tudo o que o planeador sabe fazer bem fica desligado.
+- **Proposta:** «Adicionar provas» abre uma folha «Os teus testes» com duas entradas: foto do calendário de avaliações (o leitor que já existe) e linha manual (cadeira, data, peso; repetível). A mesma folha abre no criador de plano quando não há testes. Um lembrete discreto no Hoje 2 a 3 semanas depois do arranque («Já tens as datas dos testes?»), que desaparece ao primeiro teste inserido.
 
 ### 2. O planeador não usa as horas livres reais — M
 
@@ -209,7 +209,7 @@ O Progresso responde a sete perguntas quando o estudante tem uma: «estou pronto
 
 ### O que falta para o ciclo plano → foco → recall → revisão andar sozinho
 
-1. **Entrada de testes** em menos de 30 segundos (problema 1).
+1. **Entrada de testes** em menos de 30 segundos quando as datas saem, com a app a lembrar (problema 1).
 2. **Plano que cabe** nas horas livres e diz quando não chega (2 e 3).
 3. **Replaneamento automático** ao abrir a app (4).
 4. **Recall útil sem IA** e que não se perde (8).
