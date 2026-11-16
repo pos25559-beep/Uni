@@ -199,7 +199,7 @@ export function TermsOfUsePage() {
       </LegalAccordion>
 
       <LegalAccordion title="2. Uso de Inteligência Artificial (Tutor)">
-        O Tutor utiliza modelos Gemini apenas com a tua chave e consentimento ativo. Respostas de IA podem falhar em cálculos ou datas — valida sempre com o programa da cadeira.
+        O Tutor utiliza modelos Gemini apenas com a tua chave e consentimento ativo. Se usares uma chave pessoal, ela fica guardada apenas no teu dispositivo e nunca é enviada para a tua conta Unipedia. Respostas de IA podem falhar em cálculos ou datas — valida sempre com o programa da cadeira.
       </LegalAccordion>
 
       <LegalAccordion title="3. Planos curriculares partilhados">

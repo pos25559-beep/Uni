@@ -1,5 +1,6 @@
 import { ChevronDown, Eye, EyeOff, ExternalLink, HelpCircle, Sparkles } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { hasCustomGeminiKey } from '../../integrations/gemini';
 import { getDailyQuotaSnapshot } from '../../lib/aiQuota';
 import { useStore } from '../../store/useStore';
@@ -11,6 +12,7 @@ import { IntegrationCard } from './shared';
 import { errorMessage } from './helpers';
 
 export default function GeminiCard() {
+  const { t } = useTranslation('settings');
   const status = useStore((s) => s.integrations.gemini);
   const apiKey = useStore((s) => s.settings.geminiApiKey);
   const model = useStore((s) => s.settings.geminiModel);
@@ -143,6 +145,7 @@ export default function GeminiCard() {
                 {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
               </Button>
             </div>
+            <p className="mt-1.5 text-xs text-muted">{t('gemini.keyLocalOnly')}</p>
           </Field>
 
           <Field label="Modelo do Uni (predefinido: Gemini 4 Hydrogen)">

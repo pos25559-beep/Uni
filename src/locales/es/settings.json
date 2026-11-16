@@ -126,5 +126,8 @@
     "installTitle": "Instalar app Unipedia",
     "installHint": "Accede sin conexión y como app dedicada en tu dispositivo.",
     "installBtn": "Instalar Unipedia"
+  },
+  "gemini": {
+    "keyLocalOnly": "La clave se guarda solo en este dispositivo. Nunca se envía a tu cuenta de Unipedia ni a otros dispositivos."
   }
 }
