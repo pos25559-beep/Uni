@@ -154,5 +154,223 @@
       "localOnly": "Usar só neste celular",
       "acceptBefore": "Ao continuar você aceita a"
     }
+  },
+  "fmt": {
+    "year": "{{n}}º ano",
+    "yearMasters": "{{n}}º ano · {{m}}º Mestrado",
+    "mastersShort": "{{m}}º Mest.",
+    "secondaryShort": "{{n}}º",
+    "secondaryYear": "{{n}}º ano",
+    "semester": "{{n}}º semestre",
+    "period": "{{n}}º período",
+    "semShort": "{{n}}º sem",
+    "perWeek": "{{h}}h/sem"
+  },
+  "stage": {
+    "start": "1º ano · Início do curso",
+    "m120y4": "1º ano de Mestrado (base de 120 créditos)",
+    "m120y5": "2º ano de Mestrado · Reta final da dissertação",
+    "i300y1": "1º ano de 300 créditos (início da graduação)",
+    "i300y2": "2º ano de 300 créditos (metade da graduação)",
+    "i300mixed": "Fim da graduação (já pode antecipar disciplinas do Mestrado)",
+    "i300y3": "3º ano de 300 créditos (conclusão da graduação)",
+    "i300y4": "4º ano · 1º ano de Mestrado (180+ créditos concluídos)",
+    "i300y5": "5º ano · 2º ano de Mestrado e dissertação",
+    "b180y1": "1º ano de 180 créditos",
+    "b180y2": "2º ano de 180 créditos",
+    "b180final": "Formando (últimos créditos de 180)",
+    "b180y3": "3º ano de 180 créditos"
+  },
+  "challenge": {
+    "tempo": "Gerenciar o tempo e conciliar prazos",
+    "procrastinacao": "Começar sem adiar",
+    "exercicios": "Resolução de exercícios e cálculo",
+    "teoria": "Memorizar matéria muito teórica",
+    "ansiedade": "Pressão / ansiedade antes das provas",
+    "organizacao": "Anotações e links espalhados"
+  },
+  "extra": {
+    "trabalho": "Trabalho / Meio período",
+    "desporto": "Esporte / Academia",
+    "nucleo": "Centro acadêmico / Associação",
+    "musica": "Voluntariado / Música"
+  },
+  "labels": {
+    "kind": {
+      "exame": "Exame",
+      "teste": "Prova",
+      "trabalho": "Trabalho",
+      "projeto": "Projeto",
+      "quiz": "Quiz"
+    },
+    "status": {
+      "todo": "Para estudar",
+      "learning": "Aprendendo",
+      "review": "Em revisão",
+      "done": "Dominado"
+    },
+    "provider": {
+      "gdrive": "Google Drive",
+      "onedrive": "OneDrive",
+      "notebooklm": "Caderno externo",
+      "clip": "Portal",
+      "link": "Link",
+      "upload": "Arquivo"
+    },
+    "weekdayShort": {
+      "0": "Dom",
+      "1": "Seg",
+      "2": "Ter",
+      "3": "Qua",
+      "4": "Qui",
+      "5": "Sex",
+      "6": "Sáb"
+    },
+    "weekdayLong": {
+      "0": "Domingo",
+      "1": "Segunda",
+      "2": "Terça",
+      "3": "Quarta",
+      "4": "Quinta",
+      "5": "Sexta",
+      "6": "Sábado"
+    }
+  },
+  "notif": {
+    "streak": {
+      "serio": {
+        "titleStreak": "Sequência de {{n}} dia(s) pendente",
+        "title": "Sessão diária pendente",
+        "body": "Registre uma sessão de estudo hoje para manter a continuidade."
+      },
+      "exigente": {
+        "titleStreak": "{{n}} dia(s) de sequência em risco.",
+        "title": "Ainda sem estudo hoje.",
+        "body": "Feche pelo menos 25 minutos agora antes que o dia acabe."
+      },
+      "calmo": {
+        "titleStreak": "Mantenha o ritmo suave ({{n}}d)",
+        "title": "Um bloco curto já conta",
+        "body": "10 a 15 minutos hoje bastam para fechar o dia sem pressão."
+      },
+      "amigo": {
+        "titleStreak": "Não deixe a chama de {{n}}d apagar",
+        "title": "O Uni guardou 15 minutos para você",
+        "bodyStreak": "Faça uma revisão rápida hoje para proteger sua sequência.",
+        "body": "Passe no Plano e feche o primeiro bloco de estudo do dia."
+      }
+    },
+    "srs": {
+      "one": "1 tópico pronto",
+      "many": "{{n}} tópicos prontos",
+      "serio": {
+        "title": "Revisão espaçada: {{topics}}",
+        "body": "Tópicos com revisão prevista para hoje aguardam validação."
+      },
+      "exigente": {
+        "title": "{{topics}} expirando na memória",
+        "body": "Revise agora para não perder retenção na curva espaçada."
+      },
+      "calmo": {
+        "title": "{{topics}} para revisar no seu ritmo",
+        "body": "Uma passada leve hoje evita acumular matéria antes das provas."
+      },
+      "amigo": {
+        "title": "O Uni separou {{topics}}",
+        "body": "Uma revisão rápida agora fixa a matéria antes de esquecer."
+      }
+    },
+    "when": {
+      "2h": "daqui a 2h",
+      "24h": "amanhã",
+      "72h": "em 3 dias",
+      "today": "hoje",
+      "days": "em {{n}}d"
+    },
+    "assess": {
+      "serio": {
+        "title": "{{course}} · {{kind}} {{when}}",
+        "body": "{{title}}. Preparação atual estimada em {{pct}}%."
+      },
+      "exigente": {
+        "title": "{{course}}: {{title}} ({{when}})",
+        "body": "Preparação em {{pct}}%. Feche os tópicos que faltam hoje."
+      },
+      "calmo": {
+        "title": "{{course}} {{when}} — passo a passo",
+        "body": "{{title}} está {{pct}}% preparado. Faça uma revisão curta e tranquila."
+      },
+      "amigo": {
+        "title": "{{course}}: {{kind}} {{when}}",
+        "body": "{{title}} · preparação em {{pct}}%. Vamos ajustar os últimos pontos?"
+      }
+    },
+    "class": {
+      "room": " · Sala {{room}}",
+      "serio": {
+        "title": "Aula em {{mins}} min: {{course}}"
+      },
+      "title": "{{course}} começa em {{mins}} min",
+      "body": "{{type}} às {{start}}{{room}}."
+    },
+    "post": {
+      "serio": {
+        "title": "Registro pós-aula · {{course}}",
+        "body": "Como foi {{type}} ({{end}}) e que matéria foi dada?"
+      },
+      "exigente": {
+        "title": "Fim de {{type}} de {{course}}: o que foi dado?",
+        "body": "Anote em 10s a matéria dada e dúvidas para alinhar o plano."
+      },
+      "amigo": {
+        "title": "Como foi a aula de {{course}}?",
+        "body": "{{type}} terminou às {{end}}. Conte ao Uni o que foi dado hoje!"
+      }
+    },
+    "evening": {
+      "serio": {
+        "title": "Balanço diário de estudo",
+        "body": "Registre como foi o dia para calibrar o plano de amanhã."
+      },
+      "calmo": {
+        "title": "Como foi seu dia hoje?",
+        "body": "15 segundos com o Uni para fechar o dia leve e ajustar amanhã."
+      },
+      "amigo": {
+        "title": "Como foram o dia e o estudo hoje?",
+        "body": "Registre no Diário do Uni, ganhe energia no Ninho e alinhe amanhã."
+      }
+    },
+    "sunday": {
+      "serio": {
+        "title": "Revisão semanal de domingo",
+        "body": "Revise o que entendeu, dificuldades e prioridades da próxima semana."
+      },
+      "amigo": {
+        "title": "Balanço de domingo com o Uni",
+        "body": "Como foi a semana? Alinhe o que ficou pendente antes de segunda."
+      }
+    },
+    "exam": {
+      "serio": {
+        "title": "Modo Prova ({{course}} · {{when}})",
+        "body": "Confirme até qual matéria cai em \"{{title}}\", o que já estudou e como se sente."
+      },
+      "amigo": {
+        "title": "Modo Prova: até qual matéria cai em {{course}}?",
+        "body": "{{title}} ({{when}}) — diga ao Uni o que já estudou e como se sente."
+      }
+    },
+    "cta": {
+      "seeCalendar": "Ver calendário",
+      "logClass": "Registrar aula",
+      "alignMaterial": "Alinhar matéria",
+      "weekly": "Balanço semanal",
+      "closeDay": "Fechar o dia",
+      "studyNow": "Estudar agora",
+      "openReviews": "Abrir revisões"
+    },
+    "course": "Disciplina",
+    "nextClass": "Próxima aula"
   }
 }

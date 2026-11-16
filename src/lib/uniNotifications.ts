@@ -1,3 +1,4 @@
+import { tr } from '../i18n/tr';
 import { kindLabel, weekdayLong } from './colors';
 import {
   daysUntil,
@@ -206,58 +207,41 @@ function resolveTone(settings: Partial<Settings>): AppTone {
   return settings.appTone ?? 'vibrante';
 }
 
+const n = (key: string, vars: Record<string, string | number> = {}) => tr(`common:notif.${key}`, vars);
+
 function formatStreakCopy(streak: number, persona: Persona, tone: AppTone): { title: string; body: string } {
+  const v = { n: streak };
   if (tone === 'serio') {
     return {
-      title: streak > 0 ? `Sequência de ${streak} dia(s) pendente` : 'Sessão diária pendente',
-      body: 'Regista uma sessão de estudo hoje para manteres a continuidade.',
+      title: streak > 0 ? n('streak.serio.titleStreak', v) : n('streak.serio.title'),
+      body: n('streak.serio.body'),
     };
   }
   if (persona === 'exigente') {
     return {
-      title: streak > 0 ? `${streak} dia(s) de sequência em risco.` : 'Ainda sem estudo hoje.',
-      body: 'Fecha pelo menos 25 minutos agora antes que o dia acabe.',
+      title: streak > 0 ? n('streak.exigente.titleStreak', v) : n('streak.exigente.title'),
+      body: n('streak.exigente.body'),
     };
   }
   if (persona === 'calmo') {
     return {
-      title: streak > 0 ? `Mantém o ritmo suave (${streak}d)` : 'Um bloco curto já conta',
-      body: '10 a 15 minutos hoje bastam para fechar o dia sem pressão.',
+      title: streak > 0 ? n('streak.calmo.titleStreak', v) : n('streak.calmo.title'),
+      body: n('streak.calmo.body'),
     };
   }
   return {
-    title: streak > 0 ? `Não deixes a chama de ${streak}d apagar` : 'O Uni guardou-te 15 minutos',
-    body:
-      streak > 0
-        ? 'Faz uma revisão rápida hoje para proteger a tua sequência.'
-        : 'Passa no Plano e fecha o primeiro bloco de estudo do dia.',
+    title: streak > 0 ? n('streak.amigo.titleStreak', v) : n('streak.amigo.title'),
+    body: streak > 0 ? n('streak.amigo.bodyStreak') : n('streak.amigo.body'),
   };
 }
 
 function formatSrsCopy(dueCount: number, persona: Persona, tone: AppTone): { title: string; body: string } {
-  const plural = dueCount === 1 ? '1 tópico pronto' : `${dueCount} tópicos prontos`;
-  if (tone === 'serio') {
-    return {
-      title: `Revisão espaçada: ${plural}`,
-      body: 'Tópicos com revisão prevista para hoje aguardam validação.',
-    };
-  }
-  if (persona === 'exigente') {
-    return {
-      title: `${plural} a expirar na memória`,
-      body: 'Revê agora para não perderes retenção na curva espaçada.',
-    };
-  }
-  if (persona === 'calmo') {
-    return {
-      title: `${plural} para rever ao teu ritmo`,
-      body: 'Uma passada leve hoje evita acumular matéria antes dos testes.',
-    };
-  }
-  return {
-    title: `O Uni separou ${plural}`,
-    body: 'Uma revisão rápida agora fixa a matéria antes de esquecer.',
-  };
+  const topics = dueCount === 1 ? n('srs.one') : n('srs.many', { n: dueCount });
+  const v = { topics };
+  if (tone === 'serio') return { title: n('srs.serio.title', v), body: n('srs.serio.body') };
+  if (persona === 'exigente') return { title: n('srs.exigente.title', v), body: n('srs.exigente.body') };
+  if (persona === 'calmo') return { title: n('srs.calmo.title', v), body: n('srs.calmo.body') };
+  return { title: n('srs.amigo.title', v), body: n('srs.amigo.body') };
 }
 
 function formatAssessmentCopy(
@@ -269,29 +253,12 @@ function formatAssessmentCopy(
   tone: AppTone,
 ): { title: string; body: string } {
   const kind = kindLabel[a.kind] || a.kind;
-  const whenLabel = bucket === '2h' ? 'daqui a 2h' : bucket === '24h' ? 'amanhã' : 'em 3 dias';
-  if (tone === 'serio') {
-    return {
-      title: `${courseName} · ${kind} ${whenLabel}`,
-      body: `${a.title}. Preparação atual estimada em ${pct}%.`,
-    };
-  }
-  if (persona === 'exigente') {
-    return {
-      title: `${courseName}: ${a.title} (${whenLabel})`,
-      body: `Preparação em ${pct}%. Fecha os tópicos em falta hoje.`,
-    };
-  }
-  if (persona === 'calmo') {
-    return {
-      title: `${courseName} ${whenLabel} — passo a passo`,
-      body: `${a.title} está com ${pct}% preparado. Faz uma revisão curta e segura.`,
-    };
-  }
-  return {
-    title: `${courseName}: ${kind} ${whenLabel}`,
-    body: `${a.title} · preparação em ${pct}%. Vamos afinar os últimos pontos?`,
-  };
+  const when = n(`when.${bucket}`);
+  const v = { course: courseName, kind, when, title: a.title, pct };
+  if (tone === 'serio') return { title: n('assess.serio.title', v), body: n('assess.serio.body', v) };
+  if (persona === 'exigente') return { title: n('assess.exigente.title', v), body: n('assess.exigente.body', v) };
+  if (persona === 'calmo') return { title: n('assess.calmo.title', v), body: n('assess.calmo.body', v) };
+  return { title: n('assess.amigo.title', v), body: n('assess.amigo.body', v) };
 }
 
 function formatClassCopy(
@@ -300,16 +267,11 @@ function formatClassCopy(
   minsBefore: number,
   tone: AppTone,
 ): { title: string; body: string } {
-  const room = c.room ? ` · Sala ${c.room}` : '';
-  if (tone === 'serio') {
-    return {
-      title: `Aula em ${minsBefore} min: ${courseName}`,
-      body: `${c.type} às ${c.start}${room}.`,
-    };
-  }
+  const room = c.room ? n('class.room', { room: c.room }) : '';
+  const v = { course: courseName, mins: minsBefore, type: c.type, start: c.start, room };
   return {
-    title: `${courseName} começa em ${minsBefore} min`,
-    body: `${c.type} às ${c.start}${room}.`,
+    title: tone === 'serio' ? n('class.serio.title', v) : n('class.title', v),
+    body: n('class.body', v),
   };
 }
 
@@ -319,54 +281,21 @@ function formatPostClassCopy(
   persona: Persona,
   tone: AppTone,
 ): { title: string; body: string } {
-  if (tone === 'serio') {
-    return {
-      title: `Registo pós-aula · ${courseName}`,
-      body: `Como decorreu ${c.type} (${c.end}) e que matéria foi abordada?`,
-    };
-  }
-  if (persona === 'exigente') {
-    return {
-      title: `Fim de ${c.type} de ${courseName}: o que ficou dado?`,
-      body: 'Anota em 10s a matéria dada e eventuais dúvidas para alinhar o plano.',
-    };
-  }
-  return {
-    title: `Como foi a aula de ${courseName}?`,
-    body: `Terminou ${c.type} às ${c.end}. Conta ao Uni que matéria deu hoje!`,
-  };
+  const v = { course: courseName, type: c.type, end: c.end };
+  if (tone === 'serio') return { title: n('post.serio.title', v), body: n('post.serio.body', v) };
+  if (persona === 'exigente') return { title: n('post.exigente.title', v), body: n('post.exigente.body', v) };
+  return { title: n('post.amigo.title', v), body: n('post.amigo.body', v) };
 }
 
 function formatEveningCopy(persona: Persona, tone: AppTone): { title: string; body: string } {
-  if (tone === 'serio') {
-    return {
-      title: 'Balanço diário de estudo',
-      body: 'Regista como correu o dia para calibrar o plano de amanhã.',
-    };
-  }
-  if (persona === 'calmo') {
-    return {
-      title: 'Como foi o teu dia hoje?',
-      body: '15 segundos com o Uni para fechar o dia leve e ajustar amanhã.',
-    };
-  }
-  return {
-    title: 'Como correu o dia e o estudo hoje?',
-    body: 'Regista no Diário do Uni, ganha energia no Ninho e alinha amanhã.',
-  };
+  if (tone === 'serio') return { title: n('evening.serio.title'), body: n('evening.serio.body') };
+  if (persona === 'calmo') return { title: n('evening.calmo.title'), body: n('evening.calmo.body') };
+  return { title: n('evening.amigo.title'), body: n('evening.amigo.body') };
 }
 
 function formatSundayCopy(tone: AppTone): { title: string; body: string } {
-  if (tone === 'serio') {
-    return {
-      title: 'Revisão semanal de domingo',
-      body: 'Revê matéria compreendida, dificuldades e prioridades da próxima semana.',
-    };
-  }
-  return {
-    title: 'Balanço de domingo com o Uni',
-    body: 'Como foi a semana? Alinha o que ficou pendente antes de começar segunda.',
-  };
+  if (tone === 'serio') return { title: n('sunday.serio.title'), body: n('sunday.serio.body') };
+  return { title: n('sunday.amigo.title'), body: n('sunday.amigo.body') };
 }
 
 function formatExamPrepCopy(
@@ -375,17 +304,10 @@ function formatExamPrepCopy(
   daysLeft: number,
   tone: AppTone,
 ): { title: string; body: string } {
-  const when = daysLeft === 0 ? 'hoje' : daysLeft === 1 ? 'amanhã' : `em ${daysLeft}d`;
-  if (tone === 'serio') {
-    return {
-      title: `Modo Teste (${courseName} · ${when})`,
-      body: `Confirma até que matéria sai em "${a.title}", o que já estudaste e como te sentes.`,
-    };
-  }
-  return {
-    title: `Modo Teste: até que matéria sai em ${courseName}?`,
-    body: `${a.title} (${when}) — diz ao Uni o que já estudaste e como te sentes.`,
-  };
+  const when = daysLeft === 0 ? n('when.today') : daysLeft === 1 ? n('when.24h') : n('when.days', { n: daysLeft });
+  const v = { course: courseName, when, title: a.title };
+  if (tone === 'serio') return { title: n('exam.serio.title', v), body: n('exam.serio.body', v) };
+  return { title: n('exam.amigo.title', v), body: n('exam.amigo.body', v) };
 }
 
 function startOfWeekMondayYmd(d: Date): string {
@@ -539,7 +461,7 @@ export function planSmartNotifications(input: NotificationPlannerInput): Schedul
       if (!examAt || examAt.getTime() <= now.getTime()) continue;
 
       const course = courseMap.get(a.courseId);
-      const courseName = course?.code || course?.name || 'Cadeira';
+      const courseName = course?.code || course?.name || n('course');
       const pct = Math.round(readiness(a, course) * 100);
 
       const offsets: Array<{ bucket: '72h' | '24h' | '2h'; hoursBefore: number; priority: number }> = [
@@ -756,7 +678,7 @@ export function planSmartNotifications(input: NotificationPlannerInput): Schedul
         (!examAt || candidateTime.getTime() < examAt.getTime() - 3 * 3600 * 1000)
       ) {
         const course = courseMap.get(targetAssessment.courseId);
-        const courseName = course?.code || course?.shortName || course?.name || 'Cadeira';
+        const courseName = course?.code || course?.shortName || course?.name || n('course');
         const daysLeft = examAt ? Math.max(0, calendarDaysUntilDate(examAt, now)) : 0;
         const copy = formatExamPrepCopy(targetAssessment, courseName, daysLeft, tone);
         candidates.push({
@@ -826,7 +748,7 @@ export function buildSampleUniNotification(input: NotificationPlannerInput): Sch
 
   if (nextAssessment) {
     const course = courseMap.get(nextAssessment.courseId);
-    const courseName = course?.code || course?.name || 'Cadeira';
+    const courseName = course?.code || course?.name || n('course');
     const pct = Math.round(readiness(nextAssessment, course) * 100);
     const days = Math.max(0, daysUntil(nextAssessment.date));
     const bucket: '72h' | '24h' | '2h' = days <= 1 ? '24h' : '72h';
@@ -846,8 +768,8 @@ export function buildSampleUniNotification(input: NotificationPlannerInput): Sch
   const firstClass = input.classes[0];
   if (firstClass) {
     const course = courseMap.get(firstClass.courseId);
-    const courseName = course?.code || course?.name || 'Cadeira';
-    const dayName = weekdayLong[firstClass.weekday] || 'Próxima aula';
+    const courseName = course?.code || course?.name || n('course');
+    const dayName = weekdayLong[firstClass.weekday] || n('nextClass');
     const copy = formatClassCopy(firstClass, `${courseName} (${dayName})`, 15, tone);
     return {
       id: 999902,
@@ -904,7 +826,7 @@ export function pickActiveInAppNudge(input: NotificationPlannerInput): InAppUniN
           kind: 'class',
           title: copy.title,
           body: copy.body,
-          ctaLabel: 'Ver calendário',
+          ctaLabel: n('cta.seeCalendar'),
           route: '/calendario',
         };
       }
@@ -928,7 +850,7 @@ export function pickActiveInAppNudge(input: NotificationPlannerInput): InAppUniN
           kind: 'post_class',
           title: copy.title,
           body: copy.body,
-          ctaLabel: 'Registar aula',
+          ctaLabel: n('cta.logClass'),
           route: `/?uniLog=class&courseId=${encodeURIComponent(cl.courseId)}&classSlotId=${encodeURIComponent(cl.id)}`,
         };
       }
@@ -951,7 +873,7 @@ export function pickActiveInAppNudge(input: NotificationPlannerInput): InAppUniN
     );
     if (needsPrep) {
       const course = courseMap.get(needsPrep.courseId);
-      const courseName = course?.code || course?.shortName || course?.name || 'Cadeira';
+      const courseName = course?.code || course?.shortName || course?.name || n('course');
       const examAt = parseAssessmentDateTime(needsPrep.date);
       const daysLeft = examAt ? Math.max(0, calendarDaysUntilDate(examAt, now)) : 0;
       const copy = formatExamPrepCopy(needsPrep, courseName, daysLeft, tone);
@@ -960,7 +882,7 @@ export function pickActiveInAppNudge(input: NotificationPlannerInput): InAppUniN
         kind: 'exam_prep',
         title: copy.title,
         body: copy.body,
-        ctaLabel: 'Alinhar matéria',
+        ctaLabel: n('cta.alignMaterial'),
         route: `/?uniLog=exam_prep&assessmentId=${encodeURIComponent(needsPrep.id)}&courseId=${encodeURIComponent(needsPrep.courseId)}`,
       };
     }
@@ -974,7 +896,7 @@ export function pickActiveInAppNudge(input: NotificationPlannerInput): InAppUniN
       kind: 'sunday',
       title: copy.title,
       body: copy.body,
-      ctaLabel: 'Balanço semanal',
+      ctaLabel: n('cta.weekly'),
       route: '/?uniLog=week',
     };
   }
@@ -987,7 +909,7 @@ export function pickActiveInAppNudge(input: NotificationPlannerInput): InAppUniN
       kind: 'evening',
       title: copy.title,
       body: copy.body,
-      ctaLabel: 'Fechar o dia',
+      ctaLabel: n('cta.closeDay'),
       route: '/?uniLog=day',
     };
   }
@@ -1002,7 +924,7 @@ export function pickActiveInAppNudge(input: NotificationPlannerInput): InAppUniN
       kind: 'streak',
       title: copy.title,
       body: copy.body,
-      ctaLabel: 'Estudar agora',
+      ctaLabel: n('cta.studyNow'),
       route: '/plano',
     };
   }
@@ -1016,7 +938,7 @@ export function pickActiveInAppNudge(input: NotificationPlannerInput): InAppUniN
       kind: 'srs',
       title: copy.title,
       body: copy.body,
-      ctaLabel: 'Abrir revisões',
+      ctaLabel: n('cta.openReviews'),
       route: '/plano',
     };
   }
