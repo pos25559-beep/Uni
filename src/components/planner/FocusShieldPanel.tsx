@@ -12,6 +12,8 @@ import {
   VolumeX,
 } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { tr } from '../../i18n/tr';
 import type { FocusShieldDevicePrefs, FocusSoundPreset } from '../../lib/focusShield';
 import type { NativeFocusShieldCapabilities } from '../../lib/nativeBridge';
 import { cx } from '../../lib/uiHelpers';
@@ -28,11 +30,14 @@ interface FocusShieldPanelProps {
   onOpenDndSettings: () => void;
 }
 
-const SOUND_OPTIONS: Array<{ id: FocusSoundPreset; label: string }> = [
-  { id: 'none', label: 'Silêncio' },
-  { id: 'rain', label: 'Chuva' },
-  { id: 'white', label: 'Branco' },
-];
+const SOUND_OPTIONS: Array<{ id: FocusSoundPreset; readonly label: string }> = (
+  ['none', 'rain', 'white'] as FocusSoundPreset[]
+).map((id) => ({
+  id,
+  get label() {
+    return tr(`plan:focus.shield.sound.${id}`);
+  },
+}));
 
 export default function FocusShieldPanel({
   prefs,
@@ -45,6 +50,7 @@ export default function FocusShieldPanel({
   onChangeVolume,
   onOpenDndSettings,
 }: FocusShieldPanelProps) {
+  const { t } = useTranslation('plan');
   const [expandedWhileRunning, setExpandedWhileRunning] = useState(false);
 
   const activeCount =
@@ -65,7 +71,7 @@ export default function FocusShieldPanel({
           ) : (
             <Shield size={15} className="shrink-0 text-muted" aria-hidden="true" />
           )}
-          <span>Escudo anti-distração</span>
+          <span>{t('focus.shield.title')}</span>
           <span
             className={cx(
               'rounded-full px-2 py-0.5 text-xs font-medium',
@@ -73,8 +79,8 @@ export default function FocusShieldPanel({
             )}
           >
             {activeCount > 0
-              ? `${activeCount} ${activeCount === 1 ? 'ativo' : 'ativos'}`
-              : 'Opcional'}
+              ? t('focus.shield.active', { count: activeCount })
+              : t('focus.shield.optional')}
           </span>
         </div>
 
@@ -84,7 +90,7 @@ export default function FocusShieldPanel({
             onClick={() => setExpandedWhileRunning((v) => !v)}
             className="inline-flex min-h-11 items-center gap-1 rounded-xl px-2.5 text-xs font-medium text-muted hover:bg-surface-2 hover:text-fg"
           >
-            {expandedWhileRunning ? 'Recolher' : 'Ajustar'}
+            {expandedWhileRunning ? t('focus.shield.collapse') : t('focus.shield.adjust')}
             {expandedWhileRunning ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
         )}
@@ -92,7 +98,7 @@ export default function FocusShieldPanel({
 
       {showControls && (
         <div className="mt-2.5 space-y-2.5">
-          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Opções do escudo anti-distração">
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('focus.shield.optionsAria')}>
             {webCaps.fullscreenSupported && (
               <button
                 type="button"
@@ -106,7 +112,7 @@ export default function FocusShieldPanel({
                 )}
               >
                 {prefs.fullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-                Ecrã cheio
+                {t('focus.shield.fullscreen')}
               </button>
             )}
 
@@ -123,7 +129,7 @@ export default function FocusShieldPanel({
                 )}
               >
                 <Smartphone size={14} />
-                Ecrã ligado
+                {t('focus.shield.wakeLock')}
               </button>
             )}
 
@@ -146,7 +152,7 @@ export default function FocusShieldPanel({
                 )}
               >
                 <BellOff size={14} />
-                {nativeCaps.dndGranted ? 'Não incomodar' : 'Autorizar Não incomodar'}
+                {nativeCaps.dndGranted ? t('focus.shield.dnd') : t('focus.shield.dndGrant')}
               </button>
             )}
 
@@ -163,7 +169,7 @@ export default function FocusShieldPanel({
                 )}
               >
                 <Lock size={14} />
-                Afixar ecrã
+                {t('focus.shield.pin')}
               </button>
             )}
           </div>
@@ -171,9 +177,9 @@ export default function FocusShieldPanel({
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line/70 pt-2.5">
             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted">
               {prefs.soundPreset === 'none' ? <VolumeX size={14} /> : <Volume2 size={14} className="text-accent-ink" />}
-              Som ambiente
+              {t('focus.shield.sound.title')}
             </span>
-            <div className="flex items-center gap-1" role="group" aria-label="Som ambiente">
+            <div className="flex items-center gap-1" role="group" aria-label={t('focus.shield.sound.title')}>
               {SOUND_OPTIONS.map((opt) => {
                 const active = prefs.soundPreset === opt.id;
                 return (
@@ -199,7 +205,7 @@ export default function FocusShieldPanel({
           {prefs.soundPreset !== 'none' && (
             <div className="flex items-center gap-2 pt-0.5">
               <label htmlFor="focus-sound-volume" className="text-xs font-medium text-muted">
-                Volume
+                {t('focus.shield.volume')}
               </label>
               <input
                 id="focus-sound-volume"
@@ -216,8 +222,8 @@ export default function FocusShieldPanel({
 
           <p className="text-xs leading-relaxed text-muted">
             {nativeAndroid && prefs.androidPinning
-              ? 'O Android pede confirmação para afixar o ecrã. Para sair mais cedo, mantém Voltar + Recentes.'
-              : 'Silencia lembretes da app durante o bloco e regista saídas do ecrã sem penalizar o teu progresso.'}
+              ? t('focus.shield.pinHint')
+              : t('focus.shield.hint')}
           </p>
         </div>
       )}

@@ -87,6 +87,29 @@
       "adjust": "Ajustar confianza ({{n}}/5)",
       "confidence": "Confianza",
       "close": "Cerrar"
+    },
+    "shield": {
+      "sound": {
+        "none": "Silencio",
+        "rain": "Lluvia",
+        "white": "Blanco",
+        "title": "Sonido ambiente"
+      },
+      "title": "Escudo antidistracción",
+      "active_one": "{{count}} activo",
+      "active_other": "{{count}} activos",
+      "optional": "Opcional",
+      "collapse": "Contraer",
+      "adjust": "Ajustar",
+      "optionsAria": "Opciones del escudo antidistracción",
+      "fullscreen": "Pantalla completa",
+      "wakeLock": "Pantalla encendida",
+      "dnd": "No molestar",
+      "dndGrant": "Autorizar No molestar",
+      "pin": "Fijar pantalla",
+      "volume": "Volumen",
+      "pinHint": "Android pide confirmación para fijar la pantalla. Para salir antes, mantén Atrás + Recientes.",
+      "hint": "Silencia recordatorios de la app durante el bloque y registra salidas de pantalla sin penalizar tu progreso."
     }
   },
   "ui": {

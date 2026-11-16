@@ -87,6 +87,29 @@
       "adjust": "Adjust confidence ({{n}}/5)",
       "confidence": "Confidence",
       "close": "Close"
+    },
+    "shield": {
+      "sound": {
+        "none": "Silence",
+        "rain": "Rain",
+        "white": "White noise",
+        "title": "Ambient sound"
+      },
+      "title": "Distraction shield",
+      "active_one": "{{count}} on",
+      "active_other": "{{count}} on",
+      "optional": "Optional",
+      "collapse": "Collapse",
+      "adjust": "Adjust",
+      "optionsAria": "Distraction shield options",
+      "fullscreen": "Full screen",
+      "wakeLock": "Keep screen on",
+      "dnd": "Do not disturb",
+      "dndGrant": "Allow Do not disturb",
+      "pin": "Pin screen",
+      "volume": "Volume",
+      "pinHint": "Android asks to confirm screen pinning. To leave early, hold Back + Recents.",
+      "hint": "Mutes app reminders during the block and logs screen exits without penalising your progress."
     }
   },
   "ui": {

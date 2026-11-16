@@ -227,7 +227,7 @@ export function driveFolderIdFromUrl(url: string): string | null {
   return null;
 }
 
-/** Reconhece pastas académicas na raiz (inclui nomes sem espaço como FCT2627, 25/26, LEMc, etc.). */
+/** Reconhece pastas académicas na raiz (inclui nomes sem espaço como Semestre1, 25/26, LEI, etc.). */
 export function isLikelyAcademicDriveFolderName(folderName: string, courses: Course[]): boolean {
   const norm = normalizeAliasText(folderName);
   if (!norm) return false;
@@ -244,7 +244,7 @@ export function isLikelyAcademicDriveFolderName(folderName: string, courses: Cou
 
 /**
  * Percorre uma árvore de pastas em largura (BFS nível a nível), garantindo que todas as
- * pastas de cadeiras diretas (ex.: C3D, MS2, SNTI, TEP dentro de FCT2627) são visitadas
+ * pastas de cadeiras diretas (ex.: CALC, FIS, QUIM dentro de Semestre1) são visitadas
  * antes de mergulhar fundo numa só subpasta.
  */
 export async function traverseDriveFoldersBfs(
@@ -316,7 +316,7 @@ export async function traverseDriveFoldersBfs(
 
 /**
  * Faz uma varredura BFS autónoma de uma pasta do Google Drive até `maxDepth` níveis:
- * Recolhe ficheiros de todas as subpastas relevantes (ex: "FCT2627 / C3D / AM3D 2025.pdf"),
+ * Recolhe ficheiros de todas as subpastas relevantes (ex: "Semestre1 / CALC / Teste 2025.pdf"),
  * resolvendo atalhos e preservando o caminho completo das pastas no nome para deteção de cadeira.
  */
 export async function scanDriveFolderRecursively(
@@ -381,7 +381,7 @@ interface DiscoveredDriveEntry {
 
 /**
  * Varredura autónoma do Google Drive (conta pessoal e académica quando ligadas):
- * 1. Pastas pré-configuradas das cadeiras e pastas extra do utilizador (ex.: FCT2627).
+ * 1. Pastas pré-configuradas das cadeiras e pastas extra do utilizador (ex.: Semestre1).
  * 2. Pastas académicas no "Meu Drive" em largura (BFS) — ANTES de "Partilhados comigo" para não perder novas cadeiras.
  * 3. Pastas e ficheiros "Partilhados comigo" com orçamento próprio e corte pelo ano de ingresso.
  * 4. Pesquisa direta por siglas das cadeiras e ficheiros recentes (também com corte pelo ano de ingresso).
@@ -462,7 +462,7 @@ export async function scanAndAutoLinkGoogleDrive(
   };
 
   try {
-    // 1. Pastas explícitas de cadeiras e links extra (ex.: pasta raiz FCT2627)
+    // 1. Pastas explícitas de cadeiras e links extra (ex.: pasta raiz Semestre1)
     const folderTargets = new Map<
       string,
       { fallbackCourseId?: string; initialPrefix?: string; explicit: boolean }

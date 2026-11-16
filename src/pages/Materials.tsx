@@ -21,7 +21,6 @@ import { useDriveAutoScan } from '../hooks/useGoogleData';
 
 type ProviderFilter = MaterialProvider | 'all';
 const providerFilters: ProviderFilter[] = ['all', 'upload', 'gdrive', 'notebooklm', 'clip', 'link'];
-const chipLabel: Record<ProviderFilter, string> = { ...providerLabel, all: 'Todos' };
 
 const EMPTY_URLS: string[] = [];
 const byTitle = (a: Material, b: Material) => a.title.localeCompare(b.title, 'pt');
@@ -158,7 +157,7 @@ export default function Materials() {
   const handleSaveRootFolder = () => {
     const trimmed = rootFolderInput.trim();
     if (!driveFolderIdFromUrl(trimmed)) {
-      showToast('Cola um link ou ID válido de uma pasta do Google Drive.', 'danger');
+      showToast(t('courses:materialsPage.errRoot'), 'danger');
       return;
     }
     if (!sharedHubDriveUrls.includes(trimmed)) {
@@ -166,7 +165,7 @@ export default function Materials() {
     }
     setRootFolderInput('');
     setRootFolderOpen(false);
-    showToast('Pasta raiz associada à varredura!', 'ok');
+    showToast(t('courses:materialsPage.rootSaved'), 'ok');
   };
 
   const exampleFolders = useMemo(() => {
@@ -184,11 +183,11 @@ export default function Materials() {
 
   const courseFilterOptions = useMemo(
     () => [
-      { value: 'all', label: 'Todas as cadeiras' },
+      { value: 'all', label: t('courses:materialsPage.allCourses') },
       ...courses.map((c) => ({ value: c.id, label: c.name })),
-      { value: 'none', label: 'Sem cadeira' },
+      { value: 'none', label: t('courses:materialsPage.noCourse') },
     ],
-    [courses],
+    [courses, t],
   );
 
   const renderRows = (list: Material[]) => (
@@ -245,11 +244,11 @@ export default function Materials() {
               >
                 <Sparkles size={15} className="shrink-0 text-accent-ink dark:text-accent" />
                 <span className="truncate text-xs font-bold uppercase tracking-[0.08em]">
-                  Varredura automática
+                  {t('courses:materialsPage.autoScan')}
                 </span>
                 {sharedHubDriveUrls.length > 0 && (
                   <span className="hidden rounded-full bg-white/75 px-2 py-0.5 text-xs font-semibold sm:inline dark:bg-black/25">
-                    {sharedHubDriveUrls.length} pasta raiz
+                    {t('courses:materialsPage.rootCount', { n: sharedHubDriveUrls.length })}
                   </span>
                 )}
               </button>
@@ -257,14 +256,14 @@ export default function Materials() {
               <div className="flex shrink-0 items-center gap-1.5">
                 {scanningDrive && (
                   <Button variant="ghost" size="sm" onClick={cancelScan}>
-                    <X size={14} /> Cancelar
+                    <X size={14} /> {t('courses:materialsPage.cancel')}
                   </Button>
                 )}
                 <button
                   type="button"
                   onClick={() => window.dispatchEvent(new CustomEvent('uni-open-tab-guide', { detail: 'materiais' }))}
-                  aria-label="Como organizar pastas na varredura"
-                  title="Ver guia de pastas e materiais (?)"
+                  aria-label={t('courses:materialsPage.guideAria')}
+                  title={t('courses:materialsPage.guideTitle')}
                   className="inline-flex size-11 items-center justify-center rounded-full opacity-75 transition hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10"
                 >
                   <HelpCircle size={16} />
@@ -275,7 +274,7 @@ export default function Materials() {
                   aria-expanded={scanCardExpanded}
                   className="inline-flex min-h-11 items-center gap-1 rounded-full bg-white/80 px-3.5 py-2 text-xs font-semibold transition hover:bg-white dark:bg-black/25 dark:hover:bg-black/40"
                 >
-                  <span>{scanCardExpanded ? 'Minimizar' : 'Expandir'}</span>
+                  <span>{scanCardExpanded ? t('courses:materialsPage.minimize') : t('courses:materialsPage.expand')}</span>
                   {scanCardExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 </button>
               </div>
@@ -285,15 +284,15 @@ export default function Materials() {
               <div className="space-y-2.5 border-t border-black/10 pt-3 dark:border-white/10">
                 <div className="flex flex-wrap items-center gap-2">
                   <Button variant="secondary" size="sm" onClick={() => setDeviceImportOpen(true)}>
-                    <HardDrive size={14} /> Varrer HD / Pasta local
+                    <HardDrive size={14} /> {t('courses:materialsPage.scanLocal')}
                   </Button>
                   <Button variant="primary" size="sm" onClick={handleAutoScanDrive} disabled={scanningDrive}>
                     {scanningDrive ? <Loader2 size={14} className="animate-spin" /> : <FolderOpen size={14} />}
                     {scanningDrive
-                      ? 'A varrer…'
+                      ? t('courses:materialsPage.scanning')
                       : isGoogleConnected
-                        ? 'Revarrer Google Drive'
-                        : 'Ligar e varrer Drive'}
+                        ? t('courses:materialsPage.rescan')
+                        : t('courses:materialsPage.connectScan')}
                   </Button>
                   <Button
                     variant="ghost"
@@ -303,13 +302,13 @@ export default function Materials() {
                   >
                     <Link2 size={14} />
                     {sharedHubDriveUrls.length > 0
-                      ? `Pasta raiz (${sharedHubDriveUrls.length})`
-                      : 'Associar pasta raiz'}
+                      ? t('courses:materialsPage.rootN', { n: sharedHubDriveUrls.length })
+                      : t('courses:materialsPage.linkRoot')}
                   </Button>
                 </div>
                 <p className="text-xs leading-relaxed opacity-90">
-                  <strong className="font-semibold">Organiza por cadeira:</strong> guarda apontamentos em pastas com o nome/sigla (ex.:{' '}
-                  <span className="font-mono font-semibold">{exampleFolders}</span>) — a varredura associa tudo lá dentro, mesmo sem a sigla no nome do PDF. Podes abrir o guia detalhado no botão <strong>?</strong> acima.
+                  <strong className="font-semibold">{t('courses:materialsPage.orgTitle')}</strong> {t('courses:materialsPage.orgA')}{' '}
+                  <span className="font-mono font-semibold">{exampleFolders}</span>{t('courses:materialsPage.orgB')}
                 </p>
               </div>
             )}
@@ -317,18 +316,18 @@ export default function Materials() {
             {rootFolderOpen && (
               <div className="space-y-2.5 rounded-2xl bg-white/75 p-3 text-xs text-[#141312] dark:bg-black/25 dark:text-[#FAF6EC]">
                 <p className="font-medium leading-relaxed">
-                  Cola o link da pasta mãe no Google Drive (ex.: <span className="font-mono font-semibold">FCT2627</span>) para ir diretamente a todas as subpastas das tuas cadeiras:
+                  {t('courses:materialsPage.rootIntro')}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <Input
                     value={rootFolderInput}
                     onChange={(e) => setRootFolderInput(e.target.value)}
                     placeholder="https://drive.google.com/drive/folders/…"
-                    aria-label="Link da pasta raiz no Google Drive"
+                    aria-label={t('courses:materialsPage.rootAria')}
                     className="min-w-[220px] flex-1 bg-surface text-fg"
                   />
                   <Button size="sm" variant="primary" onClick={handleSaveRootFolder}>
-                    Guardar pasta
+                    {t('courses:materialsPage.saveFolder')}
                   </Button>
                 </div>
                 {sharedHubDriveUrls.length > 0 && (
@@ -346,7 +345,7 @@ export default function Materials() {
                               sharedHubDriveUrls: sharedHubDriveUrls.filter((_, i) => i !== idx),
                             })
                           }
-                          aria-label="Remover pasta raiz"
+                          aria-label={t('courses:materialsPage.removeRoot')}
                           className="grid size-10 place-items-center rounded-full text-muted hover:text-danger"
                         >
                           <X size={14} />
@@ -362,7 +361,7 @@ export default function Materials() {
               <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/75 px-3.5 py-2.5 text-xs text-[#141312] dark:bg-black/25 dark:text-[#FAF6EC]">
                 <span className="min-w-0 truncate font-medium">
                   {scanProgress.stage ? `${scanProgress.stage} · ` : ''}
-                  {scanProgress.foldersScanned} pasta(s) · {scanProgress.filesFound} ficheiro(s) analisado(s)
+                  {t('courses:materialsPage.progress', { folders: scanProgress.foldersScanned, files: scanProgress.filesFound })}
                 </span>
               </div>
             )}
@@ -373,7 +372,7 @@ export default function Materials() {
                 <button
                   type="button"
                   onClick={clearFeedback}
-                  aria-label="Fechar aviso"
+                  aria-label={t('courses:materialsPage.closeNotice')}
                   className="-mr-1.5 inline-flex size-11 shrink-0 items-center justify-center rounded-full font-semibold opacity-70 hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10"
                 >
                   ✕
@@ -388,15 +387,15 @@ export default function Materials() {
                   <Search size={16} className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-muted" />
                   <Input
                     type="search"
-                    placeholder="Procurar por título…"
+                    placeholder={t('courses:materialsPage.searchPh')}
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    aria-label="Procurar materiais"
+                    aria-label={t('courses:materialsPage.searchAria')}
                     className="pl-10"
                   />
                 </div>
                 <PillSelect
-                  ariaLabel="Filtrar por cadeira"
+                  ariaLabel={t('courses:materialsPage.filterCourse')}
                   value={courseFilter}
                   options={courseFilterOptions}
                   onChange={setCourseFilter}
@@ -404,7 +403,7 @@ export default function Materials() {
                 />
               </div>
 
-              <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Filtrar por fornecedor">
+              <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label={t('courses:materialsPage.filterProvider')}>
                 {providerFilters.map((p) => {
                   const active = providerFilter === p;
                   return (
@@ -420,7 +419,7 @@ export default function Materials() {
                           : 'bg-surface-2 text-muted hover:text-fg',
                       )}
                     >
-                      {chipLabel[p]}
+                      {p === 'all' ? t('courses:materialsPage.all') : providerLabel[p]}
                       <span className="tabular opacity-75">{counts[p]}</span>
                     </button>
                   );
@@ -432,28 +431,27 @@ export default function Materials() {
           {materials.length === 0 ? (
             <EmptyState
               icon={<FolderOpen size={24} />}
-              title="A biblioteca está vazia"
-              hint="Adiciona um link ou importa PDFs e apontamentos do teu dispositivo ou Google Drive."
+              title={t('courses:materialsPage.emptyTitle')}
+              hint={t('courses:materialsPage.emptyHint')}
               action={(
                 <Button variant="primary" onClick={() => setAddMenuOpen(true)}>
-                  <Plus size={16} /> Adicionar material
+                  <Plus size={16} /> {t('courses:materialsPage.addMaterial')}
                 </Button>
               )}
             />
           ) : visible.length === 0 ? (
             <EmptyState
               icon={<Search size={22} />}
-              title="Nenhum material encontrado"
-              hint="Experimenta outro termo ou ajusta os filtros."
-              action={filtersActive ? <Button onClick={resetFilters}>Limpar filtros</Button> : undefined}
+              title={t('courses:materialsPage.noneTitle')}
+              hint={t('courses:materialsPage.noneHint')}
+              action={filtersActive ? <Button onClick={resetFilters}>{t('courses:materialsPage.clearFilters')}</Button> : undefined}
             />
           ) : (
             <div className="space-y-4">
               {groups.length > 1 && (
                 <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-muted">
                   <span>
-                    {groups.length} pastas · {visible.length}{' '}
-                    {visible.length === 1 ? 'material visível' : 'materiais visíveis'}
+                    {t('courses:materialsPage.groupsCount', { groups: groups.length, count: visible.length })}
                   </span>
                   <div className="flex items-center gap-3">
                     <button
@@ -466,7 +464,7 @@ export default function Materials() {
                       }}
                       className="min-h-[36px] font-semibold text-accent-ink hover:underline dark:text-accent"
                     >
-                      {allGroupsExpanded ? 'Recolher tudo' : 'Expandir tudo'}
+                      {allGroupsExpanded ? t('courses:materialsPage.collapseAll') : t('courses:materialsPage.expandAll')}
                     </button>
                   </div>
                 </div>
@@ -534,7 +532,7 @@ export default function Materials() {
                           <CourseChip course={g.course} />
                         ) : (
                           <span className="rounded-full bg-surface px-2.5 py-0.5 text-xs font-semibold text-muted">
-                            Sem cadeira
+                            {t('courses:materialsPage.noCourse')}
                           </span>
                         )}
                       </div>
@@ -559,8 +557,8 @@ export default function Materials() {
                               className="min-h-[40px] rounded-full px-4 text-xs font-semibold text-accent-ink transition hover:bg-accent-soft/50 dark:text-accent"
                             >
                               {hiddenCount > 0
-                                ? `Mostrar mais ${hiddenCount} (${g.items.length} no total)`
-                                : 'Mostrar apenas os primeiros 6'}
+                                ? t('courses:materialsPage.showMore', { n: hiddenCount, total: g.items.length })
+                                : t('courses:materialsPage.showFirst')}
                             </button>
                           </div>
                         )}
@@ -589,14 +587,14 @@ export default function Materials() {
             <div className="flex min-w-0 items-center gap-2.5">
               <BookOpen size={16} className="shrink-0 text-accent-ink dark:text-accent" />
               <p className="min-w-0">
-                <strong className="font-semibold">Cadernos externos</strong>
+                <strong className="font-semibold">{t('courses:materialsPage.notebooks')}</strong>
                 <span className="ml-1.5 opacity-80">
-                  — ainda sem ligações externas guardadas. Usa o Caderno do Uni no Tutor ou cola um link aqui.
+                  — {t('courses:materialsPage.notebooksEmpty')}
                 </span>
               </p>
             </div>
             <Button size="sm" variant="secondary" onClick={() => setAddOpen(true)}>
-              <Link2 size={14} /> Guardar link
+              <Link2 size={14} /> {t('courses:materialsPage.saveLink')}
             </Button>
           </div>
         )}
@@ -605,40 +603,40 @@ export default function Materials() {
       <ActionSheet
         open={addMenuOpen}
         onClose={() => setAddMenuOpen(false)}
-        title="Adicionar à biblioteca"
+        title={t('courses:materialsPage.addTitle')}
         actions={[
           {
             id: 'upload',
-            label: 'Carregar ficheiro (PDF / Slides)',
-            hint: 'Guarda um documento diretamente neste caderno',
+            label: t('courses:materialsPage.opt.upload'),
+            hint: t('courses:materialsPage.opt.uploadHint'),
             icon: <FileUp size={16} />,
             onSelect: () => setUploadOpen(true),
           },
           {
             id: 'device',
-            label: 'Importar pasta do dispositivo',
-            hint: 'Seleciona vários apontamentos locais de uma vez',
+            label: t('courses:materialsPage.opt.device'),
+            hint: t('courses:materialsPage.opt.deviceHint'),
             icon: <HardDrive size={16} />,
             onSelect: () => setDeviceImportOpen(true),
           },
           {
             id: 'link',
-            label: 'Guardar link web / vídeo',
-            hint: 'Caderno externo, YouTube, apontamentos online…',
+            label: t('courses:materialsPage.opt.link'),
+            hint: t('courses:materialsPage.opt.linkHint'),
             icon: <Link2 size={16} />,
             onSelect: () => setAddOpen(true),
           },
           {
             id: 'drive-picker',
-            label: 'Explorar pastas do Google Drive',
-            hint: 'Escolhe manualmente ficheiros da tua cloud',
+            label: t('courses:materialsPage.opt.drive'),
+            hint: t('courses:materialsPage.opt.driveHint'),
             icon: <FolderOpen size={16} />,
             onSelect: () => setPicker(DRIVE_SOURCE),
           },
           {
             id: 'drive-scan',
-            label: scanningDrive ? 'A varrer Drive…' : 'Varrer Google Drive',
-            hint: 'Procura PDFs e sebentas pelas tuas pastas',
+            label: scanningDrive ? t('courses:materialsPage.scanning') : t('courses:materialsPage.opt.scan'),
+            hint: t('courses:materialsPage.opt.scanHint'),
             icon: <Sparkles size={16} />,
             onSelect: () => {
               void handleAutoScanDrive();

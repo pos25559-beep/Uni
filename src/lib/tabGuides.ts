@@ -96,9 +96,9 @@ export const TAB_GUIDES: Record<AppTabKey, TabGuideSpec> = {
     eyebrow: 'Guia do Uni · Aba Materiais',
     title: 'Pastas automáticas, exames e base para o Tutor',
     summary:
-      'Agrupa PDFs locais, pastas do Google Drive (ex.: FCT2627/C3D/, TEP/, MS2/) e cadernos externos por cadeira — mesmo que o nome do PDF não tenha a sigla da cadeira.',
+      'Agrupa PDFs locais, pastas do Google Drive (ex.: Semestre 1/Cálculo/, Física/) e cadernos externos por cadeira — mesmo que o nome do PDF não tenha a sigla da cadeira.',
     highlights: [
-      'Varredura Drive / HD: cria pastas com a sigla ou nome da cadeira e cola o link da pasta mãe (ex.: FCT2627) em «Pasta raiz» para acelerar o Google Drive.',
+      'Varredura Drive / HD: cria pastas com a sigla ou nome da cadeira e cola o link da pasta mãe (ex.: Semestre 1) em «Pasta raiz» para acelerar o Google Drive.',
       'Marca materiais prioritários como «Fixado»: o Tutor lê automaticamente até 3 PDFs/Docs reais (ou até 12 com chave pessoal Gemini).',
     ],
     mood: 'curious',
