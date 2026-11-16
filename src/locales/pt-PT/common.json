@@ -24,12 +24,28 @@
     "back": "Voltar"
   },
   "languages": {
-    "pt-PT": "Português (Portugal)",
+    "pt-PT": "Português (PT)",
+    "pt-BR": "Português (BR)",
+    "es": "Español",
     "en": "English"
   },
   "theme": {
     "system": "Automático",
     "dark": "Escuro",
     "light": "Claro"
+  },
+  "moreSheet": {
+    "title": "Mais na Unipedia",
+    "openTheme": "Tema & Aparência",
+    "privacy": "Privacidade",
+    "calendarHint": "Datas de provas e aulas",
+    "progressHint": "Estante dos Unis e médias",
+    "materialsHint": "Sebentas, PDFs e pastas",
+    "settingsHint": "Conta, língua, IA e dados"
+  },
+  "brand": {
+    "uniTutor": "Uni Tutor",
+    "uniNotebook": "Caderno do Uni",
+    "externalNotebook": "Caderno externo"
   }
 }

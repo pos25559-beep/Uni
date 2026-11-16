@@ -146,7 +146,7 @@ export default function UniNotebookDrawer({
       }
       if (notesSource.trim()) {
         sources.push({
-          title: courseName ? `Notas NotebookLM / Aula (${courseName})` : 'As minhas notas / NotebookLM',
+          title: courseName ? `Notas / Aula (${courseName})` : 'As minhas notas de estudo',
           content: notesSource.trim(),
         });
       }
@@ -228,15 +228,17 @@ export default function UniNotebookDrawer({
       title={courseName ? `Caderno do Uni · ${courseName}` : 'Caderno do Uni'}
       footer={
         <div className="flex w-full flex-wrap items-center justify-between gap-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() =>
-              void openInAppBrowser(personalNotebookUrl || 'https://notebooklm.google.com/')
-            }
-          >
-            <ExternalLink size={14} /> Abrir Gemini Notebook
-          </Button>
+          {personalNotebookUrl ? (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => void openInAppBrowser(personalNotebookUrl)}
+            >
+              <ExternalLink size={14} /> Abrir caderno externo
+            </Button>
+          ) : (
+            <span />
+          )}
           <div className="flex flex-wrap items-center gap-2">
             {exportableMarkdown && (
               <>
@@ -273,12 +275,12 @@ export default function UniNotebookDrawer({
       }
     >
       <div className="space-y-4">
-        <div className="flex items-center gap-3 rounded-[20px] bg-[#FCE99F]/70 p-3.5 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]">
+        <div className="flex items-center gap-3 rounded-2xl bg-[#FCE99F]/70 p-3.5 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]">
           <UniBuddy mood={busy ? 'thinking' : 'curious'} accessory={accessory} size={46} interactive={false} />
           <div className="min-w-0 text-xs">
-            <p className="font-bold">Caderno privado sem links de partilha</p>
+            <p className="font-bold">Caderno do Uni dentro da app</p>
             <p className="opacity-80">
-              Cola notas ou conversas do Gemini / NotebookLM e junta PDFs ou fotos. Também podes abrir a tua biblioteca privada em baixo.
+              Cola apontamentos da aula ou resumos de estudo e junta PDFs ou fotos para gerar fichas e quizzes com citações.
             </p>
           </div>
         </div>
@@ -303,7 +305,7 @@ export default function UniNotebookDrawer({
         <div>
           <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
             <label className="min-w-0 text-xs font-semibold text-muted">
-              Cola resumo do Gemini Notebook / NotebookLM ou anexa PDF
+              Cola apontamentos, resumos ou anexa PDF
             </label>
             <input
               ref={fileInputRef}
@@ -326,7 +328,7 @@ export default function UniNotebookDrawer({
                     setNotesSource((prev) => (prev.trim() ? `${prev.trim()}\n\n${clip}` : clip));
                     showToast('Texto colado no caderno.');
                   } catch {
-                    showToast('Copia o texto no Gemini/NotebookLM e cola manualmente na caixa abaixo.');
+                    showToast('Copia o texto dos teus apontamentos e cola manualmente na caixa abaixo.');
                   }
                 }}
                 disabled={busy}
@@ -347,7 +349,7 @@ export default function UniNotebookDrawer({
           <Textarea
             value={notesSource}
             onChange={(e) => setNotesSource(e.target.value)}
-            placeholder="Ex: notas copiadas do NotebookLM, conversa do Gemini, Teorema de Rolle, apontamentos da aula..."
+            placeholder="Ex.: apontamentos da aula, Teorema de Rolle, resolução de exercícios..."
             className="min-h-28"
           />
           {attachments.length > 0 && (

@@ -727,7 +727,7 @@ function UniCheckInModalInner({
       {...({ closedby: 'any' } as Record<string, unknown>)}
       className="rise m-auto mb-0 h-[92dvh] max-h-[92dvh] w-full max-w-none open:flex flex-col overscroll-contain rounded-t-[28px] border border-line bg-bg p-0 text-fg shadow-float backdrop:bg-black/45 backdrop:backdrop-blur-[2px] sm:mb-auto sm:h-[min(86dvh,740px)] sm:max-w-2xl sm:rounded-[26px]"
     >
-      {/* Cabeçalho estilo Uni Tutor Gemini + Puxador swipe-down */}
+      {/* Cabeçalho estilo Uni Tutor + Puxador swipe-down */}
       <header className="shrink-0 border-b border-line/70 bg-surface px-4 pb-2.5 pt-2">
         <div data-sheet-handle="" className="-mx-4 -mt-2 px-4 pt-2.5 pb-1 touch-none sm:touch-auto">
           <div className="mx-auto mb-2.5 h-1.5 w-11 rounded-full bg-line sm:hidden" aria-hidden="true" />

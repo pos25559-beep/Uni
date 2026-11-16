@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { BookOpen, ChevronDown, ChevronRight, ChevronUp, FileUp, FolderOpen, HardDrive, HelpCircle, Link2, Loader2, Pin, Plus, Search, Sparkles, X } from 'lucide-react';
 import { AnimatedPage } from '../components/motion/Primitives';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
@@ -26,6 +27,7 @@ const EMPTY_URLS: string[] = [];
 const byTitle = (a: Material, b: Material) => a.title.localeCompare(b.title, 'pt');
 
 export default function Materials() {
+  const { t } = useTranslation(['courses', 'common']);
   const materials = useStore((s) => s.materials);
   const courses = useStore((s) => s.courses);
   const sharedHubDriveUrls = useStore((s) => s.settings.sharedHubDriveUrls ?? EMPTY_URLS);
@@ -206,15 +208,15 @@ export default function Materials() {
   return (
     <AnimatedPage className="space-y-5">
       <PageHeader
-        eyebrow="Biblioteca"
-        title="Os teus"
-        accentTitle="materiais"
-        subtitle={`${materials.length} ${materials.length === 1 ? 'material' : 'materiais'} na biblioteca`}
+        eyebrow={t('courses:materialsSection.eyebrow')}
+        title={t('courses:materialsSection.title')}
+        accentTitle={t('courses:materialsSection.accentTitle')}
+        subtitle={`${materials.length} ${materials.length === 1 ? 'material' : 'materiais'}`}
         actions={
           <div className="flex items-center gap-2">
             <TabGuideHelpButton tabKey="materiais" />
             <Button variant="primary" onClick={() => setAddMenuOpen(true)}>
-              <Plus size={16} /> Adicionar
+              <Plus size={16} /> {t('common:actions.add')}
             </Button>
           </div>
         }
@@ -230,8 +232,8 @@ export default function Materials() {
               'shadow-card transition',
               scanCardExpanded || rootFolderOpen || scanningDrive ? 'space-y-3 p-4 sm:p-5' : 'px-4 py-2',
               isMinimal
-                ? 'rounded-[22px] border border-line bg-surface text-fg'
-                : 'rounded-[24px] bg-pastel-mint/70 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]',
+                ? 'rounded-2xl border border-line bg-surface text-fg'
+                : 'rounded-3xl bg-pastel-mint/70 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]',
             )}
           >
             <div className="flex items-center justify-between gap-3">
@@ -581,15 +583,15 @@ export default function Materials() {
               'flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-xs shadow-card',
               isMinimal
                 ? 'rounded-2xl border border-line bg-surface text-fg'
-                : 'rounded-[22px] bg-pastel-butter/60 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]',
+                : 'rounded-3xl bg-pastel-butter/60 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]',
             )}
           >
             <div className="flex min-w-0 items-center gap-2.5">
               <BookOpen size={16} className="shrink-0 text-accent-ink dark:text-accent" />
               <p className="min-w-0">
-                <strong className="font-semibold">Gemini Notebook</strong>
+                <strong className="font-semibold">Cadernos externos</strong>
                 <span className="ml-1.5 opacity-80">
-                  — ainda sem cadernos ligados. Cola o link para abrir daqui num toque.
+                  — ainda sem ligações externas guardadas. Usa o Caderno do Uni no Tutor ou cola um link aqui.
                 </span>
               </p>
             </div>
@@ -622,7 +624,7 @@ export default function Materials() {
           {
             id: 'link',
             label: 'Guardar link web / vídeo',
-            hint: 'Gemini Notebook, YouTube, apontamentos online…',
+            hint: 'Caderno externo, YouTube, apontamentos online…',
             icon: <Link2 size={16} />,
             onSelect: () => setAddOpen(true),
           },

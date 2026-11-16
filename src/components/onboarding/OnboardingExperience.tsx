@@ -33,6 +33,7 @@ import {
   buildInitialCompletedRecords,
   collectKnownCourseCandidates,
   computeWeightedAverage,
+  defaultScaleForUniversity,
   deriveCourseAcronym,
   getUniversityById,
   mergeCurriculumCatalog,
@@ -424,6 +425,10 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     }
     setTargetTotalEcts(defaultTargetEctsForCycle(nextCycle, firstDegreeId));
     rebuildRecords(nextUniId, firstDegreeId, nextYears, currentSemester);
+    const hasGraded = useStore.getState().assessments.some((a) => typeof a.grade === 'number');
+    if (!hasGraded && nextUniId !== 'outra') {
+      updateSettings({ gradingScale: defaultScaleForUniversity(nextUniId, catalog) });
+    }
   };
 
   const handleDegreeChange = (nextDegId: string) => {

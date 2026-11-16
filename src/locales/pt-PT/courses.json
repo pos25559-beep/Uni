@@ -6,11 +6,13 @@
   "importCurriculum": "Importar cadeiras",
   "courseNotFound": "Esta cadeira não existe",
   "backToCourses": "Voltar às cadeiras",
+  "subtitleFallback": "Detalhes da cadeira",
   "tabs": {
     "overview": "Visão & Regras",
     "topics": "Matéria & Notas",
     "materials": "Materiais",
-    "emails": "Emails"
+    "horario": "Horário",
+    "tarefas": "Tarefas"
   },
   "targetLabel": "Objetivo",
   "currentGrade": "Nota atual",
@@ -18,5 +20,19 @@
   "topicProgress": "Progresso da matéria",
   "hoursStudied": "Horas estudadas",
   "completedSessions": "Sessões concluídas",
-  "editCourse": "Editar cadeira"
+  "editCourse": "Editar cadeira",
+  "editShort": "Editar",
+  "weightGraded": "do peso avaliado",
+  "portalLabel": "Portal da cadeira",
+  "folderLabel": "Pasta de materiais",
+  "externalNotebookLabel": "Caderno externo",
+  "materialsSection": {
+    "eyebrow": "Biblioteca",
+    "title": "Os teus",
+    "accentTitle": "materiais",
+    "searchPlaceholder": "Procurar sebentas, PDFs ou ligações…",
+    "addLink": "Adicionar ligação",
+    "uploadFile": "Enviar ficheiro",
+    "emptyTitle": "Ainda sem materiais guardados"
+  }
 }

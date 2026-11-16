@@ -50,9 +50,9 @@ export const HUB_FLOWS: Record<HubFlowId, HubFlowMeta> = {
     title: 'Veterano · Início de semestre',
     shortLabel: 'Veterano (Início)',
     badge: 'Drives & Base',
-    description: 'Já tens pastas, Drives ou Gemini Notebooks; faltam horários e testes.',
+    description: 'Já tens pastas, Drives ou cadernos externos; faltam horários e testes.',
     uniMessage:
-      'Boa! Enquanto não saem os horários e o calendário oficial de avaliações, liga já os teus Drives partilhados, PDFs do HD e Gemini Notebooks para concentrar tudo no mesmo Hub e gerar um plano contínuo.',
+      'Boa! Enquanto não saem os horários e o calendário oficial de avaliações, liga já os teus Drives partilhados, PDFs do HD e portais para concentrar tudo no mesmo Hub e gerar um plano contínuo.',
     stepOrder: ['drive_hd', 'notebook', 'schedule', 'assessments'],
     requiredKeys: ['drive_hd', 'notebook'],
   },
@@ -61,9 +61,9 @@ export const HUB_FLOWS: Record<HubFlowId, HubFlowMeta> = {
     title: 'Veterano · Semestre a decorrer',
     shortLabel: 'Veterano (Completo)',
     badge: 'Hub Total',
-    description: 'Juntar horários, testes, Drives partilhados, HD e Gemini Notebook.',
+    description: 'Juntar horários, testes, Drives partilhados, HD e portais.',
     uniMessage:
-      'Vamos reunir o teu semestre inteiro num só lugar: horários da faculdade, datas de avaliações, Drives partilhados de colegas, PDFs oficiais do disco e o teu Gemini Notebook.',
+      'Vamos reunir o teu semestre inteiro num só lugar: horários da faculdade, datas de avaliações, Drives partilhados de colegas, PDFs oficiais do disco e o teu Caderno do Uni.',
     stepOrder: ['schedule', 'assessments', 'drive_hd', 'notebook'],
     requiredKeys: ['schedule', 'assessments', 'drive_hd'],
   },
@@ -204,10 +204,10 @@ export function getHubProgress(
     },
     notebook: {
       key: 'notebook',
-      title: 'Gemini Notebook & Portais Académicos',
+      title: 'Caderno & Portais Académicos',
       hint: notebookReady
         ? `${notebookCount} caderno(s) ou portal ligado(s)`
-        : 'Guarda o link do teu Gemini Notebook ou portal da cadeira para abrir com 1 clique.',
+        : 'Guarda o link do teu portal da cadeira ou caderno externo opcional para abrir com 1 clique.',
       ready: notebookReady,
       countLabel: notebookReady ? `${notebookCount} ligado(s)` : undefined,
     },
@@ -236,7 +236,7 @@ export function getHubProgress(
 }
 
 /**
- * Valida um URL HTTP(S) seguro para links de Drive partilhado, Gemini Notebook ou portais académicos.
+ * Valida um URL HTTP(S) seguro para links de Drive partilhado, Caderno externo ou portais académicos.
  */
 export function normalizeSafeHubUrl(raw: string): string | null {
   const trimmed = raw.trim();

@@ -30,6 +30,7 @@ import { AnimatedPage } from '../components/motion/Primitives';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import { Button, EmptyState, Stat, SubpageHeader } from '../components/ui';
 import { cx } from '../lib/uiHelpers';
+import { normalizeAppLanguage } from '../lib/grading';
 import { courseColors } from '../lib/colors';
 import {
   fmtGrade,
@@ -44,17 +45,11 @@ import { useStore } from '../store/useStore';
 
 type TabKey = 'visao' | 'materia' | 'materiais' | 'horario' | 'tarefas';
 
-const tabs: { key: TabKey; label: string }[] = [
-  { key: 'visao', label: 'Visão & Regras' },
-  { key: 'materia', label: 'Matéria & Notas' },
-  { key: 'materiais', label: 'Materiais' },
-  { key: 'horario', label: 'Horário' },
-  { key: 'tarefas', label: 'Tarefas' },
-];
+const tabKeys: TabKey[] = ['visao', 'materia', 'materiais', 'horario', 'tarefas'];
 
 export default function CourseDetail() {
-  const { t, i18n } = useTranslation('courses');
-  const appLang = i18n.language?.startsWith('en') ? ('en' as const) : ('pt-PT' as const);
+  const { t, i18n } = useTranslation(['courses', 'common']);
+  const appLang = normalizeAppLanguage(i18n.language);
   const { id = '' } = useParams();
   const navigate = useNavigate();
   const course = useStore((s) => s.courses.find((c) => c.id === id));
@@ -104,9 +99,9 @@ export default function CourseDetail() {
   const progress = topicProgress(course);
 
   const links = [
-    { label: 'Portal da cadeira', url: course.clipUrl, icon: GraduationCap },
-    { label: 'Pasta de materiais', url: course.sharedDriveUrl || course.driveFolderUrl, icon: HardDrive },
-    { label: 'Gemini Notebook', url: course.notebookUrl, icon: BookOpen },
+    { label: t('portalLabel'), url: course.clipUrl, icon: GraduationCap },
+    { label: t('folderLabel'), url: course.sharedDriveUrl || course.driveFolderUrl, icon: HardDrive },
+    { label: t('externalNotebookLabel'), url: course.notebookUrl, icon: BookOpen },
   ].filter((l): l is { label: string; url: string; icon: typeof HardDrive } => Boolean(l.url));
 
   const meta = [course.code, `${course.ects} ECTS`, course.teacher].filter(Boolean).join(' · ');
@@ -121,7 +116,7 @@ export default function CourseDetail() {
             <span className="truncate">{course.name}</span>
           </span>
         }
-        subtitle={meta || 'Detalhes da cadeira'}
+        subtitle={meta || t('subtitleFallback')}
         action={
           <div className="flex flex-wrap items-center justify-end gap-2">
             <TabGuideHelpButton tabKey="cadeiras" />
@@ -132,11 +127,11 @@ export default function CourseDetail() {
               className="gap-1.5"
             >
               <Sparkles size={14} className="text-accent" />
-              <span className="hidden sm:inline">Tutor Gemini</span>
-              <span className="sm:hidden">Tutor</span>
+              <span className="hidden sm:inline">{t('common:brand.uniTutor')}</span>
+              <span className="sm:hidden">{t('common:nav.tutor')}</span>
             </Button>
-            <Button size="sm" onClick={() => setEditing(true)} aria-label="Editar cadeira">
-              <Pencil size={14} aria-hidden="true" /> <span className="hidden sm:inline">Editar</span>
+            <Button size="sm" onClick={() => setEditing(true)} aria-label={t('editCourse')}>
+              <Pencil size={14} aria-hidden="true" /> <span className="hidden sm:inline">{t('editShort')}</span>
             </Button>
           </div>
         }
@@ -171,7 +166,7 @@ export default function CourseDetail() {
         <Stat
           label={t('currentGrade')}
           value={fmtGrade(summary.current, gradingScale, appLang)}
-          hint={`${Math.round(summary.gradedWeight)}% ${appLang === 'en' ? 'weight graded' : 'do peso avaliado'}`}
+          hint={`${Math.round(summary.gradedWeight)}% ${t('weightGraded')}`}
           icon={<TrendingUp size={14} />}
         />
         <Stat
@@ -180,26 +175,26 @@ export default function CourseDetail() {
             nextAssessment ? (
               <span className="text-accent">{nextAssessment.title}</span>
             ) : (
-              'Sem testes marcados'
+              '—'
             )
           }
           hint={
             nextAssessment
-              ? `Em ${daysUntil(nextAssessment.date)} dias (peso ${nextAssessment.weight}%)`
-              : 'Todas as avaliações concluídas'
+              ? `${daysUntil(nextAssessment.date)}d · ${nextAssessment.weight}%`
+              : '—'
           }
           icon={<Clock size={14} />}
         />
         <Stat
-          label="Progresso da matéria"
+          label={t('topicProgress')}
           value={`${Math.round(progress * 100)}%`}
-          hint={`${course.topics.length} tópicos`}
+          hint={`${course.topics.length}`}
           icon={<Target size={14} />}
         />
         <Stat
-          label="Horas estudadas"
+          label={t('hoursStudied')}
           value={fmtMinutes(studiedMinutes)}
-          hint="Sessões concluídas"
+          hint={t('completedSessions')}
           icon={<Clock size={14} />}
         />
       </div>
@@ -207,26 +202,35 @@ export default function CourseDetail() {
       {/* Navegação por Separadores (5 abas consolidadas UI v4) */}
       <div
         role="tablist"
-        aria-label="Secções da cadeira"
+        aria-label={course.shortName}
         className="flex gap-1.5 overflow-x-auto pb-1"
       >
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            role="tab"
-            type="button"
-            aria-selected={tab === t.key}
-            onClick={() => setTab(t.key)}
-            className={cx(
-              'min-h-11 shrink-0 rounded-full px-4 py-2 text-xs font-semibold transition sm:text-sm',
-              tab === t.key
-                ? 'bg-ink-cta text-ink-cta-fg shadow-sm'
-                : 'bg-surface-2 text-muted hover:text-fg',
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
+        {tabKeys.map((tabKey) => {
+          const labelMap: Record<TabKey, string> = {
+            visao: t('tabs.overview'),
+            materia: t('tabs.topics'),
+            materiais: t('tabs.materials'),
+            horario: t('tabs.horario'),
+            tarefas: t('tabs.tarefas'),
+          };
+          return (
+            <button
+              key={tabKey}
+              role="tab"
+              type="button"
+              aria-selected={tab === tabKey}
+              onClick={() => setTab(tabKey)}
+              className={cx(
+                'min-h-11 shrink-0 rounded-full px-4 py-2 text-xs font-semibold transition sm:text-sm',
+                tab === tabKey
+                  ? 'bg-ink-cta text-ink-cta-fg shadow-sm'
+                  : 'bg-surface-2 text-muted hover:text-fg',
+              )}
+            >
+              {labelMap[tabKey]}
+            </button>
+          );
+        })}
       </div>
 
       {/* Conteúdo dos Separadores */}

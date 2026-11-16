@@ -7,5 +7,37 @@
   "fixNotebookBtn": "Corrigir caderno",
   "notebookBtn": "Caderno",
   "whatKnowsBtn": "O que {{name}} sabe",
-  "specialistIntro": "Estágio {{stage}} · Mestria {{mastery}}/100. Pergunta sobre fichas ou tira dúvidas desta cadeira."
+  "specialistIntro": "Estágio {{stage}} · Mestria {{mastery}}/100. Pergunta sobre fichas ou tira dúvidas desta cadeira.",
+  "liveVoice": {
+    "openBtn": "Voz Live",
+    "title": "Conversa por Voz · {{name}}",
+    "needsKeyTitle": "Voz em tempo real com a tua chave Gemini",
+    "needsKeyDesc": "Para manter a cota gratuita rápida e sustentável em texto e recall, as chamadas de voz bidirecional usam a tua chave pessoal Gemini (sem custo na Unipedia).",
+    "openKeyGuide": "Configurar chave Gemini",
+    "listening": "A ouvir-te…",
+    "thinking": "A pensar…",
+    "speaking": "A responder por voz…",
+    "sleeping": "Em pausa",
+    "idle": "Pronto para conversar",
+    "connecting": "A ligar ao estúdio de voz…",
+    "mute": "Silenciar mic",
+    "unmute": "Ligar mic",
+    "endSession": "Terminar chamada",
+    "transcriptEmpty": "Fala naturalmente sobre a matéria. O {{name}} responde com a personalidade que escolheste.",
+    "silenceClosed": "Chamada terminada após pausa prolongada em silêncio.",
+    "connectionError": "Não foi possível iniciar o áudio ou a ligação em tempo real."
+  },
+  "tools": {
+    "proposalTitle": "Ação proposta pelo Uni",
+    "confirm": "Confirmar e guardar",
+    "cancel": "Recusar",
+    "confirmed": "Guardado na app",
+    "cancelled": "Proposta recusada",
+    "createSession": "Nova sessão de estudo",
+    "createFlashcards": "Novos flashcards de prática",
+    "markDoubt": "Registar dúvida para a aula",
+    "minutesLabel": "{{minutes}} min · {{date}}",
+    "cardsCount": "{{count}} cartão(ões)",
+    "doubtLabel": "Tópico: {{topic}}"
+  }
 }

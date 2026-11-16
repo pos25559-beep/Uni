@@ -42,6 +42,7 @@ import {
   openAndroidDndSettings,
   type NativeFocusShieldCapabilities,
 } from '../../lib/nativeBridge';
+import { normalizeAppLanguage } from '../../lib/grading';
 import { formatSessionDisplay, todayStr } from '../../lib/selectors';
 import { useHubUiStore } from '../../store/useHubUiStore';
 import { useStore } from '../../store/useStore';
@@ -90,7 +91,7 @@ interface FocusTimerProps {
 
 export default function FocusTimer({ session, course, topic, onClose }: FocusTimerProps) {
   const { t, i18n } = useTranslation(['plan', 'common']);
-  const appLang = i18n.language?.startsWith('en') ? ('en' as const) : ('pt-PT' as const);
+  const appLang = normalizeAppLanguage(i18n.language);
   const navigate = useNavigate();
   const patch = useStore((s) => s.patch);
   const updateTopic = useStore((s) => s.updateTopic);
@@ -748,8 +749,8 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
                   >
                     <UniBuddy
                       size={22}
-                      mood="calm"
-                      dormant
+                      mood={phase === 'running' ? 'sleeping' : 'calm'}
+                      dormant={phase === 'running'}
                       form={uniAgent.formId}
                       stage={uniAgent.stage}
                       accessory={inferAccessoryFromCourses([course])}

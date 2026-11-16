@@ -1,0 +1,32 @@
+{
+  "headline": "Sabe qué estudiar hoy hasta el examen.",
+  "ctaStart": "Empezar ahora",
+  "ctaDemo": "Explorar modo demo",
+  "ctaSignIn": "Iniciar sesión",
+  "stepCourse": "Grado y Asignaturas",
+  "stepRhythm": "Ritmo y Privacidad",
+  "stepLanguageLabel": "Idioma y región del plan",
+  "stepLanguageHint": "Adapta términos académicos (asignatura, matrícula) y escala de notas (0–10).",
+  "welcomeSlides": {
+    "overviewEyebrow": "Tu curso con claridad",
+    "overviewTitle": "Sabe qué estudiar hoy",
+    "overviewAccent": "hasta el examen",
+    "overviewDesc": "Convierte tus asignaturas, horarios y fechas de exámenes en bloques prácticos para hoy — con calma y sin improvisar.",
+    "cycleEyebrow": "Ciclo interno completo",
+    "cycleTitle": "Planificar, enfocar, repasar",
+    "cycleAccent": "en un solo cuaderno",
+    "cycleDesc": "Del plan diario al temporizador limpio, el Cuaderno del Uni y el repaso espaciado automático en un flujo único.",
+    "planEyebrow": "Adaptado a tu facultad",
+    "planTitle": "Planes de estudio",
+    "planAccent": "y plazos reales",
+    "planDesc": "Importa tu grado, fechas de exámenes y horarios por texto o imagen y deja que el plan se ajuste solo.",
+    "focusEyebrow": "Modo Foco y Recall Activo",
+    "focusTitle": "Estudio real,",
+    "focusAccent": "memoria más sólida",
+    "focusDesc": "Sesiones cronometradas con repaso espaciado inteligente (1→3→7→21 días) que adapta los siguientes bloques.",
+    "unisEyebrow": "Unis especialistas por asignatura",
+    "unisTitle": "Un Uni por asignatura",
+    "unisAccent": "que aprende contigo",
+    "unisDesc": "Elige la forma, el nombre y el estilo de cada Uni. Evoluciona de Huevo a Maestro únicamente con tu dominio real."
+  }
+}

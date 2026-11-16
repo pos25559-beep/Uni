@@ -1,10 +1,10 @@
 import { addDays, format } from 'date-fns';
-import { Award, BookOpen, Brain, Compass, Loader2, Settings2, Sparkles } from 'lucide-react';
+import { Award, BookOpen, Brain, Compass, Loader2, Repeat2, Settings2, Sparkles } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { generateUniExpeditionQuestions } from '../../integrations/gemini';
-import { formatAppDate } from '../../lib/grading';
+import { formatAppDate, normalizeAppLanguage } from '../../lib/grading';
 import {
   listTopicSheetsByCourse,
   type TopicSheetRecord,
@@ -34,12 +34,19 @@ import { useStore } from '../../store/useStore';
 import type { AppLanguage, Course } from '../../types';
 import { UniBuddy } from '../brand/UnipediaMarks';
 import { Badge, Button, Card, Progress } from '../ui';
-import { AdoptUniModal, CourseSheetsModal, UniNotebookMemoryModal } from './CourseUniModals';
+import {
+  AdoptUniModal,
+  CourseSheetsModal,
+  MasterMentorshipModal,
+  StudyBridgeModal,
+  UniNotebookMemoryModal,
+} from './CourseUniModals';
 
 export default function CourseUniCard({ course }: { course: Course }) {
   const { t, i18n } = useTranslation('uni');
-  const appLang: AppLanguage = i18n.language?.startsWith('en') ? 'en' : 'pt-PT';
+  const appLang: AppLanguage = normalizeAppLanguage(i18n.language);
   const navigate = useNavigate();
+  const courses = useStore((s) => s.courses);
   const assessments = useStore((s) => s.assessments);
   const sessions = useStore((s) => s.sessions);
   const materials = useStore((s) => s.materials);
@@ -51,6 +58,8 @@ export default function CourseUniCard({ course }: { course: Course }) {
   const [adoptOpen, setAdoptOpen] = useState(false);
   const [memoryOpen, setMemoryOpen] = useState(false);
   const [sheetsOpen, setSheetsOpen] = useState(false);
+  const [bridgeOpen, setBridgeOpen] = useState(false);
+  const [mentorOpen, setMentorOpen] = useState(false);
   const [sheets, setSheets] = useState<TopicSheetRecord[]>([]);
   const [preparingExpedition, setPreparingExpedition] = useState(false);
   const [tomorrowStr] = useState(() => format(addDays(new Date(), 1), 'yyyy-MM-dd'));
@@ -356,6 +365,9 @@ export default function CourseUniCard({ course }: { course: Course }) {
           <Button size="sm" variant="secondary" onClick={() => setSheetsOpen(true)}>
             <BookOpen size={14} /> {t('card.sheets', { count: sheets.length })}
           </Button>
+          <Button size="sm" variant="secondary" onClick={() => setBridgeOpen(true)}>
+            <Repeat2 size={14} /> {t('card.bridgeBtn')}
+          </Button>
           {agent.stage >= 2 && aiConsent && (
             <Button
               size="sm"
@@ -377,6 +389,11 @@ export default function CourseUniCard({ course }: { course: Course }) {
           {diplomaEligible && !agent.diploma && (
             <Button size="sm" variant="secondary" onClick={() => void handleIssueDiploma()}>
               <Award size={14} /> {t('card.issueDiploma')}
+            </Button>
+          )}
+          {agent.stage >= 4 && courses.length > 1 && (
+            <Button size="sm" variant="secondary" onClick={() => setMentorOpen(true)}>
+              <Award size={14} /> {t('card.mentorNextBtn')}
             </Button>
           )}
         </div>
@@ -421,6 +438,28 @@ export default function CourseUniCard({ course }: { course: Course }) {
             setSheetsOpen(false);
             navigate(`/assistente?course=${encodeURIComponent(course.id)}`);
           }}
+        />
+      )}
+
+      {bridgeOpen && (
+        <StudyBridgeModal
+          open={bridgeOpen}
+          onClose={() => setBridgeOpen(false)}
+          course={course}
+          agent={agent}
+          sheets={sheets}
+          onAgentUpdated={async (next) => {
+            await saveUniAgent(next);
+          }}
+        />
+      )}
+
+      {mentorOpen && (
+        <MasterMentorshipModal
+          open={mentorOpen}
+          onClose={() => setMentorOpen(false)}
+          sourceCourse={course}
+          sourceAgent={agent}
         />
       )}
     </>

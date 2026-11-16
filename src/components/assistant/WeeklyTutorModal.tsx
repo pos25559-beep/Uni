@@ -184,7 +184,7 @@ export default function WeeklyTutorModal({
         },
       ]);
     } catch (err) {
-      setChatError(err instanceof Error ? err.message : 'Erro ao contactar o tutor Gemini.');
+      setChatError(err instanceof Error ? err.message : 'Erro ao contactar o Uni Tutor.');
     } finally {
       setChatBusy(false);
     }

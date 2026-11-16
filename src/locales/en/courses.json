@@ -6,11 +6,13 @@
   "importCurriculum": "Import courses",
   "courseNotFound": "Course not found",
   "backToCourses": "Back to courses",
+  "subtitleFallback": "Course details",
   "tabs": {
     "overview": "Overview & Rules",
     "topics": "Syllabus & Grades",
     "materials": "Materials",
-    "emails": "Emails"
+    "horario": "Schedule",
+    "tarefas": "Tasks"
   },
   "targetLabel": "Target",
   "currentGrade": "Current grade",
@@ -18,5 +20,19 @@
   "topicProgress": "Syllabus progress",
   "hoursStudied": "Time studied",
   "completedSessions": "Completed sessions",
-  "editCourse": "Edit course"
+  "editCourse": "Edit course",
+  "editShort": "Edit",
+  "weightGraded": "weight graded",
+  "portalLabel": "Course portal",
+  "folderLabel": "Materials folder",
+  "externalNotebookLabel": "External notebook",
+  "materialsSection": {
+    "eyebrow": "Library",
+    "title": "Your",
+    "accentTitle": "materials",
+    "searchPlaceholder": "Search notes, PDFs, or links…",
+    "addLink": "Add link",
+    "uploadFile": "Upload file",
+    "emptyTitle": "No saved materials yet"
+  }
 }

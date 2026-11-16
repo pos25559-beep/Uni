@@ -1,7 +1,9 @@
 import {
+  Award,
   BookOpen,
   Check,
   Copy,
+  ExternalLink,
   FileText,
   Loader2,
   Plus,
@@ -11,19 +13,28 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { SUPPORTED_LANGUAGES } from '../../i18n';
 import {
   extractTopicSheetFromSources,
   hasCustomGeminiKey,
   type NotebookSourceInput,
 } from '../../integrations/gemini';
 import { getDailyQuotaSnapshot } from '../../lib/aiQuota';
+import { normalizeAppLanguage } from '../../lib/grading';
 import type {
   TopicSheetRecord,
   UniAgentRecord,
   UniFormId,
 } from '../../lib/localDb';
-import { deleteTopicSheet, putTopicSheet } from '../../lib/localDb';
+import { deleteTopicSheet, getUniAgent, putTopicSheet } from '../../lib/localDb';
 import { getAiMaterialLimit, resolveMaterialsForAI } from '../../lib/materialContent';
+import { openInAppBrowser } from '../../lib/nativeBridge';
+import {
+  buildStudyGuideExport,
+  parseAndImportQuizResult,
+  transferMasteryToNextCourse,
+} from '../../lib/studyBridge';
+import { saveUniAgent } from '../../lib/uniAgents';
 import {
   getLocalizedPersonas,
   suggestFormForCourse,
@@ -35,7 +46,7 @@ import { newId, useStore } from '../../store/useStore';
 import type { AppLanguage, Course, Material } from '../../types';
 import { Markdown } from '../assistant/Markdown';
 import { UniBuddy } from '../brand/UnipediaMarks';
-import { Button, Field, Input, Modal, Switch, Textarea } from '../ui';
+import { Button, Field, Input, Modal, SegmentedControl, Select, Switch, Textarea } from '../ui';
 
 const FORM_IDS: UniFormId[] = ['nuvem', 'gota', 'estrela', 'cristal', 'folha'];
 
@@ -72,7 +83,7 @@ export function AdoptUniModal({
   onRemove?: () => Promise<void>;
 }) {
   const { t, i18n } = useTranslation(['uni', 'common']);
-  const appLang: AppLanguage = i18n.language?.startsWith('en') ? 'en' : 'pt-PT';
+  const appLang: AppLanguage = normalizeAppLanguage(i18n.language);
   const defaultName = (initialAgent?.name || course.shortName || course.code || 'Uni').slice(0, 30);
   const [name, setName] = useState(defaultName);
   const [formId, setFormId] = useState<UniFormId>(
@@ -80,7 +91,7 @@ export function AdoptUniModal({
   );
   const [personaId, setPersonaId] = useState<UniPersonaMode>(initialAgent?.personaId ?? 'amigo');
   const [agentLanguage, setAgentLanguage] = useState<AppLanguage>(() =>
-    initialAgent?.language?.startsWith('en') ? 'en' : initialAgent?.language ? 'pt-PT' : appLang,
+    initialAgent?.language ? normalizeAppLanguage(initialAgent.language) : appLang,
   );
   const [memoryEnabled, setMemoryEnabled] = useState(initialAgent?.memoryEnabled ?? false);
   const [learningStyle, setLearningStyle] = useState<'exemplos' | 'teoria' | 'exercicios'>(
@@ -237,7 +248,7 @@ export function AdoptUniModal({
           <p className="mb-1.5 text-xs font-semibold text-muted">{t('uni:adoptModal.stepLanguage')}</p>
           <p className="mb-2 text-xs text-muted">{t('uni:adoptModal.stepLanguageHint')}</p>
           <div className="grid grid-cols-2 gap-2">
-            {(['pt-PT', 'en'] as AppLanguage[]).map((langOption) => (
+            {SUPPORTED_LANGUAGES.map((langOption) => (
               <button
                 key={langOption}
                 type="button"
@@ -860,6 +871,258 @@ export function CourseSheetsModal({
               </div>
             )}
           </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+export function StudyBridgeModal({
+  open,
+  onClose,
+  course,
+  agent,
+  sheets,
+  onAgentUpdated,
+}: {
+  open: boolean;
+  onClose: () => void;
+  course: Course;
+  agent: UniAgentRecord;
+  sheets: TopicSheetRecord[];
+  onAgentUpdated: (next: UniAgentRecord) => Promise<void>;
+}) {
+  const { t, i18n } = useTranslation(['uni', 'common']);
+  const appLang = normalizeAppLanguage(i18n.language);
+  const sessions = useStore((s) => s.sessions);
+  const assessments = useStore((s) => s.assessments);
+  const gradingScale = useStore((s) => s.settings.gradingScale) ?? 'pt20';
+  const upsert = useStore((s) => s.upsert);
+
+  const [tab, setTab] = useState<'export' | 'import'>('export');
+  const [selectedTopicId, setSelectedTopicId] = useState<string>(course.topics[0]?.id ?? '');
+  const [copied, setCopied] = useState(false);
+  const [rawQuizText, setRawQuizText] = useState('');
+  const [importing, setImporting] = useState(false);
+
+  const selectedTopic = course.topics.find((tp) => tp.id === selectedTopicId) ?? course.topics[0];
+  const guideText = buildStudyGuideExport({
+    course,
+    topic: selectedTopic,
+    sheets,
+    agent,
+    language: agent.language || appLang,
+  });
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard?.writeText(guideText);
+      setCopied(true);
+      showToast(t('uni:bridge.copied'), 'ok');
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      showToast('Não foi possível copiar para a área de transferência.', 'danger');
+    }
+  };
+
+  const handleImportQuiz = async () => {
+    if (!rawQuizText.trim()) {
+      showToast(t('uni:bridge.missingText'), 'neutral');
+      return;
+    }
+    setImporting(true);
+    try {
+      const outcome = parseAndImportQuizResult({
+        rawText: rawQuizText,
+        course,
+        topicId: selectedTopic?.id,
+        agent,
+        sessions,
+        assessments,
+        gradingScale,
+      });
+      upsert('courses', outcome.nextCourse);
+      if (outcome.nextAgent) {
+        await onAgentUpdated(outcome.nextAgent);
+      }
+      setRawQuizText('');
+      showToast(t('uni:bridge.importedSuccess'), 'ok');
+      onClose();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Erro ao importar quiz', 'danger');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={t('uni:bridge.title', { course: course.shortName })}
+      footer={
+        <div className="flex w-full flex-wrap items-center justify-between gap-2">
+          {course.notebookUrl ? (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => void openInAppBrowser(course.notebookUrl!)}
+            >
+              <ExternalLink size={14} /> {t('uni:bridge.openExternal')}
+            </Button>
+          ) : (
+            <span />
+          )}
+          <Button size="sm" variant="primary" onClick={onClose}>
+            {t('common:actions.done')}
+          </Button>
+        </div>
+      }
+    >
+      <div className="space-y-4">
+        <p className="text-xs leading-relaxed text-muted">{t('uni:bridge.subtitle')}</p>
+
+        <SegmentedControl
+          layoutId="study-bridge-tabs"
+          value={tab}
+          onChange={(v) => setTab(v as 'export' | 'import')}
+          items={[
+            { id: 'export', label: t('uni:bridge.tabExport') },
+            { id: 'import', label: t('uni:bridge.tabImport') },
+          ]}
+        />
+
+        {course.topics.length > 0 && (
+          <Field label={t('uni:bridge.topicLabel')}>
+            <Select
+              value={selectedTopic?.id ?? ''}
+              onChange={(e) => setSelectedTopicId(e.target.value)}
+            >
+              {course.topics.map((tp) => (
+                <option key={tp.id} value={tp.id}>
+                  {tp.title}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
+
+        {tab === 'export' ? (
+          <div className="space-y-2.5">
+            <pre className="max-h-56 overflow-y-auto whitespace-pre-wrap rounded-2xl border border-line bg-surface-2/60 p-3 text-xs leading-relaxed text-fg">
+              {guideText}
+            </pre>
+            <Button size="sm" variant="primary" className="w-full" onClick={() => void handleCopy()}>
+              {copied ? <Check size={14} /> : <Copy size={14} />}
+              {copied ? t('uni:bridge.copied') : t('uni:bridge.copyGuide')}
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <Field label={t('uni:bridge.importLabel')}>
+              <Textarea
+                value={rawQuizText}
+                onChange={(e) => setRawQuizText(e.target.value)}
+                placeholder={t('uni:bridge.importPlaceholder')}
+                className="min-h-28"
+              />
+            </Field>
+            <Button
+              size="sm"
+              variant="primary"
+              className="w-full"
+              loading={importing}
+              onClick={() => void handleImportQuiz()}
+            >
+              <Sparkles size={14} /> {t('uni:bridge.importBtn')}
+            </Button>
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+export function MasterMentorshipModal({
+  open,
+  onClose,
+  sourceCourse,
+  sourceAgent,
+}: {
+  open: boolean;
+  onClose: () => void;
+  sourceCourse: Course;
+  sourceAgent: UniAgentRecord;
+}) {
+  const { t } = useTranslation(['uni', 'common']);
+  const courses = useStore((s) => s.courses);
+  const candidates = courses.filter((c) => c.id !== sourceCourse.id);
+  const [targetCourseId, setTargetCourseId] = useState<string>(candidates[0]?.id ?? '');
+  const [saving, setSaving] = useState(false);
+
+  const handleTransfer = async () => {
+    const targetCourse = candidates.find((c) => c.id === targetCourseId);
+    if (!targetCourse) return;
+    setSaving(true);
+    try {
+      const existingTargetAgent = await getUniAgent(targetCourse.id);
+      const nextTargetAgent = transferMasteryToNextCourse({
+        sourceCourse,
+        sourceAgent,
+        targetCourse,
+        targetAgent: existingTargetAgent,
+      });
+      await saveUniAgent(nextTargetAgent);
+      showToast(
+        t('uni:shelf.inheritDone', {
+          from: sourceAgent.name,
+          to: targetCourse.shortName || targetCourse.name,
+        }),
+        'ok',
+      );
+      onClose();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Erro ao ensinar cadeira seguinte', 'danger');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={t('uni:shelf.inheritModalTitle', {
+        name: sourceAgent.name,
+        course: sourceCourse.shortName,
+      })}
+      footer={
+        <>
+          <Button size="sm" variant="secondary" onClick={onClose}>
+            {t('common:actions.cancel')}
+          </Button>
+          {candidates.length > 0 && (
+            <Button size="sm" variant="primary" loading={saving} onClick={() => void handleTransfer()}>
+              <Award size={14} /> {t('uni:shelf.inheritBtn')}
+            </Button>
+          )}
+        </>
+      }
+    >
+      <div className="space-y-3">
+        <p className="text-xs leading-relaxed text-muted">{t('uni:shelf.inheritModalHint')}</p>
+        {candidates.length === 0 ? (
+          <p className="rounded-2xl bg-surface-2 px-3.5 py-3 text-xs text-muted">
+            {t('uni:shelf.inheritNoTarget')}
+          </p>
+        ) : (
+          <Select value={targetCourseId} onChange={(e) => setTargetCourseId(e.target.value)}>
+            {candidates.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.shortName} · {c.name}
+              </option>
+            ))}
+          </Select>
         )}
       </div>
     </Modal>

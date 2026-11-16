@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { formatAppDate } from '../lib/grading';
+import { formatAppDate, normalizeAppLanguage } from '../lib/grading';
 import {
   AlertTriangle,
   ArrowRight,
@@ -57,7 +57,7 @@ import type { StudySession, Task } from '../types';
 
 export default function Dashboard() {
   const { t, i18n } = useTranslation('today');
-  const appLang = i18n.language?.startsWith('en') ? ('en' as const) : ('pt-PT' as const);
+  const appLang = normalizeAppLanguage(i18n.language);
   const navigate = useNavigate();
   const courses = useStore((s) => s.courses);
   const assessments = useStore((s) => s.assessments);
@@ -204,7 +204,7 @@ export default function Dashboard() {
       if (allOthersDone) {
         void hapticSuccess();
         celebrateStationery();
-        showToast('Objetivo de hoje concluído!', 'ok');
+        showToast(t('goalDone'), 'ok');
       }
     }
   };
@@ -223,7 +223,7 @@ export default function Dashboard() {
     void hapticTap();
     upsert('tasks', { id: newId(), title, done: false, priority: 2 });
     setDraft('');
-    showToast('Tarefa adicionada', 'ok');
+    showToast(t('taskAdded'), 'ok');
   };
 
   const onDraftKey = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -267,7 +267,7 @@ export default function Dashboard() {
         <>
           ,{' '}
           <span className={cx(isMinimal ? 'text-accent-ink' : 'font-serif font-medium italic text-accent')}>
-            bora estudar
+            {t('defaultSubtitle')}
           </span>
         </>
       )}
@@ -343,7 +343,7 @@ export default function Dashboard() {
             'flex flex-col gap-3 border px-4 py-3 shadow-card sm:flex-row sm:items-center sm:justify-between',
             isMinimal
               ? 'rounded-2xl border-line bg-surface text-fg'
-              : 'rounded-[22px] border-honey/45 bg-pastel-honey/45 text-fg dark:border-honey/30 dark:bg-surface',
+              : 'rounded-3xl border-honey/45 bg-pastel-honey/45 text-fg dark:border-honey/30 dark:bg-surface',
           )}
         >
           <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
@@ -378,20 +378,24 @@ export default function Dashboard() {
         </section>
       )}
 
-      {/* Tira Modo Teste em 1 linha compacta logo no topo quando há avaliação próxima */}
+      {/* Tira Modo Teste em 1 linha compacta logo no topo — leva direto à sessão de hoje / plano */}
       {testMode.mode !== 'normal' && visibleNudge?.kind !== 'exam_prep' && (
         <Link
-          to="/plano"
+          to={
+            todaySessions.find((s) => !s.done)
+              ? `/plano?focus=${encodeURIComponent(todaySessions.find((s) => !s.done)!.id)}`
+              : '/plano'
+          }
           className="flex min-h-11 items-center justify-between gap-2 rounded-2xl bg-pastel-peach/80 px-3.5 py-2 text-xs text-[#141312] transition hover:opacity-95 dark:bg-surface-2 dark:text-[#FAF6EC]"
         >
           <div className="flex min-w-0 items-center gap-2">
             <Sparkles size={14} className="shrink-0 text-coral" />
             <span className="truncate font-medium">
               <strong className="font-semibold">
-                {testMode.mode === 'single_test' ? 'Modo Teste' : 'Testes múltiplos'}:
+                {testMode.mode === 'single_test' ? t('testModeSingle') : t('testModeMulti')}:
               </strong>{' '}
               {testMode.urgentAssessments
-                .map((u) => `${u.course.shortName} (${u.daysLeft === 0 ? 'hoje' : `${u.daysLeft}d`})`)
+                .map((u) => `${u.course.shortName} (${u.daysLeft === 0 ? t('testModeToday') : `${u.daysLeft}d`})`)
                 .join(' · ')}
             </span>
           </div>
@@ -407,14 +411,14 @@ export default function Dashboard() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.96 }}
             transition={UNIPEDIA_BOUNCE_SPRING}
-            className="flex items-center justify-between gap-2.5 rounded-[22px] border border-line bg-surface p-3.5 shadow-card"
+            className="flex items-center justify-between gap-2.5 rounded-3xl border border-line bg-surface p-3.5 shadow-card"
           >
             <div className="min-w-0 flex-1 space-y-0.5">
-              <p className="text-xs font-bold uppercase tracking-wider text-accent-ink">Uni · O teu tutor</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-accent-ink">{t('uniBubbleTitle')}</p>
               <p className="text-xs leading-relaxed text-fg">{uniTip}</p>
             </div>
             <Button size="sm" variant="primary" onClick={() => navigate('/assistente')}>
-              Falar com o Uni
+              {t('talkWithUni')}
             </Button>
             <button
               type="button"
@@ -458,7 +462,7 @@ export default function Dashboard() {
         <StaggerItem>
         <Link
           to="/plano"
-          className="flex items-center gap-3 rounded-[20px] border border-warn/40 bg-warn/10 px-4 py-2.5 transition hover:bg-warn/15"
+          className="flex items-center gap-3 rounded-2xl border border-warn/40 bg-warn/10 px-4 py-2.5 transition hover:bg-warn/15"
         >
           <AlertTriangle size={16} className="shrink-0 text-warn" />
           <p className="min-w-0 flex-1 text-xs sm:text-sm">
@@ -477,7 +481,7 @@ export default function Dashboard() {
         <Link to="/plano" className="inline-flex min-h-11 items-center gap-2 px-1 text-xs font-medium text-muted hover:text-fg">
           <Clock size={14} className="shrink-0" />
           <span>
-            {overdue} {overdue === 1 ? 'sessão por concluir' : 'sessões por concluir'} — reagendar no plano
+            {overdue} {overdue === 1 ? t('overdueSingle') : t('overduePlural')}
           </span>
           <ArrowRight size={12} className="shrink-0" />
         </Link>
@@ -573,7 +577,7 @@ export default function Dashboard() {
           >
             {pendingTasks.length === 0 ? (
               <p className="rounded-2xl bg-white/55 px-3 py-4 text-center text-xs opacity-75 dark:bg-black/20">
-                Sem tarefas pendentes — escreve acima para apontar algo rápido.
+                {t('emptyTasks')}
               </p>
             ) : (
               <>
@@ -589,14 +593,14 @@ export default function Dashboard() {
                   ))}
                 </ul>
                 {pendingTasks.length > 6 && (
-                  <p className="mt-2 px-1 text-xs opacity-75">e mais {pendingTasks.length - 6}</p>
+                  <p className="mt-2 px-1 text-xs opacity-75">+{pendingTasks.length - 6}</p>
                 )}
               </>
             )}
           </StickyTasksPad>
 
           {upcoming.length > 0 && (
-            <Card title="Próximas avaliações">
+            <Card title={t('examsTitle')}>
               <ul className="divide-y divide-line">
                 {scored.slice(0, 4).map((x) => (
                   <AssessmentRow key={x.a.id} assessment={x.a} course={x.course} ready={x.ready} />
@@ -614,32 +618,32 @@ export default function Dashboard() {
               'p-4 shadow-card sm:p-5',
               isMinimal
                 ? 'rounded-2xl border border-line bg-surface text-fg'
-                : 'rounded-[24px] bg-pastel-butter/75 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC] sm:rounded-[26px]',
+                : 'rounded-3xl bg-pastel-butter/75 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]',
             )}
           >
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider opacity-70">
-                  {scope === 'today' ? 'Resumo de hoje' : 'Pulso da semana'}
+                  {scope === 'today' ? t('summaryToday') : t('summaryWeek')}
                 </p>
                 <h2 className="mt-0.5 font-display text-base font-bold sm:text-lg">
                   {scope === 'today'
                     ? plannedToday > 0
-                      ? `${fmtMinutes(doneToday)} de ${fmtMinutes(plannedToday)} focados`
+                      ? t('focusedOf', { done: fmtMinutes(doneToday), planned: fmtMinutes(plannedToday) })
                       : nextStudyDayLabel
-                        ? `Dia de descanso · Próx. ${nextStudyDayLabel}`
-                        : 'Dia leve para pôr matéria em dia'
-                    : `${fmtMinutes(weekMinutes)} de ${fmtMinutes(weekGoal)} esta semana`}
+                        ? t('summaryRestNext', { date: nextStudyDayLabel })
+                        : t('summaryRest')
+                    : t('weekOf', { done: fmtMinutes(weekMinutes), goal: fmtMinutes(weekGoal) })}
                 </h2>
               </div>
-              <button
-                type="button"
+              <Button
+                iconOnly
+                variant="secondary"
                 onClick={() => navigate('/plano')}
-                className="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface/85 text-fg shadow-card transition hover:scale-105 dark:bg-black/30 dark:text-[#FAF6EC]"
-                aria-label="Abrir plano"
+                aria-label={t('openPlan')}
               >
                 <CalendarDays size={16} />
-              </button>
+              </Button>
             </div>
 
             {courses.length > 0 || todaySessions.length > 0 || pendingTasks.length > 0 ? (
@@ -784,7 +788,7 @@ export default function Dashboard() {
                 'p-4 shadow-card',
                 isMinimal
                   ? 'rounded-2xl border border-line bg-surface text-fg'
-                  : 'rounded-[24px] bg-pastel-sage/55 text-[#141312] dark:bg-surface dark:text-fg dark:ring-1 dark:ring-white/10',
+                  : 'rounded-3xl bg-pastel-sage/55 text-[#141312] dark:bg-surface dark:text-fg dark:ring-1 dark:ring-white/10',
               )}
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -836,7 +840,7 @@ export default function Dashboard() {
                         ? 'Provas'
                         : step.key === 'drive_hd'
                           ? 'Drive / PC'
-                          : 'Gemini Notebook';
+                          : 'Caderno do Uni';
                   return (
                     <button
                       key={step.key}

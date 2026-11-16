@@ -5,6 +5,7 @@ import {
 import { pt } from 'date-fns/locale';
 import { CalendarPlus, ChevronLeft, ChevronRight, Download, MoreHorizontal, Share2, Upload, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import AgendaView from '../components/calendar/AgendaView';
 import DayPanel from '../components/calendar/DayPanel';
@@ -43,6 +44,7 @@ const VIEWS: { key: View; label: string }[] = [
 const ALL_ON: Record<CalKind, boolean> = { aula: true, avaliacao: true, estudo: true, evento: true, tarefa: true };
 
 export default function Calendar() {
+  const { t } = useTranslation('plan');
   const courses = useStore((s) => s.courses);
   const classes = useStore((s) => s.classes);
   const assessments = useStore((s) => s.assessments);
@@ -226,22 +228,22 @@ export default function Calendar() {
   return (
     <AnimatedPage className="min-w-0 space-y-4 overflow-x-hidden">
       <PageHeader
-        eyebrow="Horário"
-        title="O teu"
-        accentTitle="calendário"
+        eyebrow={t('calendar.eyebrow')}
+        title={t('calendar.title')}
+        accentTitle={t('calendar.accentTitle')}
         subtitle="Aulas, avaliações, estudo, eventos e tarefas num só lugar."
         actions={
           <div className="flex items-center gap-2">
             <TabGuideHelpButton tabKey="calendario" />
             <Button variant="primary" size="sm" onClick={() => setNewOpen(true)}>
-              <CalendarPlus size={15} aria-hidden="true" /> + Evento
+              <CalendarPlus size={15} aria-hidden="true" /> + {t('calendar.newEvent')}
             </Button>
             <Button
               variant="secondary"
               iconOnly
               onClick={() => setCalMenuOpen(true)}
-              aria-label="Mais ações do calendário"
-              title="Importar, exportar ou partilhar"
+              aria-label={t('calendar.moreActions')}
+              title={t('calendar.moreActions')}
             >
               <MoreHorizontal size={17} aria-hidden="true" />
             </Button>
@@ -287,7 +289,7 @@ export default function Calendar() {
           <Button size="sm" iconOnly variant="secondary" aria-label="Anterior" onClick={() => step(-1)}>
             <ChevronLeft size={16} />
           </Button>
-          <Button size="sm" variant="secondary" onClick={goToday}>Hoje</Button>
+          <Button size="sm" variant="secondary" onClick={goToday}>{t('calendar.today')}</Button>
           <Button size="sm" iconOnly variant="secondary" aria-label="Seguinte" onClick={() => step(1)}>
             <ChevronRight size={16} />
           </Button>

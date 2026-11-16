@@ -1,5 +1,4 @@
 import {
-  Award,
   BookOpen,
   BookOpenCheck,
   Brain,
@@ -10,6 +9,7 @@ import {
   Flag,
   FolderOpen,
   Menu,
+  Mic,
   MoreHorizontal,
   Paperclip,
   Plus,
@@ -26,7 +26,9 @@ import AssistantModals from '../components/assistant/AssistantModals';
 import { Composer } from '../components/assistant/Composer';
 import { Markdown } from '../components/assistant/Markdown';
 import { QuickActions } from '../components/assistant/QuickActions';
+import UniLiveVoiceModal from '../components/assistant/UniLiveVoiceModal';
 import UniSyncCard from '../components/assistant/UniSyncCard';
+import UniToolProposalCard from '../components/assistant/UniToolProposalCard';
 import { useAssistantChat } from '../components/assistant/useAssistantChat';
 import { UniBuddy } from '../components/brand/UnipediaMarks';
 import { UniNotebookMemoryModal } from '../components/courses/CourseUniModals';
@@ -34,6 +36,7 @@ import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/Tab
 import { Badge, Button, PillSelect, SegmentedControl } from '../components/ui';
 import { hasCustomGeminiKey } from '../integrations/gemini';
 import { recordWrongAnswerFeedback } from '../lib/aiQuota';
+import { normalizeAppLanguage } from '../lib/grading';
 import { courseColors } from '../lib/colors';
 import { TUTOR_SUBJECTS, subjectLabel } from '../lib/geminiConversations';
 import { commitScheduleSyncToStore } from '../lib/scheduleSync';
@@ -48,7 +51,7 @@ import { useStore } from '../store/useStore';
 
 export default function Assistant() {
   const { t, i18n } = useTranslation('assistant');
-  const appLang = i18n.language?.startsWith('en') ? ('en' as const) : ('pt-PT' as const);
+  const appLang = normalizeAppLanguage(i18n.language);
   const personas = getLocalizedPersonas(appLang);
   const navigate = useNavigate();
   const location = useLocation();
@@ -88,6 +91,7 @@ export default function Assistant() {
   const [collectiblesOpen, setCollectiblesOpen] = useState(false);
   const [contextModalOpen, setContextModalOpen] = useState(false);
   const [courseUniMemoryOpen, setCourseUniMemoryOpen] = useState(false);
+  const [liveVoiceOpen, setLiveVoiceOpen] = useState(false);
   const [flaggedWrongIds, setFlaggedWrongIds] = useState<Record<string, boolean>>({});
   const [dismissedPrompt, setDismissedPrompt] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -129,6 +133,10 @@ export default function Assistant() {
     error,
     setError,
     pendingSyncByMsgId,
+    pendingToolsByMsgId,
+    busyToolId,
+    confirmToolProposal,
+    cancelToolProposal,
     syncingMsgId,
     toggleMaterial,
     selectAllMaterials,
@@ -318,18 +326,16 @@ export default function Assistant() {
               >
                 <BookOpenCheck size={13} /> Diário
               </button>
-              {!isMinimal && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMobileFiltersOpen(false);
-                    setCollectiblesOpen(true);
-                  }}
-                  className="flex min-h-[38px] items-center gap-1.5 rounded-full bg-pastel-sage/65 px-3 text-xs font-semibold text-[#141312] dark:bg-[#23311B] dark:text-[#FAF6EC]"
-                >
-                  <Award size={13} /> Coleção
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileFiltersOpen(false);
+                  setLiveVoiceOpen(true);
+                }}
+                className="flex min-h-[38px] items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg"
+              >
+                <Mic size={13} /> {t('liveVoice.openBtn')}
+              </button>
               <TabGuideHelpButton tabKey="assistente" />
             </div>
           </div>
@@ -416,16 +422,14 @@ export default function Assistant() {
                 <span>Diário</span>
               </button>
 
-              {!isMinimal && (
-                <button
-                  type="button"
-                  onClick={() => setCollectiblesOpen(true)}
-                  className="flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full bg-pastel-sage/65 px-3.5 py-1.5 text-xs font-semibold text-[#141312] transition hover:brightness-95 dark:bg-[#23311B] dark:text-[#FAF6EC]"
-                >
-                  <Award size={13} className="text-accent-ink dark:text-accent" />
-                  <span>Coleção Uni</span>
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => setLiveVoiceOpen(true)}
+                className="flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 py-1.5 text-xs font-semibold text-fg transition hover:bg-surface-2"
+              >
+                <Mic size={13} className="text-accent-ink dark:text-accent" />
+                <span>{t('liveVoice.openBtn')}</span>
+              </button>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -645,7 +649,7 @@ export default function Assistant() {
           m.role === 'user' ? (
             <div
               key={m.id}
-              className="rise ml-auto max-w-[85%] space-y-1.5 whitespace-pre-wrap break-words rounded-[22px] rounded-br-md bg-ink-cta px-4 py-3 text-sm text-ink-cta-fg shadow-card"
+              className="rise ml-auto max-w-[85%] space-y-1.5 whitespace-pre-wrap break-words rounded-3xl rounded-br-md bg-ink-cta px-4 py-3 text-sm text-ink-cta-fg shadow-card"
             >
               <p>{m.text}</p>
               {m.attachmentNames && m.attachmentNames.length > 0 && (
@@ -664,9 +668,18 @@ export default function Assistant() {
           ) : (
             <div
               key={m.id}
-              className="rise max-w-[95%] rounded-[22px] rounded-bl-md bg-surface px-4 py-3.5 shadow-card"
+              className="rise max-w-[95%] rounded-3xl rounded-bl-md bg-surface px-4 py-3.5 shadow-card"
             >
               <Markdown text={m.text} />
+              {pendingToolsByMsgId[m.id]?.map((proposal) => (
+                <UniToolProposalCard
+                  key={proposal.id}
+                  proposal={proposal}
+                  busy={busyToolId === proposal.id}
+                  onConfirm={() => void confirmToolProposal(m.id, proposal.id)}
+                  onCancel={() => cancelToolProposal(m.id, proposal.id)}
+                />
+              ))}
               {pendingSyncByMsgId[m.id] ? (
                 <UniSyncCard
                   bundle={pendingSyncByMsgId[m.id]}
@@ -765,7 +778,7 @@ export default function Assistant() {
         )}
 
         {loading && streamingText && (
-          <div className="rise max-w-[95%] rounded-[22px] rounded-bl-md bg-surface px-4 py-3.5 shadow-card">
+          <div className="rise max-w-[95%] rounded-3xl rounded-bl-md bg-surface px-4 py-3.5 shadow-card">
             <Markdown text={streamingText} />
             <div className="mt-2 flex items-center gap-1.5 text-xs text-accent-ink">
               <Sparkles size={12} className="animate-pulse" />
@@ -777,7 +790,7 @@ export default function Assistant() {
         {loading && !streamingText && (
           <div
             role="status"
-            className="rise flex w-fit items-center gap-2.5 rounded-[22px] rounded-bl-md bg-surface px-4 py-2.5 text-sm text-muted shadow-card"
+            className="rise flex w-fit items-center gap-2.5 rounded-3xl rounded-bl-md bg-surface px-4 py-2.5 text-sm text-muted shadow-card"
           >
             <UniBuddy mood="thinking" accessory={uniAccessory} size={30} interactive={false} />
             <span>O Uni está a pensar…</span>
@@ -828,7 +841,7 @@ export default function Assistant() {
 
       {/* Aviso amigável de 1 toque para ativar o Uni nativo (zero chave obrigatória; 1 linha no mobile) */}
       {!aiConsent && (
-        <div className="mt-2.5 flex shrink-0 items-center justify-between gap-2.5 rounded-[20px] bg-pastel-butter/75 px-3.5 py-2.5 text-xs text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC] sm:rounded-[22px] sm:px-4 sm:py-3">
+        <div className="mt-2.5 flex shrink-0 items-center justify-between gap-2.5 rounded-2xl bg-pastel-butter/75 px-3.5 py-2.5 text-xs text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC] sm:px-4 sm:py-3">
           <div className="min-w-0 flex-1 space-y-0.5">
             <div className="flex items-center gap-1.5 font-semibold">
               <Sparkles size={14} className="shrink-0 text-accent" />
@@ -850,7 +863,7 @@ export default function Assistant() {
 
       {/* Aviso de reautorização silenciosa do Google Drive para leitura real de PDFs */}
       {driveAuthNeeded && (
-        <div className="mt-2 flex shrink-0 flex-wrap items-center justify-between gap-2.5 rounded-[20px] border border-line bg-surface-2/90 px-3.5 py-2.5 text-xs text-fg">
+        <div className="mt-2 flex shrink-0 flex-wrap items-center justify-between gap-2.5 rounded-2xl border border-line bg-surface-2/90 px-3.5 py-2.5 text-xs text-fg">
           <div className="min-w-0 flex-1 space-y-0.5">
             <div className="font-semibold">Autoriza o Google Drive para o Uni ler os PDFs anexados</div>
             <p className="text-xs text-muted">
@@ -1268,6 +1281,19 @@ export default function Assistant() {
           onUpdateAgent={async (next) => {
             await saveUniAgent(next);
           }}
+        />
+      )}
+      {liveVoiceOpen && (
+        <UniLiveVoiceModal
+          open={liveVoiceOpen}
+          onClose={() => setLiveVoiceOpen(false)}
+          onOpenKeyGuide={() => setKeyGuideOpen(true)}
+          activeCourse={activeCourse}
+          uniAgent={courseUniAgent}
+          persona={effectivePersona}
+          accessory={uniAccessory}
+          studentName={userName}
+          language={courseUniAgent?.language ?? appLang}
         />
       )}
     </div>

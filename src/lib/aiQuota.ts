@@ -38,6 +38,8 @@ export interface DailyAiMetricsSnapshot {
   outputTokens: number;
   calls: number;
   wrongFeedbackCount: number;
+  voiceSessions: number;
+  voiceSeconds: number;
 }
 
 export class UniDailyLimitReachedError extends Error {
@@ -130,10 +132,28 @@ function readRawMetrics(): DailyAiMetricsSnapshot {
   const today = todayStr();
   try {
     const raw = localStorage.getItem(METRICS_STORAGE_KEY);
-    if (!raw) return { date: today, inputTokens: 0, outputTokens: 0, calls: 0, wrongFeedbackCount: 0 };
+    if (!raw) {
+      return {
+        date: today,
+        inputTokens: 0,
+        outputTokens: 0,
+        calls: 0,
+        wrongFeedbackCount: 0,
+        voiceSessions: 0,
+        voiceSeconds: 0,
+      };
+    }
     const parsed = JSON.parse(raw) as Partial<DailyAiMetricsSnapshot>;
     if (parsed.date !== today) {
-      return { date: today, inputTokens: 0, outputTokens: 0, calls: 0, wrongFeedbackCount: 0 };
+      return {
+        date: today,
+        inputTokens: 0,
+        outputTokens: 0,
+        calls: 0,
+        wrongFeedbackCount: 0,
+        voiceSessions: 0,
+        voiceSeconds: 0,
+      };
     }
     return {
       date: today,
@@ -142,9 +162,21 @@ function readRawMetrics(): DailyAiMetricsSnapshot {
       calls: typeof parsed.calls === 'number' ? Math.max(0, parsed.calls) : 0,
       wrongFeedbackCount:
         typeof parsed.wrongFeedbackCount === 'number' ? Math.max(0, parsed.wrongFeedbackCount) : 0,
+      voiceSessions:
+        typeof parsed.voiceSessions === 'number' ? Math.max(0, parsed.voiceSessions) : 0,
+      voiceSeconds:
+        typeof parsed.voiceSeconds === 'number' ? Math.max(0, parsed.voiceSeconds) : 0,
     };
   } catch {
-    return { date: today, inputTokens: 0, outputTokens: 0, calls: 0, wrongFeedbackCount: 0 };
+    return {
+      date: today,
+      inputTokens: 0,
+      outputTokens: 0,
+      calls: 0,
+      wrongFeedbackCount: 0,
+      voiceSessions: 0,
+      voiceSeconds: 0,
+    };
   }
 }
 
@@ -175,5 +207,33 @@ export function recordWrongAnswerFeedback(): void {
   writeRawMetrics({
     ...current,
     wrongFeedbackCount: current.wrongFeedbackCount + 1,
+  });
+}
+
+/**
+ * Regra explícita da Fase 3: Voz Live (`gemini-3.8-live`) exige chave Gemini própria
+ * configurada em Definições → Tutor → Avançado, preservando a quota gratuita partilhada
+ * apenas para texto, recall e expedições.
+ */
+export function canStartLiveVoiceSession(hasCustomKey: boolean): {
+  allowed: boolean;
+  reason?: string;
+} {
+  if (!hasCustomKey) {
+    return {
+      allowed: false,
+      reason:
+        'A Voz em tempo real (gemini-3.8-live) requer a tua chave Gemini pessoal em Definições → Tutor → Avançado.',
+    };
+  }
+  return { allowed: true };
+}
+
+export function recordVoiceSessionUsage(durationSeconds: number): void {
+  const current = readRawMetrics();
+  writeRawMetrics({
+    ...current,
+    voiceSessions: current.voiceSessions + 1,
+    voiceSeconds: current.voiceSeconds + Math.max(0, Math.round(durationSeconds)),
   });
 }

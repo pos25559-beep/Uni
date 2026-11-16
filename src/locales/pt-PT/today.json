@@ -13,5 +13,22 @@
   "examsTitle": "Próximas avaliações",
   "summaryTitle": "Resumo do semestre",
   "avgLabel": "Média",
-  "focusDoneLabel": "Focado"
+  "focusDoneLabel": "Focado",
+  "testModeSingle": "Modo Teste",
+  "testModeMulti": "Testes múltiplos",
+  "testModeToday": "hoje",
+  "overdueSingle": "sessão por concluir — reagendar no plano",
+  "overduePlural": "sessões por concluir — reagendar no plano",
+  "emptyTasks": "Sem tarefas pendentes — escreve acima para apontar algo rápido.",
+  "summaryToday": "Resumo de hoje",
+  "summaryWeek": "Pulso da semana",
+  "summaryRest": "Dia leve para pôr matéria em dia",
+  "summaryRestNext": "Dia de descanso · Próx. {{date}}",
+  "focusedOf": "{{done}} de {{planned}} focados",
+  "weekOf": "{{done}} de {{goal}} esta semana",
+  "uniBubbleTitle": "Uni · O teu tutor",
+  "talkWithUni": "Falar com o Uni",
+  "taskAdded": "Tarefa adicionada",
+  "goalDone": "Objetivo de hoje concluído!",
+  "defaultSubtitle": "bora estudar"
 }

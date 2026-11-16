@@ -1,0 +1,51 @@
+{
+  "nav": {
+    "today": "Hoy",
+    "courses": "Asignaturas",
+    "plan": "Plan",
+    "calendar": "Calendario",
+    "materials": "Materiales",
+    "progress": "Progreso",
+    "tutor": "Tutor",
+    "settings": "Ajustes",
+    "more": "Más",
+    "skipToContent": "Saltar al contenido"
+  },
+  "actions": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "done": "Completar",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "focus": "Enfocar",
+    "add": "Añadir",
+    "open": "Abrir",
+    "back": "Volver"
+  },
+  "languages": {
+    "pt-PT": "Português (PT)",
+    "pt-BR": "Português (BR)",
+    "es": "Español",
+    "en": "English"
+  },
+  "theme": {
+    "system": "Automático",
+    "dark": "Oscuro",
+    "light": "Claro"
+  },
+  "moreSheet": {
+    "title": "Más en Unipedia",
+    "openTheme": "Tema y Apariencia",
+    "privacy": "Privacidad",
+    "calendarHint": "Fechas de exámenes y clases",
+    "progressHint": "Estantería de Unis y medias",
+    "materialsHint": "Apuntes, PDFs y carpetas",
+    "settingsHint": "Cuenta, idioma, IA y datos"
+  },
+  "brand": {
+    "uniTutor": "Uni Tutor",
+    "uniNotebook": "Cuaderno del Uni",
+    "externalNotebook": "Cuaderno externo"
+  }
+}

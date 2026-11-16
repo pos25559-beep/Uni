@@ -4,6 +4,8 @@ export interface GradeScaleMeta {
   id: GradingScale;
   label: string;
   labelEn: string;
+  labelEs: string;
+  labelPtBr: string;
   max: number;
   passing: number;
   decimals: number;
@@ -15,6 +17,8 @@ export const GRADE_SCALES: Record<GradingScale, GradeScaleMeta> = {
     id: 'pt20',
     label: '0–20 (Portugal)',
     labelEn: '0–20 (Portugal)',
+    labelEs: '0–20 (Portugal)',
+    labelPtBr: '0–20 (Portugal)',
     max: 20,
     passing: 9.5,
     decimals: 1,
@@ -24,6 +28,8 @@ export const GRADE_SCALES: Record<GradingScale, GradeScaleMeta> = {
     id: 'scale10',
     label: '0–10 (Espanha / Brasil)',
     labelEn: '0–10 (Spain / Brazil)',
+    labelEs: '0–10 (España / Brasil)',
+    labelPtBr: '0–10 (Brasil / Espanha)',
     max: 10,
     passing: 5,
     decimals: 1,
@@ -33,6 +39,8 @@ export const GRADE_SCALES: Record<GradingScale, GradeScaleMeta> = {
     id: 'pct100',
     label: '0–100% (Percentagem)',
     labelEn: '0–100% (Percentage)',
+    labelEs: '0–100% (Porcentaje)',
+    labelPtBr: '0–100% (Porcentagem)',
     max: 100,
     passing: 50,
     decimals: 0,
@@ -40,13 +48,44 @@ export const GRADE_SCALES: Record<GradingScale, GradeScaleMeta> = {
   },
 };
 
-export function resolveIntlLocale(language: AppLanguage = 'pt-PT'): string {
-  return language === 'en' ? 'en-GB' : 'pt-PT';
+export function normalizeAppLanguage(language?: string | null): AppLanguage {
+  const lower = String(language ?? '').trim().toLowerCase();
+  if (lower === 'pt-br' || lower === 'pt_br') return 'pt-BR';
+  if (lower === 'es' || lower.startsWith('es-') || lower.startsWith('es_')) return 'es';
+  if (lower === 'en' || lower.startsWith('en-') || lower.startsWith('en_')) return 'en';
+  return 'pt-PT';
+}
+
+export function resolveIntlLocale(language: AppLanguage | string = 'pt-PT'): string {
+  const normalized = normalizeAppLanguage(language);
+  if (normalized === 'en') return 'en-GB';
+  if (normalized === 'pt-BR') return 'pt-BR';
+  if (normalized === 'es') return 'es-ES';
+  return 'pt-PT';
+}
+
+export function getLocalizedScaleLabel(
+  scale: GradingScale,
+  language: AppLanguage | string = 'pt-PT',
+): string {
+  const meta = GRADE_SCALES[scale] ?? GRADE_SCALES.pt20;
+  const lang = normalizeAppLanguage(language);
+  if (lang === 'en') return meta.labelEn;
+  if (lang === 'es') return meta.labelEs;
+  if (lang === 'pt-BR') return meta.labelPtBr;
+  return meta.label;
+}
+
+export function defaultGradingScaleForLanguage(language: AppLanguage | string = 'pt-PT'): GradingScale {
+  const lang = normalizeAppLanguage(language);
+  if (lang === 'pt-BR' || lang === 'es') return 'scale10';
+  if (lang === 'en') return 'pct100';
+  return 'pt20';
 }
 
 export function formatAppNumber(
   value: number,
-  language: AppLanguage = 'pt-PT',
+  language: AppLanguage | string = 'pt-PT',
   options?: Intl.NumberFormatOptions,
 ): string {
   return new Intl.NumberFormat(resolveIntlLocale(language), options).format(value);
@@ -54,7 +93,7 @@ export function formatAppNumber(
 
 export function formatAppDate(
   isoOrDate: string | Date,
-  language: AppLanguage = 'pt-PT',
+  language: AppLanguage | string = 'pt-PT',
   options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' },
 ): string {
   const date = isoOrDate instanceof Date ? isoOrDate : new Date(isoOrDate);
@@ -80,7 +119,7 @@ export function percentToGradeByScale(pct: number, scale: GradingScale = 'pt20')
 export function formatGradeByScale(
   grade: number | null | undefined,
   scale: GradingScale = 'pt20',
-  language: AppLanguage = 'pt-PT',
+  language: AppLanguage | string = 'pt-PT',
 ): string {
   if (grade === null || grade === undefined || Number.isNaN(grade)) return '—';
   const meta = GRADE_SCALES[scale] ?? GRADE_SCALES.pt20;

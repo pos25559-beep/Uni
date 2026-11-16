@@ -58,7 +58,17 @@ export function UnipediaLogoMark({ size = 36, className }: { size?: number; clas
   );
 }
 
-export type BuddyMood = 'happy' | 'curious' | 'celebrate' | 'calm' | 'thinking' | 'shy' | 'peek';
+export type BuddyMood =
+  | 'happy'
+  | 'curious'
+  | 'celebrate'
+  | 'calm'
+  | 'thinking'
+  | 'shy'
+  | 'peek'
+  | 'sleeping'
+  | 'listening'
+  | 'speaking';
 
 /**
  * O Uni — mascote exclusivo e companheiro IA da Unipedia ("Clippy do caderno").
@@ -118,11 +128,15 @@ export function UniBuddy({
   const effectiveAccessory: UniAccessoryId =
     stage !== undefined && stage < 2 ? 'default' : accessory;
 
+  const isSleeping = Boolean(dormant || mood === 'sleeping');
   const classicMoodFill: Partial<Record<BuddyMood, string>> = {
     celebrate: '#FCE99F',
     calm: '#BCEEE0',
+    sleeping: '#C9DC9F',
     curious: '#FAD6BA',
     thinking: '#FAD6BA',
+    listening: '#BCEEE0',
+    speaking: '#FCE99F',
     shy: '#C4E0FD',
     peek: '#C4E0FD',
   };
@@ -131,15 +145,19 @@ export function UniBuddy({
       ? classicMoodFill[mood] ?? palette.fill
       : palette.fill;
 
-  const floatAnimate = dormant
+  const floatAnimate = isSleeping
     ? { y: [0, -1.5, 0], rotate: [0, 0.5, 0] }
     : mood === 'celebrate'
       ? { y: [0, -6, 0], rotate: [0, -4, 4, 0], scale: [1, 1.06, 1] }
-      : mood === 'thinking'
-        ? { y: [0, -4, 0], rotate: [-2.5, 2.5, -2.5] }
-        : mood === 'shy'
-          ? { y: [0, 2, 0], rotate: [-3, -1, -3] }
-          : { y: [0, -4, 0], rotate: [-1.5, 1.5, -1.5] };
+      : mood === 'speaking'
+        ? { y: [0, -3, 0], scale: [1, 1.03, 1] }
+        : mood === 'listening'
+          ? { y: [0, -2, 0], rotate: [-1, 1, -1] }
+          : mood === 'thinking'
+            ? { y: [0, -4, 0], rotate: [-2.5, 2.5, -2.5] }
+            : mood === 'shy'
+              ? { y: [0, 2, 0], rotate: [-3, -1, -3] }
+              : { y: [0, -4, 0], rotate: [-1.5, 1.5, -1.5] };
 
   const FORM_BODY_PATHS: Record<UniFormId, string> = {
     nuvem:
@@ -176,6 +194,22 @@ export function UniBuddy({
       }}
       aria-hidden={onClick ? undefined : true}
     >
+      {/* Halo suave quando está a ouvir em Voz Live */}
+      {mood === 'listening' && (
+        <motion.circle
+          cx="40"
+          cy="40"
+          r="38"
+          stroke="#157F58"
+          strokeWidth="1.8"
+          strokeDasharray="5 4"
+          initial={{ scale: 0.94, opacity: 0.35 }}
+          animate={{ scale: [0.94, 1.05, 0.94], opacity: [0.35, 0.75, 0.35] }}
+          transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut' }}
+          style={{ transformOrigin: '40px 40px' }}
+        />
+      )}
+
       {/* Marcador coral padrão (escondido apenas quando leva chapéu em cima) */}
       {(effectiveAccessory === 'default' || effectiveAccessory === 'humanities' || effectiveAccessory === 'science') && (
         <path d="M36 9V2L40 5.5L44 2V9" fill={bookmarkFill} stroke="#141312" strokeWidth="1.8" strokeLinejoin="round" />
@@ -278,8 +312,8 @@ export function UniBuddy({
       <circle cx="26.5" cy="43.5" r="3.5" fill={palette.cheek} fillOpacity={palette.cheekOpacity} />
       <circle cx="53.5" cy="43.5" r="3.5" fill={palette.cheek} fillOpacity={palette.cheekOpacity} />
 
-      {/* Olhos reativos com piscar natural (ou repouso em Ovo/dormente) */}
-      {dormant || stage === 0 ? (
+      {/* Olhos reativos com piscar natural (ou repouso em Ovo/dormente/a dormir) */}
+      {isSleeping || stage === 0 ? (
         <>
           <path d="M26 36C28.2 38 31.8 38 34 36" stroke={ink} strokeWidth="2.4" strokeLinecap="round" />
           <path d="M46 36C48.2 38 51.8 38 54 36" stroke={ink} strokeWidth="2.4" strokeLinecap="round" />
@@ -310,19 +344,39 @@ export function UniBuddy({
           animate={{ scaleY: [1, 1, 1, 0.12, 1] }}
           transition={{ repeat: Infinity, duration: 4.5, times: [0, 0.88, 0.92, 0.96, 1] }}
         >
-          <circle cx="30" cy="36" r="3.2" fill={ink} />
-          <circle cx="50" cy="36" r="3.2" fill={ink} />
-          <circle cx={mood === 'curious' ? 31.4 : 31} cy="34.8" r="1.05" fill={pupilHighlight} />
-          <circle cx={mood === 'curious' ? 51.4 : 51} cy="34.8" r="1.05" fill={pupilHighlight} />
+          <circle cx="30" cy="36" r={mood === 'listening' ? 3.5 : 3.2} fill={ink} />
+          <circle cx="50" cy="36" r={mood === 'listening' ? 3.5 : 3.2} fill={ink} />
+          <circle
+            cx={mood === 'curious' ? 31.4 : 31}
+            cy={mood === 'thinking' ? 33.9 : 34.8}
+            r="1.05"
+            fill={pupilHighlight}
+          />
+          <circle
+            cx={mood === 'curious' ? 51.4 : 51}
+            cy={mood === 'thinking' ? 33.9 : 34.8}
+            r="1.05"
+            fill={pupilHighlight}
+          />
         </motion.g>
       )}
 
-      {/* Boca */}
-      {mood === 'curious' || mood === 'thinking' ? (
+      {/* Boca reativa */}
+      {mood === 'speaking' ? (
+        <motion.ellipse
+          cx="40"
+          cy="46.2"
+          rx="4.2"
+          ry="2.6"
+          fill={ink}
+          animate={{ ry: [1.6, 3.4, 2.0, 3.1, 1.6] }}
+          transition={{ repeat: Infinity, duration: 0.65, ease: 'easeInOut' }}
+        />
+      ) : mood === 'curious' || mood === 'thinking' ? (
         <circle cx="40" cy="46.5" r="2.8" fill={ink} />
       ) : mood === 'shy' || mood === 'peek' ? (
         <path d="M36 46C38.5 47.5 41.5 47.5 44 46" stroke={ink} strokeWidth="2.4" strokeLinecap="round" />
-      ) : mood === 'calm' ? (
+      ) : mood === 'calm' || isSleeping || mood === 'listening' ? (
         <path d="M35 45.5C37.5 47.5 42.5 47.5 45 45.5" stroke={ink} strokeWidth="2.5" strokeLinecap="round" />
       ) : (
         <path
@@ -333,11 +387,38 @@ export function UniBuddy({
         />
       )}
 
-      {/* Faísca coral quando celebra ou pensa */}
-      {(mood === 'celebrate' || mood === 'thinking') && (
+      {/* Indicador calmo Zzz quando a dormir */}
+      {isSleeping && (
+        <motion.g
+          animate={{ y: [0, -3, 0], opacity: [0.5, 0.9, 0.5] }}
+          transition={{ repeat: Infinity, duration: 2.6, ease: 'easeInOut' }}
+          stroke={ink}
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M61 12H66.5L61 17.5H66.5" />
+          <path d="M69 5H73L69 9H73" />
+        </motion.g>
+      )}
+
+      {/* Órbita de 3 pontos quando está a pensar */}
+      {mood === 'thinking' && (
+        <motion.g
+          animate={{ opacity: [0.45, 1, 0.45] }}
+          transition={{ repeat: Infinity, duration: 1.4, ease: 'easeInOut' }}
+        >
+          <circle cx="62" cy="18" r="1.8" fill="#157F58" />
+          <circle cx="67" cy="14" r="2.2" fill="#157F58" />
+          <circle cx="72.5" cy="9.5" r="2.6" fill="#E04F33" />
+        </motion.g>
+      )}
+
+      {/* Faísca coral quando celebra */}
+      {mood === 'celebrate' && (
         <motion.path
           d="M67 9L69 13L73 14L69 15.5L67 19.5L65 15.5L61 14L65 13L67 9Z"
-          fill={mood === 'thinking' ? '#157F58' : '#E04F33'}
+          fill="#E04F33"
           stroke="#141312"
           strokeWidth="1.2"
           strokeLinejoin="round"

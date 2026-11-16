@@ -1,4 +1,5 @@
 import type { AppLanguage } from '../types';
+import { normalizeAppLanguage } from './grading';
 import type { UniFormId } from './localDb';
 
 /**
@@ -21,10 +22,16 @@ export interface UniPersonaMeta {
   id: UniPersonaMode;
   label: string;
   labelEn: string;
+  labelEs: string;
+  labelPtBr: string;
   hint: string;
   hintEn: string;
+  hintEs: string;
+  hintPtBr: string;
   example: string;
   exampleEn: string;
+  exampleEs: string;
+  examplePtBr: string;
 }
 
 export const UNI_PERSONAS: UniPersonaMeta[] = [
@@ -32,46 +39,76 @@ export const UNI_PERSONAS: UniPersonaMeta[] = [
     id: 'amigo',
     label: 'Amigo',
     labelEn: 'Friend',
+    labelEs: 'Cercano',
+    labelPtBr: 'Parceiro',
     hint: 'Caloroso, claro e com ritmo leve',
     hintEn: 'Warm, clear, everyday analogies first',
+    hintEs: 'Cercano, claro y con ejemplos cotidianos',
+    hintPtBr: 'Leve, próximo e com exemplos do dia a dia',
     example: 'Pensa num carro a travar: é isso que a derivada mede.',
     exampleEn: 'Think of a braking car: that rate of change is the derivative.',
+    exampleEs: 'Piensa en un coche al frenar: eso mismo mide la derivada.',
+    examplePtBr: 'Pensa num carro freando: é exatamente essa taxa que a derivada mede.',
   },
   {
     id: 'exigente',
     label: 'Exigente',
     labelEn: 'Strict',
+    labelEs: 'Exigente',
+    labelPtBr: 'Direto',
     hint: 'Direto ao exame e sem rodeios',
     hintEn: 'Exam-focused, concise, zero fluff',
+    hintEs: 'Directo al examen y sin rodeos',
+    hintPtBr: 'Foco total na prova, sem enrolação',
     example: 'Isto sai no teste. 3 minutos, resolve passo a passo.',
     exampleEn: 'This shows up on the exam. 3 minutes — walk me through it.',
+    exampleEs: 'Esto entra seguro en el examen. Tienes 3 minutos, resuélvelo paso a paso.',
+    examplePtBr: 'Isso cai na prova. 3 minutos — resolve passo a passo agora.',
   },
   {
     id: 'calmo',
     label: 'Anti-stress',
     labelEn: 'Calm',
+    labelEs: 'Sin estrés',
+    labelPtBr: 'Calmo',
     hint: 'Passo a passo para dias difíceis',
     hintEn: 'Step by step for overwhelming days',
+    hintEs: 'Paso a paso para días intensos',
+    hintPtBr: 'Um passo de cada vez para dias puxados',
     example: 'Vamos só ao primeiro passo. O resto espera.',
     exampleEn: "Let's tackle just the first step. Everything else can wait.",
+    exampleEs: 'Vamos solo con el primer paso. Todo lo demás puede esperar.',
+    examplePtBr: 'Bora focar só no primeiro passo. O resto fica para depois.',
   },
   {
     id: 'curioso',
     label: 'Curioso',
     labelEn: 'Curious',
+    labelEs: 'Curioso',
+    labelPtBr: 'Curioso',
     hint: 'Socrático: faz perguntas e entusiasma-se',
     hintEn: 'Socratic: asks probing questions',
+    hintEs: 'Socrático: pregunta e investiga contigo',
+    hintPtBr: 'Socrático: puxa o seu raciocínio com perguntas',
     example: 'E se x fosse negativo? O que muda no sinal?',
     exampleEn: 'What if x were negative? What shifts in the sign?',
+    exampleEs: '¿Y si x fuera negativo? ¿Qué cambia en el signo?',
+    examplePtBr: 'E se x fosse negativo? O que mudaria no sinal aqui?',
   },
   {
     id: 'treinador',
     label: 'Treinador',
     labelEn: 'Coach',
+    labelEs: 'Entrenador',
+    labelPtBr: 'Treinador',
     hint: 'Enérgico, metas curtas por sessão',
     hintEn: 'Energetic, short session targets',
+    hintEs: 'Enérgico y orientado a objetivos cortos',
+    hintPtBr: 'Energia alta e metas curtas por bloco',
     example: 'Meta de hoje: 5 limites certos seguidos.',
     exampleEn: "Today's drill: 5 limits solved cleanly in a row.",
+    exampleEs: 'Meta de hoy: 5 límites resueltos seguidos sin fallo.',
+    examplePtBr: 'Meta de hoje: acertar 5 limites seguidos sem erro.',
   },
 ];
 
@@ -81,13 +118,19 @@ export function getLocalizedPersonas(lang: AppLanguage | string = 'pt-PT'): Arra
   hint: string;
   example: string;
 }> {
-  const isEn = String(lang).toLowerCase().startsWith('en');
-  return UNI_PERSONAS.map((p) => ({
-    id: p.id,
-    label: isEn ? p.labelEn : p.label,
-    hint: isEn ? p.hintEn : p.hint,
-    example: isEn ? p.exampleEn : p.example,
-  }));
+  const normalized = normalizeAppLanguage(lang);
+  return UNI_PERSONAS.map((p) => {
+    if (normalized === 'en') {
+      return { id: p.id, label: p.labelEn, hint: p.hintEn, example: p.exampleEn };
+    }
+    if (normalized === 'es') {
+      return { id: p.id, label: p.labelEs, hint: p.hintEs, example: p.exampleEs };
+    }
+    if (normalized === 'pt-BR') {
+      return { id: p.id, label: p.labelPtBr, hint: p.hintPtBr, example: p.examplePtBr };
+    }
+    return { id: p.id, label: p.label, hint: p.hint, example: p.example };
+  });
 }
 
 export interface UniAccessoryMeta {

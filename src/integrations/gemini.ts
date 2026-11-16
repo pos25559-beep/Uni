@@ -52,7 +52,8 @@ import {
 } from '../lib/visionParsers';
 import { useStore } from '../store/useStore';
 import type { AppState } from '../store/useStore';
-import type { AppTone, Material } from '../types';
+import type { AppLanguage, AppTone, Material } from '../types';
+import { normalizeAppLanguage } from '../lib/grading';
 
 export type {
   ExtractedHistoryItem,
@@ -1035,7 +1036,7 @@ export function buildDocumentContext(
 
   if (options?.notebookNotes?.trim()) {
     sections.push(
-      'NOTAS / RESUMO DO GEMINI NOTEBOOK FORNECIDO PELO ESTUDANTE:',
+      'NOTAS / RESUMO DO CADERNO DO UNI FORNECIDO PELO ESTUDANTE:',
       options.notebookNotes.trim().slice(0, 8000),
     );
   }
@@ -1078,7 +1079,7 @@ export function buildDocumentContext(
   return sections.join('\n\n');
 }
 
-const PERSONA_INSTRUCTIONS_BY_LANG: Record<'pt-PT' | 'en', Record<UniPersonaMode, string>> = {
+const PERSONA_INSTRUCTIONS_BY_LANG: Record<AppLanguage, Record<UniPersonaMode, string>> = {
   'pt-PT': {
     amigo:
       'Estilo Amigo: caloroso, frases curtas e diretas, explica conceitos difíceis primeiro com analogias e exemplos do dia a dia.',
@@ -1090,6 +1091,30 @@ const PERSONA_INSTRUCTIONS_BY_LANG: Record<'pt-PT' | 'en', Record<UniPersonaMode
       'Estilo Curioso (Socrático): entusiasta pela matéria, faz perguntas orientadoras («E se x fosse negativo? O que muda?») para puxar a descoberta pelo estudante.',
     treinador:
       'Estilo Treinador: enérgico e orientado por metas curtas por sessão («Meta de hoje: 5 exercícios seguidos sem erro»), mantendo foco e ritmo claro.',
+  },
+  'pt-BR': {
+    amigo:
+      'Estilo Parceiro: leve, próximo e com frases curtas; explica conceitos difíceis começando por analogias e exemplos do dia a dia.',
+    exigente:
+      'Estilo Direto (Modo Prova): objetivo e rigoroso nas definições; pede que o estudante tente o raciocínio de prova antes de revelar a solução final.',
+    calmo:
+      'Estilo Calmo (Sem estresse): paciente e acolhedor; divide assuntos grandes em passos bem pequenos, uma ideia de cada vez.',
+    curioso:
+      'Estilo Curioso (Socrático): investiga junto com o estudante por meio de perguntas curtas ("E se x fosse negativo? O que mudaria aqui?").',
+    treinador:
+      'Estilo Treinador: energético e orientado a metas curtas por bloco ("Meta agora: 5 exercícios seguidos sem errar").',
+  },
+  es: {
+    amigo:
+      'Estilo Cercano: cálido y claro, con frases breves; introduce ideas complejas con analogías y ejemplos cotidianos.',
+    exigente:
+      'Estilo Exigente (Modo Examen): directo y riguroso; exige plantear el razonamiento de examen antes de mostrar la resolución completa.',
+    calmo:
+      'Estilo Sin Estrés: paciente y sereno; divide temas densos en micropasos simples, una sola idea cada vez.',
+    curioso:
+      'Estilo Curioso (Socrático): entusiasta y socrático; guía con preguntas («¿Y si x fuese negativo? ¿Qué cambiaría?») para que el estudiante lo descubra.',
+    treinador:
+      'Estilo Entrenador: enérgico y práctico; propone objetivos cortos por bloque («Meta de hoy: 5 problemas seguidos sin fallo»).',
   },
   en: {
     amigo:
@@ -1123,7 +1148,7 @@ const UNIPEDIA_CONSTITUTION = `Constituição Unipedia (regras fixas e obrigató
 - Modo socrático em exercícios e trabalhos avaliados: NUNCA entregues trabalhos avaliados feitos de raiz nem resoluções completas à primeira; dá primeiro pistas em passos pequenos (até 3 níveis) para puxar pelo raciocínio do estudante.
 - Rigor e citação: baseia o ensino nas fichas da cadeira e nos materiais/excertos fornecidos. Cita explicitamente a fonte (\`[Fonte: nome do ficheiro]\`). Se algo não estiver nas fichas nem nos anexos, diz com transparência "Isto não está nos teus materiais" em vez de inventar fórmulas ou regras.
 - Mestria real vem da app: nunca inventes notas, pontuações de mestria nem datas que não estejam nos dados fornecidos.
-- Escreve em português europeu (pt-PT) com Markdown limpo e LaTeX padrão (\`$...$\` ou \`$$...$$\` numa linha própria) quando houver matemática/fórmulas.
+- Usa Markdown limpo e LaTeX padrão (\`$...$\` ou \`$$...$$\` numa linha própria) quando houver matemática/fórmulas.
 - Em quizzes: faz UMA pergunta de cada vez e espera pela resposta antes de corrigir.
 - Se a conversa sair do estudo, brinca brevemente e redireciona para a cadeira ou plano.`;
 
@@ -1135,7 +1160,7 @@ export const SYSTEM_PROMPT = (
     accessory?: UniAccessoryId;
     studentName?: string;
     appTone?: AppTone;
-    language?: 'pt-PT' | 'en';
+    language?: AppLanguage | string;
     uniAgent?: UniAgentRecord | null;
     retrievedSheets?: TopicSheetRecord[];
     courseName?: string;
@@ -1147,22 +1172,30 @@ export const SYSTEM_PROMPT = (
   const firstName = opts?.studentName?.trim().split(/\s+/)[0] || '';
   const agent = opts?.uniAgent ?? null;
   const rawLang = opts?.uniAgent?.language ?? opts?.language ?? 'pt-PT';
-  const targetLang: 'pt-PT' | 'en' = rawLang.toLowerCase().startsWith('en') ? 'en' : 'pt-PT';
+  const targetLang: AppLanguage = normalizeAppLanguage(rawLang);
   const personaText = PERSONA_INSTRUCTIONS_BY_LANG[targetLang][persona];
 
   const toneDirective =
     appTone === 'serio'
       ? targetLang === 'en'
         ? '- App tone (Minimal & Focused): structured, sober, concise, zero hype.'
-        : '- Tom da app (Sério & Minimalista): direto, estruturado, sóbrio e profissional, sem exclamações excessivas.'
+        : targetLang === 'es'
+          ? '- Tono de la app (Minimalista): directo, estructurado y sobrio, sin exclamaciones innecesarias.'
+          : '- Tom da app (Sério & Minimalista): direto, estruturado, sóbrio e profissional, sem exclamações excessivas.'
       : targetLang === 'en'
         ? '- Concise, grounded, encouraging tone without filler.'
-        : '- Tom natural e conciso, concreto e encorajador sem exageros.';
+        : targetLang === 'es'
+          ? '- Tono natural y breve, concreto y alentador sin exageraciones.'
+          : '- Tom natural e conciso, concreto e encorajador sem exageros.';
 
   const languageDirective =
     targetLang === 'en'
-      ? '- Idioma de resposta obrigatório: escreve TODA a resposta em inglês claro (en), mantendo entre aspas/parênteses termos técnicos originais se vierem de apontamentos em português.'
-      : '- Idioma de resposta obrigatório: português europeu (pt-PT).';
+      ? '- Mandatory output language: write the ENTIRE reply in clear English (en), keeping technical terms from local notes in parentheses if helpful.'
+      : targetLang === 'es'
+        ? '- Idioma de respuesta obligatorio: escribe TODA la respuesta en español académico natural (es), usando términos como «asignatura» y «examen».'
+        : targetLang === 'pt-BR'
+          ? '- Idioma de resposta obrigatório: escreve TODA a resposta em português do Brasil natural (pt-BR), usando termos como «disciplina» e «prova».'
+          : '- Idioma de resposta obrigatório: português europeu (pt-PT), usando termos como «cadeira» e «teste/exame».';
 
   const expertDirective =
     agent && agent.stage >= 3
@@ -1215,6 +1248,12 @@ CAMADA 4 — CONTEXTO DO MOMENTO:
 - SINCRONIZAÇÃO COM O CADERNO (Calendário, Cadeiras e Plano): sempre que o estudante enviar uma imagem/print ou texto com datas de testes, exames, entregas de projetos ou aulas semanais do horário (ou pedir para guardar/atualizar no resto da app), explica claramente o que encontraste e no FINAL da tua resposta inclui exatamente um bloco técnico (que a interface transforma num cartão de 1 toque):
 <uni-sync>{"hasSaturdayColumn":false,"slots":[{"courseName":"Nome real da cadeira","courseCode":"SIGLA","dayHeader":"2ª|3ª|4ª|5ª|6ª|Sáb","type":"T|TP|P|OT","weekday":1,"start":"09:00","end":"11:00","room":"Sala opcional"}],"assessments":[{"courseName":"Nome real da cadeira","courseCode":"SIGLA opcional","title":"1.º Teste","date":"2026-11-25T14:00:00","kind":"teste|exame|trabalho|projeto|quiz","location":"Sala opcional"}]}</uni-sync>
 (Regra Portugal + colunas sobrepostas: "2ª"=1, "3ª"=2, "4ª"=3, "5ª"=4, "6ª"=5 — "6ª" é Sexta-feira, NUNCA 6! Se não houver aulas nem avaliações para guardar na app, NÃO incluas <uni-sync>.)
+- FERRAMENTAS DO UNI (lista fechada — só emites quando fizer sentido claro no pedido):
+  • Se o estudante acabou de responder corretamente ou com esforço a um quiz/recall de um tópico, podes registar em silêncio: \`<uni-tool>{"name":"registar_recall","args":{"topicTitle":"Tópico","score":3}}</uni-tool>\` (score: 1=rever já, 2=com esforço, 3=dominei).
+  • Para propor ações que escrevem na app (pedem sempre confirmação visual ao estudante antes de guardar), usa:
+    - \`<uni-tool>{"name":"criar_sessao","args":{"topicTitle":"Tópico","minutes":35,"date":"yyyy-MM-dd","notes":"Foco sugerido"}}</uni-tool>\`
+    - \`<uni-tool>{"name":"criar_flashcards","args":{"topicTitle":"Tópico","cards":[{"front":"Pergunta","back":"Resposta curta"}]}}</uni-tool>\`
+    - \`<uni-tool>{"name":"marcar_duvida","args":{"topicTitle":"Tópico","note":"Dúvida objetiva para levar ao professor"}}</uni-tool>\`
 ${sheetsBlock}${docContext ? `\n${docContext}\n` : ''}
 Resumo atual do caderno do estudante${firstName ? ` (${firstName})` : ''}:
 """
@@ -1253,7 +1292,7 @@ export async function generateNotebookBrief(args: {
         ? 'Cria **5 perguntas de treino de exame** com resposta e explicação curta escondida em secção final, citando a origem de cada uma como [Fonte N] ou nome do ficheiro.'
         : 'Faz um **Resumo Executivo por Tópicos** direto e memorável, citando de onde veio cada ideia como [Fonte N] ou nome do ficheiro.';
 
-  const system = `És o Uni a organizar um Caderno de Estudo estilo Gemini Notebook${args.courseName ? ` para ${args.courseName}` : ''}.
+  const system = `És o Uni a organizar um Caderno de Estudo interno da Unipedia${args.courseName ? ` para ${args.courseName}` : ''}.
 ${PERSONA_INSTRUCTIONS[args.persona ?? 'amigo']}
 ${AREA_VOICE_HINTS[args.accessory ?? 'default']}
 Regras estritas:

@@ -1,5 +1,4 @@
 import {
-  Award,
   BookOpen,
   CalendarDays,
   ChartNoAxesColumn,
@@ -18,7 +17,6 @@ import { NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-route
 import { auth, onAuthStateChanged, type User } from '../lib/firebase';
 import { hapticTap, syncNativeTheme } from '../lib/nativeBridge';
 import { initNotificationListeners, syncScheduledUniNotifications } from '../lib/notificationBridge';
-import { getUniCollectibleStates, readCollectibleTelemetry } from '../lib/uniCollectibles';
 import { UNI_CHECKIN_EVENT, type UniCheckInRequest } from '../lib/uniCheckInBus';
 import { googleService } from '../services/googleService';
 import { useHubUiStore } from '../store/useHubUiStore';
@@ -26,7 +24,6 @@ import { useStore } from '../store/useStore';
 import type { StudyLogKind } from '../types';
 import AuthStatus from './auth/AuthStatus';
 import UniCheckInModal from './assistant/UniCheckInModal';
-import UniCollectiblesModal from './brand/UniCollectiblesModal';
 import { UnipediaLogoMark } from './brand/UnipediaMarks';
 import { UNIPEDIA_BOUNCE_SPRING, UNIPEDIA_SPRING } from '../lib/motionTokens';
 import PostOnboardingHubModal from './onboarding/PostOnboardingHubModal';
@@ -54,10 +51,10 @@ const mobilePrimaryNav = [
 ];
 
 const mobileMoreRoutes = [
-  { to: '/calendario', key: 'nav.calendar', hint: 'Datas de provas e aulas', hintEn: 'Exams & class schedule', icon: CalendarDays },
-  { to: '/progresso', key: 'nav.progress', hint: 'Estante dos Unis e médias', hintEn: 'Uni shelf & analytics', icon: ChartNoAxesColumn },
-  { to: '/materiais', key: 'nav.materials', hint: 'Sebentas, PDFs e pastas', hintEn: 'Notes, PDFs & folders', icon: FolderOpen },
-  { to: '/definicoes', key: 'nav.settings', hint: 'Conta, língua, IA e dados', hintEn: 'Account, language & data', icon: Settings },
+  { to: '/calendario', key: 'nav.calendar', hintKey: 'moreSheet.calendarHint', icon: CalendarDays },
+  { to: '/progresso', key: 'nav.progress', hintKey: 'moreSheet.progressHint', icon: ChartNoAxesColumn },
+  { to: '/materiais', key: 'nav.materials', hintKey: 'moreSheet.materialsHint', icon: FolderOpen },
+  { to: '/definicoes', key: 'nav.settings', hintKey: 'moreSheet.settingsHint', icon: Settings },
 ];
 
 const BYPASS_ONBOARDING_PATHS = [
@@ -71,8 +68,7 @@ const BYPASS_ONBOARDING_PATHS = [
 ];
 
 export default function AppShell() {
-  const { t, i18n } = useTranslation('common');
-  const isEn = i18n.language?.startsWith('en');
+  const { t } = useTranslation('common');
   const theme = useStore((s) => s.settings.theme);
   const semesterName = useStore((s) => s.settings.semesterName);
   const guestMode = Boolean(useStore((s) => s.settings.guestMode));
@@ -96,7 +92,6 @@ export default function AppShell() {
     const resolved = typeof next === 'function' ? next(moreOpen) : next;
     setMoreOpenPath(resolved ? location.pathname : null);
   };
-  const [collectiblesOpen, setCollectiblesOpen] = useState(false);
   const moreSheetRef = useRef<HTMLDivElement>(null);
   useSheetSwipeDismiss({
     ref: moreSheetRef,
@@ -182,16 +177,6 @@ export default function AppShell() {
     window.addEventListener(UNI_CHECKIN_EVENT, handler);
     return () => window.removeEventListener(UNI_CHECKIN_EVENT, handler);
   }, []);
-
-  const collectibleCounts = useMemo(() => {
-    const items = getUniCollectibleStates(
-      readCollectibleTelemetry(sessions, courses, weeklyCheckIns),
-    );
-    return {
-      unlocked: items.filter((i) => i.unlocked).length,
-      total: items.length,
-    };
-  }, [sessions, courses, weeklyCheckIns]);
 
   useEffect(() => {
     let active = true;
@@ -355,25 +340,6 @@ export default function AppShell() {
           ))}
         </nav>
 
-        {!isMinimalTone && (
-          <button
-            type="button"
-            onClick={() => {
-              void hapticTap();
-              setCollectiblesOpen(true);
-            }}
-            className="mb-2 flex min-h-[44px] items-center justify-between gap-2 rounded-2xl border border-accent/25 bg-accent-soft/45 px-3.5 py-2 text-xs font-semibold text-fg transition hover:bg-accent-soft"
-          >
-            <span className="inline-flex items-center gap-2">
-              <Award size={15} className="text-accent-ink" />
-              Coleção do Uni
-            </span>
-            <span className="rounded-full bg-surface px-2 py-0.5 font-mono text-xs font-bold text-accent-ink">
-              {collectibleCounts.unlocked}/{collectibleCounts.total}
-            </span>
-          </button>
-        )}
-
         <AuthStatus />
 
         <div className="mt-3 flex items-center justify-between border-t border-line/70 px-3 pt-3 text-xs text-muted">
@@ -431,7 +397,7 @@ export default function AppShell() {
         <div className="pointer-events-none fixed inset-x-0 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 flex justify-center px-3 md:hidden">
         <nav
           aria-label="Barra de navegação"
-          className="pointer-events-auto grid w-full max-w-md grid-cols-5 items-center gap-1 rounded-[28px] bg-[#141312] p-1.5 text-[#FAF8F2] shadow-dock dark:border dark:border-white/10 dark:bg-[#23201B]"
+          className="pointer-events-auto grid w-full max-w-md grid-cols-5 items-center gap-1 rounded-3xl bg-[#141312] p-1.5 text-[#FAF8F2] shadow-dock dark:border dark:border-white/10 dark:bg-[#23201B]"
         >
           {mobilePrimaryNav.map(({ to, key, icon: Icon, end, tour, center }) => (
             <NavLink
@@ -442,7 +408,7 @@ export default function AppShell() {
               onClick={() => void hapticTap()}
               className={({ isActive }) =>
                 cx(
-                  'relative flex min-h-[48px] flex-col items-center justify-center gap-0.5 rounded-[22px] px-0.5 py-1 text-xs font-semibold tracking-tight transition-colors',
+                  'relative flex min-h-[48px] flex-col items-center justify-center gap-0.5 rounded-2xl px-0.5 py-1 text-xs font-semibold tracking-tight transition-colors',
                   isActive
                     ? 'text-[#141312]'
                     : 'text-[#FAF8F2]/65 hover:text-[#FAF8F2]',
@@ -455,7 +421,7 @@ export default function AppShell() {
                     <motion.span
                       layoutId="mobile-nav-pill"
                       transition={UNIPEDIA_BOUNCE_SPRING}
-                      className="absolute inset-0 -z-0 rounded-[22px] bg-[#FAF8F2]"
+                      className="absolute inset-0 -z-0 rounded-2xl bg-[#FAF8F2]"
                     />
                   )}
                   <motion.span
@@ -481,14 +447,14 @@ export default function AppShell() {
               setMoreOpen((v) => !v);
             }}
             className={cx(
-              'relative flex min-h-[48px] flex-col items-center justify-center gap-0.5 rounded-[22px] px-0.5 py-1 text-xs font-semibold tracking-tight transition-colors',
+              'relative flex min-h-[48px] flex-col items-center justify-center gap-0.5 rounded-2xl px-0.5 py-1 text-xs font-semibold tracking-tight transition-colors',
               moreOpen || isMoreRouteActive
                 ? 'text-[#141312]'
                 : 'text-[#FAF8F2]/65 hover:text-[#FAF8F2]',
             )}
           >
             {(moreOpen || isMoreRouteActive) && (
-              <span className="absolute inset-0 rounded-[22px] bg-[#FAF8F2]" />
+              <span className="absolute inset-0 rounded-2xl bg-[#FAF8F2]" />
             )}
             <MoreHorizontal size={18} className="relative z-10" aria-hidden="true" />
             <span className="relative z-10 leading-none">{t('nav.more')}</span>
@@ -529,20 +495,20 @@ export default function AppShell() {
                   <div className="flex items-center gap-2.5">
                     <UnipediaLogoMark size={32} />
                     <div>
-                      <p className="font-display text-base font-bold text-fg">Mais na Unipedia</p>
+                      <p className="font-display text-base font-bold text-fg">{t('moreSheet.title')}</p>
                       {semesterName.trim() && <p className="text-xs text-muted">{semesterName.trim()}</p>}
                     </div>
                   </div>
                 </div>
 
               <div className="grid grid-cols-2 gap-2.5">
-                {mobileMoreRoutes.map(({ to, key, hint, hintEn, icon: Icon }) => (
+                {mobileMoreRoutes.map(({ to, key, hintKey, icon: Icon }) => (
                   <NavLink
                     key={to}
                     to={to}
                     className={({ isActive }) =>
                       cx(
-                        'flex min-h-[84px] flex-col justify-between gap-1.5 rounded-[20px] border p-3.5 transition',
+                        'flex min-h-[84px] flex-col justify-between gap-1.5 rounded-2xl border p-3.5 transition',
                         isActive
                           ? 'border-accent bg-accent-soft text-accent'
                           : 'border-line bg-bg text-fg hover:bg-surface-2',
@@ -553,7 +519,7 @@ export default function AppShell() {
                     <div>
                       <span className="block font-display text-sm font-bold">{t(key)}</span>
                       <span className="mt-0.5 block text-xs leading-snug text-muted">
-                        {isEn ? hintEn : hint}
+                        {t(hintKey)}
                       </span>
                     </div>
                   </NavLink>
@@ -561,40 +527,20 @@ export default function AppShell() {
               </div>
 
               <div className="mt-4 space-y-3">
-                {!isMinimalTone && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void hapticTap();
-                      setMoreOpen(false);
-                      setCollectiblesOpen(true);
-                    }}
-                    className="flex min-h-[48px] w-full items-center justify-between rounded-[18px] border border-accent/25 bg-accent-soft/50 px-3.5 py-2.5 text-left transition hover:bg-accent-soft"
-                  >
-                    <span className="inline-flex items-center gap-2 text-xs font-bold text-fg">
-                      <Award size={16} className="text-accent" />
-                      Coleção do Uni &amp; Mascotes
-                    </span>
-                    <span className="rounded-full bg-surface px-2.5 py-0.5 font-mono text-xs font-bold text-accent">
-                      {collectibleCounts.unlocked}/{collectibleCounts.total}
-                    </span>
-                  </button>
-                )}
-
                 <AuthStatus />
 
-                <div className="flex items-center justify-between rounded-[18px] border border-line bg-bg px-3.5 py-2">
+                <div className="flex items-center justify-between rounded-2xl border border-line bg-bg px-3.5 py-2">
                   <NavLink
                     to="/definicoes"
                     className="inline-flex min-h-[44px] items-center gap-2 text-xs font-semibold text-fg"
                   >
-                    <Settings size={15} /> Tema &amp; Aparência
+                    <Settings size={15} /> {t('moreSheet.openTheme')}
                   </NavLink>
                   <NavLink
                     to="/privacidade"
                     className="inline-flex min-h-[44px] items-center gap-1 text-xs font-semibold text-accent underline"
                   >
-                    <ShieldCheck size={14} /> Privacidade
+                    <ShieldCheck size={14} /> {t('moreSheet.privacy')}
                   </NavLink>
                 </div>
               </div>
@@ -603,12 +549,6 @@ export default function AppShell() {
           </div>
         )}
       </AnimatePresence>
-
-      {/* Galeria de Colecionáveis do Uni */}
-      <UniCollectiblesModal
-        open={collectiblesOpen}
-        onClose={() => setCollectiblesOpen(false)}
-      />
 
       {/* Diário & Check-in Guiado do Uni (Pós-aula, Fim do dia, Domingo, Modo Teste) */}
       <UniCheckInModal

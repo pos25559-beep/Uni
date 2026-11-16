@@ -9,7 +9,7 @@ import '@fontsource/instrument-serif/400.css'
 import '@fontsource/instrument-serif/400-italic.css'
 import './index.css'
 import App from './App.tsx'
-import { initAppI18n, setAppLanguage } from './i18n'
+import { detectPreferredLanguage, initAppI18n, setAppLanguage } from './i18n'
 import { initFirestoreSync } from './lib/firestoreSync'
 import {
   hideNativeSplash,
@@ -23,7 +23,7 @@ initFirestoreSync();
 
 // Ponte nativa (Tema Sistema/Claro/Escuro, StatusBar, Teclado virtual e Splash Screen)
 const initialSettings = useStore.getState().settings;
-initAppI18n(initialSettings.language ?? 'pt-PT');
+initAppI18n(detectPreferredLanguage(initialSettings.language));
 useStore.subscribe((state, prevState) => {
   const nextLang = state.settings.language ?? 'pt-PT';
   const prevLang = prevState.settings.language ?? 'pt-PT';

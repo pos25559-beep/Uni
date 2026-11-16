@@ -24,12 +24,28 @@
     "back": "Back"
   },
   "languages": {
-    "pt-PT": "Português (Portugal)",
+    "pt-PT": "Português (PT)",
+    "pt-BR": "Português (BR)",
+    "es": "Español",
     "en": "English"
   },
   "theme": {
     "system": "System",
     "dark": "Dark",
     "light": "Light"
+  },
+  "moreSheet": {
+    "title": "More in Unipedia",
+    "openTheme": "Theme & Appearance",
+    "privacy": "Privacy",
+    "calendarHint": "Exams & class schedule",
+    "progressHint": "Uni shelf & analytics",
+    "materialsHint": "Notes, PDFs & folders",
+    "settingsHint": "Account, language, AI & data"
+  },
+  "brand": {
+    "uniTutor": "Uni Tutor",
+    "uniNotebook": "Uni Notebook",
+    "externalNotebook": "External notebook"
   }
 }

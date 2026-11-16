@@ -1,4 +1,4 @@
-import type { CompletedCourseRecord, Course, CourseColor, Topic } from '../types';
+import type { CompletedCourseRecord, Course, CourseColor, GradingScale, Topic } from '../types';
 
 export interface CurriculumCourseTemplate {
   code: string;
@@ -39,10 +39,14 @@ export interface DegreeCurriculum {
   courses: CurriculumCourseTemplate[];
 }
 
+export type CurriculumCountry = 'PT' | 'BR' | 'ES';
+
 export interface UniversityCatalogEntry {
   id: string;
   name: string;
   shortName: string;
+  country?: CurriculumCountry;
+  defaultGradingScale?: GradingScale;
   degrees: DegreeCurriculum[];
 }
 
@@ -366,7 +370,130 @@ export const PORTUGAL_CURRICULA: UniversityCatalogEntry[] = [
       },
     ],
   },
+  // Pacotes de Currículo · Espanha (escala 0–10)
+  {
+    id: 'upm-es',
+    name: 'UPM — Universidad Politécnica de Madrid',
+    shortName: 'UPM Madrid',
+    country: 'ES',
+    defaultGradingScale: 'scale10',
+    degrees: [
+      {
+        id: 'gi-upm',
+        name: 'Grado en Ingeniería Informática (ETSIINF)',
+        shortName: 'GII',
+        courses: [
+          { code: 'CALC', name: 'Cálculo Infinitesimal y Numérico', shortName: 'Cálculo', year: 1, semester: 1, ects: 6, topics: ['Sucesiones y límites', 'Derivación', 'Integrales', 'Series numéricas'] },
+          { code: 'PROG', name: 'Fundamentos de Programación', shortName: 'Programación', year: 1, semester: 1, ects: 6, topics: ['Estructuras de control', 'Recursividad', 'Arrays y punteros', 'Ficheros'] },
+          { code: 'ALGE', name: 'Álgebra Lineal', shortName: 'Álgebra', year: 1, semester: 1, ects: 6, topics: ['Espacios vectoriales', 'Matrices', 'Aplicaciones lineales', 'Autovalores'] },
+          { code: 'EDA', name: 'Estructuras de Datos y Algoritmos', shortName: 'EDA', year: 2, semester: 1, ects: 6, topics: ['Árboles y grafos', 'Tablas hash', 'Programación dinámica', 'Complejidad'] },
+          { code: 'SO-ES', name: 'Sistemas Operativos', shortName: 'Sist. Op.', year: 2, semester: 2, ects: 6, topics: ['Procesos e hilos', 'Concurrencia', 'Memoria virtual', 'Sistemas de ficheros'] },
+        ],
+      },
+      {
+        id: 'gim-upm',
+        name: 'Grado en Ingeniería Mecánica (ETSII)',
+        shortName: 'GIM',
+        courses: [
+          { code: 'MAT1', name: 'Matemáticas I', shortName: 'Mate I', year: 1, semester: 1, ects: 6, topics: ['Funciones y derivadas', 'Integración', 'Números complejos'] },
+          { code: 'FIS1', name: 'Física I (Mecánica)', shortName: 'Física I', year: 1, semester: 1, ects: 6, topics: ['Cinemática', 'Dinámica de partículas', 'Sólido rígido', 'Oscilaciones'] },
+          { code: 'RMAT', name: 'Resistencia de Materiales', shortName: 'Res. Mat.', year: 2, semester: 1, ects: 6, topics: ['Tracción y compresión', 'Torsión', 'Flexión en vigas', 'Pandeo'] },
+          { code: 'TERMO-ES', name: 'Termodinámica Técnica', shortName: 'Termo', year: 2, semester: 2, ects: 6, topics: ['Primer y segundo principio', 'Entropía', 'Ciclos motores'] },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'ucm-es',
+    name: 'UCM — Universidad Complutense de Madrid',
+    shortName: 'UCM',
+    country: 'ES',
+    defaultGradingScale: 'scale10',
+    degrees: [
+      {
+        id: 'ade-ucm',
+        name: 'Grado en Administración y Dirección de Empresas (ADE)',
+        shortName: 'ADE',
+        courses: [
+          { code: 'CONT1', name: 'Contabilidad Financiera I', shortName: 'Contabilidad', year: 1, semester: 1, ects: 6, topics: ['Ciclo contable', 'Balance', 'Cuenta de resultados', 'Valoración'] },
+          { code: 'MICRO', name: 'Microeconomía', shortName: 'Micro', year: 1, semester: 2, ects: 6, topics: ['Teoría del consumidor', 'Producción y costes', 'Competencia perfecta y monopolio'] },
+          { code: 'ESTAD', name: 'Estadística Empresarial', shortName: 'Estadística', year: 2, semester: 1, ects: 6, topics: ['Probabilidad', 'Distribuciones', 'Inferencia y contrastes'] },
+        ],
+      },
+    ],
+  },
+  // Pacotes de Currículo · Brasil (escala 0–10)
+  {
+    id: 'usp-br',
+    name: 'USP — Universidade de São Paulo',
+    shortName: 'USP',
+    country: 'BR',
+    defaultGradingScale: 'scale10',
+    degrees: [
+      {
+        id: 'eng-poli-usp',
+        name: 'Engenharia (Ciclo Básico — Poli USP)',
+        shortName: 'Poli USP',
+        courses: [
+          { code: 'MAT2453', name: 'Cálculo Diferencial e Integral I', shortName: 'Cálculo I', year: 1, semester: 1, ects: 6, topics: ['Limites e continuidade', 'Derivadas e otimização', 'Teorema do Valor Médio', 'Integrais definidas'] },
+          { code: 'MAT2457', name: 'Álgebra Linear I', shortName: 'Álg. Linear I', year: 1, semester: 1, ects: 4, topics: ['Vetores no R3', 'Retas e planos', 'Transformações lineares', 'Autovalores'] },
+          { code: 'FEP2195', name: 'Física Geral I', shortName: 'Física I', year: 1, semester: 1, ects: 4, topics: ['Cinemática vetorial', 'Leis de Newton', 'Conservação de energia', 'Colisões'] },
+          { code: 'MAC2166', name: 'Introdução à Computação', shortName: 'Comp. I', year: 1, semester: 1, ects: 4, topics: ['Lógica e fluxogramas', 'Funções em C/Python', 'Vetores e matrizes'] },
+          { code: 'MAT2454', name: 'Cálculo Diferencial e Integral II', shortName: 'Cálculo II', year: 1, semester: 2, ects: 4, topics: ['Curvas no espaço', 'Derivadas parciais', 'Regra da cadeia', 'Gradiente e extremos'] },
+        ],
+      },
+      {
+        id: 'bcc-ime-usp',
+        name: 'Bacharelado em Ciência da Computação (IME-USP)',
+        shortName: 'BCC USP',
+        courses: [
+          { code: 'MAC0110', name: 'Introdução à Computação', shortName: 'MAC110', year: 1, semester: 1, ects: 6, topics: ['Variáveis e laços', 'Funções e recursão', 'Listas e ordenação'] },
+          { code: 'MAC0121', name: 'Algoritmos e Estruturas de Dados I', shortName: 'AED I', year: 1, semester: 2, ects: 6, topics: ['Pilhas e filas', 'Árvores binárias', 'Busca e ordenação', 'Complexidade'] },
+          { code: 'MAC0328', name: 'Algoritmos em Grafos', shortName: 'Grafos', year: 2, semester: 2, ects: 6, topics: ['Busca em largura e profundidade', 'Caminhos mínimos', 'Árvore geradora mínima'] },
+          { code: 'MAC0422', name: 'Sistemas Operacionais', shortName: 'SO', year: 3, semester: 1, ects: 6, topics: ['Processos e threads', 'Escalonamento', 'Memória virtual', 'Sistemas de arquivos'] },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'unicamp-br',
+    name: 'UNICAMP — Universidade Estadual de Campinas',
+    shortName: 'UNICAMP',
+    country: 'BR',
+    defaultGradingScale: 'scale10',
+    degrees: [
+      {
+        id: 'ec-unicamp',
+        name: 'Engenharia de Computação (IC / FEEC)',
+        shortName: 'EC UNICAMP',
+        courses: [
+          { code: 'MA111', name: 'Cálculo I', shortName: 'MA111', year: 1, semester: 1, ects: 6, topics: ['Funções e limites', 'Derivadas', 'Integrais e aplicações'] },
+          { code: 'MA141', name: 'Geometria Analítica e Vetores', shortName: 'MA141', year: 1, semester: 1, ects: 4, topics: ['Sistemas lineares', 'Vetores', 'Cônicas e quádricas'] },
+          { code: 'MC102', name: 'Algoritmos e Programação de Computadores', shortName: 'MC102', year: 1, semester: 1, ects: 6, topics: ['Python', 'Recursão', 'Arquivos e matrizes'] },
+          { code: 'MC202', name: 'Estruturas de Dados', shortName: 'MC202', year: 1, semester: 2, ects: 6, topics: ['Listas ligadas', 'Árvores balanceadas', 'Hashing e heaps'] },
+        ],
+      },
+    ],
+  },
 ];
+
+export function getUniversitiesByCountry(
+  country?: CurriculumCountry,
+  catalog: UniversityCatalogEntry[] = PORTUGAL_CURRICULA,
+): UniversityCatalogEntry[] {
+  if (!country) return catalog;
+  return catalog.filter((u) => (u.country ?? 'PT') === country);
+}
+
+export function defaultScaleForUniversity(
+  universityId: string,
+  catalog: UniversityCatalogEntry[] = PORTUGAL_CURRICULA,
+): GradingScale {
+  const entry = catalog.find((u) => u.id === universityId);
+  if (entry?.defaultGradingScale) return entry.defaultGradingScale;
+  if (entry?.country === 'ES' || entry?.country === 'BR') return 'scale10';
+  return 'pt20';
+}
 
 export function getUniversityById(
   universityId: string,

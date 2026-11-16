@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import WeeklyTutorModal from '../components/assistant/WeeklyTutorModal';
 import ActiveReviewModal from '../components/practice/ActiveReviewModal';
 import {
@@ -74,6 +74,7 @@ export default function Planner() {
   const remove = useStore((s) => s.remove);
   const updateSettings = useStore((s) => s.updateSettings);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const today = useMemo(() => todayStr(), []);
   const legacyReconciledRef = useRef(false);
@@ -99,7 +100,7 @@ export default function Planner() {
   const [tutorOpen, setTutorOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [modal, setModal] = useState<{ session?: StudySession; date: string } | null>(null);
-  const [focusId, setFocusId] = useState<string | null>(null);
+  const [focusId, setFocusId] = useState<string | null>(() => searchParams.get('focus'));
   const [snapshotNonce, setSnapshotNonce] = useState(0);
 
   const dueReviewCount = useMemo(
@@ -341,7 +342,11 @@ export default function Planner() {
                 <Brain size={16} /> {t('reviewDue')} ({dueReviewCount})
               </Button>
             )}
-            <Button variant="primary" onClick={onGenerate} disabled={noPlanInputs}>
+            <Button
+              variant={testMode.mode !== 'normal' ? 'secondary' : 'primary'}
+              onClick={onGenerate}
+              disabled={noPlanInputs}
+            >
               <Sparkles size={16} /> {t('generatePlan')}
             </Button>
             <Button
@@ -363,8 +368,8 @@ export default function Planner() {
         <div
           className={
             testMode.mode === 'single_test'
-              ? 'flex flex-wrap items-center justify-between gap-3 rounded-[22px] bg-pastel-butter/85 px-4 py-3.5 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]'
-              : 'flex flex-wrap items-center justify-between gap-3 rounded-[22px] bg-pastel-blush/85 px-4 py-3.5 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]'
+              ? 'flex flex-wrap items-center justify-between gap-3 rounded-3xl bg-pastel-butter/85 px-4 py-3.5 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]'
+              : 'flex flex-wrap items-center justify-between gap-3 rounded-3xl bg-pastel-blush/85 px-4 py-3.5 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]'
           }
         >
           <div className="flex items-start gap-3">
@@ -375,11 +380,11 @@ export default function Planner() {
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm font-semibold">
                   {testMode.mode === 'single_test'
-                    ? 'Modo Teste ativo (< 10 dias)'
-                    : `Modo Teste Múltiplo (${testMode.urgentCourseIds.length} cadeiras)`}
+                    ? t('testModeSingleTitle')
+                    : t('testModeMultiTitle', { count: testMode.urgentCourseIds.length })}
                 </span>
                 <Badge tone={testMode.mode === 'single_test' ? 'warn' : 'danger'}>
-                  {testMode.mode === 'single_test' ? 'Foco intensivo' : 'Equilíbrio'}
+                  {testMode.mode === 'single_test' ? t('testModeFocusBadge') : t('testModeBalanceBadge')}
                 </Badge>
               </div>
                 <p className="mt-1 text-xs opacity-75">
@@ -401,28 +406,28 @@ export default function Planner() {
                 })
               }
             >
-              Alinhar matéria c/ Uni
+              {t('alignWithUni')}
             </Button>
             <Button size="sm" variant="primary" onClick={generate}>
-              <Sparkles size={14} /> Recalcular
+              <Sparkles size={14} /> {t('recalculate')}
             </Button>
           </div>
         </div>
       )}
 
       {starterOnlyMode && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[22px] bg-pastel-sage/75 px-4 py-3 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl bg-pastel-sage/75 px-4 py-3 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]">
           <div className="min-w-0 flex-1 text-xs leading-relaxed">
-            <span className="font-bold">Modo Arranque de Semestre:</span> ainda sem datas de provas marcadas — o plano distribui estudo contínuo equilibrado pelas tuas cadeiras ativas e recalcula mal inserires avaliações.
+            <span className="font-bold">{t('starterModeTitle')}</span> {t('starterModeBody')}
           </div>
           <Button size="sm" variant="secondary" onClick={() => navigate('/cadeiras')}>
-            Adicionar provas
+            {t('addExamsBtn')}
           </Button>
         </div>
       )}
 
       {recoverableFocus && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[22px] border border-accent/35 bg-accent-soft px-4 py-3 text-fg shadow-[var(--shadow-card)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-accent/35 bg-accent-soft px-4 py-3 text-fg shadow-[var(--shadow-card)]">
           <div className="min-w-0 flex-1 text-xs leading-relaxed">
             <p className="font-bold text-accent-ink">Bloco de foco em curso</p>
             <p className="mt-0.5 truncate text-fg">

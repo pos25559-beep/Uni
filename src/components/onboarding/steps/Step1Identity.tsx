@@ -1,6 +1,8 @@
-import { Palette, Sparkles, Sun, Moon, Monitor } from 'lucide-react';
+import { Globe2, Palette, Sparkles, Sun, Moon, Monitor } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { SUPPORTED_LANGUAGES } from '../../../i18n';
 import { APP_PALETTES } from '../../../lib/academicCredits';
+import { defaultGradingScaleForLanguage, normalizeAppLanguage } from '../../../lib/grading';
 import { hapticTap } from '../../../lib/nativeBridge';
 import {
   getLocalizedPersonas,
@@ -8,7 +10,8 @@ import {
   type UniAccessoryId,
   type UniPersonaMode,
 } from '../../../lib/uniAccessories';
-import type { AppTone, Settings, ThemePalette, UniLiveCompanionsMode } from '../../../types';
+import { useStore } from '../../../store/useStore';
+import type { AppLanguage, AppTone, Settings, ThemePalette, UniLiveCompanionsMode } from '../../../types';
 import { UniBuddy } from '../../brand/UnipediaMarks';
 import { StickerBadge } from '../../motion/Primitives';
 import { Field, Input } from '../../ui';
@@ -58,11 +61,22 @@ export default function Step1Identity({
   uniLiveCompanions,
   setUniLiveCompanions,
 }: Step1IdentityProps) {
-  const { i18n } = useTranslation();
-  const appLang = i18n.language?.startsWith('en') ? 'en' : 'pt-PT';
+  const { t, i18n } = useTranslation(['onboarding', 'common']);
+  const appLang: AppLanguage = normalizeAppLanguage(i18n.language);
+  const updateSettings = useStore((s) => s.updateSettings);
+  const assessments = useStore((s) => s.assessments);
   const personas = getLocalizedPersonas(appLang);
   const previewAcc = uniAccessory === 'auto' ? 'default' : uniAccessory;
   const isMinimal = appTone === 'serio';
+
+  const handleLanguagePick = (nextLang: AppLanguage) => {
+    void hapticTap();
+    const hasGradedAssessments = assessments.some((a) => typeof a.grade === 'number');
+    updateSettings({
+      language: nextLang,
+      ...(hasGradedAssessments ? {} : { gradingScale: defaultGradingScaleForLanguage(nextLang) }),
+    });
+  };
 
   return (
     <div className="space-y-5">
@@ -71,8 +85,8 @@ export default function Step1Identity({
         className={cx(
           'flex flex-col items-center gap-4 p-5 text-center shadow-card sm:flex-row sm:text-left',
           isMinimal
-            ? 'rounded-[22px] border border-line bg-surface text-fg'
-            : 'rounded-[26px] bg-pastel-butter/75 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]',
+            ? 'rounded-2xl border border-line bg-surface text-fg'
+            : 'rounded-3xl bg-pastel-butter/75 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]',
         )}
       >
         <div
@@ -104,7 +118,7 @@ export default function Step1Identity({
       </div>
 
       {/* Nome */}
-      <div className="rounded-[24px] border border-line bg-surface p-4 shadow-[var(--shadow-card)] sm:p-5">
+      <div className="rounded-3xl border border-line bg-surface p-4 shadow-[var(--shadow-card)] sm:p-5">
         <Field label="O teu primeiro nome (ou alcunha)">
           <Input
             value={userName}
@@ -115,8 +129,37 @@ export default function Step1Identity({
         </Field>
       </div>
 
+      {/* Idioma e região */}
+      <div className="space-y-2.5 rounded-3xl border border-line bg-surface p-4 shadow-[var(--shadow-card)] sm:p-5">
+        <div className="flex items-center gap-2">
+          <Globe2 size={16} className="text-accent-ink" />
+          <h3 className="font-display text-base font-bold text-fg">{t('onboarding:stepLanguageLabel')}</h3>
+        </div>
+        <p className="text-xs text-muted">{t('onboarding:stepLanguageHint')}</p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {SUPPORTED_LANGUAGES.map((langOpt) => {
+            const active = appLang === langOpt;
+            return (
+              <button
+                key={langOpt}
+                type="button"
+                onClick={() => handleLanguagePick(langOpt)}
+                className={cx(
+                  'min-h-11 rounded-xl border px-3 text-xs font-semibold transition',
+                  active
+                    ? 'border-accent bg-accent-soft text-accent-ink'
+                    : 'border-line bg-surface-2 text-muted hover:text-fg',
+                )}
+              >
+                {t(`common:languages.${langOpt}`)}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Tema e Paleta ao vivo */}
-      <div className="space-y-4 rounded-[24px] border border-line bg-surface p-4 shadow-[var(--shadow-card)] sm:p-5">
+      <div className="space-y-4 rounded-3xl border border-line bg-surface p-4 shadow-[var(--shadow-card)] sm:p-5">
         <div className="flex items-center gap-2">
           <Palette size={16} className="text-accent-ink" />
           <h3 className="font-display text-base font-bold text-fg">Ambiente e paleta</h3>
@@ -214,7 +257,7 @@ export default function Step1Identity({
       </div>
 
       {/* Personalidade do Uni */}
-      <div className="space-y-3 rounded-[24px] border border-line bg-surface p-4 shadow-[var(--shadow-card)] sm:p-5">
+      <div className="space-y-3 rounded-3xl border border-line bg-surface p-4 shadow-[var(--shadow-card)] sm:p-5">
         <h3 className="font-display text-base font-bold text-fg">Estilo e voz do Uni</h3>
         <div className="grid gap-2 sm:grid-cols-2">
           {personas.map((p) => {

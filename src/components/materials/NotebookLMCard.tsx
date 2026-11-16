@@ -36,13 +36,13 @@ export default function NotebookLMCard() {
       className={cx(
         'rise space-y-4 p-5 shadow-card',
         isMinimal
-          ? 'rounded-[22px] border border-line bg-surface text-fg'
-          : 'rounded-[26px] bg-pastel-butter/65 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]',
+          ? 'rounded-2xl border border-line bg-surface text-fg'
+          : 'rounded-3xl bg-pastel-butter/65 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]',
       )}
     >
       <div className="flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 font-display text-base font-bold tracking-tight">
-          <BookOpen size={16} className="text-accent-ink dark:text-accent" /> Gemini Notebook
+          <BookOpen size={16} className="text-accent-ink dark:text-accent" /> Cadernos externos
         </h2>
         {links.length > 0 && (
           <span className="rounded-full bg-white/70 px-2.5 py-0.5 font-mono text-xs font-semibold tabular dark:bg-black/25">
@@ -60,15 +60,15 @@ export default function NotebookLMCard() {
         >
           <Info size={14} className="mt-0.5 shrink-0" />
           <p>
-            Os cadernos do Gemini Notebook / NotebookLM são guardados como ligações diretas.
+            Podes guardar ligações diretas para cadernos de estudo externos opcionais.
             Cola o URL em «Adicionar link», no Hub inicial ou no formulário da cadeira.
           </p>
         </div>
 
         {links.length === 0 ? (
           <EmptyState
-            title="Ainda sem cadernos"
-            hint="Guarda o URL de um Gemini Notebook para o abrir daqui com um clique."
+            title="Ainda sem cadernos externos"
+            hint="Guarda o URL de um caderno externo opcional se quiseres abri-lo daqui com um clique."
           />
         ) : (
           <ul className="space-y-2">

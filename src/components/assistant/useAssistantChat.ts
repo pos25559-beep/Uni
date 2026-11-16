@@ -31,12 +31,32 @@ import {
 } from '../../lib/scheduleSync';
 import type { UniAccessoryId, UniPersonaMode } from '../../lib/uniAccessories';
 import { showToast } from '../../lib/uiHelpers';
+import {
+  buildUniToolProposal,
+  commitUniToolProposal,
+  executeReadOnlyOrRecallUniTool,
+  extractUniToolsFromText,
+  requiresStudentConfirmation,
+  type UniToolProposal,
+} from '../../lib/uniTools';
 import { extractUniSyncBlock, looksSyncableReply } from '../../lib/visionParsers';
 import { newId, useStore } from '../../store/useStore';
 import type { AcademicProfile, Course, IntegrationKey, IntegrationStatus, Material } from '../../types';
 
 const MAX_SENT = 20;
 const PENDING_SYNC_STORAGE_KEY = 'unipedia-pending-sync-v1';
+const PENDING_TOOLS_STORAGE_KEY = 'unipedia-pending-uni-tools-v1';
+
+function readStoredPendingTools(): Record<string, UniToolProposal[]> {
+  try {
+    const raw = localStorage.getItem(PENDING_TOOLS_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, UniToolProposal[]>) : {};
+  } catch {
+    return {};
+  }
+}
 
 function readStoredPendingSync(): Record<string, ResolvedScheduleSyncBundle> {
   try {
@@ -111,6 +131,10 @@ export function useAssistantChat({
   const [pendingSyncByMsgId, setPendingSyncByMsgId] = useState<
     Record<string, ResolvedScheduleSyncBundle>
   >(readStoredPendingSync);
+  const [pendingToolsByMsgId, setPendingToolsByMsgId] = useState<
+    Record<string, UniToolProposal[]>
+  >(readStoredPendingTools);
+  const [busyToolId, setBusyToolId] = useState<string | null>(null);
   const [syncingMsgId, setSyncingMsgId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const lastAttachmentsRef = useRef<{
@@ -297,6 +321,58 @@ export function useAssistantChat({
     [],
   );
 
+  const updatePendingToolsForMsg = useCallback(
+    (msgId: string, proposals: UniToolProposal[]) => {
+      setPendingToolsByMsgId((prev) => {
+        const next = { ...prev, [msgId]: proposals };
+        try {
+          const entries = Object.entries(next).slice(-25);
+          localStorage.setItem(
+            PENDING_TOOLS_STORAGE_KEY,
+            JSON.stringify(Object.fromEntries(entries)),
+          );
+        } catch {
+          // ignore
+        }
+        return next;
+      });
+    },
+    [],
+  );
+
+  const confirmToolProposal = useCallback(
+    async (msgId: string, proposalId: string) => {
+      const list = pendingToolsByMsgId[msgId] ?? [];
+      const target = list.find((p) => p.id === proposalId);
+      if (!target || target.status !== 'pending' || busyToolId) return;
+      setBusyToolId(proposalId);
+      try {
+        const res = await commitUniToolProposal(target);
+        updatePendingToolsForMsg(
+          msgId,
+          list.map((p) => (p.id === proposalId ? { ...p, status: 'confirmed' as const } : p)),
+        );
+        showToast(res.summary, 'ok');
+      } catch (err) {
+        showToast(err instanceof Error ? err.message : 'Erro ao guardar ação.', 'danger');
+      } finally {
+        setBusyToolId(null);
+      }
+    },
+    [pendingToolsByMsgId, busyToolId, updatePendingToolsForMsg],
+  );
+
+  const cancelToolProposal = useCallback(
+    (msgId: string, proposalId: string) => {
+      const list = pendingToolsByMsgId[msgId] ?? [];
+      updatePendingToolsForMsg(
+        msgId,
+        list.map((p) => (p.id === proposalId ? { ...p, status: 'cancelled' as const } : p)),
+      );
+    },
+    [pendingToolsByMsgId, updatePendingToolsForMsg],
+  );
+
   const run = useCallback(
     async (list: ChatMessage[], targetConvId: string, attachments?: ChatAttachment[]) => {
       const controller = new AbortController();
@@ -356,15 +432,17 @@ export function useAssistantChat({
           system,
           attachments: mergedAttachments.length > 0 ? mergedAttachments : undefined,
           signal: controller.signal,
-          onToken: (partial) => setStreamingText(extractUniSyncBlock(partial).displayText),
+          onToken: (partial) =>
+            setStreamingText(extractUniToolsFromText(extractUniSyncBlock(partial).displayText).displayText),
         });
         const now = new Date().toISOString();
         const extractedFromReply = extractUniSyncBlock(reply);
         let syncPayload = extractedFromReply.payload;
+        const extractedTools = extractUniToolsFromText(extractedFromReply.displayText);
 
         const imageAtt = attachments?.find((a) => a.mimeType.startsWith('image/'));
         const displayText =
-          extractedFromReply.displayText ||
+          extractedTools.displayText ||
           'Não consegui gerar texto desta vez. Podes tentar novamente?';
 
         const shouldAutoExtract =
@@ -427,6 +505,33 @@ export function useAssistantChat({
           }
         }
 
+        if (extractedTools.calls.length > 0) {
+          const storeState = useStore.getState();
+          const toolCtx = {
+            activeCourse,
+            courses: storeState.courses,
+            sessions: storeState.sessions,
+            assessments: storeState.assessments,
+            agent: uniAgent,
+          };
+          const proposals: UniToolProposal[] = [];
+          for (const call of extractedTools.calls) {
+            if (requiresStudentConfirmation(call.name)) {
+              const p = buildUniToolProposal(call, toolCtx);
+              if (p) proposals.push(p);
+            } else {
+              void executeReadOnlyOrRecallUniTool(call, toolCtx).then((r) => {
+                if (call.name === 'registar_recall' && r.ok) {
+                  showToast(r.summary, 'ok');
+                }
+              });
+            }
+          }
+          if (proposals.length > 0) {
+            updatePendingToolsForMsg(msgId, proposals);
+          }
+        }
+
         setStreamingText(null);
         await appendMessage(targetConvId, modelMsg);
         setIntegration('gemini', { connected: true, lastSync: now, error: undefined });
@@ -474,6 +579,7 @@ export function useAssistantChat({
       uniAgent,
       uniPersona,
       updatePendingSyncForMsg,
+      updatePendingToolsForMsg,
       userName,
     ],
   );
@@ -601,6 +707,10 @@ export function useAssistantChat({
     error,
     setError,
     pendingSyncByMsgId,
+    pendingToolsByMsgId,
+    busyToolId,
+    confirmToolProposal,
+    cancelToolProposal,
     syncingMsgId,
     toggleMaterial,
     selectAllMaterials,

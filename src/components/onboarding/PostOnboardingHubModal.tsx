@@ -7,7 +7,6 @@ import {
   Check,
   CheckCircle2,
   ClipboardList,
-  ExternalLink,
   FolderGit2,
   FolderPlus,
   HardDrive,
@@ -104,7 +103,7 @@ export default function PostOnboardingHubModal({
   // Drives partilhados inline
   const [sharedDriveInput, setSharedDriveInput] = useState('');
 
-  // Gemini Notebook & Portal inline
+  // Caderno externo & Portal inline
   const [personalNotebookInput, setPersonalNotebookInput] = useState(
     settings.personalNotebookUrl ?? '',
   );
@@ -183,13 +182,13 @@ export default function PostOnboardingHubModal({
   const handleSaveNotebooks = () => {
     const personalClean = normalizeSafeHubUrl(personalNotebookInput);
     if (personalNotebookInput.trim() && !personalClean) {
-      showToast('Link inválido para o teu Gemini Notebook pessoal.');
+      showToast('Link inválido para o teu Caderno externo pessoal.');
       return;
     }
 
     const courseNbClean = normalizeSafeHubUrl(courseNotebookInput);
     if (courseNotebookInput.trim() && !courseNbClean) {
-      showToast('Link inválido para o Gemini Notebook da cadeira.');
+      showToast('Link inválido para o Caderno externo da cadeira.');
       return;
     }
 
@@ -217,7 +216,7 @@ export default function PostOnboardingHubModal({
           upsert('materials', {
             id: newId(),
             courseId: targetCourse.id,
-            title: `Gemini Notebook · ${targetCourse.shortName}`,
+            title: `Caderno externo · ${targetCourse.shortName}`,
             category: 'sebenta',
             provider: 'notebooklm',
             url: courseNbClean,
@@ -229,7 +228,7 @@ export default function PostOnboardingHubModal({
     }
 
     void hapticSuccess();
-    showToast('Ligações do Gemini Notebook e portal guardadas!');
+    showToast('Ligações do Caderno externo e portal guardadas!');
   };
 
   const handleGeneratePlanNow = () => {
@@ -505,23 +504,15 @@ export default function PostOnboardingHubModal({
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
                   <span>
-                    Centraliza os teus cadernos no <strong className="text-fg">Gemini Notebook</strong> e links da faculdade.
+                    Liga os portais da faculdade e, se usares, o URL privado de um <strong className="text-fg">caderno externo</strong>.
                   </span>
-                  <a
-                    href="https://notebooklm.google.com/"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex min-h-[36px] items-center gap-1 rounded-full bg-surface-2 px-3 py-1 font-semibold text-accent hover:underline"
-                  >
-                    Abrir Gemini Notebook <ExternalLink size={12} />
-                  </a>
                 </div>
 
-                <Field label="Link geral do teu Gemini Notebook (opcional)">
+                <Field label="Link geral de caderno externo (opcional)">
                   <Input
                     value={personalNotebookInput}
                     onChange={(e) => setPersonalNotebookInput(e.target.value)}
-                    placeholder="https://notebooklm.google.com/notebook/..."
+                    placeholder="https://..."
                   />
                 </Field>
 
@@ -545,11 +536,11 @@ export default function PostOnboardingHubModal({
                         ))}
                       </Select>
                     </Field>
-                    <Field label="Gemini Notebook da cadeira">
+                    <Field label="Caderno externo da cadeira (opcional)">
                       <Input
                         value={courseNotebookInput}
                         onChange={(e) => setCourseNotebookInput(e.target.value)}
-                        placeholder="https://notebooklm.google.com/notebook/..."
+                        placeholder="https://..."
                       />
                     </Field>
                     <div className="sm:col-span-2">

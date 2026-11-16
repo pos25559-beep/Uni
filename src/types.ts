@@ -241,7 +241,7 @@ export type UniSkinId =
   | 'ink';
 
 export type UniPetId = 'none' | 'cat' | 'owl' | 'fox' | 'turtle' | 'rabbit';
-export type AppLanguage = 'pt-PT' | 'en';
+export type AppLanguage = 'pt-PT' | 'pt-BR' | 'es' | 'en';
 export type GradingScale = 'pt20' | 'scale10' | 'pct100';
 
 export type PlannerStrategy = 'balanced' | 'exams_first' | 'srs_focus' | 'catch_up';

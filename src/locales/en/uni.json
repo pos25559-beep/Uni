@@ -33,7 +33,9 @@
     "expeditionReady": "Expedition ready ({{count}} questions for {{date}})",
     "examModeUnlocked": "Exam Mode active",
     "issueDiploma": "Issue diploma",
-    "diplomaIssued": "Diploma issued"
+    "diplomaIssued": "Diploma issued",
+    "bridgeBtn": "Study bridge",
+    "mentorNextBtn": "Teach next course"
   },
   "adoptModal": {
     "editTitle": "Customize {{name}} ({{course}})",
@@ -46,14 +48,14 @@
     "stepPersona": "2. Teaching personality",
     "stepName": "3. Uni name",
     "stepLanguage": "4. Language for this Uni",
-    "stepLanguageHint": "Keep the app in your language while letting a course Uni speak English or Portuguese.",
+    "stepLanguageHint": "Keep the app in your language while letting a course Uni speak any supported language.",
     "firstChatTitle": "Quick first check-in (optional · 60s)",
     "firstChatStyle": "How do you learn best here?",
     "styleExamples": "Examples first",
     "styleTheory": "Theory & intuition",
     "styleExercises": "Practice drills",
     "goalLabel": "What is your goal for this course?",
-    "goalPlaceholder": "e.g. Master proofs and score 16/20",
+    "goalPlaceholder": "e.g. Master proofs and pass with confidence",
     "difficultyLabel": "What feels hardest right now?",
     "difficultyPlaceholder": "e.g. Signs in limits at infinity or induction",
     "memoryTitle": "Auto-learn \"What Uni knows\"",
@@ -69,6 +71,21 @@
     "score2": "Partial (3d)",
     "score3": "Mastered (+SRS)",
     "empty": "All of today's expedition questions answered."
+  },
+  "bridge": {
+    "title": "Study bridge · {{course}}",
+    "subtitle": "Generate a focused study guide for this topic or import quiz results back into spaced repetition.",
+    "tabExport": "Export guide",
+    "tabImport": "Import quiz",
+    "topicLabel": "Topic in focus",
+    "copyGuide": "Copy guide",
+    "copied": "Guide copied",
+    "openExternal": "Open external notebook",
+    "importLabel": "Paste quiz score or summary",
+    "importPlaceholder": "e.g. Score 4/5 on Limits. Missed oblique asymptotes and infinity signs.",
+    "importBtn": "Update review & notebook",
+    "importedSuccess": "Spaced repetition and notebook updated!",
+    "missingText": "Paste a quiz result or weak spots first."
   },
   "shelf": {
     "eyebrow": "Uni Shelf",

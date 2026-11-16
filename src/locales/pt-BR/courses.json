@@ -1,0 +1,38 @@
+{
+  "eyebrow": "Semestre",
+  "title": "Suas",
+  "accentTitle": "disciplinas",
+  "newCourse": "Nova disciplina",
+  "importCurriculum": "Importar disciplinas",
+  "courseNotFound": "Esta disciplina não existe",
+  "backToCourses": "Voltar às disciplinas",
+  "subtitleFallback": "Detalhes da disciplina",
+  "tabs": {
+    "overview": "Visão & Regras",
+    "topics": "Conteúdo & Notas",
+    "materials": "Materiais",
+    "horario": "Horário",
+    "tarefas": "Tarefas"
+  },
+  "targetLabel": "Meta",
+  "currentGrade": "Nota atual",
+  "nextAssessment": "Próxima Prova",
+  "topicProgress": "Progresso da matéria",
+  "hoursStudied": "Horas estudadas",
+  "completedSessions": "Sessões concluídas",
+  "editCourse": "Editar disciplina",
+  "editShort": "Editar",
+  "weightGraded": "do peso avaliado",
+  "portalLabel": "Portal da disciplina",
+  "folderLabel": "Pasta de materiais",
+  "externalNotebookLabel": "Caderno externo",
+  "materialsSection": {
+    "eyebrow": "Biblioteca",
+    "title": "Seus",
+    "accentTitle": "materiais",
+    "searchPlaceholder": "Buscar apostilas, PDFs ou links…",
+    "addLink": "Adicionar link",
+    "uploadFile": "Enviar arquivo",
+    "emptyTitle": "Ainda sem materiais salvos"
+  }
+}

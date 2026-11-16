@@ -1,0 +1,38 @@
+{
+  "eyebrow": "Cuatrimestre",
+  "title": "Tus",
+  "accentTitle": "asignaturas",
+  "newCourse": "Nueva asignatura",
+  "importCurriculum": "Importar asignaturas",
+  "courseNotFound": "Esta asignatura no existe",
+  "backToCourses": "Volver a asignaturas",
+  "subtitleFallback": "Detalles de la asignatura",
+  "tabs": {
+    "overview": "Resumen y Reglas",
+    "topics": "Temario y Notas",
+    "materials": "Materiales",
+    "horario": "Horario",
+    "tarefas": "Tareas"
+  },
+  "targetLabel": "Objetivo",
+  "currentGrade": "Nota actual",
+  "nextAssessment": "Próximo Examen",
+  "topicProgress": "Progreso del temario",
+  "hoursStudied": "Horas estudiadas",
+  "completedSessions": "Sesiones completadas",
+  "editCourse": "Editar asignatura",
+  "editShort": "Editar",
+  "weightGraded": "del peso evaluado",
+  "portalLabel": "Portal de la asignatura",
+  "folderLabel": "Carpeta de materiales",
+  "externalNotebookLabel": "Cuaderno externo",
+  "materialsSection": {
+    "eyebrow": "Biblioteca",
+    "title": "Tus",
+    "accentTitle": "materiales",
+    "searchPlaceholder": "Buscar apuntes, PDFs o enlaces…",
+    "addLink": "Añadir enlace",
+    "uploadFile": "Subir archivo",
+    "emptyTitle": "Aún sin materiales guardados"
+  }
+}

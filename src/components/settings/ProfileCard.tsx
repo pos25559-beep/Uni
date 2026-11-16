@@ -1,9 +1,13 @@
 import { Download } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { SUPPORTED_LANGUAGES } from '../../i18n';
 import { useStore } from '../../store/useStore';
 import { fmtMinutes } from '../../lib/selectors';
-import { GRADE_SCALES } from '../../lib/grading';
+import {
+  getLocalizedScaleLabel,
+  normalizeAppLanguage,
+} from '../../lib/grading';
 import { weekdayShort } from '../../lib/colors';
 import { getLocalizedPersonas, UNI_ACCESSORIES } from '../../lib/uniAccessories';
 import type { AppLanguage, GradingScale } from '../../types';
@@ -21,11 +25,11 @@ const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
 export default function ProfileCard() {
   const { t, i18n } = useTranslation(['settings', 'common']);
-  const appLang: AppLanguage = i18n.language?.startsWith('en') ? 'en' : 'pt-PT';
+  const appLang: AppLanguage = normalizeAppLanguage(i18n.language);
   const settings = useStore((s) => s.settings);
   const updateSettings = useStore((s) => s.updateSettings);
   const personas = getLocalizedPersonas(appLang);
-  const currentLang: AppLanguage = settings.language ?? 'pt-PT';
+  const currentLang: AppLanguage = normalizeAppLanguage(settings.language ?? appLang);
   const currentScale: GradingScale = settings.gradingScale ?? 'pt20';
   const [minutesText, setMinutesText] = useState(String(settings.dailyStudyMinutes));
   const [userNameDraft, setUserNameDraft] = useState(settings.userName);
@@ -253,8 +257,8 @@ export default function ProfileCard() {
           <div className="space-y-1.5">
             <span className="text-xs font-medium text-muted">{t('settings:languageLabel')}</span>
             <p className="text-xs text-muted">{t('settings:languageHint')}</p>
-            <div className="inline-flex rounded-full bg-surface-2 p-1">
-              {(['pt-PT', 'en'] as AppLanguage[]).map((langOpt) => {
+            <div className="inline-flex flex-wrap gap-1 rounded-2xl bg-surface-2 p-1">
+              {SUPPORTED_LANGUAGES.map((langOpt) => {
                 const active = currentLang === langOpt;
                 return (
                   <button
@@ -262,7 +266,7 @@ export default function ProfileCard() {
                     type="button"
                     onClick={() => updateSettings({ language: langOpt })}
                     className={cx(
-                      'min-h-11 rounded-full px-3.5 text-xs font-semibold transition',
+                      'min-h-11 rounded-full px-3 text-xs font-semibold transition',
                       active ? 'bg-ink-cta text-ink-cta-fg' : 'text-muted hover:text-fg',
                     )}
                   >
@@ -276,10 +280,9 @@ export default function ProfileCard() {
           <div className="space-y-1.5">
             <span className="text-xs font-medium text-muted">{t('settings:gradingScaleLabel')}</span>
             <p className="text-xs text-muted">{t('settings:gradingScaleHint')}</p>
-            <div className="inline-flex flex-wrap gap-1 rounded-full bg-surface-2 p-1">
+            <div className="inline-flex flex-wrap gap-1 rounded-2xl bg-surface-2 p-1">
               {(['pt20', 'scale10', 'pct100'] as GradingScale[]).map((scaleId) => {
                 const active = currentScale === scaleId;
-                const meta = GRADE_SCALES[scaleId];
                 return (
                   <button
                     key={scaleId}
@@ -290,7 +293,7 @@ export default function ProfileCard() {
                       active ? 'bg-ink-cta text-ink-cta-fg' : 'text-muted hover:text-fg',
                     )}
                   >
-                    {appLang === 'en' ? meta.labelEn : meta.label}
+                    {getLocalizedScaleLabel(scaleId, appLang)}
                   </button>
                 );
               })}

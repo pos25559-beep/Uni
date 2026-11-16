@@ -1,0 +1,17 @@
+{
+  "eyebrow": "Preferencias",
+  "title": "Tus",
+  "accentTitle": "ajustes",
+  "profileTitle": "Perfil y cuatrimestre",
+  "nameLabel": "Nombre",
+  "namePlaceholder": "¿Cómo prefieres que te llamemos?",
+  "semesterLabel": "Cuatrimestre",
+  "languageLabel": "Idioma de la interfaz",
+  "languageHint": "Cada Uni de asignatura puede usar un idioma distinto.",
+  "gradingScaleLabel": "Escala de calificaciones",
+  "gradingScaleHint": "Las gráficas y el Modo Examen normalizan automáticamente las notas a porcentaje.",
+  "dailyMinutesLabel": "Minutos de estudio al día",
+  "studyDaysLabel": "Días de estudio",
+  "uniPersonaLabel": "Personalidad predeterminada de Uni",
+  "saveBtn": "Guardar cambios"
+}

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  canStartLiveVoiceSession,
   consumeDailyQuota,
   DAILY_CHAT_LIMIT,
   DAILY_NOTEBOOK_LIMIT,
@@ -7,6 +8,7 @@ import {
   getAiMetricsSnapshot,
   getDailyQuotaSnapshot,
   recordAiTokenUsage,
+  recordVoiceSessionUsage,
   recordWrongAnswerFeedback,
   refundDailyQuota,
   UniDailyLimitReachedError,
@@ -73,11 +75,23 @@ describe('aiQuota', () => {
     recordAiTokenUsage(120, 45);
     recordAiTokenUsage(80, 55);
     recordWrongAnswerFeedback();
+    recordVoiceSessionUsage(95);
 
     const metrics = getAiMetricsSnapshot();
     expect(metrics.inputTokens).toBe(200);
     expect(metrics.outputTokens).toBe(100);
     expect(metrics.calls).toBe(2);
     expect(metrics.wrongFeedbackCount).toBe(1);
+    expect(metrics.voiceSessions).toBe(1);
+    expect(metrics.voiceSeconds).toBe(95);
+  });
+
+  it('requires a custom Gemini API key for Live Voice while keeping text quota separate', () => {
+    const blocked = canStartLiveVoiceSession(false);
+    expect(blocked.allowed).toBe(false);
+    expect(blocked.reason).toContain('chave Gemini pessoal');
+
+    const allowed = canStartLiveVoiceSession(true);
+    expect(allowed.allowed).toBe(true);
   });
 });

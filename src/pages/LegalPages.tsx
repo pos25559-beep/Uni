@@ -54,7 +54,7 @@ function LegalAccordion({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="overflow-hidden rounded-[20px] border border-line bg-surface shadow-card">
+    <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
       <button
         type="button"
         aria-expanded={open}
@@ -79,30 +79,30 @@ export function PrivacyPolicyPage() {
       subtitle="Explicação direta sobre o que fica contigo e o que é partilhado — sem letra pequena."
     >
       {/* Resumo visual em 30 segundos */}
-      <div className="space-y-4 rounded-[24px] bg-[#BCEEE0] p-5 text-[#141312] dark:bg-[#17312B] dark:text-[#FAF6EC]">
+      <div className="space-y-4 rounded-3xl bg-[#BCEEE0] p-5 text-[#141312] dark:bg-[#17312B] dark:text-[#FAF6EC]">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <StickerBadge tone="butter" tilt={-2}>
             A tua privacidade em 30 segundos
           </StickerBadge>
-          <span className="text-xs font-semibold opacity-75">RGPD · UE</span>
+          <span className="text-xs font-semibold opacity-75">RGPD (UE) · LGPD (BR)</span>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-[18px] bg-white/75 p-3.5 dark:bg-black/25">
+          <div className="rounded-2xl bg-white/75 p-3.5 dark:bg-black/25">
             <Smartphone size={18} className="text-[#157F58] dark:text-[#4ADE80]" />
             <p className="mt-2 font-display text-sm font-bold">No teu telemóvel</p>
             <p className="mt-1 text-xs opacity-80">
               Cadeiras, notas, tarefas e PDFs ficam guardados localmente por defeito. Zero publicidade.
             </p>
           </div>
-          <div className="rounded-[18px] bg-white/75 p-3.5 dark:bg-black/25">
+          <div className="rounded-2xl bg-white/75 p-3.5 dark:bg-black/25">
             <Cloud size={18} className="text-[#1D5FAD] dark:text-[#93C5FD]" />
             <p className="mt-2 font-display text-sm font-bold">Na nuvem só se quiseres</p>
             <p className="mt-1 text-xs opacity-80">
               Só sincronizamos se criares conta no ecrã Entrar. Podes usar tudo sem conta.
             </p>
           </div>
-          <div className="rounded-[18px] bg-white/75 p-3.5 dark:bg-black/25">
+          <div className="rounded-2xl bg-white/75 p-3.5 dark:bg-black/25">
             <Sparkles size={18} className="text-[#E04F33] dark:text-[#FF7A59]" />
             <p className="mt-2 font-display text-sm font-bold">Tutor IA transparente</p>
             <p className="mt-1 text-xs opacity-80">
@@ -112,7 +112,7 @@ export function PrivacyPolicyPage() {
         </div>
       </div>
 
-      <LegalAccordion title="1. Quem gere a app e idade mínima" defaultOpen>
+      <LegalAccordion title="1. Quem gere a app e proteção de menores" defaultOpen>
         <div className="space-y-2">
           <p>
             <strong className="text-fg">Responsável:</strong> {LEGAL_INFO.controllerName} ({LEGAL_INFO.country}) ·{' '}
@@ -121,32 +121,46 @@ export function PrivacyPolicyPage() {
             </a>
           </p>
           <p>
-            <strong className="text-fg">Idade mínima em Portugal:</strong> pelo menos{' '}
-            <strong className="text-fg">{LEGAL_INFO.minimumAgePT} anos</strong> (ou autorização do encarregado de educação, nos termos do RGPD e da Lei n.º 58/2019).
+            <strong className="text-fg">Idade mínima &amp; Menores (RGPD Art. 8.º / Lei n.º 58/2019 &amp; COPPA):</strong> pelo menos{' '}
+            <strong className="text-fg">{LEGAL_INFO.minimumAgePT} anos</strong> em Portugal (e autorização do responsável legal quando exigida pela legislação local abaixo dos 16 anos na UE ou 13 anos sob a COPPA). Os Unis seguem a mesma constituição pedagógica e segura em todas as idades, sem perfis afetivos nem gamificação manipuladora.
           </p>
         </div>
       </LegalAccordion>
 
-      <LegalAccordion title="2. Os teus direitos (Exportar, Revogar, Eliminar)">
+      <LegalAccordion title="2. Caderno de Memória do Uni (&quot;O que o Uni sabe&quot;)">
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            <strong className="text-fg">Desligado por omissão:</strong> a aprendizagem automática de dificuldades no Caderno do Uni só funciona se a ativares explicitamente por cadeira.
+          </li>
+          <li>
+            <strong className="text-fg">100% visível, editável e apagável:</strong> podes consultar, editar ou eliminar qualquer nota em <em>O que o Uni sabe</em>, e revogar a memória a qualquer momento.
+          </li>
+          <li>
+            <strong className="text-fg">Sem treino de modelos:</strong> as tuas fichas, cadernos e respostas de recall nunca são usadas para treinar modelos públicos.
+          </li>
+        </ul>
+      </LegalAccordion>
+
+      <LegalAccordion title="3. Os teus direitos (RGPD · UE e LGPD · Brasil)">
         <ul className="list-disc space-y-2 pl-5">
           <li>
             <strong className="text-fg">Exportar tudo:</strong> em{' '}
             <Link to="/definicoes" className="font-semibold text-accent-ink underline">
               Definições → Privacidade &amp; Dados
             </Link>{' '}
-            descarregas uma cópia JSON completa a qualquer momento.
+            descarregas uma cópia JSON completa (incluindo todos os Unis e fichas locais) a qualquer momento.
           </li>
           <li>
             <strong className="text-fg">Desligar Tutor IA ou Nuvem:</strong> podes revogar qualquer consentimento com um toque nas Definições.
           </li>
           <li>
-            <strong className="text-fg">Apagar conta para sempre:</strong> usa o portal{' '}
+            <strong className="text-fg">Conformidade LGPD (Brasil — Lei n.º 13.709/2018):</strong> estudantes no Brasil dispõem dos direitos de confirmação, acesso, retificação, portabilidade e eliminação dos dados pessoais previstos no art. 18.º da LGPD pelo mesmo canal e pelo portal{' '}
             <Link to="/eliminar-conta" className="font-semibold text-accent-ink underline">
               Eliminar conta
             </Link>.
           </li>
           <li>
-            <strong className="text-fg">Autoridade de controlo:</strong>{' '}
+            <strong className="text-fg">Autoridade de controlo (UE/PT):</strong>{' '}
             <a
               href={LEGAL_INFO.supervisoryAuthority.url}
               target="_blank"
@@ -160,7 +174,7 @@ export function PrivacyPolicyPage() {
         </ul>
       </LegalAccordion>
 
-      <LegalAccordion title="3. Detalhes técnicos e legais">
+      <LegalAccordion title="4. Detalhes técnicos e bases legais">
         <div className="space-y-2 text-xs leading-relaxed">
           <p>
             <strong className="text-fg">Bases legais (RGPD Art. 6.º):</strong> execução local do serviço solicitado (alínea b) e consentimento explícito para sincronização Cloud (Firebase), OAuth Google/OneDrive (só leitura) e Google Gemini IA (alínea a + EU AI Act Art. 50.º).
@@ -213,7 +227,7 @@ export function DeleteAccountPage() {
             <li>Credencial de autenticação na conta Unipedia (se tiveres sessão iniciada).</li>
             <li>Todos os dados guardados na nuvem e neste telemóvel (cadeiras, notas, tarefas, materiais locais e definições).</li>
           </ul>
-          <p className="rounded-[16px] bg-surface-2 px-3.5 py-2.5 text-xs">
+          <p className="rounded-2xl bg-surface-2 px-3.5 py-2.5 text-xs">
             <strong className="text-fg">Estado atual:</strong>{' '}
             {user ? `Sessão iniciada (${user.email ?? 'conta ativa'}).` : 'Modo offline neste dispositivo (sem conta Cloud).'}
           </p>

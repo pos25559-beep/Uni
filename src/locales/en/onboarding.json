@@ -1,8 +1,32 @@
 {
-  "headline": "Know exactly what to study today for your exams.",
+  "headline": "Know what to study today until your exam.",
   "ctaStart": "Get started",
   "ctaDemo": "Explore demo mode",
   "ctaSignIn": "Sign in",
   "stepCourse": "Degree & Courses",
-  "stepRhythm": "Rhythm & Privacy"
+  "stepRhythm": "Rhythm & Privacy",
+  "stepLanguageLabel": "Language & Curriculum region",
+  "stepLanguageHint": "Adapts academic terminology and suggested grading scale.",
+  "welcomeSlides": {
+    "overviewEyebrow": "Your semester with clarity",
+    "overviewTitle": "Know what to study today",
+    "overviewAccent": "until the exam",
+    "overviewDesc": "Turn your courses, timetable, and exam dates into realistic study blocks for today — calmly and with zero guesswork.",
+    "cycleEyebrow": "Complete internal loop",
+    "cycleTitle": "Plan, focus, review",
+    "cycleAccent": "in a single notebook",
+    "cycleDesc": "From your daily schedule to distraction-free focus, your Uni Notebook, and automatic spaced repetition in one flow.",
+    "planEyebrow": "Built around your syllabus",
+    "planTitle": "Real curricula",
+    "planAccent": "and exam deadlines",
+    "planDesc": "Import your degree, test dates, and schedules by text or screenshot and watch your weekly plan adapt.",
+    "focusEyebrow": "Focus Mode & Active Recall",
+    "focusTitle": "Real study,",
+    "focusAccent": "stronger retention",
+    "focusDesc": "Timed focus blocks paired with smart spaced repetition (1→3→7→21 days) that adapts upcoming sessions.",
+    "unisEyebrow": "Specialist Unis per course",
+    "unisTitle": "One Uni per course",
+    "unisAccent": "that grows with you",
+    "unisDesc": "Pick the shape, name, and teaching style of each Uni. Evolves from Egg to Master strictly through verified mastery."
+  }
 }

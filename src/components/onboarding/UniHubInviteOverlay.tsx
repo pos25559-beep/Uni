@@ -174,7 +174,7 @@ export default function UniHubInviteOverlay() {
               </h2>
 
               <p className="mt-2.5 text-sm leading-relaxed text-muted">
-                Junta aqui o horário, os testes, Drives partilhados e Gemini Notebook para eu organizar o teu ritmo logo hoje.
+                Junta aqui o horário, os testes, Drives partilhados e apontamentos para eu organizar o teu ritmo logo hoje.
               </p>
 
               <div className="mt-6 flex flex-col items-center gap-2 sm:flex-row sm:justify-center">

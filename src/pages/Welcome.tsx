@@ -1,8 +1,9 @@
-import { ArrowRight, BookOpen, CheckCircle2, Trophy } from 'lucide-react';
+import { ArrowRight, BookOpen, CheckCircle2, GraduationCap } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
+import { SUPPORTED_LANGUAGES } from '../i18n';
 import { UniBuddy, UnipediaLogoMark } from '../components/brand/UnipediaMarks';
 import {
   UniFocusRecallScene,
@@ -10,83 +11,81 @@ import {
   UniPlanAndConnectScene,
 } from '../components/brand/WelcomeScenes';
 import { StickerBadge } from '../components/motion/Primitives';
+import { normalizeAppLanguage } from '../lib/grading';
+import type { UniFormId } from '../lib/localDb';
 import { UNIPEDIA_BOUNCE_SPRING } from '../lib/motionTokens';
 import { cx } from '../lib/uiHelpers';
 import { hapticTap } from '../lib/nativeBridge';
 import { UNI_ACCESSORIES, type UniAccessoryId } from '../lib/uniAccessories';
-import { UNI_SKINS, type UniSkinId } from '../lib/uniCollectibles';
+import { getStageInfo } from '../lib/uniMastery';
 import { useStore } from '../store/useStore';
+import type { AppLanguage } from '../types';
 
-interface Slide {
-  id: string;
-  bgClass: string;
-  eyebrow: string;
-  title: string;
-  accent: string;
-  description: string;
-}
-
-const SLIDES: Slide[] = [
-  {
-    id: 'overview',
-    bgClass: 'bg-pastel-peach dark:bg-[#332218]',
-    eyebrow: 'O teu caderno escolar & universitário',
-    title: 'O teu semestre,',
-    accent: 'sem complicações',
-    description:
-      'Junta cadeiras, datas de provas, apontamentos e ritmo diário num caderno leve pensado para estudar com calma.',
-  },
-  {
-    id: 'learning-modes',
-    bgClass: 'bg-pastel-sage dark:bg-[#192D21]',
-    eyebrow: 'Universo Uni · Aulas & Grupo',
-    title: 'Aprende em ritmo',
-    accent: 'calmo e acompanhado',
-    description:
-      'Na sala ou em grupo, cada aula transforma-se em tópicos claros e os companheiros Uni ficam contigo sem distrair.',
-  },
-  {
-    id: 'plan-and-connect',
-    bgClass: 'bg-pastel-sky dark:bg-[#192838]',
-    eyebrow: 'Plano diário + Google opcional',
-    title: 'Tudo organizado,',
-    accent: 'ao teu jeito',
-    description:
-      'Distribui sessões pelos teus dias livres e liga Drive, Agenda e Gmail quando quiseres — sem duplicar trabalho.',
-  },
-  {
-    id: 'focus-recall',
-    bgClass: 'bg-pastel-mint dark:bg-[#162C25]',
-    eyebrow: 'Modo Foco & Recall Ativo',
-    title: 'Estudo real,',
-    accent: 'memória mais forte',
-    description:
-      'Sessões cronometradas com revisão espaçada inteligente (1→3→7→21 dias) que adapta automaticamente os próximos blocos.',
-  },
-  {
-    id: 'uni-collectibles',
-    bgClass: 'bg-pastel-butter dark:bg-[#2F2815]',
-    eyebrow: 'Personalidade & Conquistas por Mérito',
-    title: 'Coleciona Unis',
-    accent: 'com o teu esforço',
-    description:
-      'Experimenta acessórios da tua área e desbloqueia novas cores do Uni ao manteres ritmo, check-ins e revisões ativas.',
-  },
-];
+const FORM_CHOICES: UniFormId[] = ['nuvem', 'gota', 'estrela', 'cristal', 'folha'];
 
 export default function WelcomePage() {
-  const { t, i18n } = useTranslation('onboarding');
-  const currentLang = i18n.language?.startsWith('en') ? 'en' : 'pt-PT';
+  const { t, i18n } = useTranslation(['onboarding', 'uni']);
+  const currentLang: AppLanguage = normalizeAppLanguage(i18n.language);
   const updateSettings = useStore((s) => s.updateSettings);
   const navigate = useNavigate();
 
   const [step, setStep] = useState(0);
   const [previewAccessory, setPreviewAccessory] = useState<UniAccessoryId>('math');
-  const [previewSkin, setPreviewSkin] = useState<UniSkinId>('classic');
+  const [previewForm, setPreviewForm] = useState<UniFormId>('cristal');
 
-  const slide = SLIDES[step];
-  const isLast = step === SLIDES.length - 1;
-  const activeSkinMeta = UNI_SKINS.find((s) => s.id === previewSkin) ?? UNI_SKINS[0];
+  const slides = [
+    {
+      id: 'overview',
+      bgClass: 'bg-pastel-peach dark:bg-[#332218]',
+      eyebrow: t('onboarding:welcomeSlides.overviewEyebrow'),
+      title: t('onboarding:welcomeSlides.overviewTitle'),
+      accent: t('onboarding:welcomeSlides.overviewAccent'),
+      description: t('onboarding:welcomeSlides.overviewDesc'),
+    },
+    {
+      id: 'learning-modes',
+      bgClass: 'bg-pastel-sage dark:bg-[#192D21]',
+      eyebrow: t('onboarding:welcomeSlides.cycleEyebrow'),
+      title: t('onboarding:welcomeSlides.cycleTitle'),
+      accent: t('onboarding:welcomeSlides.cycleAccent'),
+      description: t('onboarding:welcomeSlides.cycleDesc'),
+    },
+    {
+      id: 'plan-and-connect',
+      bgClass: 'bg-pastel-sky dark:bg-[#192838]',
+      eyebrow: t('onboarding:welcomeSlides.planEyebrow'),
+      title: t('onboarding:welcomeSlides.planTitle'),
+      accent: t('onboarding:welcomeSlides.planAccent'),
+      description: t('onboarding:welcomeSlides.planDesc'),
+    },
+    {
+      id: 'focus-recall',
+      bgClass: 'bg-pastel-mint dark:bg-[#162C25]',
+      eyebrow: t('onboarding:welcomeSlides.focusEyebrow'),
+      title: t('onboarding:welcomeSlides.focusTitle'),
+      accent: t('onboarding:welcomeSlides.focusAccent'),
+      description: t('onboarding:welcomeSlides.focusDesc'),
+    },
+    {
+      id: 'specialist-unis',
+      bgClass: 'bg-pastel-butter dark:bg-[#2F2815]',
+      eyebrow: t('onboarding:welcomeSlides.unisEyebrow'),
+      title: t('onboarding:welcomeSlides.unisTitle'),
+      accent: t('onboarding:welcomeSlides.unisAccent'),
+      description: t('onboarding:welcomeSlides.unisDesc'),
+    },
+  ];
+
+  const slide = slides[step];
+  const isLast = step === slides.length - 1;
+  const masterStageInfo = getStageInfo(4, currentLang);
+
+  const cycleLanguage = () => {
+    void hapticTap();
+    const idx = SUPPORTED_LANGUAGES.indexOf(currentLang);
+    const nextLang = SUPPORTED_LANGUAGES[(idx + 1) % SUPPORTED_LANGUAGES.length] ?? 'pt-PT';
+    updateSettings({ language: nextLang });
+  };
 
   const markSeen = (extra?: Parameters<typeof updateSettings>[0]) => {
     updateSettings({ hasSeenWelcome: true, ...extra });
@@ -95,7 +94,7 @@ export default function WelcomePage() {
   const handlePrimary = () => {
     void hapticTap();
     if (!isLast) {
-      setStep((s) => Math.min(SLIDES.length - 1, s + 1));
+      setStep((s) => Math.min(slides.length - 1, s + 1));
       return;
     }
     markSeen({
@@ -135,7 +134,7 @@ export default function WelcomePage() {
         aria-hidden="true"
         animate={{ y: [0, -10, 0], rotate: [12, 22, 12] }}
         transition={{ repeat: Infinity, duration: 6, ease: 'easeInOut' }}
-        className="pointer-events-none absolute top-44 -left-10 size-28 rounded-[28px] bg-white/25 dark:bg-white/5"
+        className="pointer-events-none absolute top-44 -left-10 size-28 rounded-3xl bg-white/25 dark:bg-white/5"
       />
 
       {/* Topo com marca e atalho para entrar */}
@@ -147,18 +146,18 @@ export default function WelcomePage() {
         <div className="flex items-center gap-1.5">
           <button
             type="button"
-            onClick={() => updateSettings({ language: currentLang === 'en' ? 'pt-PT' : 'en' })}
+            onClick={cycleLanguage}
             aria-label="Language"
             className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-white/70 px-3 text-xs font-bold text-[#141312] backdrop-blur-sm transition hover:bg-white dark:bg-black/30 dark:text-[#FAF6EC]"
           >
-            {currentLang === 'en' ? 'PT' : 'EN'}
+            {currentLang.toUpperCase()}
           </button>
           <button
             type="button"
             onClick={handleExistingAccount}
             className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full bg-white/75 px-4 text-xs font-semibold text-[#141312] backdrop-blur-sm transition hover:bg-white dark:bg-black/30 dark:text-[#FAF6EC]"
           >
-            {t('ctaSignIn')}
+            {t('onboarding:ctaSignIn')}
           </button>
         </div>
       </header>
@@ -182,24 +181,24 @@ export default function WelcomePage() {
                     initial={{ rotate: -6, y: 12 }}
                     animate={{ rotate: -4, y: 0 }}
                     transition={UNIPEDIA_BOUNCE_SPRING}
-                    className="absolute left-4 top-5 rounded-[22px] bg-bg px-3.5 py-2.5 text-left shadow-card dark:bg-surface"
+                    className="absolute left-4 top-5 rounded-2xl bg-bg px-3.5 py-2.5 text-left shadow-card dark:bg-surface"
                   >
                     <div className="flex items-center gap-2 text-xs font-bold">
                       <BookOpen size={14} className="text-accent-ink" />
-                      <span>Cadeira · 68%</span>
+                      <span>Cálculo I · 2×50 min</span>
                     </div>
-                    <p className="mt-0.5 text-xs text-muted">Teste em 5 dias</p>
+                    <p className="mt-0.5 text-xs text-muted">Limites até ao teste</p>
                   </motion.div>
 
                   <motion.div
                     initial={{ rotate: 5, y: 16 }}
                     animate={{ rotate: 4, y: 0 }}
                     transition={{ ...UNIPEDIA_BOUNCE_SPRING, delay: 0.08 }}
-                    className="absolute right-4 bottom-3 rounded-[22px] bg-pastel-sage px-3.5 py-2.5 text-left text-[#141312] shadow-card"
+                    className="absolute right-4 bottom-3 rounded-2xl bg-pastel-sage px-3.5 py-2.5 text-left text-[#141312] shadow-card"
                   >
                     <div className="flex items-center gap-1.5 text-xs font-bold">
                       <CheckCircle2 size={14} className="text-[#0F6344]" />
-                      <span>Meta diária concluída!</span>
+                      <span>Plano + Recall em dia</span>
                     </div>
                   </motion.div>
 
@@ -220,8 +219,9 @@ export default function WelcomePage() {
                   <div className="relative flex size-24 items-center justify-center rounded-full bg-white/60 shadow-card dark:bg-black/25 sm:size-32">
                     <UniBuddy
                       mood="happy"
+                      form={previewForm}
+                      stage={3}
                       accessory={previewAccessory}
-                      skin={previewSkin}
                       size={78}
                       onClick={() => {
                         void hapticTap();
@@ -232,71 +232,41 @@ export default function WelcomePage() {
                     />
                   </div>
 
-                  {/* Cores colecionáveis do Uni + critério de mérito */}
+                  {/* 5 formas base dos Unis especialistas */}
                   <div className="flex flex-col items-center gap-1.5">
                     <div className="flex flex-wrap items-center justify-center gap-1.5">
-                      {UNI_SKINS.map((sk) => {
-                        const active = previewSkin === sk.id;
+                      {FORM_CHOICES.map((fId) => {
+                        const active = previewForm === fId;
                         return (
                           <button
-                            key={sk.id}
+                            key={fId}
                             type="button"
                             onClick={() => {
                               void hapticTap();
-                              setPreviewSkin(sk.id);
+                              setPreviewForm(fId);
                             }}
-                            aria-label={`Pré-visualizar ${sk.name}`}
-                            title={sk.name}
+                            aria-label={t(`uni:forms.${fId}.label`)}
                             className={cx(
-                              'flex size-10 items-center justify-center rounded-full border-2 transition sm:size-11',
+                              'flex min-h-11 items-center gap-1.5 rounded-full border-2 px-3 py-1 text-xs font-semibold transition',
                               active
-                                ? 'scale-105 border-fg bg-surface shadow-card'
-                                : 'border-transparent bg-white/75 hover:bg-white dark:bg-black/30',
+                                ? 'border-fg bg-surface text-fg shadow-card'
+                                : 'border-transparent bg-white/75 text-[#141312] hover:bg-white dark:bg-black/30 dark:text-[#FAF6EC]',
                             )}
                           >
-                            <span
-                              className="size-6 rounded-full border border-black/15"
-                              style={{ backgroundColor: sk.swatchHex }}
-                            />
+                            <UniBuddy form={fId} stage={2} size={22} interactive={false} />
+                            <span>{t(`uni:forms.${fId}.label`)}</span>
                           </button>
                         );
                       })}
                     </div>
 
                     <div className="inline-flex items-center gap-1.5 rounded-full bg-white/75 px-3 py-1 text-xs font-medium text-[#141312] shadow-sm dark:bg-black/30 dark:text-[#FAF6EC]">
-                      <Trophy size={13} className="text-[#0F6344] dark:text-[#4ADE80]" />
+                      <GraduationCap size={13} className="text-[#0F6344] dark:text-[#4ADE80]" />
                       <span>
-                        <strong>{activeSkinMeta.name}:</strong>{' '}
-                        {activeSkinMeta.starter
-                          ? 'Disponível desde o início'
-                          : `Mérito · ${activeSkinMeta.unlockHint}`}
+                        <strong>{t('uni:stages.0')} → {masterStageInfo.localizedLabel}:</strong>{' '}
+                        {t('uni:adoptModal.summarySubtitle', { course: 'Cálculo' })}
                       </span>
                     </div>
-                  </div>
-
-                  {/* Chips táteis para experimentar acessórios por área */}
-                  <div className="flex max-w-sm flex-wrap items-center justify-center gap-1.5">
-                    {UNI_ACCESSORIES.filter((a) => a.id !== 'default').map((acc) => {
-                      const active = previewAccessory === acc.id;
-                      return (
-                        <button
-                          key={acc.id}
-                          type="button"
-                          onClick={() => {
-                            void hapticTap();
-                            setPreviewAccessory(acc.id);
-                          }}
-                          className={cx(
-                            'min-h-11 rounded-full px-3.5 py-1.5 text-xs font-semibold transition',
-                            active
-                              ? 'bg-ink-cta text-ink-cta-fg shadow-card'
-                              : 'bg-white/70 text-[#141312] hover:bg-white/95 dark:bg-black/25 dark:text-[#FAF6EC]',
-                          )}
-                        >
-                          {acc.shortLabel}
-                        </button>
-                      );
-                    })}
                   </div>
                 </div>
               )}
@@ -321,13 +291,13 @@ export default function WelcomePage() {
       {/* Controlo de paginação & CTAs */}
       <footer className="relative z-10 mx-auto w-full max-w-md space-y-2 sm:space-y-3">
         <div className="flex items-center justify-center gap-1">
-          {SLIDES.map((s, i) => {
+          {slides.map((s, i) => {
             const active = i === step;
             return (
               <button
                 key={s.id}
                 type="button"
-                aria-label={`Ver página ${i + 1}`}
+                aria-label={`Slide ${i + 1}`}
                 onClick={() => {
                   void hapticTap();
                   setStep(i);
@@ -350,13 +320,13 @@ export default function WelcomePage() {
           onClick={handlePrimary}
           className="flex min-h-[54px] w-full items-center justify-center gap-2 rounded-full bg-ink-cta px-6 text-sm font-bold text-ink-cta-fg shadow-float transition active:scale-[0.98]"
         >
-          <span>{isLast ? 'Criar conta ou entrar' : 'Seguinte'}</span>
+          <span>{isLast ? t('onboarding:ctaStart') : '→'}</span>
           <ArrowRight size={16} />
         </button>
 
         <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs font-semibold opacity-85">
           <button type="button" onClick={handleTryLocal} className="min-h-11 px-2 hover:underline">
-            Usar só neste telemóvel
+            {t('onboarding:ctaDemo')}
           </button>
           <span aria-hidden="true">·</span>
           <Link to="/privacidade" className="inline-flex min-h-11 items-center px-2 hover:underline">

@@ -4,5 +4,29 @@
   "ctaDemo": "Explorar em modo demo",
   "ctaSignIn": "Entrar com conta",
   "stepCourse": "Curso & Cadeiras",
-  "stepRhythm": "Ritmo & Privacidade"
+  "stepRhythm": "Ritmo & Privacidade",
+  "stepLanguageLabel": "Idioma & País do plano",
+  "stepLanguageHint": "Ajusta termos académicos e sugestões de escala de notas.",
+  "welcomeSlides": {
+    "overviewEyebrow": "O teu semestre com clareza",
+    "overviewTitle": "Sabe o que estudar hoje",
+    "overviewAccent": "até ao teste",
+    "overviewDesc": "Transforma as tuas cadeiras, horários e datas de avaliações em blocos práticos para hoje — com calma e sem adivinhações.",
+    "cycleEyebrow": "Ciclo interno completo",
+    "cycleTitle": "Planear, focar, rever",
+    "cycleAccent": "tudo no mesmo caderno",
+    "cycleDesc": "Do plano diário ao temporizador limpo, ao Caderno do Uni e à revisão espaçada automática num fluxo único.",
+    "planEyebrow": "Feito para a tua faculdade",
+    "planTitle": "Planos curriculares",
+    "planAccent": "e prazos reais",
+    "planDesc": "Importa o teu curso, datas de provas e horários por texto ou imagem e vê o plano adaptar-se sozinho.",
+    "focusEyebrow": "Modo Foco & Recall Ativo",
+    "focusTitle": "Estudo real,",
+    "focusAccent": "memória mais forte",
+    "focusDesc": "Sessões cronometradas com revisão espaçada inteligente (1→3→7→21 dias) que ajusta os blocos seguintes.",
+    "unisEyebrow": "Unis especialistas por cadeira",
+    "unisTitle": "Um Uni por cadeira",
+    "unisAccent": "que aprende contigo",
+    "unisDesc": "Escolhe a forma, o nome e a personalidade de cada Uni. Evolui de Ovo a Mestre exclusivamente com o teu domínio real."
+  }
 }

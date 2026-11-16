@@ -33,7 +33,9 @@
     "expeditionReady": "Expedição pronta ({{count}} perguntas para {{date}})",
     "examModeUnlocked": "Modo Exame ativo",
     "issueDiploma": "Emitir diploma",
-    "diplomaIssued": "Diploma emitido"
+    "diplomaIssued": "Diploma emitido",
+    "bridgeBtn": "Ponte de estudo",
+    "mentorNextBtn": "Ensinar cadeira seguinte"
   },
   "adoptModal": {
     "editTitle": "Personalizar {{name}} ({{course}})",
@@ -46,7 +48,7 @@
     "stepPersona": "2. Personalidade de ensino",
     "stepName": "3. Nome do teu Uni",
     "stepLanguage": "4. Idioma deste Uni",
-    "stepLanguageHint": "Podes ter a app em português e o Uni em inglês se a cadeira for em inglês.",
+    "stepLanguageHint": "Podes ter a app num idioma e o Uni da cadeira noutro (ex.: cadeira em inglês).",
     "firstChatTitle": "Primeira conversa rápida (opcional · 60s)",
     "firstChatStyle": "Como preferes aprender aqui?",
     "styleExamples": "Exemplos primeiro",
@@ -69,6 +71,21 @@
     "score2": "Lembrei ± (3d)",
     "score3": "Dominei (+SRS)",
     "empty": "Todas as perguntas da expedição de hoje respondidas."
+  },
+  "bridge": {
+    "title": "Ponte de estudo · {{course}}",
+    "subtitle": "Gera um guião estruturado do tópico ou importa o resultado de um quiz de volta para a revisão espaçada.",
+    "tabExport": "Exportar guião",
+    "tabImport": "Importar quiz",
+    "topicLabel": "Tópico em foco",
+    "copyGuide": "Copiar guião",
+    "copied": "Guião copiado",
+    "openExternal": "Abrir caderno externo",
+    "importLabel": "Cola o resumo ou pontuação do quiz",
+    "importPlaceholder": "Ex.: Score 4/5 em Limites. Errei assíntotas oblíquas e sinais no infinito.",
+    "importBtn": "Atualizar revisão & caderno",
+    "importedSuccess": "Revisão espaçada e caderno atualizados!",
+    "missingText": "Cola primeiro o resultado do quiz ou os pontos fracos."
   },
   "shelf": {
     "eyebrow": "Estante dos Unis",

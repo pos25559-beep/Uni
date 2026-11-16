@@ -7,5 +7,37 @@
   "fixNotebookBtn": "Fix notebook",
   "notebookBtn": "Notebook",
   "whatKnowsBtn": "What {{name}} knows",
-  "specialistIntro": "Stage {{stage}} · Mastery {{mastery}}/100. Ask about sheets or clarify doubts in this course."
+  "specialistIntro": "Stage {{stage}} · Mastery {{mastery}}/100. Ask about sheets or clarify doubts in this course.",
+  "liveVoice": {
+    "openBtn": "Live Voice",
+    "title": "Voice Studio · {{name}}",
+    "needsKeyTitle": "Real-time voice with your own Gemini key",
+    "needsKeyDesc": "To keep the shared free quota fast and sustainable for text and recall, two-way live voice calls use your personal Gemini key (zero cost on Unipedia).",
+    "openKeyGuide": "Configure Gemini key",
+    "listening": "Listening…",
+    "thinking": "Thinking…",
+    "speaking": "Speaking…",
+    "sleeping": "Paused",
+    "idle": "Ready to talk",
+    "connecting": "Connecting voice studio…",
+    "mute": "Mute mic",
+    "unmute": "Unmute mic",
+    "endSession": "End call",
+    "transcriptEmpty": "Speak naturally about the topic. {{name}} replies in the personality you chose.",
+    "silenceClosed": "Voice session closed after extended silence.",
+    "connectionError": "Could not start microphone audio or live connection."
+  },
+  "tools": {
+    "proposalTitle": "Proposed by Uni",
+    "confirm": "Confirm & save",
+    "cancel": "Decline",
+    "confirmed": "Saved in app",
+    "cancelled": "Proposal declined",
+    "createSession": "Extra study session",
+    "createFlashcards": "New practice flashcards",
+    "markDoubt": "Save doubt for class",
+    "minutesLabel": "{{minutes}} min · {{date}}",
+    "cardsCount": "{{count}} card(s)",
+    "doubtLabel": "Topic: {{topic}}"
+  }
 }

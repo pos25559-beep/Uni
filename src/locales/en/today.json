@@ -13,5 +13,22 @@
   "examsTitle": "Upcoming assessments",
   "summaryTitle": "Semester summary",
   "avgLabel": "Average",
-  "focusDoneLabel": "Focused"
+  "focusDoneLabel": "Focused",
+  "testModeSingle": "Exam Mode",
+  "testModeMulti": "Multiple exams",
+  "testModeToday": "today",
+  "overdueSingle": "unfinished session — reschedule in plan",
+  "overduePlural": "unfinished sessions — reschedule in plan",
+  "emptyTasks": "No pending tasks — type above to jot down something quick.",
+  "summaryToday": "Today's summary",
+  "summaryWeek": "Weekly pulse",
+  "summaryRest": "Light day to catch up on topics",
+  "summaryRestNext": "Rest day · Next {{date}}",
+  "focusedOf": "{{done}} of {{planned}} focused",
+  "weekOf": "{{done}} of {{goal}} this week",
+  "uniBubbleTitle": "Uni · Your study tutor",
+  "talkWithUni": "Chat with Uni",
+  "taskAdded": "Task added",
+  "goalDone": "Today's target completed!",
+  "defaultSubtitle": "let's study"
 }

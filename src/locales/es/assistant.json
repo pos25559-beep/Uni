@@ -1,0 +1,43 @@
+{
+  "srHeading": "Conversación con Uni",
+  "allCourses": "Todas las asignaturas",
+  "placeholder": "Pregunta a Uni…",
+  "needConsentPlaceholder": "Activa Uni arriba para empezar a conversar…",
+  "wrongAnswerBtn": "Esto es incorrecto",
+  "fixNotebookBtn": "Corregir cuaderno",
+  "notebookBtn": "Cuaderno",
+  "whatKnowsBtn": "Qué sabe {{name}}",
+  "specialistIntro": "Nivel {{stage}} · Dominio {{mastery}}/100. Pregunta sobre fichas o resuelve dudas de esta asignatura.",
+  "liveVoice": {
+    "openBtn": "Voz en vivo",
+    "title": "Estudio de Voz · {{name}}",
+    "needsKeyTitle": "Voz en tiempo real con tu clave Gemini",
+    "needsKeyDesc": "Para mantener la cuota gratuita rápida y sostenible en texto y recall, las llamadas de voz bidireccional usan tu clave personal Gemini (sin coste en Unipedia).",
+    "openKeyGuide": "Configurar clave Gemini",
+    "listening": "Escuchándote…",
+    "thinking": "Pensando…",
+    "speaking": "Respondiendo por voz…",
+    "sleeping": "En pausa",
+    "idle": "Listo para hablar",
+    "connecting": "Conectando con el estudio de voz…",
+    "mute": "Silenciar mic",
+    "unmute": "Activar mic",
+    "endSession": "Finalizar llamada",
+    "transcriptEmpty": "Habla con naturalidad sobre el temario. {{name}} responde con la personalidad elegida.",
+    "silenceClosed": "Llamada finalizada tras una pausa prolongada en silencio.",
+    "connectionError": "No se pudo iniciar el audio o la conexión en tiempo real."
+  },
+  "tools": {
+    "proposalTitle": "Acción propuesta por Uni",
+    "confirm": "Confirmar y guardar",
+    "cancel": "Rechazar",
+    "confirmed": "Guardado en la app",
+    "cancelled": "Propuesta rechazada",
+    "createSession": "Nueva sesión de estudio",
+    "createFlashcards": "Nuevas tarjetas de práctica",
+    "markDoubt": "Guardar duda para clase",
+    "minutesLabel": "{{minutes}} min · {{date}}",
+    "cardsCount": "{{count}} tarjeta(s)",
+    "doubtLabel": "Tema: {{topic}}"
+  }
+}

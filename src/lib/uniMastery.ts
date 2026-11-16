@@ -1,6 +1,6 @@
 import { addDays, format, parseISO } from 'date-fns';
 import type { AppLanguage, Assessment, Course, GradingScale, ID, StudySession } from '../types';
-import { gradeToPercent } from './grading';
+import { gradeToPercent, normalizeAppLanguage } from './grading';
 import type {
   TopicSheetRecord,
   UniAgentDiploma,
@@ -19,10 +19,14 @@ export interface UniStageInfo {
   stage: UniStage;
   label: string;
   labelEn: string;
+  labelEs: string;
+  labelPtBr: string;
   minMastery: number;
   nextThreshold: number | null;
   hint: string;
   hintEn: string;
+  hintEs: string;
+  hintPtBr: string;
 }
 
 export const UNI_STAGES: UniStageInfo[] = [
@@ -30,63 +34,87 @@ export const UNI_STAGES: UniStageInfo[] = [
     stage: 0,
     label: 'Ovo',
     labelEn: 'Egg',
+    labelEs: 'Huevo',
+    labelPtBr: 'Ovo',
     minMastery: 0,
     nextThreshold: 10,
     hint: 'Conclui sessões com recall para despertar o teu Uni.',
     hintEn: 'Complete a focus session with recall to wake up your Uni.',
+    hintEs: 'Completa una sesión con recall para despertar a tu Uni.',
+    hintPtBr: 'Conclua sessões com recall para despertar o seu Uni.',
   },
   {
     stage: 1,
     label: 'Aprendiz',
     labelEn: 'Apprentice',
+    labelEs: 'Aprendiz',
+    labelPtBr: 'Aprendiz',
     minMastery: 10,
     nextThreshold: 35,
     hint: 'Mantém revisões espaçadas em dia para evoluir para Explorador.',
     hintEn: 'Keep spaced reviews on schedule to evolve to Explorer.',
+    hintEs: 'Mantén los repasos espaciados al día para pasar a Explorador.',
+    hintPtBr: 'Mantenha as revisões espaçadas em dia para evoluir para Explorador.',
   },
   {
     stage: 2,
     label: 'Explorador',
     labelEn: 'Explorer',
+    labelEs: 'Explorador',
+    labelPtBr: 'Explorador',
     minMastery: 35,
     nextThreshold: 65,
     hint: 'Expedições desbloqueadas! Consolida os tópicos para chegar a Especialista.',
     hintEn: 'Expeditions unlocked! Consolidate topics to reach Specialist.',
+    hintEs: '¡Expediciones desbloqueadas! Consolida los temas para llegar a Especialista.',
+    hintPtBr: 'Expedições desbloqueadas! Consolide os tópicos para chegar a Especialista.',
   },
   {
     stage: 3,
     label: 'Especialista',
     labelEn: 'Specialist',
+    labelEs: 'Especialista',
+    labelPtBr: 'Especialista',
     minMastery: 65,
     nextThreshold: 90,
     hint: 'Modo Exame ativo! Mantém o ritmo nas avaliações para alcançar Mestre.',
     hintEn: 'Exam drills active! Keep scoring well on assessments to reach Master.',
+    hintEs: '¡Modo Examen activo! Mantén el ritmo para alcanzar Maestro.',
+    hintPtBr: 'Modo Prova ativo! Mantenha o ritmo nas avaliações para alcançar Mestre.',
   },
   {
     stage: 4,
     label: 'Mestre',
     labelEn: 'Master',
+    labelEs: 'Maestro',
+    labelPtBr: 'Mestre',
     minMastery: 90,
     nextThreshold: null,
     hint: 'Domínio máximo — pronto para emitir diploma e ensinar um Uni seguinte.',
     hintEn: 'Peak mastery — ready for graduation diploma and mentoring a next course Uni.',
+    hintEs: 'Dominio máximo: listo para emitir diploma y enseñar al Uni de la siguiente asignatura.',
+    hintPtBr: 'Domínio máximo — pronto para emitir diploma e ensinar o Uni da próxima disciplina.',
   },
 ];
 
-const AREA_EXPLORER_ITEM: Record<UniAccessoryId, { pt: string; en: string }> = {
-  default: { pt: 'Marcador Dourado', en: 'Golden Bookmark' },
-  math: { pt: 'Régua Geométrica', en: 'Geometric Ruler' },
-  tech: { pt: 'Auscultadores de Depuração', en: 'Debug Headphones' },
-  health: { pt: 'Estetoscópio de Clínica', en: 'Clinical Stethoscope' },
-  arts: { pt: 'Caderno de Esboços', en: 'Studio Sketchbook' },
-  science: { pt: 'Frasco de Ensaio', en: 'Lab Flask' },
-  humanities: { pt: 'Lupa de Arquivo', en: 'Archive Magnifier' },
+const AREA_EXPLORER_ITEM: Record<UniAccessoryId, { pt: string; ptBr: string; es: string; en: string }> = {
+  default: { pt: 'Marcador Dourado', ptBr: 'Marcador Dourado', es: 'Marcapáginas Dorado', en: 'Golden Bookmark' },
+  math: { pt: 'Régua Geométrica', ptBr: 'Régua Geométrica', es: 'Regla Geométrica', en: 'Geometric Ruler' },
+  tech: { pt: 'Auscultadores de Depuração', ptBr: 'Fones de Depuração', es: 'Auriculares de Depuración', en: 'Debug Headphones' },
+  health: { pt: 'Estetoscópio de Clínica', ptBr: 'Estetoscópio Clínico', es: 'Estetoscopio Clínico', en: 'Clinical Stethoscope' },
+  arts: { pt: 'Caderno de Esboços', ptBr: 'Caderno de Esboços', es: 'Cuaderno de Bocetos', en: 'Studio Sketchbook' },
+  science: { pt: 'Frasco de Ensaio', ptBr: 'Frasco de Ensaio', es: 'Matraz de Laboratorio', en: 'Lab Flask' },
+  humanities: { pt: 'Lupa de Arquivo', ptBr: 'Lupa de Arquivo', es: 'Lupa de Archivo', en: 'Archive Magnifier' },
 };
 
-export function getCourseAreaItem(course: Course, lang: AppLanguage = 'pt-PT'): string {
+export function getCourseAreaItem(course: Course, lang: AppLanguage | string = 'pt-PT'): string {
+  const normalized = normalizeAppLanguage(lang);
   const accessory = inferAccessoryFromCourses([course]);
   const entry = AREA_EXPLORER_ITEM[accessory] ?? AREA_EXPLORER_ITEM.default;
-  return lang === 'en' ? entry.en : entry.pt;
+  if (normalized === 'en') return entry.en;
+  if (normalized === 'es') return entry.es;
+  if (normalized === 'pt-BR') return entry.ptBr;
+  return entry.pt;
 }
 
 export function stageFromMastery(mastery: number): UniStage {
@@ -97,12 +125,30 @@ export function stageFromMastery(mastery: number): UniStage {
   return 0;
 }
 
-export function getStageInfo(stage: UniStage, lang: AppLanguage = 'pt-PT'): UniStageInfo & { localizedLabel: string; localizedHint: string } {
+export function getStageInfo(
+  stage: UniStage,
+  lang: AppLanguage | string = 'pt-PT',
+): UniStageInfo & { localizedLabel: string; localizedHint: string } {
+  const normalized = normalizeAppLanguage(lang);
   const found = UNI_STAGES.find((s) => s.stage === stage) ?? UNI_STAGES[0];
   return {
     ...found,
-    localizedLabel: lang === 'en' ? found.labelEn : found.label,
-    localizedHint: lang === 'en' ? found.hintEn : found.hint,
+    localizedLabel:
+      normalized === 'en'
+        ? found.labelEn
+        : normalized === 'es'
+          ? found.labelEs
+          : normalized === 'pt-BR'
+            ? found.labelPtBr
+            : found.label,
+    localizedHint:
+      normalized === 'en'
+        ? found.hintEn
+        : normalized === 'es'
+          ? found.hintEs
+          : normalized === 'pt-BR'
+            ? found.hintPtBr
+            : found.hint,
   };
 }
 
@@ -180,10 +226,18 @@ export function computeCourseMilestones(
     }
   };
 
+  const normalizedLang = normalizeAppLanguage(lang);
+
   if (course.topics.some((t) => t.lastRecallScore === 3)) {
     addIfMissing(
       'first_perfect_recall',
-      lang === 'en' ? '1st mastered recall in a topic' : '1.º recall perfeito num tópico',
+      normalizedLang === 'en'
+        ? '1st mastered recall in a topic'
+        : normalizedLang === 'es'
+          ? '1.er recuerdo perfecto en un tema'
+          : normalizedLang === 'pt-BR'
+            ? '1.º recall perfeito em um tópico'
+            : '1.º recall perfeito num tópico',
     );
   }
 
@@ -193,13 +247,25 @@ export function computeCourseMilestones(
   if (completedDays.size >= 5) {
     addIfMissing(
       'five_study_days',
-      lang === 'en' ? '5 real study days in this course' : '5 dias reais de estudo nesta cadeira',
+      normalizedLang === 'en'
+        ? '5 real study days in this course'
+        : normalizedLang === 'es'
+          ? '5 días reales de estudio en esta asignatura'
+          : normalizedLang === 'pt-BR'
+            ? '5 dias reais de estudo nesta disciplina'
+            : '5 dias reais de estudo nesta cadeira',
     );
   }
   if (completedDays.size >= 7) {
     addIfMissing(
       'seven_study_days',
-      lang === 'en' ? '7 real study days in this course' : '7 dias reais de estudo nesta cadeira',
+      normalizedLang === 'en'
+        ? '7 real study days in this course'
+        : normalizedLang === 'es'
+          ? '7 días reales de estudio en esta asignatura'
+          : normalizedLang === 'pt-BR'
+            ? '7 dias reais de estudo nesta disciplina'
+            : '7 dias reais de estudo nesta cadeira',
     );
   }
 
@@ -210,7 +276,13 @@ export function computeCourseMilestones(
   ) {
     addIfMissing(
       'first_graded_assessment',
-      lang === 'en' ? '1st graded assessment recorded' : '1.ª avaliação com nota registada',
+      normalizedLang === 'en'
+        ? '1st graded assessment recorded'
+        : normalizedLang === 'es'
+          ? '1.ª evaluación con nota registrada'
+          : normalizedLang === 'pt-BR'
+            ? '1.ª avaliação com nota registrada'
+            : '1.ª avaliação com nota registada',
     );
   }
 
@@ -218,13 +290,25 @@ export function computeCourseMilestones(
   const stage = stageFromMastery(mastery);
   const items: string[] = [];
   if (stage >= 2) {
-    items.push(getCourseAreaItem(course, lang));
+    items.push(getCourseAreaItem(course, normalizedLang));
   }
   if (stage >= 3) {
-    items.push(lang === 'en' ? 'Exam Foil Seal' : 'Selo de Especialista');
+    items.push(
+      normalizedLang === 'en'
+        ? 'Exam Foil Seal'
+        : normalizedLang === 'es'
+          ? 'Sello de Especialista'
+          : 'Selo de Especialista',
+    );
   }
   if (stage >= 4) {
-    items.push(lang === 'en' ? 'Master Laurels' : 'Louros de Mestre');
+    items.push(
+      normalizedLang === 'en'
+        ? 'Master Laurels'
+        : normalizedLang === 'es'
+          ? 'Laureles de Maestro'
+          : 'Louros de Mestre',
+    );
   }
 
   return {
@@ -244,7 +328,7 @@ export function recomputeUniAgentProgression(
 ): { agent: UniAgentRecord; stageUpFrom: UniStage | null } {
   const mastery = computeCourseMastery(course, assessments, dayKey, gradingScale);
   const nextStage = stageFromMastery(mastery);
-  const lang: AppLanguage = agent.language?.startsWith('en') ? 'en' : 'pt-PT';
+  const lang: AppLanguage = normalizeAppLanguage(agent.language);
   const { milestones, items } = computeCourseMilestones(
     course,
     sessions,
@@ -460,10 +544,15 @@ export function transferMasteryWisdomToAgent(
   targetAgent: UniAgentRecord,
   nowIso = new Date().toISOString(),
 ): UniAgentRecord {
-  const isEn = targetAgent.language?.startsWith('en');
-  const noteText = isEn
-    ? `Study habits inherited from ${masterCourseName} (${masterAgent.name})`
-    : `Metodologia herdada de ${masterCourseName} (${masterAgent.name})`;
+  const lang = normalizeAppLanguage(targetAgent.language);
+  const noteText =
+    lang === 'en'
+      ? `Study habits inherited from ${masterCourseName} (${masterAgent.name})`
+      : lang === 'es'
+        ? `Metodología heredada de ${masterCourseName} (${masterAgent.name})`
+        : lang === 'pt-BR'
+          ? `Metodologia herdada de ${masterCourseName} (${masterAgent.name})`
+          : `Metodologia herdada de ${masterCourseName} (${masterAgent.name})`;
   const mergedStrengths = Array.from(
     new Set([
       ...(targetAgent.notebook.strengths ?? []),

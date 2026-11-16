@@ -1,0 +1,32 @@
+{
+  "headline": "Saiba o que estudar hoje até a prova.",
+  "ctaStart": "Começar agora",
+  "ctaDemo": "Explorar em modo demo",
+  "ctaSignIn": "Entrar com conta",
+  "stepCourse": "Curso & Disciplinas",
+  "stepRhythm": "Ritmo & Privacidade",
+  "stepLanguageLabel": "Idioma e região do plano",
+  "stepLanguageHint": "Adapta termos acadêmicos (disciplina, mensalidade) e escala de notas (0–10).",
+  "welcomeSlides": {
+    "overviewEyebrow": "Seu semestre com clareza",
+    "overviewTitle": "Saiba o que estudar hoje",
+    "overviewAccent": "até a prova",
+    "overviewDesc": "Transforme suas disciplinas, horários e datas de provas em blocos práticos para hoje — com calma e sem adivinhações.",
+    "cycleEyebrow": "Ciclo interno completo",
+    "cycleTitle": "Planejar, focar, revisar",
+    "cycleAccent": "tudo no mesmo caderno",
+    "cycleDesc": "Do plano diário ao temporizador limpo, ao Caderno do Uni e à revisão espaçada automática em um fluxo único.",
+    "planEyebrow": "Feito para a sua faculdade",
+    "planTitle": "Grades curriculares",
+    "planAccent": "e prazos reais",
+    "planDesc": "Importe seu curso, datas de provas e horários por texto ou imagem e veja o plano se adaptar sozinho.",
+    "focusEyebrow": "Modo Foco & Recall Ativo",
+    "focusTitle": "Estudo real,",
+    "focusAccent": "memória mais forte",
+    "focusDesc": "Sessões cronometradas com revisão espaçada inteligente (1→3→7→21 dias) que ajusta os próximos blocos.",
+    "unisEyebrow": "Unis especialistas por disciplina",
+    "unisTitle": "Um Uni por disciplina",
+    "unisAccent": "que aprende com você",
+    "unisDesc": "Escolha a forma, o nome e o estilo de cada Uni. Ele evolui de Ovo a Mestre exclusivamente com o seu domínio real."
+  }
+}

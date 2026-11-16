@@ -104,8 +104,8 @@ export default function Step2Academic({
         className={cx(
           'overflow-hidden p-5 shadow-card',
           isMinimal
-            ? 'rounded-[22px] border border-line bg-surface'
-            : 'rounded-[26px] border border-line/70 bg-surface',
+            ? 'rounded-2xl border border-line bg-surface'
+            : 'rounded-3xl border border-line/70 bg-surface',
         )}
       >
         <div
@@ -137,11 +137,16 @@ export default function Step2Academic({
               onChange={(e) => onUniversityChange(e.target.value)}
             >
               <option value="outra">Outra instituição (escrever manualmente)</option>
-              {catalog.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name.startsWith(u.shortName) ? u.name : `${u.shortName} — ${u.name}`}
-                </option>
-              ))}
+              {catalog.map((u) => {
+                const regionTag = u.country === 'ES' ? 'ES · ' : u.country === 'BR' ? 'BR · ' : '';
+                const label = u.name.startsWith(u.shortName) ? u.name : `${u.shortName} · ${u.name}`;
+                return (
+                  <option key={u.id} value={u.id}>
+                    {regionTag}
+                    {label}
+                  </option>
+                );
+              })}
             </Select>
           </Field>
 
@@ -302,8 +307,8 @@ export default function Step2Academic({
         className={cx(
           'p-4 shadow-card sm:p-5',
           isMinimal
-            ? 'rounded-[22px] border border-line bg-surface'
-            : 'rounded-[26px] border border-line/70 bg-pastel-peach/35 dark:bg-surface-2',
+            ? 'rounded-2xl border border-line bg-surface'
+            : 'rounded-3xl border border-line/70 bg-pastel-peach/35 dark:bg-surface-2',
         )}
       >
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-sm font-bold text-fg">
