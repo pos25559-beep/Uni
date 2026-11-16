@@ -101,5 +101,22 @@
     "selfCard": "Autoevaluación de la tarjeta",
     "selfTopic": "Autoevaluación rápida del tema",
     "explain": "Sin mirar tus apuntes, intenta explicar con tus palabras la idea central de «{{topic}}», o crea/genera un mazo de práctica arriba."
+  },
+  "assess": {
+    "summary": "Resumen de notas",
+    "new": "Nueva evaluación",
+    "avg": "Media ponderada actual",
+    "graded": "Peso ya evaluado",
+    "ok100": "Los pesos suman 100 %",
+    "total": "Peso total {{n}} % (debe sumar 100 %)",
+    "empty": "Sin evaluaciones",
+    "emptyHint": "Registra exámenes y trabajos con su peso para calcular la nota final.",
+    "edit": "Editar evaluación",
+    "delete": "¿Eliminar la evaluación \"{{title}}\"?",
+    "doneTitle": "¿Ya has hecho esta evaluación?",
+    "futureBody": "{{title}} está prevista dentro de {{n}} día(s). Al guardar la nota {{grade}}, esta evaluación cuenta como completada en el plan.",
+    "cancel": "Cancelar",
+    "yes": "Sí, ya la hice",
+    "gradeAria": "Nota (0 a {{max}})"
   }
 }
