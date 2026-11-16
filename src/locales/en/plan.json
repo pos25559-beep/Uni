@@ -151,5 +151,31 @@
     "courses": "Courses",
     "classes": "Classes",
     "exams": "Exams"
+  },
+  "session": {
+    "past": "passed",
+    "today": "today",
+    "tomorrow": "tomorrow",
+    "inDays": "in {{n}} days",
+    "minStudied": "{{n}} min studied",
+    "markTodo": "Mark as to do",
+    "markDone": "Mark as done",
+    "focusAria": "Focus on this session",
+    "focus": "Focus",
+    "edit": "Edit session",
+    "delete": "Delete session",
+    "new": "New session",
+    "cancel": "Cancel",
+    "save": "Save",
+    "course": "Course",
+    "topic": "Topic",
+    "topicHint": "Optional. Without a topic, it counts as general study for the course.",
+    "general": "General study",
+    "date": "Date",
+    "dateAria": "Session date",
+    "start": "Start",
+    "startAria": "Session start time",
+    "duration": "Duration (minutes)",
+    "durationHint": "Enter between 5 and 480 minutes."
   }
 }

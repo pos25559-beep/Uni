@@ -151,5 +151,31 @@
     "courses": "Asignaturas",
     "classes": "Clases",
     "exams": "Exámenes"
+  },
+  "session": {
+    "past": "pasó",
+    "today": "hoy",
+    "tomorrow": "mañana",
+    "inDays": "en {{n}} días",
+    "minStudied": "{{n}} min estudiados",
+    "markTodo": "Marcar como pendiente",
+    "markDone": "Marcar como completada",
+    "focusAria": "Enfocarse en esta sesión",
+    "focus": "Enfocar",
+    "edit": "Editar sesión",
+    "delete": "Eliminar sesión",
+    "new": "Nueva sesión",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "course": "Asignatura",
+    "topic": "Tema",
+    "topicHint": "Opcional. Sin tema, la sesión queda como estudio general de la asignatura.",
+    "general": "Estudio general",
+    "date": "Fecha",
+    "dateAria": "Fecha de la sesión",
+    "start": "Inicio",
+    "startAria": "Hora de inicio de la sesión",
+    "duration": "Duración (minutos)",
+    "durationHint": "Indica entre 5 y 480 minutos."
   }
 }

@@ -151,5 +151,31 @@
     "courses": "Disciplinas",
     "classes": "Aulas",
     "exams": "Provas"
+  },
+  "session": {
+    "past": "passou",
+    "today": "hoje",
+    "tomorrow": "amanhã",
+    "inDays": "em {{n}} dias",
+    "minStudied": "{{n}} min estudados",
+    "markTodo": "Marcar como pendente",
+    "markDone": "Marcar como concluída",
+    "focusAria": "Focar nesta sessão",
+    "focus": "Focar",
+    "edit": "Editar sessão",
+    "delete": "Apagar sessão",
+    "new": "Nova sessão",
+    "cancel": "Cancelar",
+    "save": "Salvar",
+    "course": "Disciplina",
+    "topic": "Tópico",
+    "topicHint": "Opcional. Sem tópico, a sessão fica como estudo geral da disciplina.",
+    "general": "Estudo geral",
+    "date": "Data",
+    "dateAria": "Data da sessão",
+    "start": "Início",
+    "startAria": "Hora de início da sessão",
+    "duration": "Duração (minutos)",
+    "durationHint": "Indique entre 5 e 480 minutos."
   }
 }
