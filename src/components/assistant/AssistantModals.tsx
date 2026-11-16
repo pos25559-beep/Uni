@@ -1,4 +1,5 @@
 import { Award, BookOpenCheck, FileText, MessageSquare, Shield, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import {
   appendMessage,
   type Conversation,
@@ -111,58 +112,59 @@ export default function AssistantModals({
   uniAccessory,
   uniPersona,
 }: AssistantModalsProps) {
+  const { t } = useTranslation('assistant');
   return (
     <>
       <ActionSheet
         open={menuOpen}
         onClose={onCloseMenu}
-        title="Opções do Tutor"
+        title={t('modals.optionsTitle')}
         actions={[
           {
             id: 'diary',
-            label: 'Fazer check-in / Diário',
-            hint: 'Regista aula, fim do dia ou matéria de teste com o Uni',
+            label: t('modals.diary'),
+            hint: t('modals.diaryHint'),
             icon: <BookOpenCheck size={16} />,
             onSelect: () => openUniCheckIn({ kind: 'day', courseId: activeCourse?.id }),
           },
           {
             id: 'checkin',
-            label: 'Check-in semanal',
-            hint: 'Avalia o ritmo e ajusta o planeador',
+            label: t('modals.checkin'),
+            hint: t('modals.checkinHint'),
             icon: <MessageSquare size={16} />,
             onSelect: onOpenWeeklyTutor,
           },
           {
             id: 'docs',
-            label: 'Anexar documentos',
-            hint: 'Seleciona PDFs ou links como contexto',
+            label: t('modals.docs'),
+            hint: t('modals.docsHint'),
             icon: <FileText size={16} />,
             onSelect: onOpenDocPicker,
           },
           {
             id: 'collectibles',
-            label: 'Coleção do Uni',
-            hint: 'Estilos e acessórios desbloqueados',
+            label: t('modals.collectibles'),
+            hint: t('modals.collectiblesHint'),
             icon: <Award size={16} />,
             onSelect: onOpenCollectibles,
           },
           {
             id: 'privacy',
-            label: 'Preferências do Uni',
-            hint: 'Gerir permissões e modelo do Uni',
+            label: t('modals.privacy'),
+            hint: t('modals.privacyHint'),
             icon: <Shield size={16} />,
             onSelect: onNavigateSettings,
           },
           {
             id: 'context-view',
-            label: 'O que o Uni sabe',
-            hint: 'Ver resumo enviado com as perguntas',
+            label: t('modals.contextView'),
+            hint: t('modals.contextViewHint'),
             icon: <Shield size={16} />,
             onSelect: onOpenContextModal,
           },
           {
             id: 'clear',
-            label: 'Apagar esta conversa',
+            label: t('modals.clear'),
             danger: true,
             icon: <Trash2 size={16} />,
             onSelect: onRequestDeleteConv,
@@ -173,10 +175,10 @@ export default function AssistantModals({
       <Modal
         open={showDocPicker}
         onClose={onCloseDocPicker}
-        title="Anexar Documentos de Estudo"
+        title={t('modals.docsTitle')}
         footer={
           <Button variant="primary" onClick={onCloseDocPicker}>
-            Concluir
+            {t('modals.done')}
           </Button>
         }
       >
@@ -184,8 +186,8 @@ export default function AssistantModals({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <Badge tone={hasCustomKey ? 'accent' : 'neutral'}>
               {hasCustomKey
-                ? `Modo Caderno ativo · até ${maxAiFiles} fontes`
-                : `Modo Nativo · até ${maxAiFiles} fontes`}
+                ? t('modals.modeNotebook', { n: maxAiFiles })
+                : t('modals.modeNative', { n: maxAiFiles })}
             </Badge>
             {availableMaterials.length > 0 && (
               <div className="flex items-center gap-2 text-xs">
@@ -205,7 +207,7 @@ export default function AssistantModals({
                   }}
                   className="font-semibold text-accent-ink hover:underline dark:text-accent"
                 >
-                  Selecionar tudo (até {maxAiFiles})
+                  {t('modals.selectAll', { n: maxAiFiles })}
                 </button>
                 {selectedMaterialIds.length > 0 && (
                   <button
@@ -213,27 +215,25 @@ export default function AssistantModals({
                     onClick={onClearAttachedMaterials}
                     className="text-muted hover:text-fg"
                   >
-                    Limpar
+                    {t('modals.clearSel')}
                   </button>
                 )}
               </div>
             )}
           </div>
           <p className="text-xs text-muted">
-            Até <strong className="text-fg">{maxAiFiles} PDFs, Google Docs ou ficheiros locais</strong> têm
-            o conteúdo real lido por pergunta; materiais{' '}
-            <span className="font-medium text-fg">Fixados</span> da cadeira entram automaticamente.
+            {t('modals.readInfo', { n: maxAiFiles })}
             {!hasCustomKey && (
               <>
                 {' '}
-                Com chave pessoal Google Gemini podes ler até <strong className="text-fg">12 fontes</strong> de uma vez (estilo Google Notebook).
+                {t('modals.keyInfo')}
               </>
             )}
           </p>
         </div>
         {availableMaterials.length === 0 ? (
           <p className="py-4 text-center text-xs text-muted">
-            Nenhum material encontrado para esta cadeira. Podes adicionar na página Materiais.
+            {t('modals.noMaterials')}
           </p>
         ) : (
           <ul className="max-h-60 divide-y divide-line overflow-y-auto">
@@ -251,24 +251,24 @@ export default function AssistantModals({
                       <span className="truncate">{mat.title}</span>
                       {mat.pinned && (
                         <Badge tone="accent" className="shrink-0 text-xs">
-                          Fixado
+                          {t('modals.pinned')}
                         </Badge>
                       )}
                     </div>
                     <div className="text-xs text-muted">
                       {isNotebookLink
-                        ? 'LINK NOTEBOOK · cola resumos no Caderno do Uni'
+                        ? t('modals.provNotebook')
                         : mat.provider === 'gdrive'
-                          ? 'GOOGLE DRIVE · leitura direta de PDF/Doc'
+                          ? t('modals.provDrive')
                           : mat.provider === 'upload'
-                            ? 'FICHEIRO LOCAL · leitura direta'
+                            ? t('modals.provLocal')
                             : mat.provider.toUpperCase()}
                     </div>
                   </div>
                   <input
                     type="checkbox"
                     checked={checked}
-                    aria-label={`Anexar ${mat.title}`}
+                    aria-label={t('modals.attach', { title: mat.title })}
                     onChange={() => {}}
                     className="size-4 rounded border-line"
                   />
@@ -282,19 +282,18 @@ export default function AssistantModals({
       <Modal
         open={confirmDeleteConv}
         onClose={onCloseDeleteConv}
-        title="Apagar conversa?"
+        title={t('modals.deleteTitle')}
         footer={
           <>
-            <Button onClick={onCloseDeleteConv}>Cancelar</Button>
+            <Button onClick={onCloseDeleteConv}>{t('modals.cancel')}</Button>
             <Button variant="danger" onClick={onConfirmDeleteConv}>
-              Apagar
+              {t('modals.delete')}
             </Button>
           </>
         }
       >
         <p className="text-sm text-muted">
-          Apaga o histórico de mensagens desta conversa. Os teus dados de estudo e outras conversas
-          não são afetados.
+          {t('modals.deleteBody')}
         </p>
       </Modal>
 
@@ -305,7 +304,7 @@ export default function AssistantModals({
         <Modal
           open
           onClose={onCloseContextModal}
-          title="O que o Uni sabe"
+          title={t('modals.knowsTitle')}
           footer={
             <Button variant="primary" onClick={onCloseContextModal}>
               Fechar
