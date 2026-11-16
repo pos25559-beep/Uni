@@ -231,34 +231,19 @@ export default function Calendar() {
         accentTitle="calendário"
         subtitle="Aulas, avaliações, estudo, eventos e tarefas num só lugar."
         actions={
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2">
             <TabGuideHelpButton tabKey="calendario" />
-            <Button variant="secondary" size="sm" onClick={handleExportIcs} className="hidden sm:inline-flex">
-              <Download size={15} /> Exportar .ics
-            </Button>
-            <Button variant="secondary" size="sm" onClick={() => void handleShareTurma()} className="hidden sm:inline-flex">
-              <Share2 size={15} /> Partilhar turma
-            </Button>
-            <Button variant="secondary" size="sm" onClick={() => setImportOpen(true)} className="sm:hidden">
-              <Upload size={15} /> Importar
-            </Button>
-            <Button variant="secondary" onClick={() => setImportOpen(true)} className="hidden sm:inline-flex">
-              <Upload size={16} /> Importar horário
-            </Button>
-            <Button variant="primary" size="sm" onClick={() => setNewOpen(true)} className="sm:hidden">
-              <CalendarPlus size={15} /> Evento
-            </Button>
-            <Button variant="primary" onClick={() => setNewOpen(true)} className="hidden sm:inline-flex">
-              <CalendarPlus size={16} /> Novo evento
+            <Button variant="primary" size="sm" onClick={() => setNewOpen(true)}>
+              <CalendarPlus size={15} aria-hidden="true" /> + Evento
             </Button>
             <Button
               variant="secondary"
               iconOnly
               onClick={() => setCalMenuOpen(true)}
               aria-label="Mais ações do calendário"
-              className="sm:hidden"
+              title="Importar, exportar ou partilhar"
             >
-              <MoreHorizontal size={17} />
+              <MoreHorizontal size={17} aria-hidden="true" />
             </Button>
           </div>
         }
@@ -422,6 +407,13 @@ export default function Calendar() {
         onClose={() => setCalMenuOpen(false)}
         title="Ações do calendário"
         actions={[
+          {
+            id: 'import-schedule',
+            label: 'Importar horário',
+            hint: 'Foto do horário ou ficheiro .ics',
+            icon: <Upload size={16} />,
+            onSelect: () => setImportOpen(true),
+          },
           {
             id: 'export-ics',
             label: 'Exportar .ics',

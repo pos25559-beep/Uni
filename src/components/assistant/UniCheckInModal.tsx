@@ -43,7 +43,7 @@ import type {
   Topic,
   WeeklyCheckIn,
 } from '../../types';
-import { UniBuddy, UniPetBuddy } from '../brand/UnipediaMarks';
+import { UniBuddy } from '../brand/UnipediaMarks';
 import { Badge, Button } from '../ui';
 
 export interface UniCheckInModalProps {
@@ -890,9 +890,6 @@ function UniCheckInModalInner({
                   interactive={false}
                 />
                 <span>Uni</span>
-                {settings.uniPet && settings.uniPet !== 'none' && (
-                  <UniPetBuddy pet={settings.uniPet} size={13} />
-                )}
               </div>
               <div className="whitespace-pre-wrap">{renderInlineMarkdown(turn.text)}</div>
             </div>

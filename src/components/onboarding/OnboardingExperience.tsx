@@ -77,16 +77,16 @@ type OnboardingContextData = {
 };
 
 const ONBOARDING_STEPS: OnboardingStep<OnboardingContextData>[] = [
-  { id: 'identidade', type: 'INFORMATION', nextStep: 'curso' },
-  { id: 'curso', type: 'INFORMATION', previousStep: 'identidade', nextStep: 'cadeiras' },
-  { id: 'cadeiras', type: 'INFORMATION', previousStep: 'curso', nextStep: 'ritmo' },
-  { id: 'ritmo', type: 'CONFIRMATION', previousStep: 'cadeiras', nextStep: null },
+  { id: 'curso', type: 'INFORMATION', nextStep: 'cadeiras' },
+  { id: 'cadeiras', type: 'INFORMATION', previousStep: 'curso', nextStep: 'identidade' },
+  { id: 'identidade', type: 'INFORMATION', previousStep: 'cadeiras', nextStep: 'ritmo' },
+  { id: 'ritmo', type: 'CONFIRMATION', previousStep: 'identidade', nextStep: null },
 ];
 
 const STEP_META: Array<{ id: OnboardingStepId; label: string }> = [
-  { id: 'identidade', label: 'Tu & Estilo' },
   { id: 'curso', label: 'Curso & Semestre' },
   { id: 'cadeiras', label: 'Cadeiras' },
+  { id: 'identidade', label: 'Tu & Estilo' },
   { id: 'ritmo', label: 'Ritmo & Privacidade' },
 ];
 
@@ -111,7 +111,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
   } = useAcademicEmails('onboarding');
 
   const { currentStep, next, previous } = useOnboarding<OnboardingContextData>();
-  const activeStepId = (currentStep?.id as OnboardingStepId) ?? 'identidade';
+  const activeStepId = (currentStep?.id as OnboardingStepId) ?? 'curso';
   const stepIndex = Math.max(0, STEP_META.findIndex((s) => s.id === activeStepId));
   const [direction, setDirection] = useState(1);
   const [finishingWipe, setFinishingWipe] = useState(false);
@@ -1017,7 +1017,14 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
 
   const handleFinish = () => {
     setSubmitAttempted(true);
-    if (!ageConfirmed) return;
+    if (!ageConfirmed) {
+      requestAnimationFrame(() => {
+        const el = document.getElementById('onboarding-age-confirm');
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el?.focus({ preventScroll: true });
+      });
+      return;
+    }
 
     const uniName =
       universityId === 'outra'
@@ -1544,7 +1551,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
 export default function OnboardingExperience({
   onClose,
   fullScreen = true,
-  initialStepId = 'identidade',
+  initialStepId = 'curso',
 }: OnboardingExperienceProps) {
   return (
     <OnboardingProvider<OnboardingContextData>

@@ -2,10 +2,12 @@ import {
   Award,
   BookOpen,
   BookOpenCheck,
+  Brain,
   CalendarDays,
   ChevronDown,
   ChevronUp,
   FileText,
+  Flag,
   FolderOpen,
   Menu,
   MoreHorizontal,
@@ -18,6 +20,7 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import AssistantModals from '../components/assistant/AssistantModals';
 import { Composer } from '../components/assistant/Composer';
@@ -26,20 +29,27 @@ import { QuickActions } from '../components/assistant/QuickActions';
 import UniSyncCard from '../components/assistant/UniSyncCard';
 import { useAssistantChat } from '../components/assistant/useAssistantChat';
 import { UniBuddy } from '../components/brand/UnipediaMarks';
+import { UniNotebookMemoryModal } from '../components/courses/CourseUniModals';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import { Badge, Button, PillSelect, SegmentedControl } from '../components/ui';
 import { hasCustomGeminiKey } from '../integrations/gemini';
+import { recordWrongAnswerFeedback } from '../lib/aiQuota';
 import { courseColors } from '../lib/colors';
 import { TUTOR_SUBJECTS, subjectLabel } from '../lib/geminiConversations';
 import { commitScheduleSyncToStore } from '../lib/scheduleSync';
 import { cx, showToast } from '../lib/uiHelpers';
-import { resolveUniAccessory, UNI_PERSONAS } from '../lib/uniAccessories';
+import { getLocalizedPersonas, resolveUniAccessory } from '../lib/uniAccessories';
+import { saveUniAgent, useUniAgent } from '../lib/uniAgents';
+import { getStageInfo } from '../lib/uniMastery';
 import { openUniCheckIn } from '../lib/uniCheckInBus';
 import { looksSyncableReply } from '../lib/visionParsers';
 import { googleService } from '../services/googleService';
 import { useStore } from '../store/useStore';
 
 export default function Assistant() {
+  const { t, i18n } = useTranslation('assistant');
+  const appLang = i18n.language?.startsWith('en') ? ('en' as const) : ('pt-PT' as const);
+  const personas = getLocalizedPersonas(appLang);
   const navigate = useNavigate();
   const location = useLocation();
   const routeState = location.state as { prefillPrompt?: string; courseId?: string } | null;
@@ -61,7 +71,10 @@ export default function Assistant() {
   const userName = useStore((s) => s.settings.userName);
   const setIntegration = useStore((s) => s.setIntegration);
 
-  const [activeCourseId, setActiveCourseId] = useState<string>(() => routeState?.courseId || 'all');
+  const [activeCourseId, setActiveCourseId] = useState<string>(() => {
+    const queryCourse = new URLSearchParams(location.search).get('course');
+    return routeState?.courseId || queryCourse || 'all';
+  });
   const [activeSubject, setActiveSubject] = useState<string>('all');
   const [authorizingDrive, setAuthorizingDrive] = useState(false);
   const [showDocPicker, setShowDocPicker] = useState(false);
@@ -74,6 +87,8 @@ export default function Assistant() {
   const [keyGuideOpen, setKeyGuideOpen] = useState(false);
   const [collectiblesOpen, setCollectiblesOpen] = useState(false);
   const [contextModalOpen, setContextModalOpen] = useState(false);
+  const [courseUniMemoryOpen, setCourseUniMemoryOpen] = useState(false);
+  const [flaggedWrongIds, setFlaggedWrongIds] = useState<Record<string, boolean>>({});
   const [dismissedPrompt, setDismissedPrompt] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -81,6 +96,8 @@ export default function Assistant() {
     () => (activeCourseId === 'all' ? undefined : courses.find((c) => c.id === activeCourseId)),
     [courses, activeCourseId],
   );
+  const { agent: courseUniAgent } = useUniAgent(activeCourse?.id);
+  const effectivePersona = courseUniAgent?.personaId ?? uniPersona;
   const uniAccessory = useMemo(
     () =>
       resolveUniAccessory(
@@ -134,7 +151,8 @@ export default function Assistant() {
     academicProfile,
     hasCustomKey,
     uniAccessory,
-    uniPersona,
+    uniPersona: effectivePersona,
+    uniAgent: courseUniAgent,
     userName,
     setIntegration,
   });
@@ -192,19 +210,20 @@ export default function Assistant() {
     <div className="flex h-[calc(100dvh-5.25rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)-var(--keyboard-height,0px))] min-h-0 flex-col md:h-[calc(100dvh-3.5rem)]">
       {/* Cabeçalho minimalista estilo app Gemini no telemóvel (< md) */}
       <div className="shrink-0 space-y-2 pb-1 md:hidden">
+        <h1 className="sr-only">Tutor Uni</h1>
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-1">
             <button
               type="button"
               onClick={() => setConvsModalMode('list')}
               aria-label={`Conversas (${conversations.length})`}
-              className="relative grid size-10 shrink-0 place-items-center rounded-full text-fg transition hover:bg-surface-2"
+              className="relative grid size-11 shrink-0 place-items-center rounded-full text-fg transition hover:bg-surface-2"
             >
               <Menu size={20} />
               {conversations.length > 0 && (
                 <span
                   aria-hidden="true"
-                  className="absolute right-1.5 top-1.5 size-2 rounded-full bg-accent"
+                  className="absolute right-2 top-2 size-2 rounded-full bg-accent"
                 />
               )}
             </button>
@@ -213,17 +232,21 @@ export default function Assistant() {
               type="button"
               onClick={() => setMobileFiltersOpen((v) => !v)}
               aria-expanded={mobileFiltersOpen}
-              aria-label="Mudar estilo e ver estado do Uni"
-              className="flex min-h-[40px] min-w-0 items-center gap-1.5 rounded-full px-2 text-left transition hover:bg-surface-2"
+              aria-label={
+                currentConv && messages.length > 0
+                  ? currentConv.title
+                  : `Uni ${personas.find((p) => p.id === uniPersona)?.label ?? 'Amigo'} — estilo e opções`
+              }
+              className="flex min-h-[44px] min-w-0 items-center gap-1.5 rounded-full px-2 text-left transition hover:bg-surface-2"
             >
               <span className="truncate font-display text-lg font-bold tracking-tight text-fg">
                 {currentConv && messages.length > 0 ? (
                   currentConv.title
                 ) : (
                   <>
-                    Uni{' '}
+                    {courseUniAgent ? courseUniAgent.name : 'Uni'}{' '}
                     <span className="font-normal text-muted">
-                      {UNI_PERSONAS.find((p) => p.id === uniPersona)?.label ?? 'Amigo'}
+                      {personas.find((p) => p.id === effectivePersona)?.label ?? 'Amigo'}
                     </span>
                   </>
                 )}
@@ -264,7 +287,7 @@ export default function Assistant() {
                 layoutId="tutor-persona-pill-mobile"
                 value={uniPersona}
                 onChange={(v) => updateSettings({ uniPersona: v as typeof uniPersona })}
-                items={UNI_PERSONAS.map((p) => ({ id: p.id, label: p.label }))}
+                items={personas.map((p) => ({ id: p.id, label: p.label }))}
               />
               <button
                 type="button"
@@ -405,12 +428,12 @@ export default function Assistant() {
               )}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <SegmentedControl
                 layoutId="tutor-persona-pill"
                 value={uniPersona}
                 onChange={(v) => updateSettings({ uniPersona: v as typeof uniPersona })}
-                items={UNI_PERSONAS.map((p) => ({ id: p.id, label: p.label }))}
+                items={personas.map((p) => ({ id: p.id, label: p.label }))}
               />
               <button
                 type="button"
@@ -520,10 +543,18 @@ export default function Assistant() {
               <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-pastel-butter/75 shadow-card dark:bg-surface-2 sm:size-20">
                 <UniBuddy
                   mood={uniWelcomeMood}
+                  form={courseUniAgent?.formId}
+                  stage={courseUniAgent?.stage}
                   accessory={uniAccessory}
                   size={44}
-                  onClick={() => setCollectiblesOpen(true)}
-                  ariaLabel="Uni — tocar para abrir a coleção de estilos"
+                  onClick={() =>
+                    courseUniAgent ? setCourseUniMemoryOpen(true) : setCollectiblesOpen(true)
+                  }
+                  ariaLabel={
+                    courseUniAgent
+                      ? `${courseUniAgent.name} — tocar para ver o que este Uni sabe`
+                      : 'Uni — tocar para abrir a coleção de estilos'
+                  }
                 />
               </div>
             ) : (
@@ -535,16 +566,31 @@ export default function Assistant() {
             <h2 className="mt-4 font-display text-2xl font-bold leading-tight tracking-tight text-fg sm:mt-5 sm:text-3xl">
               Olá{firstName ? `, ${firstName}` : ''}!{' '}
               <span className="block sm:inline">
-                No que estás{' '}
+                {courseUniAgent ? `Aqui é ${courseUniAgent.name}` : 'No que estás'}{' '}
                 <span className={cx(!isMinimal && 'font-serif font-medium italic text-accent-ink dark:text-accent')}>
-                  a pensar
+                  {courseUniAgent ? `(${activeCourse?.shortName})` : 'a pensar'}
                 </span>
-                ?
+                {courseUniAgent ? '.' : '?'}
               </span>
             </h2>
             <p className="mt-2 max-w-sm text-xs leading-relaxed text-muted sm:text-sm">
-              Explica matéria, gera planos até ao próximo teste ou revê os teus apontamentos.
+              {courseUniAgent
+                ? t('specialistIntro', {
+                    stage: getStageInfo(courseUniAgent.stage, appLang).localizedLabel,
+                    mastery: courseUniAgent.mastery,
+                  })
+                : 'Explica matéria, gera planos até ao próximo teste ou revê os teus apontamentos.'}
             </p>
+            {courseUniAgent && (
+              <button
+                type="button"
+                onClick={() => setCourseUniMemoryOpen(true)}
+                className="mt-2 inline-flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 text-xs font-semibold text-fg transition hover:border-accent"
+              >
+                <Brain size={14} className="text-accent" />
+                {t('whatKnowsBtn', { name: courseUniAgent.name })}
+              </button>
+            )}
 
             {/* Seletor discreto de assunto inline no mobile sem roubar espaço ao chat */}
             <div className="mt-4 flex max-w-full items-center gap-1.5 overflow-x-auto pb-0.5 md:hidden">
@@ -676,13 +722,43 @@ export default function Assistant() {
                 )
               )}
               <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-line/70 pt-2 text-xs text-muted">
-                <span>Sugestão do Uni · Valida sempre com a sebenta</span>
-                {m.sourceDocTitles && m.sourceDocTitles.length > 0 && (
-                  <span className="inline-flex items-center gap-1">
-                    <FileText size={12} />
-                    {m.sourceDocTitles.join(', ')}
-                  </span>
-                )}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span>Sugestão do Uni · Valida sempre com a sebenta</span>
+                  {m.sourceDocTitles && m.sourceDocTitles.length > 0 && (
+                    <span className="inline-flex items-center gap-1 text-fg">
+                      <FileText size={12} className="text-accent" />
+                      {m.sourceDocTitles.join(', ')}
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {flaggedWrongIds[m.id] ? (
+                    <span className="inline-flex min-h-11 items-center gap-1 px-2 text-xs font-medium text-coral">
+                      <Flag size={12} /> Marcado para revisão
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFlaggedWrongIds((prev) => ({ ...prev, [m.id]: true }));
+                        recordWrongAnswerFeedback();
+                        showToast('Obrigado pelo aviso. Se for uma falha de memória, podes editar o Caderno do Uni.');
+                      }}
+                      className="inline-flex min-h-11 items-center gap-1 rounded-full px-2.5 text-xs font-medium text-muted transition hover:bg-coral-soft hover:text-coral"
+                    >
+                      <Flag size={12} /> Isto está errado
+                    </button>
+                  )}
+                  {flaggedWrongIds[m.id] && courseUniAgent && (
+                    <button
+                      type="button"
+                      onClick={() => setCourseUniMemoryOpen(true)}
+                      className="inline-flex min-h-11 items-center gap-1 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg hover:border-accent"
+                    >
+                      Corrigir caderno
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ),
@@ -1022,13 +1098,14 @@ export default function Assistant() {
           </div>
         )}
 
-        {showActions && <QuickActions disabled={loading} onSend={send} />}
+        {showActions && <QuickActions disabled={loading || !aiConsent} onSend={send} />}
         <Composer
+          disabled={loading || !aiConsent}
           loading={loading}
           onSend={send}
           onStop={stop}
           hidePaperclipOnMobile
-          placeholder="Pergunta ao Uni…"
+          placeholder={aiConsent ? 'Pergunta ao Uni…' : 'Ativa o Uni acima para começares a conversar…'}
           leadingSlot={
             <button
               type="button"
@@ -1180,8 +1257,19 @@ export default function Assistant() {
         onCloseNotebook={() => setNotebookOpen(false)}
         attachedMaterials={attachedMaterials}
         uniAccessory={uniAccessory}
-        uniPersona={uniPersona}
+        uniPersona={effectivePersona}
       />
+      {courseUniAgent && activeCourse && courseUniMemoryOpen && (
+        <UniNotebookMemoryModal
+          open={courseUniMemoryOpen}
+          onClose={() => setCourseUniMemoryOpen(false)}
+          agent={courseUniAgent}
+          courseName={activeCourse.shortName || activeCourse.name}
+          onUpdateAgent={async (next) => {
+            await saveUniAgent(next);
+          }}
+        />
+      )}
     </div>
   );
 }

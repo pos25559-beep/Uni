@@ -4,15 +4,18 @@ import { todayStr } from './selectors';
 
 export const DAILY_CHAT_LIMIT = 15;
 export const DAILY_NOTEBOOK_LIMIT = 3;
+export const DAILY_RECALL_LIMIT = 8;
 
 const STORAGE_KEY = 'unipedia_uni_quota_v1';
+const METRICS_STORAGE_KEY = 'unipedia_uni_metrics_v1';
 
-export type QuotaKind = 'chat' | 'notebook';
+export type QuotaKind = 'chat' | 'notebook' | 'recall';
 
 interface StoredQuota {
   date: string;
   chat: number;
   notebook: number;
+  recall: number;
 }
 
 export interface DailyQuotaSnapshot {
@@ -23,7 +26,18 @@ export interface DailyQuotaSnapshot {
   notebookUsed: number;
   notebookLimit: number;
   notebookRemaining: number;
+  recallUsed: number;
+  recallLimit: number;
+  recallRemaining: number;
   bypassed: boolean;
+}
+
+export interface DailyAiMetricsSnapshot {
+  date: string;
+  inputTokens: number;
+  outputTokens: number;
+  calls: number;
+  wrongFeedbackCount: number;
 }
 
 export class UniDailyLimitReachedError extends Error {
@@ -31,7 +45,9 @@ export class UniDailyLimitReachedError extends Error {
     const label =
       kind === 'chat'
         ? `Atingiste o limite diário de ${DAILY_CHAT_LIMIT} mensagens gratuitas com o Uni.`
-        : `Atingiste o limite diário de ${DAILY_NOTEBOOK_LIMIT} gerações no Caderno do Uni.`;
+        : kind === 'notebook'
+          ? `Atingiste o limite diário de ${DAILY_NOTEBOOK_LIMIT} gerações no Caderno do Uni.`
+          : `Atingiste o limite diário de ${DAILY_RECALL_LIMIT} avaliações de Recall gratuitas com o Uni.`;
     super(
       `${label} A quota renova à meia-noite — se precisares de estudo intensivo agora, podes colar uma chave pessoal em Definições → Tutor → Avançado.`,
     );
@@ -43,18 +59,19 @@ function readRawQuota(): StoredQuota {
   const today = todayStr();
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { date: today, chat: 0, notebook: 0 };
+    if (!raw) return { date: today, chat: 0, notebook: 0, recall: 0 };
     const parsed = JSON.parse(raw) as Partial<StoredQuota>;
     if (parsed.date !== today) {
-      return { date: today, chat: 0, notebook: 0 };
+      return { date: today, chat: 0, notebook: 0, recall: 0 };
     }
     return {
       date: today,
       chat: typeof parsed.chat === 'number' && parsed.chat >= 0 ? parsed.chat : 0,
       notebook: typeof parsed.notebook === 'number' && parsed.notebook >= 0 ? parsed.notebook : 0,
+      recall: typeof parsed.recall === 'number' && parsed.recall >= 0 ? parsed.recall : 0,
     };
   } catch {
-    return { date: today, chat: 0, notebook: 0 };
+    return { date: today, chat: 0, notebook: 0, recall: 0 };
   }
 }
 
@@ -76,6 +93,9 @@ export function getDailyQuotaSnapshot(bypassed = false): DailyQuotaSnapshot {
     notebookUsed: q.notebook,
     notebookLimit: DAILY_NOTEBOOK_LIMIT,
     notebookRemaining: Math.max(0, DAILY_NOTEBOOK_LIMIT - q.notebook),
+    recallUsed: q.recall,
+    recallLimit: DAILY_RECALL_LIMIT,
+    recallRemaining: Math.max(0, DAILY_RECALL_LIMIT - q.recall),
     bypassed,
   };
 }
@@ -83,7 +103,12 @@ export function getDailyQuotaSnapshot(bypassed = false): DailyQuotaSnapshot {
 export function consumeDailyQuota(kind: QuotaKind, bypassed = false): DailyQuotaSnapshot {
   if (bypassed) return getDailyQuotaSnapshot(true);
   const q = readRawQuota();
-  const limit = kind === 'chat' ? DAILY_CHAT_LIMIT : DAILY_NOTEBOOK_LIMIT;
+  const limit =
+    kind === 'chat'
+      ? DAILY_CHAT_LIMIT
+      : kind === 'notebook'
+        ? DAILY_NOTEBOOK_LIMIT
+        : DAILY_RECALL_LIMIT;
   if (q[kind] >= limit) {
     throw new UniDailyLimitReachedError(kind);
   }
@@ -99,4 +124,56 @@ export function refundDailyQuota(kind: QuotaKind, bypassed = false): void {
     q[kind] -= 1;
     writeRawQuota(q);
   }
+}
+
+function readRawMetrics(): DailyAiMetricsSnapshot {
+  const today = todayStr();
+  try {
+    const raw = localStorage.getItem(METRICS_STORAGE_KEY);
+    if (!raw) return { date: today, inputTokens: 0, outputTokens: 0, calls: 0, wrongFeedbackCount: 0 };
+    const parsed = JSON.parse(raw) as Partial<DailyAiMetricsSnapshot>;
+    if (parsed.date !== today) {
+      return { date: today, inputTokens: 0, outputTokens: 0, calls: 0, wrongFeedbackCount: 0 };
+    }
+    return {
+      date: today,
+      inputTokens: typeof parsed.inputTokens === 'number' ? Math.max(0, parsed.inputTokens) : 0,
+      outputTokens: typeof parsed.outputTokens === 'number' ? Math.max(0, parsed.outputTokens) : 0,
+      calls: typeof parsed.calls === 'number' ? Math.max(0, parsed.calls) : 0,
+      wrongFeedbackCount:
+        typeof parsed.wrongFeedbackCount === 'number' ? Math.max(0, parsed.wrongFeedbackCount) : 0,
+    };
+  } catch {
+    return { date: today, inputTokens: 0, outputTokens: 0, calls: 0, wrongFeedbackCount: 0 };
+  }
+}
+
+function writeRawMetrics(metrics: DailyAiMetricsSnapshot): void {
+  try {
+    localStorage.setItem(METRICS_STORAGE_KEY, JSON.stringify(metrics));
+  } catch {
+    // Ignore storage quota errors
+  }
+}
+
+export function getAiMetricsSnapshot(): DailyAiMetricsSnapshot {
+  return readRawMetrics();
+}
+
+export function recordAiTokenUsage(inputTokens = 0, outputTokens = 0): void {
+  const current = readRawMetrics();
+  writeRawMetrics({
+    ...current,
+    inputTokens: current.inputTokens + Math.max(0, Math.round(inputTokens)),
+    outputTokens: current.outputTokens + Math.max(0, Math.round(outputTokens)),
+    calls: current.calls + 1,
+  });
+}
+
+export function recordWrongAnswerFeedback(): void {
+  const current = readRawMetrics();
+  writeRawMetrics({
+    ...current,
+    wrongFeedbackCount: current.wrongFeedbackCount + 1,
+  });
 }

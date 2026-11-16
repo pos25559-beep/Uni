@@ -18,8 +18,8 @@ const DAY_LABELS = [
 
 const DAILY_PRESETS = [
   { minutes: 90, label: '1h30', hint: 'Leve' },
-  { minutes: 120, label: '2h', hint: 'Constante' },
-  { minutes: 180, label: '3h', hint: 'Recomendado' },
+  { minutes: 120, label: '2h', hint: 'Recomendado' },
+  { minutes: 180, label: '3h', hint: 'Constante' },
   { minutes: 240, label: '4h', hint: 'Intensivo' },
 ];
 
@@ -259,8 +259,11 @@ export default function Step4RhythmPrivacy({
           )}
         >
           <input
+            id="onboarding-age-confirm"
             type="checkbox"
             checked={ageConfirmed}
+            aria-invalid={submitAttempted && !ageConfirmed}
+            aria-describedby={submitAttempted && !ageConfirmed ? 'onboarding-age-error' : undefined}
             onChange={(e) => setAgeConfirmed(e.target.checked)}
             className="mt-0.5 size-5 shrink-0 accent-accent"
           />
@@ -271,8 +274,8 @@ export default function Step4RhythmPrivacy({
         </label>
 
         {submitAttempted && !ageConfirmed && (
-          <p className="flex items-center gap-1.5 px-1 text-xs font-semibold text-coral-ink">
-            <AlertCircle size={14} /> Confirma a tua idade mínima acima para entrares no caderno.
+          <p id="onboarding-age-error" role="alert" className="flex items-center gap-1.5 px-1 text-xs font-semibold text-coral-ink">
+            <AlertCircle size={14} aria-hidden="true" /> Confirma a tua idade mínima acima para entrares no caderno.
           </p>
         )}
 

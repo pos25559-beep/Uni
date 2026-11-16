@@ -1,0 +1,17 @@
+{
+  "greetingMorning": "Good morning",
+  "greetingAfternoon": "Good afternoon",
+  "greetingEvening": "Good evening",
+  "scopeToday": "Today",
+  "scopeWeek": "This week",
+  "nextSessionTitle": "Next session",
+  "startFocus": "Start focus",
+  "allDoneTitle": "Day wrapped up",
+  "openPlan": "Open plan",
+  "tasksTitle": "Tasks",
+  "addTaskPlaceholder": "Add a quick task…",
+  "examsTitle": "Upcoming assessments",
+  "summaryTitle": "Semester summary",
+  "avgLabel": "Average",
+  "focusDoneLabel": "Focused"
+}

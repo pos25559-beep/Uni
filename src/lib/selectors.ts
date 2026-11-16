@@ -1,6 +1,7 @@
 // Cálculos partilhados (funções puras). Usar estes em vez de recalcular nas páginas.
 import { addDays, differenceInCalendarDays, format, parseISO, startOfWeek } from 'date-fns';
-import type { Assessment, Course, StudySession, Topic } from '../types';
+import type { AppLanguage, Assessment, Course, GradingScale, StudySession, Topic } from '../types';
+import { formatGradeByScale, parseGradeByScale } from './grading';
 
 export const todayStr = () => format(new Date(), 'yyyy-MM-dd');
 export const toDateStr = (d: Date) => format(d, 'yyyy-MM-dd');
@@ -120,21 +121,21 @@ export const fmtMinutes = (m: number) => {
   return r === 0 ? `${h} h` : `${h} h ${r} min`;
 };
 
-export const fmtGrade = (g: number | null | undefined) =>
-  g === null || g === undefined ? '—' : g.toFixed(1).replace('.', ',');
+export const fmtGrade = (
+  g: number | null | undefined,
+  scale: GradingScale = 'pt20',
+  lang: AppLanguage = 'pt-PT',
+) => formatGradeByScale(g, scale, lang);
 
 /** Capitaliza apenas a primeira letra, preservando preposições portuguesas ("Sábado, 14 de novembro"). */
 export const capitalizeFirst = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
 
-/** Lê nota em formato português ou decimal ("12,5" ou "12.5") dentro de 0–20. */
-export function parsePtGrade(raw: string): number | null | 'invalid' {
-  const clean = raw.trim().replace(/\s+/g, '');
-  if (clean === '') return null;
-  const normalized = clean.replace(',', '.');
-  if (!/^\d+(\.\d{1,2})?$/.test(normalized)) return 'invalid';
-  const n = Number(normalized);
-  if (!Number.isFinite(n) || n < 0 || n > 20) return 'invalid';
-  return Math.round(n * 100) / 100;
+/** Lê nota em formato português ou decimal ("12,5" ou "12.5") dentro da escala configurada. */
+export function parsePtGrade(
+  raw: string,
+  scale: GradingScale = 'pt20',
+): number | null | 'invalid' {
+  return parseGradeByScale(raw, scale);
 }
 
 const SYSTEM_SESSION_NOTES = new Set([

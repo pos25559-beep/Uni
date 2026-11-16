@@ -1,9 +1,12 @@
 import { Download } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { fmtMinutes } from '../../lib/selectors';
+import { GRADE_SCALES } from '../../lib/grading';
 import { weekdayShort } from '../../lib/colors';
-import { UNI_ACCESSORIES, UNI_PERSONAS } from '../../lib/uniAccessories';
+import { getLocalizedPersonas, UNI_ACCESSORIES } from '../../lib/uniAccessories';
+import type { AppLanguage, GradingScale } from '../../types';
 import { UniBuddy } from '../brand/UnipediaMarks';
 import { Button, Card, DateField, Field, Input } from '../ui';
 import { cx } from '../../lib/uiHelpers';
@@ -17,8 +20,13 @@ interface BeforeInstallPromptEvent extends Event {
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
 export default function ProfileCard() {
+  const { t, i18n } = useTranslation(['settings', 'common']);
+  const appLang: AppLanguage = i18n.language?.startsWith('en') ? 'en' : 'pt-PT';
   const settings = useStore((s) => s.settings);
   const updateSettings = useStore((s) => s.updateSettings);
+  const personas = getLocalizedPersonas(appLang);
+  const currentLang: AppLanguage = settings.language ?? 'pt-PT';
+  const currentScale: GradingScale = settings.gradingScale ?? 'pt20';
   const [minutesText, setMinutesText] = useState(String(settings.dailyStudyMinutes));
   const [userNameDraft, setUserNameDraft] = useState(settings.userName);
   const [semesterDraft, setSemesterDraft] = useState(settings.semesterName);
@@ -219,9 +227,9 @@ export default function ProfileCard() {
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-          <span className="text-xs font-medium text-muted">Personalidade no Tutor</span>
+          <span className="text-xs font-medium text-muted">{t('settings:uniPersonaLabel')}</span>
           <div className="inline-flex flex-wrap gap-1 rounded-full bg-surface-2 p-1">
-            {UNI_PERSONAS.map((p) => {
+            {personas.map((p) => {
               const active = (settings.uniPersona ?? 'amigo') === p.id;
               return (
                 <button
@@ -237,6 +245,56 @@ export default function ProfileCard() {
                 </button>
               );
             })}
+          </div>
+        </div>
+
+        {/* Idioma da interface e escala de notas */}
+        <div className="grid gap-3 border-t border-line pt-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <span className="text-xs font-medium text-muted">{t('settings:languageLabel')}</span>
+            <p className="text-xs text-muted">{t('settings:languageHint')}</p>
+            <div className="inline-flex rounded-full bg-surface-2 p-1">
+              {(['pt-PT', 'en'] as AppLanguage[]).map((langOpt) => {
+                const active = currentLang === langOpt;
+                return (
+                  <button
+                    key={langOpt}
+                    type="button"
+                    onClick={() => updateSettings({ language: langOpt })}
+                    className={cx(
+                      'min-h-11 rounded-full px-3.5 text-xs font-semibold transition',
+                      active ? 'bg-ink-cta text-ink-cta-fg' : 'text-muted hover:text-fg',
+                    )}
+                  >
+                    {t(`common:languages.${langOpt}`)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <span className="text-xs font-medium text-muted">{t('settings:gradingScaleLabel')}</span>
+            <p className="text-xs text-muted">{t('settings:gradingScaleHint')}</p>
+            <div className="inline-flex flex-wrap gap-1 rounded-full bg-surface-2 p-1">
+              {(['pt20', 'scale10', 'pct100'] as GradingScale[]).map((scaleId) => {
+                const active = currentScale === scaleId;
+                const meta = GRADE_SCALES[scaleId];
+                return (
+                  <button
+                    key={scaleId}
+                    type="button"
+                    onClick={() => updateSettings({ gradingScale: scaleId })}
+                    className={cx(
+                      'min-h-11 rounded-full px-3 text-xs font-semibold transition',
+                      active ? 'bg-ink-cta text-ink-cta-fg' : 'text-muted hover:text-fg',
+                    )}
+                  >
+                    {appLang === 'en' ? meta.labelEn : meta.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 

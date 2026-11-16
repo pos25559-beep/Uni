@@ -1,0 +1,17 @@
+{
+  "eyebrow": "Preferences",
+  "title": "Your",
+  "accentTitle": "settings",
+  "profileTitle": "Profile & semester",
+  "nameLabel": "Name",
+  "namePlaceholder": "What should we call you?",
+  "semesterLabel": "Semester",
+  "languageLabel": "Interface language",
+  "languageHint": "Each course Uni can still speak an independent language.",
+  "gradingScaleLabel": "Grading scale",
+  "gradingScaleHint": "Charts and Exam Mode automatically normalize scores to percentage.",
+  "dailyMinutesLabel": "Daily study target (minutes)",
+  "studyDaysLabel": "Study days",
+  "uniPersonaLabel": "Default Uni personality",
+  "saveBtn": "Save changes"
+}

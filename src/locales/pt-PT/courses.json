@@ -1,0 +1,22 @@
+{
+  "eyebrow": "Semestre",
+  "title": "As tuas",
+  "accentTitle": "cadeiras",
+  "newCourse": "Nova cadeira",
+  "importCurriculum": "Importar cadeiras",
+  "courseNotFound": "Esta cadeira não existe",
+  "backToCourses": "Voltar às cadeiras",
+  "tabs": {
+    "overview": "Visão & Regras",
+    "topics": "Matéria & Notas",
+    "materials": "Materiais",
+    "emails": "Emails"
+  },
+  "targetLabel": "Objetivo",
+  "currentGrade": "Nota atual",
+  "nextAssessment": "Próxima Avaliação",
+  "topicProgress": "Progresso da matéria",
+  "hoursStudied": "Horas estudadas",
+  "completedSessions": "Sessões concluídas",
+  "editCourse": "Editar cadeira"
+}

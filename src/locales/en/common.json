@@ -1,0 +1,35 @@
+{
+  "nav": {
+    "today": "Today",
+    "courses": "Courses",
+    "plan": "Plan",
+    "calendar": "Calendar",
+    "materials": "Materials",
+    "progress": "Progress",
+    "tutor": "Tutor",
+    "settings": "Settings",
+    "more": "More",
+    "skipToContent": "Skip to content"
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "done": "Done",
+    "edit": "Edit",
+    "delete": "Delete",
+    "focus": "Focus",
+    "add": "Add",
+    "open": "Open",
+    "back": "Back"
+  },
+  "languages": {
+    "pt-PT": "Português (Portugal)",
+    "en": "English"
+  },
+  "theme": {
+    "system": "System",
+    "dark": "Dark",
+    "light": "Light"
+  }
+}

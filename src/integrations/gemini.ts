@@ -4,7 +4,19 @@ import { format, parseISO } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import type { Content, GenerationConfig, Part } from 'firebase/ai';
 import { statusLabel } from '../lib/colors';
-import { consumeDailyQuota, refundDailyQuota, type QuotaKind } from '../lib/aiQuota';
+import {
+  consumeDailyQuota,
+  recordAiTokenUsage,
+  refundDailyQuota,
+  type QuotaKind,
+} from '../lib/aiQuota';
+import type {
+  TopicSheetRecord,
+  UniAgentExpedition,
+  UniAgentRecord,
+  UniExpeditionQuestion,
+} from '../lib/localDb';
+import type { NotebookDeltaProposal } from '../lib/uniMastery';
 import {
   CustomKeyError,
   HttpStatusError,
@@ -72,6 +84,7 @@ export interface ChatMessage {
 interface GenerateResponse {
   candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
   promptFeedback?: { blockReason?: string };
+  usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
   error?: { message?: string; status?: string };
 }
 
@@ -423,6 +436,14 @@ async function callDirectRest(args: {
               : 'O Uni não devolveu resposta agora. Tenta de novo.',
           );
         }
+        if (data?.usageMetadata) {
+          recordAiTokenUsage(
+            data.usageMetadata.promptTokenCount ?? 0,
+            data.usageMetadata.candidatesTokenCount ?? 0,
+          );
+        } else {
+          recordAiTokenUsage();
+        }
         return (candidate.content?.parts ?? []).map((p) => p.text ?? '').join('').trim();
       },
     });
@@ -473,6 +494,8 @@ async function callDirectRestStream(args: {
         const decoder = new TextDecoder();
         let buffer = '';
         let accumulated = '';
+        let promptTokens = 0;
+        let outputTokens = 0;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -487,6 +510,10 @@ async function callDirectRestStream(args: {
             if (!jsonStr || jsonStr === '[DONE]') continue;
             try {
               const chunk = JSON.parse(jsonStr) as GenerateResponse;
+              if (chunk.usageMetadata) {
+                promptTokens = chunk.usageMetadata.promptTokenCount ?? promptTokens;
+                outputTokens = chunk.usageMetadata.candidatesTokenCount ?? outputTokens;
+              }
               const delta = (chunk.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? '').join('');
               if (delta) {
                 accumulated += delta;
@@ -498,6 +525,7 @@ async function callDirectRestStream(args: {
           }
         }
 
+        recordAiTokenUsage(promptTokens, outputTokens);
         return accumulated.trim();
       },
     });
@@ -531,6 +559,10 @@ async function runNativeGenerate(args: {
           { contents: args.contents },
           { signal: ctx.signal, timeout: FALLBACK_TIMEOUT_MS },
         );
+        const usage = (
+          result.response as { usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number } }
+        ).usageMetadata;
+        recordAiTokenUsage(usage?.promptTokenCount ?? 0, usage?.candidatesTokenCount ?? 0);
         return result.response.text().trim();
       },
     });
@@ -573,6 +605,15 @@ async function runNativeStream(args: {
             accumulated += piece;
             args.onToken(accumulated);
           }
+        }
+        try {
+          const finalRes = await streamRes.response;
+          const usage = (
+            finalRes as { usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number } }
+          ).usageMetadata;
+          recordAiTokenUsage(usage?.promptTokenCount ?? 0, usage?.candidatesTokenCount ?? 0);
+        } catch {
+          recordAiTokenUsage();
         }
         return accumulated.trim();
       },
@@ -1037,14 +1078,34 @@ export function buildDocumentContext(
   return sections.join('\n\n');
 }
 
-const PERSONA_INSTRUCTIONS: Record<UniPersonaMode, string> = {
-  amigo:
-    'Estilo Amigo: próximo, bem-humorado sem exageros, celebra pequenas vitórias do estudante e explica conceitos com exemplos do dia-a-dia.',
-  exigente:
-    'Estilo Exigente (Modo Exame): direto ao ponto, rigoroso nas definições e provas, cobra raciocínio ao estudante antes de dar a solução final.',
-  calmo:
-    'Estilo Anti-Stress: voz tranquila e paciente, parte tarefas grandes em micro-passos de 15 minutos e acalma o ritmo antes de provas difíceis.',
+const PERSONA_INSTRUCTIONS_BY_LANG: Record<'pt-PT' | 'en', Record<UniPersonaMode, string>> = {
+  'pt-PT': {
+    amigo:
+      'Estilo Amigo: caloroso, frases curtas e diretas, explica conceitos difíceis primeiro com analogias e exemplos do dia a dia.',
+    exigente:
+      'Estilo Exigente (Modo Exame): direto e sem rodeios, rigoroso nas definições e provas, cobra raciocínio em formato de teste antes de dar a solução final.',
+    calmo:
+      'Estilo Anti-Stress: voz tranquila e paciente, valida o esforço do aluno e parte tarefas grandes em micro-passos muito simples (uma ideia de cada vez).',
+    curioso:
+      'Estilo Curioso (Socrático): entusiasta pela matéria, faz perguntas orientadoras («E se x fosse negativo? O que muda?») para puxar a descoberta pelo estudante.',
+    treinador:
+      'Estilo Treinador: enérgico e orientado por metas curtas por sessão («Meta de hoje: 5 exercícios seguidos sem erro»), mantendo foco e ritmo claro.',
+  },
+  en: {
+    amigo:
+      'Friend style: warm, crisp short sentences; starts with everyday examples and clear intuition before formal jargon.',
+    exigente:
+      'Strict style (Exam Mode): direct, concise, zero fluff; tests exact definitions and exam reasoning before revealing full solutions.',
+    calmo:
+      'Calm / Anti-stress style: steady and reassuring; validates effort and breaks daunting topics into tiny one-idea steps.',
+    curioso:
+      'Curious (Socratic) style: genuinely enthusiastic about the subject; uses probing follow-up questions ("What changes if x is negative?") to spark discovery.',
+    treinador:
+      'Coach style: energetic and target-driven; sets bite-sized session goals ("Target: 5 clean problems in a row") to sustain momentum.',
+  },
 };
+
+const PERSONA_INSTRUCTIONS: Record<UniPersonaMode, string> = PERSONA_INSTRUCTIONS_BY_LANG['pt-PT'];
 
 const AREA_VOICE_HINTS: Record<UniAccessoryId, string> = {
   default: 'Companheiro versátil do caderno escolar.',
@@ -1056,37 +1117,106 @@ const AREA_VOICE_HINTS: Record<UniAccessoryId, string> = {
   humanities: 'Com óculos clássicos de Letras, Direito & Economia: clareza argumentativa, tese-síntese e contexto histórico.',
 };
 
+const UNIPEDIA_CONSTITUTION = `Constituição Unipedia (regras fixas e obrigatórias):
+- Fala sempre na primeira pessoa com a identidade do Uni. Nunca digas "como modelo de IA", "como assistente virtual" nem "sou o Gemini".
+- Salvaguarda e ética: nunca simules vínculo romântico, afeto exclusivo ou ciúmes; mantém foco académico saudável para qualquer idade (13+). Se o estudante expressar sofrimento emocional intenso, responde com cuidado sóbrio, sugere falar com alguém de confiança e indica os serviços de apoio da universidade.
+- Modo socrático em exercícios e trabalhos avaliados: NUNCA entregues trabalhos avaliados feitos de raiz nem resoluções completas à primeira; dá primeiro pistas em passos pequenos (até 3 níveis) para puxar pelo raciocínio do estudante.
+- Rigor e citação: baseia o ensino nas fichas da cadeira e nos materiais/excertos fornecidos. Cita explicitamente a fonte (\`[Fonte: nome do ficheiro]\`). Se algo não estiver nas fichas nem nos anexos, diz com transparência "Isto não está nos teus materiais" em vez de inventar fórmulas ou regras.
+- Mestria real vem da app: nunca inventes notas, pontuações de mestria nem datas que não estejam nos dados fornecidos.
+- Escreve em português europeu (pt-PT) com Markdown limpo e LaTeX padrão (\`$...$\` ou \`$$...$$\` numa linha própria) quando houver matemática/fórmulas.
+- Em quizzes: faz UMA pergunta de cada vez e espera pela resposta antes de corrigir.
+- Se a conversa sair do estudo, brinca brevemente e redireciona para a cadeira ou plano.`;
+
 export const SYSTEM_PROMPT = (
   context: string,
   docContext?: string,
-  opts?: { persona?: UniPersonaMode; accessory?: UniAccessoryId; studentName?: string; appTone?: AppTone },
+  opts?: {
+    persona?: UniPersonaMode;
+    accessory?: UniAccessoryId;
+    studentName?: string;
+    appTone?: AppTone;
+    language?: 'pt-PT' | 'en';
+    uniAgent?: UniAgentRecord | null;
+    retrievedSheets?: TopicSheetRecord[];
+    courseName?: string;
+  },
 ): string => {
-  const persona = opts?.persona ?? 'amigo';
+  const persona = opts?.uniAgent?.personaId ?? opts?.persona ?? 'amigo';
   const accessory = opts?.accessory ?? 'default';
   const appTone = opts?.appTone ?? 'vibrante';
   const firstName = opts?.studentName?.trim().split(/\s+/)[0] || '';
+  const agent = opts?.uniAgent ?? null;
+  const rawLang = opts?.uniAgent?.language ?? opts?.language ?? 'pt-PT';
+  const targetLang: 'pt-PT' | 'en' = rawLang.toLowerCase().startsWith('en') ? 'en' : 'pt-PT';
+  const personaText = PERSONA_INSTRUCTIONS_BY_LANG[targetLang][persona];
 
   const toneDirective =
     appTone === 'serio'
-      ? '- Tom selecionado (Sério & Minimalista): responde sempre em português europeu (pt-PT), de forma direta, estruturada, sóbria e profissional, sem exclamações excessivas nem brincadeiras.'
-      : '- Responde sempre em português europeu (pt-PT), de forma concisa, concreta e calorosa.';
+      ? targetLang === 'en'
+        ? '- App tone (Minimal & Focused): structured, sober, concise, zero hype.'
+        : '- Tom da app (Sério & Minimalista): direto, estruturado, sóbrio e profissional, sem exclamações excessivas.'
+      : targetLang === 'en'
+        ? '- Concise, grounded, encouraging tone without filler.'
+        : '- Tom natural e conciso, concreto e encorajador sem exageros.';
 
-  return `Tu és o Uni, o companheiro de estudo exclusivo da Unipedia${firstName ? ` a ajudar ${firstName}` : ''}.
-Identidade obrigatória:
-- Fala sempre como «o Uni» na primeira pessoa. Nunca digas "como modelo de IA", "como assistente virtual" nem "sou o Gemini".
-- ${PERSONA_INSTRUCTIONS[persona]}
+  const languageDirective =
+    targetLang === 'en'
+      ? '- Idioma de resposta obrigatório: escreve TODA a resposta em inglês claro (en), mantendo entre aspas/parênteses termos técnicos originais se vierem de apontamentos em português.'
+      : '- Idioma de resposta obrigatório: português europeu (pt-PT).';
+
+  const expertDirective =
+    agent && agent.stage >= 3
+      ? targetLang === 'en'
+        ? '- Specialist/Master stage unlocked: include exam-grade edge cases, past-test rigor, and cross-topic links while keeping your archetype tone.'
+        : '- Estágio Especialista/Mestre desbloqueado: inclui rigor de nível exame/teste, casos-limite e ligações entre tópicos sem perder o teu tom.'
+      : '';
+
+  const layer2Personality = agent
+    ? `CAMADA 2 — PERSONALIDADE DO UNI ESPECIALISTA:
+- Nome: «${agent.name}»${opts?.courseName ? ` (especialista em ${opts.courseName})` : ''} · Forma: ${agent.formId} · Estágio atual: ${agent.stage} (mestria ${agent.mastery}/100 calculada pela app) · Idioma: ${targetLang}.
+- ${personaText}
+- Área e estilo: ${AREA_VOICE_HINTS[accessory]}
+${languageDirective}
+${expertDirective ? `${expertDirective}\n` : ''}${toneDirective}`
+    : `CAMADA 2 — PERSONALIDADE DO UNI:
+- Tu és o Uni da Unipedia${firstName ? ` a ajudar ${firstName}` : ''}.
+- ${personaText}
 - Visual e área ativa: ${AREA_VOICE_HINTS[accessory]}
-${toneDirective}
-- Baseia o ensino e as explicações nos dados do resumo e no **conteúdo real dos PDFs, excertos e notas** anexados abaixo. Quando usares informação ou exercícios de um material/anexo, cita a origem explicitamente (ex.: \`[Fonte: nome do ficheiro]\`). Se algo não estiver nos dados nem nos anexos, assume com naturalidade em vez de inventar.
-- Usa Markdown: títulos curtos (###), listas e **negrito** para destacar o essencial.
-- Matemática e equações (LaTeX / KaTeX): para frações, integrais, derivadas parciais, somatórios, matrizes, sistemas ou fórmulas de engenharia usa **LaTeX padrão** (\`$...$\` na linha ou \`$$...$$\` numa linha própria para destacar equações principais); para letras gregas ou símbolos isolados no texto corrido podes usar Unicode direto (ex.: \`π\`, \`α\`, \`≈\`, \`→\`). Nunca coloques \`$\` em preços sem necessidade matemática.
-- Em quizzes: faz UMA pergunta de cada vez e espera pela resposta antes de corrigir e avançar.
-- Se a conversa fugir do estudo, brinca brevemente como o Uni e traz o foco de volta às cadeiras.
+${languageDirective}
+${toneDirective}`;
+
+  const layer3Notebook = agent
+    ? `\nCAMADA 3 — CADERNO DO UNI (JSON compacto do que o Uni sabe sobre o estudante nesta cadeira):\n${JSON.stringify({
+        goals: agent.notebook.goals.slice(0, 8),
+        learningStyle: agent.notebook.learningStyle ?? null,
+        weakSpots: agent.notebook.weakSpots.slice(0, 6),
+        strengths: agent.notebook.strengths.slice(0, 6),
+        customNotes: (agent.notebook.customNotes ?? []).slice(0, 6),
+        nextAssessment: agent.notebook.nextAssessment ?? null,
+      })}`
+    : '';
+
+  const sheetsBlock =
+    opts?.retrievedSheets && opts.retrievedSheets.length > 0
+      ? `\nFICHAS DE TÓPICO GUARDADAS NO CADERNO (${opts.retrievedSheets.length}):\n` +
+        opts.retrievedSheets
+          .map(
+            (sheet, idx) =>
+              `### [Ficha ${idx + 1}: ${sheet.title}]\n${sheet.summary.trim().slice(0, 2200)}`,
+          )
+          .join('\n\n')
+      : '';
+
+  return `${UNIPEDIA_CONSTITUTION}
+
+${layer2Personality}${layer3Notebook}
+
+CAMADA 4 — CONTEXTO DO MOMENTO:
 - SINCRONIZAÇÃO COM O CADERNO (Calendário, Cadeiras e Plano): sempre que o estudante enviar uma imagem/print ou texto com datas de testes, exames, entregas de projetos ou aulas semanais do horário (ou pedir para guardar/atualizar no resto da app), explica claramente o que encontraste e no FINAL da tua resposta inclui exatamente um bloco técnico (que a interface transforma num cartão de 1 toque):
 <uni-sync>{"hasSaturdayColumn":false,"slots":[{"courseName":"Nome real da cadeira","courseCode":"SIGLA","dayHeader":"2ª|3ª|4ª|5ª|6ª|Sáb","type":"T|TP|P|OT","weekday":1,"start":"09:00","end":"11:00","room":"Sala opcional"}],"assessments":[{"courseName":"Nome real da cadeira","courseCode":"SIGLA opcional","title":"1.º Teste","date":"2026-11-25T14:00:00","kind":"teste|exame|trabalho|projeto|quiz","location":"Sala opcional"}]}</uni-sync>
-(Regra Portugal + colunas sobrepostas: "2ª"=1, "3ª"=2, "4ª"=3, "5ª"=4, "6ª"=5 — "6ª" é Sexta-feira, NUNCA 6! Se um dia tiver 2 aulas sobrepostas lado a lado com cabeçalho largo como no CLIP, ambas as subcolunas pertencem ao mesmo cabeçalho acima delas. Usa os nomes reais das cadeiras do resumo do aluno. Se não houver aulas nem avaliações para guardar na app, NÃO incluas <uni-sync>.)
-${docContext ? `\n${docContext}\n` : ''}
-Resumo atual do caderno do estudante:
+(Regra Portugal + colunas sobrepostas: "2ª"=1, "3ª"=2, "4ª"=3, "5ª"=4, "6ª"=5 — "6ª" é Sexta-feira, NUNCA 6! Se não houver aulas nem avaliações para guardar na app, NÃO incluas <uni-sync>.)
+${sheetsBlock}${docContext ? `\n${docContext}\n` : ''}
+Resumo atual do caderno do estudante${firstName ? ` (${firstName})` : ''}:
 """
 ${context}
 """`;
@@ -1432,7 +1562,11 @@ export async function converseCheckInWithGemini(args: {
       ? 'Sê direto, energético e prático.'
       : args.persona === 'calmo'
         ? 'Sê sereno, acolhedor e tranquilo.'
-        : 'Sê próximo, humano e empático como um colega atento.';
+        : args.persona === 'curioso'
+          ? 'Sê curioso e faz uma pergunta breve para confirmar detalhes.'
+          : args.persona === 'treinador'
+            ? 'Sê positivo, prático e focado em metas curtas.'
+            : 'Sê próximo, humano e empático como um colega atento.';
 
   const topicsList =
     args.courseTopics.length > 0
@@ -1475,5 +1609,382 @@ No FINAL da tua resposta, inclui exatamente um bloco técnico invisível ao util
       visibleReply ||
       'Percebi tudo! Alinhei esse resumo e o estado no teu plano — confirma abaixo quando estiver bom.',
     understanding,
+  };
+}
+
+export interface ExtractedTopicSheetResult {
+  title: string;
+  summary: string;
+  keyConcepts: string[];
+}
+
+/** Gera uma ficha de tópico estruturada e citável a partir de materiais reais para guardar em IndexedDB. */
+export async function extractTopicSheetFromSources(args: {
+  topicTitle: string;
+  courseName?: string;
+  sources: NotebookSourceInput[];
+  attachments?: ChatAttachment[];
+}): Promise<ExtractedTopicSheetResult> {
+  const { customKey, model } = resolveGeminiConfig();
+  const formattedSources = args.sources
+    .filter((s) => s.content.trim())
+    .map((s, i) => `### [Fonte ${i + 1}: ${s.title}]\n${s.content.trim().slice(0, 5000)}`)
+    .join('\n\n');
+
+  const hasAttachments = Boolean(args.attachments && args.attachments.length > 0);
+  if (!formattedSources && !hasAttachments) {
+    throw new Error('Seleciona pelo menos um material com conteúdo ou anexa um ficheiro antes de gerar a ficha.');
+  }
+
+  const prompt = `Cria uma ficha de estudo permanente e citável em português europeu (pt-PT) sobre "${args.topicTitle}"${args.courseName ? ` (${args.courseName})` : ''}.
+Regras obrigatórias:
+- Usa EXCLUSIVAMENTE as fontes fornecidas.
+- Inclui: 1) Ideia central, 2) Definições e fórmulas-chave (com LaTeX se aplicável), 3) Armadilhas típicas de teste e 4) Exemplo resolvido ou caso prático curto.
+- Cita sempre a origem entre parênteses retos: [Fonte: nome exato]. Se faltar algo nas fontes, não inventes.
+${formattedSources ? `\nFONTES:\n${formattedSources}` : '\nAnalisa os ficheiros anexados como fontes principais.'}
+
+Devolve APENAS JSON válido:
+{"title":"Título claro da ficha","summary":"Markdown estruturado da ficha","keyConcepts":["conceito 1","conceito 2","conceito 3"]}`;
+
+  const contents = buildContentsWithAttachments([{ role: 'user', text: prompt }], args.attachments);
+  const generationConfig: GenerationConfig = {
+    temperature: 0.35,
+    maxOutputTokens: 1600,
+    responseMimeType: 'application/json',
+  };
+
+  const rawText = await withQuotaAndFallback('notebook', customKey, () =>
+    customKey
+      ? callDirectRest({ key: customKey, model, contents, generationConfig })
+      : runNativeGenerate({ model, contents, generationConfig }),
+  );
+
+  const match = /\{[\s\S]*\}/.exec(rawText || '{}');
+  const parsed = JSON.parse(match ? match[0] : rawText || '{}') as Partial<ExtractedTopicSheetResult>;
+  const summary = parsed.summary?.trim() ?? '';
+  if (!summary) {
+    throw new Error('Não foi possível extrair uma ficha estruturada agora. Tenta novamente.');
+  }
+  return {
+    title: parsed.title?.trim().slice(0, 80) || args.topicTitle,
+    summary,
+    keyConcepts: Array.isArray(parsed.keyConcepts)
+      ? parsed.keyConcepts.map((k) => String(k).trim()).filter(Boolean).slice(0, 8)
+      : [],
+  };
+}
+
+export interface UniRecallPromptResult {
+  question: string;
+  hint: string;
+}
+
+/** Gera uma pergunta aberta curta de Recall do Uni para o fecho da sessão de foco. */
+export async function generateUniRecallQuestion(args: {
+  topicTitle: string;
+  courseName?: string;
+  agent: UniAgentRecord;
+  sheets?: TopicSheetRecord[];
+  examMode?: boolean;
+}): Promise<UniRecallPromptResult> {
+  const { customKey, model } = resolveGeminiConfig();
+  const targetLang: 'pt-PT' | 'en' = args.agent.language?.toLowerCase().startsWith('en') ? 'en' : 'pt-PT';
+  const examMode = args.examMode ?? args.agent.stage >= 3;
+  const sheetContext = (args.sheets ?? [])
+    .slice(0, 2)
+    .map((s) => `[${s.title}]\n${s.summary.slice(0, 1200)}`)
+    .join('\n\n');
+  const weakHint =
+    args.agent.notebook.weakSpots.length > 0
+      ? `${targetLang === 'en' ? 'Recorded weak spots' : 'Pontos fracos registados'}: ${args.agent.notebook.weakSpots
+          .slice(0, 3)
+          .map((w) => `${w.topic} (${w.note})`)
+          .join('; ')}.`
+      : '';
+
+  const prompt =
+    targetLang === 'en'
+      ? `You are "${args.agent.name}", specialist Uni for ${args.courseName ?? 'this course'}. ${PERSONA_INSTRUCTIONS_BY_LANG.en[args.agent.personaId]}
+Ask the student for an active 2-sentence recall on "${args.topicTitle}" from memory (no notes).
+${examMode ? 'Specialist Exam Mode unlocked: make the prompt exam-grade (test a condition, trap, or application).' : ''}
+${weakHint}
+${sheetContext ? `\nCourse sheets:\n${sheetContext}` : ''}
+Return ONLY valid JSON:
+{"question":"1-2 concise sentences in your archetype voice","hint":"short 1-sentence hint if requested"}`
+      : `És «${args.agent.name}», Uni especialista de ${args.courseName ?? 'cadeira'}. ${PERSONA_INSTRUCTIONS_BY_LANG['pt-PT'][args.agent.personaId]}
+Pede ao estudante um recall ativo de 2 frases sobre «${args.topicTitle}» sem consultar apontamentos.
+${examMode ? 'Modo Exame de Especialista ativo: formula uma pergunta exigente estilo teste/exame (testando condição, exceção ou aplicação).' : ''}
+${weakHint}
+${sheetContext ? `\nMaterial real da cadeira:\n${sheetContext}` : ''}
+Devolve APENAS JSON válido:
+{"question":"pergunta curta e concreta em 1–2 frases no tom do teu arquétipo","hint":"pista curta em 1 frase caso o aluno peça ajuda"}`;
+
+  const contents: Content[] = [{ role: 'user', parts: [{ type: 'text', text: prompt }] }];
+  const generationConfig: GenerationConfig = {
+    temperature: 0.45,
+    maxOutputTokens: 320,
+    responseMimeType: 'application/json',
+  };
+
+  const rawText = await withQuotaAndFallback('recall', customKey, () =>
+    customKey
+      ? callDirectRest({ key: customKey, model, contents, generationConfig })
+      : runNativeGenerate({ model, contents, generationConfig }),
+  );
+
+  const match = /\{[\s\S]*\}/.exec(rawText || '{}');
+  const parsed = JSON.parse(match ? match[0] : rawText || '{}') as Partial<UniRecallPromptResult>;
+  return {
+    question:
+      parsed.question?.trim() ||
+      (targetLang === 'en'
+        ? `In 2 sentences from memory, explain the core idea of "${args.topicTitle}".`
+        : `Explica-me em 2 frases, sem olhar para a sebenta, a ideia essencial de «${args.topicTitle}».`),
+    hint:
+      parsed.hint?.trim() ||
+      (targetLang === 'en'
+        ? 'Include a concise definition and one condition where it applies.'
+        : 'Pensa numa definição curta e num caso em que se aplica (ou falha).'),
+  };
+}
+
+export interface UniRecallEvaluationResult {
+  score: 1 | 2 | 3;
+  feedback: string;
+  detectedWeakSpot?: { topic: string; note: string };
+  matchedStrength?: string;
+}
+
+/** Avalia a resposta de recall do estudante com feedback no arquétipo do Uni e nota 1|2|3 para o SRS. */
+export async function evaluateUniRecall(args: {
+  topicTitle: string;
+  question: string;
+  studentAnswer: string;
+  courseName?: string;
+  agent: UniAgentRecord;
+  sheets?: TopicSheetRecord[];
+}): Promise<UniRecallEvaluationResult> {
+  const { customKey, model } = resolveGeminiConfig();
+  const targetLang: 'pt-PT' | 'en' = args.agent.language?.toLowerCase().startsWith('en') ? 'en' : 'pt-PT';
+  const sheetContext = (args.sheets ?? [])
+    .slice(0, 2)
+    .map((s) => `[${targetLang === 'en' ? 'Source' : 'Fonte'}: ${s.title}]\n${s.summary.slice(0, 1600)}`)
+    .join('\n\n');
+
+  const prompt =
+    targetLang === 'en'
+      ? `You are "${args.agent.name}", specialist Uni for ${args.courseName ?? 'this course'}. ${PERSONA_INSTRUCTIONS_BY_LANG.en[args.agent.personaId]}
+Evaluate the student's active recall answer in clear English.
+Topic: ${args.topicTitle}
+Question: ${args.question}
+Student answer: ${args.studentAnswer}
+${sheetContext ? `\nReference sheets:\n${sheetContext}` : ''}
+
+Strict SRS rubric:
+- 1 ("Missed"): major conceptual error or empty/inaccurate answer.
+- 2 ("Partial"): got the main idea but missed a condition, sign, or nuance.
+- 3 ("Mastered"): clear, accurate explanation at course level.
+
+Return ONLY valid JSON:
+{"score":1|2|3,"feedback":"2-3 concrete sentences in your archetype voice (cite [Source: ...] if applicable)","weakNote":"if score<3, short note of mistake (max 100 chars), else empty string","strengthNote":"if score==3, short strength (max 90 chars), else empty string"}`
+      : `És «${args.agent.name}», Uni especialista de ${args.courseName ?? 'cadeira'}. ${PERSONA_INSTRUCTIONS_BY_LANG['pt-PT'][args.agent.personaId]}
+Avalia a resposta de recall ativo do estudante em português europeu (pt-PT).
+Tópico: ${args.topicTitle}
+Pergunta feita: ${args.question}
+Resposta do estudante: ${args.studentAnswer}
+${sheetContext ? `\nReferência das fichas:\n${sheetContext}` : ''}
+
+Critério estrito de score para repetição espaçada:
+- 1 ("Falhei"): erro conceptual grave ou resposta vazia/muito imprecisa.
+- 2 ("Lembrei +-"): acertou a ideia geral mas falhou um detalhe, condição ou aplicação.
+- 3 ("Dominei"): explicação correta, clara e precisa para o nível do tópico.
+
+Devolve APENAS JSON válido:
+{"score":1|2|3,"feedback":"2 a 3 frases concretas no tom do teu arquétipo a corrigir ou validar (cita [Fonte: ...] se aplicável)","weakNote":"se score<3, nota curta do erro ou omissão (máx 100 chars), senão string vazia","strengthNote":"se score==3, ponto forte curto (máx 90 chars), senão string vazia"}`;
+
+  const contents: Content[] = [{ role: 'user', parts: [{ type: 'text', text: prompt }] }];
+  const generationConfig: GenerationConfig = {
+    temperature: 0.35,
+    maxOutputTokens: 450,
+    responseMimeType: 'application/json',
+  };
+
+  const rawText = await withQuotaAndFallback('recall', customKey, () =>
+    customKey
+      ? callDirectRest({ key: customKey, model, contents, generationConfig })
+      : runNativeGenerate({ model, contents, generationConfig }),
+  );
+
+  const match = /\{[\s\S]*\}/.exec(rawText || '{}');
+  const parsed = JSON.parse(match ? match[0] : rawText || '{}') as {
+    score?: number;
+    feedback?: string;
+    weakNote?: string;
+    strengthNote?: string;
+  };
+  const score = parsed.score === 1 || parsed.score === 2 || parsed.score === 3 ? parsed.score : 2;
+  const feedback =
+    parsed.feedback?.trim() ||
+    (score === 3
+      ? targetLang === 'en'
+        ? 'Clean, accurate answer — strong retention!'
+        : 'Resposta limpa e sólida. Boa retenção!'
+      : targetLang === 'en'
+        ? 'Almost there — double check the key condition in your sheet before the next review.'
+        : 'Quase lá — revê a condição principal na ficha antes da próxima revisão.');
+  const weakNote = parsed.weakNote?.trim();
+  const strengthNote = parsed.strengthNote?.trim();
+
+  return {
+    score,
+    feedback,
+    ...(score < 3 && weakNote
+      ? { detectedWeakSpot: { topic: args.topicTitle, note: weakNote.slice(0, 180) } }
+      : {}),
+    ...(score === 3 && strengthNote ? { matchedStrength: strengthNote.slice(0, 120) } : {}),
+  };
+}
+
+/** Prepara até 3 perguntas curtas de expedição para a revisão espaçada do dia seguinte. */
+export async function generateUniExpeditionQuestions(args: {
+  courseName: string;
+  agent: UniAgentRecord;
+  candidateTopics: Array<{ id?: string; title: string }>;
+  sheets?: TopicSheetRecord[];
+  forDate: string;
+}): Promise<UniAgentExpedition> {
+  const { customKey, model } = resolveGeminiConfig();
+  const targetLang: 'pt-PT' | 'en' = args.agent.language?.toLowerCase().startsWith('en') ? 'en' : 'pt-PT';
+  const topics = args.candidateTopics.slice(0, 3);
+  const sheetContext = (args.sheets ?? [])
+    .slice(0, 4)
+    .map((s) => `[${s.title}]\n${s.summary.slice(0, 1100)}`)
+    .join('\n\n');
+
+  const prompt =
+    targetLang === 'en'
+      ? `You are "${args.agent.name}", specialist Uni for ${args.courseName}. ${PERSONA_INSTRUCTIONS_BY_LANG.en[args.agent.personaId]}
+Prepare ${topics.length || 2} sharp spaced-repetition expedition questions for tomorrow (${args.forDate}) covering these topics:
+${topics.map((t, i) => `${i + 1}. ${t.title}`).join('\n') || `- Core concepts of ${args.courseName}`}
+${sheetContext ? `\nSaved course sheets:\n${sheetContext}` : ''}
+Return ONLY valid JSON:
+{"questions":[{"topicTitle":"exact topic name","q":"short active-recall question in your voice","hint":"1-sentence hint","sourceRef":"sheet title or Syllabus"}]}`
+      : `És «${args.agent.name}», Uni especialista de ${args.courseName}. ${PERSONA_INSTRUCTIONS_BY_LANG['pt-PT'][args.agent.personaId]}
+Prepara ${topics.length || 2} perguntas curtas de expedição para a revisão espaçada de amanhã (${args.forDate}) sobre estes tópicos:
+${topics.map((t, i) => `${i + 1}. ${t.title}`).join('\n') || `- Ideias centrais de ${args.courseName}`}
+${sheetContext ? `\nFichas reais da cadeira:\n${sheetContext}` : ''}
+Devolve APENAS JSON válido:
+{"questions":[{"topicTitle":"nome exato do tópico","q":"pergunta curta de recall no teu tom","hint":"pista curta em 1 frase","sourceRef":"nome da ficha ou Programa"}]}`;
+
+  const contents: Content[] = [{ role: 'user', parts: [{ type: 'text', text: prompt }] }];
+  const generationConfig: GenerationConfig = {
+    temperature: 0.45,
+    maxOutputTokens: 700,
+    responseMimeType: 'application/json',
+  };
+
+  const rawText = await withQuotaAndFallback('recall', customKey, () =>
+    customKey
+      ? callDirectRest({ key: customKey, model, contents, generationConfig })
+      : runNativeGenerate({ model, contents, generationConfig }),
+  );
+
+  const match = /\{[\s\S]*\}/.exec(rawText || '{}');
+  const parsed = JSON.parse(match ? match[0] : rawText || '{}') as {
+    questions?: Array<{ topicTitle?: string; q?: string; hint?: string; sourceRef?: string }>;
+  };
+
+  const rawQuestions = Array.isArray(parsed.questions) ? parsed.questions.slice(0, 3) : [];
+  const questions: UniExpeditionQuestion[] = rawQuestions
+    .filter((item) => item?.q?.trim())
+    .map((item, idx) => {
+      const matchedTopic =
+        topics.find(
+          (t) =>
+            item.topicTitle &&
+            t.title.toLowerCase().includes(item.topicTitle.trim().toLowerCase()),
+        ) ?? topics[idx];
+      return {
+        id: `exp-${args.forDate}-${idx + 1}`,
+        ...(matchedTopic?.id ? { topicId: matchedTopic.id } : {}),
+        topicTitle: (matchedTopic?.title || item.topicTitle || args.courseName).slice(0, 120),
+        q: String(item.q).trim().slice(0, 500),
+        hint:
+          String(item.hint || '').trim().slice(0, 260) ||
+          (targetLang === 'en' ? 'Recall the key definition first.' : 'Começa pela definição principal.'),
+        sourceRef:
+          String(item.sourceRef || '').trim().slice(0, 120) ||
+          (args.sheets?.[0]?.title ?? args.courseName),
+      };
+    });
+
+  if (questions.length === 0 && topics.length > 0) {
+    questions.push({
+      id: `exp-${args.forDate}-1`,
+      ...(topics[0].id ? { topicId: topics[0].id } : {}),
+      topicTitle: topics[0].title,
+      q:
+        targetLang === 'en'
+          ? `Summarize the core rule of "${topics[0].title}" in 2 sentences from memory.`
+          : `Resume em 2 frases sem apontamentos a regra principal de «${topics[0].title}».`,
+      hint: targetLang === 'en' ? 'Name the main condition and one example.' : 'Indica a condição principal e um exemplo.',
+      sourceRef: args.sheets?.[0]?.title ?? args.courseName,
+    });
+  }
+
+  return {
+    preparedAt: new Date().toISOString(),
+    forDate: args.forDate,
+    questions,
+  };
+}
+
+/** Extrai uma observação incremental curta para o Caderno do Uni apenas quando `memoryEnabled === true`. */
+export async function summarizeNotebookMemoryDelta(args: {
+  courseName: string;
+  userMessage: string;
+  assistantReply: string;
+  agent: UniAgentRecord;
+}): Promise<NotebookDeltaProposal> {
+  if (!args.agent.memoryEnabled) return {};
+  if (args.userMessage.trim().length < 20) return {};
+
+  const { customKey, model } = resolveGeminiConfig();
+  const prompt = `Analisa esta troca rápida sobre "${args.courseName}" entre estudante e o Uni «${args.agent.name}».
+Extrai APENAS factos pedagógicos objetivos e úteis para estudo futuro (dificuldade recorrente concreta ou ponto forte demonstrado). Nunca inventes notas nem incluas dados pessoais sensíveis. Se não houver nenhum facto relevante novo, devolve vazio.
+Pergunta do estudante: ${args.userMessage.slice(0, 600)}
+Resposta do Uni: ${args.assistantReply.slice(0, 900)}
+
+Devolve APENAS JSON válido:
+{"weakSpot":{"topic":"nome curto do tópico","note":"dificuldade concreta observada"},"strength":"ponto forte curto opcional"}`;
+
+  const contents: Content[] = [{ role: 'user', parts: [{ type: 'text', text: prompt }] }];
+  const generationConfig: GenerationConfig = {
+    temperature: 0.25,
+    maxOutputTokens: 220,
+    responseMimeType: 'application/json',
+  };
+
+  const rawText = await withQuotaAndFallback('recall', customKey, () =>
+    customKey
+      ? callDirectRest({ key: customKey, model, contents, generationConfig })
+      : runNativeGenerate({ model, contents, generationConfig }),
+  );
+
+  const match = /\{[\s\S]*\}/.exec(rawText || '{}');
+  const parsed = JSON.parse(match ? match[0] : rawText || '{}') as {
+    weakSpot?: { topic?: string; note?: string } | null;
+    strength?: string | null;
+  };
+  return {
+    ...(parsed.weakSpot?.topic?.trim() && parsed.weakSpot?.note?.trim()
+      ? {
+          weakSpot: {
+            topic: parsed.weakSpot.topic.trim().slice(0, 80),
+            note: parsed.weakSpot.note.trim().slice(0, 180),
+          },
+        }
+      : {}),
+    ...(parsed.strength?.trim() ? { strength: parsed.strength.trim().slice(0, 120) } : {}),
   };
 }

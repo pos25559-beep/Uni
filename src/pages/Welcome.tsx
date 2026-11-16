@@ -1,6 +1,7 @@
 import { ArrowRight, BookOpen, CheckCircle2, Trophy } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { UniBuddy, UnipediaLogoMark } from '../components/brand/UnipediaMarks';
 import {
@@ -74,6 +75,8 @@ const SLIDES: Slide[] = [
 ];
 
 export default function WelcomePage() {
+  const { t, i18n } = useTranslation('onboarding');
+  const currentLang = i18n.language?.startsWith('en') ? 'en' : 'pt-PT';
   const updateSettings = useStore((s) => s.updateSettings);
   const navigate = useNavigate();
 
@@ -141,17 +144,27 @@ export default function WelcomePage() {
           <UnipediaLogoMark size={34} />
           <span className="font-display text-lg font-extrabold tracking-tight">Unipedia</span>
         </div>
-        <button
-          type="button"
-          onClick={handleExistingAccount}
-          className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full bg-white/75 px-4 text-xs font-semibold text-[#141312] backdrop-blur-sm transition hover:bg-white dark:bg-black/30 dark:text-[#FAF6EC]"
-        >
-          Saltar · Entrar
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => updateSettings({ language: currentLang === 'en' ? 'pt-PT' : 'en' })}
+            aria-label="Language"
+            className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-white/70 px-3 text-xs font-bold text-[#141312] backdrop-blur-sm transition hover:bg-white dark:bg-black/30 dark:text-[#FAF6EC]"
+          >
+            {currentLang === 'en' ? 'PT' : 'EN'}
+          </button>
+          <button
+            type="button"
+            onClick={handleExistingAccount}
+            className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full bg-white/75 px-4 text-xs font-semibold text-[#141312] backdrop-blur-sm transition hover:bg-white dark:bg-black/30 dark:text-[#FAF6EC]"
+          >
+            {t('ctaSignIn')}
+          </button>
+        </div>
       </header>
 
       {/* Palco central animado */}
-      <main className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col py-2 text-center sm:py-4">
+      <div className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col py-2 text-center sm:py-4">
         <AnimatePresence mode="wait">
           <motion.div
             key={slide.id}
@@ -303,7 +316,7 @@ export default function WelcomePage() {
             </div>
           </motion.div>
         </AnimatePresence>
-      </main>
+      </div>
 
       {/* Controlo de paginação & CTAs */}
       <footer className="relative z-10 mx-auto w-full max-w-md space-y-2 sm:space-y-3">

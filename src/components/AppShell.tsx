@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { auth, onAuthStateChanged, type User } from '../lib/firebase';
 import { hapticTap, syncNativeTheme } from '../lib/nativeBridge';
@@ -26,7 +27,6 @@ import type { StudyLogKind } from '../types';
 import AuthStatus from './auth/AuthStatus';
 import UniCheckInModal from './assistant/UniCheckInModal';
 import UniCollectiblesModal from './brand/UniCollectiblesModal';
-import UniLivingOverlay from './brand/UniLivingOverlay';
 import { UnipediaLogoMark } from './brand/UnipediaMarks';
 import { UNIPEDIA_BOUNCE_SPRING, UNIPEDIA_SPRING } from '../lib/motionTokens';
 import PostOnboardingHubModal from './onboarding/PostOnboardingHubModal';
@@ -36,28 +36,28 @@ import { cx } from '../lib/uiHelpers';
 import { useSheetSwipeDismiss } from '../lib/useSheetSwipeDismiss';
 
 const desktopNav = [
-  { to: '/', label: 'Hoje', icon: LayoutDashboard, end: true, tour: 'nav-today' },
-  { to: '/cadeiras', label: 'Cadeiras', icon: BookOpen, tour: 'nav-cadeiras' },
-  { to: '/calendario', label: 'Calendário', icon: CalendarDays },
-  { to: '/plano', label: 'Plano', icon: Target, tour: 'nav-plano' },
-  { to: '/progresso', label: 'Progresso', icon: ChartNoAxesColumn },
-  { to: '/materiais', label: 'Materiais', icon: FolderOpen },
-  { to: '/assistente', label: 'Tutor', icon: Sparkles, tour: 'nav-assistente' },
-  { to: '/definicoes', label: 'Definições', icon: Settings },
+  { to: '/', key: 'nav.today', icon: LayoutDashboard, end: true, tour: 'nav-today' },
+  { to: '/cadeiras', key: 'nav.courses', icon: BookOpen, tour: 'nav-cadeiras' },
+  { to: '/calendario', key: 'nav.calendar', icon: CalendarDays },
+  { to: '/plano', key: 'nav.plan', icon: Target, tour: 'nav-plano' },
+  { to: '/progresso', key: 'nav.progress', icon: ChartNoAxesColumn },
+  { to: '/materiais', key: 'nav.materials', icon: FolderOpen },
+  { to: '/assistente', key: 'nav.tutor', icon: Sparkles, tour: 'nav-assistente' },
+  { to: '/definicoes', key: 'nav.settings', icon: Settings },
 ];
 
 const mobilePrimaryNav = [
-  { to: '/cadeiras', label: 'Cadeiras', icon: BookOpen, tour: 'nav-cadeiras' },
-  { to: '/plano', label: 'Plano', icon: Target, tour: 'nav-plano' },
-  { to: '/', label: 'Hoje', icon: LayoutDashboard, end: true, tour: 'nav-today', center: true },
-  { to: '/assistente', label: 'Tutor', icon: Sparkles, tour: 'nav-assistente' },
+  { to: '/cadeiras', key: 'nav.courses', icon: BookOpen, tour: 'nav-cadeiras' },
+  { to: '/plano', key: 'nav.plan', icon: Target, tour: 'nav-plano' },
+  { to: '/', key: 'nav.today', icon: LayoutDashboard, end: true, tour: 'nav-today', center: true },
+  { to: '/assistente', key: 'nav.tutor', icon: Sparkles, tour: 'nav-assistente' },
 ];
 
 const mobileMoreRoutes = [
-  { to: '/calendario', label: 'Calendário', hint: 'Datas de provas e aulas', icon: CalendarDays },
-  { to: '/progresso', label: 'Progresso', hint: 'Consistência e médias', icon: ChartNoAxesColumn },
-  { to: '/materiais', label: 'Materiais', hint: 'Sebentas, PDFs e pastas', icon: FolderOpen },
-  { to: '/definicoes', label: 'Definições', hint: 'Conta, tema, IA e dados', icon: Settings },
+  { to: '/calendario', key: 'nav.calendar', hint: 'Datas de provas e aulas', hintEn: 'Exams & class schedule', icon: CalendarDays },
+  { to: '/progresso', key: 'nav.progress', hint: 'Estante dos Unis e médias', hintEn: 'Uni shelf & analytics', icon: ChartNoAxesColumn },
+  { to: '/materiais', key: 'nav.materials', hint: 'Sebentas, PDFs e pastas', hintEn: 'Notes, PDFs & folders', icon: FolderOpen },
+  { to: '/definicoes', key: 'nav.settings', hint: 'Conta, língua, IA e dados', hintEn: 'Account, language & data', icon: Settings },
 ];
 
 const BYPASS_ONBOARDING_PATHS = [
@@ -71,6 +71,8 @@ const BYPASS_ONBOARDING_PATHS = [
 ];
 
 export default function AppShell() {
+  const { t, i18n } = useTranslation('common');
+  const isEn = i18n.language?.startsWith('en');
   const theme = useStore((s) => s.settings.theme);
   const semesterName = useStore((s) => s.settings.semesterName);
   const guestMode = Boolean(useStore((s) => s.settings.guestMode));
@@ -305,6 +307,12 @@ export default function AppShell() {
   return (
     <MotionConfig reducedMotion={isMinimalTone ? 'always' : 'user'}>
     <div className="flex min-h-dvh h-dvh bg-bg text-fg">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-full focus:bg-ink-cta focus:px-4 focus:py-2 focus:text-xs focus:font-semibold focus:text-ink-cta-fg focus:shadow-float"
+      >
+        {t('nav.skipToContent')}
+      </a>
       <ToastViewport />
 
       {/* Navegação lateral (Desktop & Tablet) */}
@@ -328,7 +336,7 @@ export default function AppShell() {
         </div>
 
         <nav className="flex flex-1 flex-col gap-1" aria-label="Navegação principal">
-          {desktopNav.map(({ to, label, icon: Icon, end, tour }) => (
+          {desktopNav.map(({ to, key, icon: Icon, end, tour }) => (
             <NavLink
               key={to}
               to={to}
@@ -342,7 +350,7 @@ export default function AppShell() {
               }
             >
               <Icon size={18} aria-hidden="true" />
-              {label}
+              {t(key)}
             </NavLink>
           ))}
         </nav>
@@ -386,8 +394,10 @@ export default function AppShell() {
 
       {/* Conteúdo principal com Safe Area e espaço para a dock flutuante */}
       <main
+        id="main-content"
+        tabIndex={-1}
         className={cx(
-          'min-w-0 flex-1 overflow-x-hidden overflow-y-auto md:pt-0',
+          'min-w-0 flex-1 overflow-x-hidden overflow-y-auto focus:outline-none md:pt-0',
           isFullBleedRoute
             ? 'pt-0 pb-0 md:pb-0'
             : location.pathname.startsWith('/entrar')
@@ -423,7 +433,7 @@ export default function AppShell() {
           aria-label="Barra de navegação"
           className="pointer-events-auto grid w-full max-w-md grid-cols-5 items-center gap-1 rounded-[28px] bg-[#141312] p-1.5 text-[#FAF8F2] shadow-dock dark:border dark:border-white/10 dark:bg-[#23201B]"
         >
-          {mobilePrimaryNav.map(({ to, label, icon: Icon, end, tour, center }) => (
+          {mobilePrimaryNav.map(({ to, key, icon: Icon, end, tour, center }) => (
             <NavLink
               key={to}
               to={to}
@@ -435,9 +445,7 @@ export default function AppShell() {
                   'relative flex min-h-[48px] flex-col items-center justify-center gap-0.5 rounded-[22px] px-0.5 py-1 text-xs font-semibold tracking-tight transition-colors',
                   isActive
                     ? 'text-[#141312]'
-                    : center
-                      ? 'bg-white/8 text-[#FAF8F2] ring-1 ring-white/15 hover:bg-white/14'
-                      : 'text-[#FAF8F2]/65 hover:text-[#FAF8F2]',
+                    : 'text-[#FAF8F2]/65 hover:text-[#FAF8F2]',
                 )
               }
             >
@@ -457,7 +465,7 @@ export default function AppShell() {
                   >
                     <Icon size={center ? 19 : 18} aria-hidden="true" />
                   </motion.span>
-                  <span className="relative z-10 leading-none">{label}</span>
+                  <span className="relative z-10 leading-none">{t(key)}</span>
                 </>
               )}
             </NavLink>
@@ -483,7 +491,7 @@ export default function AppShell() {
               <span className="absolute inset-0 rounded-[22px] bg-[#FAF8F2]" />
             )}
             <MoreHorizontal size={18} className="relative z-10" aria-hidden="true" />
-            <span className="relative z-10 leading-none">Mais</span>
+            <span className="relative z-10 leading-none">{t('nav.more')}</span>
           </button>
         </nav>
       </div>
@@ -528,7 +536,7 @@ export default function AppShell() {
                 </div>
 
               <div className="grid grid-cols-2 gap-2.5">
-                {mobileMoreRoutes.map(({ to, label, hint, icon: Icon }) => (
+                {mobileMoreRoutes.map(({ to, key, hint, hintEn, icon: Icon }) => (
                   <NavLink
                     key={to}
                     to={to}
@@ -543,8 +551,10 @@ export default function AppShell() {
                   >
                     <Icon size={18} aria-hidden="true" />
                     <div>
-                      <span className="block font-display text-sm font-bold">{label}</span>
-                      <span className="mt-0.5 block text-xs leading-snug text-muted">{hint}</span>
+                      <span className="block font-display text-sm font-bold">{t(key)}</span>
+                      <span className="mt-0.5 block text-xs leading-snug text-muted">
+                        {isEn ? hintEn : hint}
+                      </span>
                     </div>
                   </NavLink>
                 ))}
@@ -610,8 +620,7 @@ export default function AppShell() {
         initialAssessmentId={effectiveCheckInModal.assessmentId}
       />
 
-      {/* Companheiros discretos apenas nas abas principais */}
-      {!isBypassRoute && <UniLivingOverlay />}
+      {/* Regra de lugar: sem mascote flutuante sobre controlos ou calendário */}
 
       {/* Convite flutuante do Uni após explorar + Hub global acessível em qualquer ecrã */}
       {!isBypassRoute && (

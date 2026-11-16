@@ -1,9 +1,9 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { useMemo, useState } from 'react';
 import type { KeyboardEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { format, parseISO } from 'date-fns';
-import { pt } from 'date-fns/locale';
+import { formatAppDate } from '../lib/grading';
 import {
   AlertTriangle,
   ArrowRight,
@@ -19,17 +19,16 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
-import UniCollectiblesModal from '../components/brand/UniCollectiblesModal';
-import { UniBuddy, UniPetBuddy } from '../components/brand/UnipediaMarks';
+import { UniBuddy } from '../components/brand/UnipediaMarks';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import AcademicGmailWidget from '../components/home/AcademicGmailWidget';
+import ExpeditionTodayCard from '../components/home/ExpeditionTodayCard';
 import {
   AssessmentRow,
   SessionRow,
   TaskRow,
 } from '../components/home/DashboardRows';
-import { capitalize, dayWord, pct, useDashboardAgenda } from '../components/home/useDashboardAgenda';
-import { getUniCollectibleStates, readCollectibleTelemetry } from '../lib/uniCollectibles';
+import { dayWord, pct, useDashboardAgenda } from '../components/home/useDashboardAgenda';
 import { openUniCheckIn } from '../lib/uniCheckInBus';
 import type { StudyLogKind } from '../types';
 import {
@@ -56,9 +55,9 @@ import { useHubUiStore } from '../store/useHubUiStore';
 import { newId, useStore } from '../store/useStore';
 import type { StudySession, Task } from '../types';
 
-const greeting = (hour: number) => (hour < 12 ? 'Bom dia' : hour < 19 ? 'Boa tarde' : 'Boa noite');
-
 export default function Dashboard() {
+  const { t, i18n } = useTranslation('today');
+  const appLang = i18n.language?.startsWith('en') ? ('en' as const) : ('pt-PT' as const);
   const navigate = useNavigate();
   const courses = useStore((s) => s.courses);
   const assessments = useStore((s) => s.assessments);
@@ -79,18 +78,11 @@ export default function Dashboard() {
     () => resolveUniAccessory(settings.uniAccessory, academicProfile?.degreeName, courses[0]?.name),
     [settings.uniAccessory, academicProfile?.degreeName, courses],
   );
-  const collectibles = useMemo(
-    () => getUniCollectibleStates(readCollectibleTelemetry(sessions, courses, weeklyCheckIns)),
-    [sessions, courses, weeklyCheckIns],
-  );
-  const unlockedCollectibles = collectibles.filter((c) => c.unlocked).length;
-
-  const activePet = settings.uniPet ?? 'cat';
+  const gradingScale = settings.gradingScale ?? 'pt20';
 
   const [scope, setScope] = useState<'today' | 'week'>('today');
   const [draft, setDraft] = useState('');
   const [uniBubbleOpen, setUniBubbleOpen] = useState(false);
-  const [collectiblesOpen, setCollectiblesOpen] = useState(false);
   const [undoSession, setUndoSession] = useState<StudySession | null>(null);
   const [dismissedNudgeKey, setDismissedNudgeKey] = useState<string | null>(() => {
     try {
@@ -167,11 +159,15 @@ export default function Dashboard() {
   const nextStudyDayLabel = useMemo(() => {
     if (!nextStudyDate) return null;
     try {
-      return format(parseISO(`${nextStudyDate}T12:00:00`), "EEE, d MMM", { locale: pt });
+      return formatAppDate(`${nextStudyDate}T12:00:00`, appLang, {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+      });
     } catch {
       return nextStudyDate;
     }
-  }, [nextStudyDate]);
+  }, [nextStudyDate, appLang]);
 
   const topicTitle = (s: StudySession) => {
     const topic = courseById.get(s.courseId)?.topics.find((t) => t.id === s.topicId);
@@ -242,8 +238,14 @@ export default function Dashboard() {
 
   const isMinimal = (settings.appTone ?? 'vibrante') === 'serio';
   const firstName = settings.userName.trim().split(/\s+/)[0] ?? '';
-  const dateLabel = capitalize(format(now, "EEEE, d 'de' MMM", { locale: pt }));
-  const shortDateLabel = capitalize(format(now, 'EEE, d MMM', { locale: pt }));
+  const dateLabel = formatAppDate(now, appLang, { weekday: 'long', day: 'numeric', month: 'short' });
+  const shortDateLabel = formatAppDate(now, appLang, { weekday: 'short', day: 'numeric', month: 'short' });
+  const greetingText =
+    now.getHours() < 12
+      ? t('greetingMorning')
+      : now.getHours() < 19
+        ? t('greetingAfternoon')
+        : t('greetingEvening');
   const doneSessionsCount = todaySessions.filter((s) => s.done).length;
   const uniTip = next
     ? `Tens ${next.title}${nextCourse ? ` (${nextCourse.shortName})` : ''} ${dayWord(daysUntil(next.date))}. Queres que prepare um plano ou resumo rápido?`
@@ -253,7 +255,7 @@ export default function Dashboard() {
 
   const greetingHeading = (
     <>
-      {greeting(now.getHours())}
+      {greetingText}
       {firstName ? (
         <>
           ,{' '}
@@ -376,125 +378,25 @@ export default function Dashboard() {
         </section>
       )}
 
-      {/* Cartão compacto (ou barra mínima quando >= 2/4 passos ligados) de Primeiros passos */}
-      {!settings.hubSetupDismissed && !hubProgress.allReady && (
-        hubProgress.readyCount >= 2 ? (
-          <div
-            aria-label="Primeiros passos da tua configuração"
-            className={cx(
-              'flex min-h-11 items-center justify-between gap-2 pl-3.5 pr-1 py-1 shadow-card',
-              isMinimal
-                ? 'rounded-2xl border border-line bg-surface text-fg'
-                : 'rounded-2xl bg-pastel-sage/50 text-[#141312] dark:bg-surface dark:text-fg dark:ring-1 dark:ring-white/10',
-            )}
-          >
-            <button
-              type="button"
-              onClick={() => openHubModal(null)}
-              className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-left text-xs font-semibold"
-            >
-              <Sparkles size={14} className="shrink-0 text-accent" />
-              <span className="truncate">
-                Primeiros passos · {hubProgress.readyCount}/{hubProgress.totalCount} ligadas
-              </span>
-              <span className="hidden shrink-0 rounded-full bg-surface/85 px-2 py-0.5 text-xs font-bold text-accent-ink dark:bg-surface-2 sm:inline-flex">
-                Completar
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => updateSettings({ hubSetupDismissed: true })}
-              aria-label="Dispensar cartão de Primeiros passos"
-              title="Dispensar"
-              className="grid size-11 shrink-0 place-items-center rounded-full text-muted transition hover:bg-surface/70 hover:text-fg"
-            >
-              <X size={15} />
-            </button>
-          </div>
-        ) : (
-        <section
-          aria-label="Primeiros passos da tua configuração"
-          className={cx(
-            'p-4 shadow-card',
-            isMinimal
-              ? 'rounded-2xl border border-line bg-surface text-fg'
-              : 'rounded-[24px] bg-pastel-sage/55 text-[#141312] dark:bg-surface dark:text-fg dark:ring-1 dark:ring-white/10',
-          )}
+      {/* Tira Modo Teste em 1 linha compacta logo no topo quando há avaliação próxima */}
+      {testMode.mode !== 'normal' && visibleNudge?.kind !== 'exam_prep' && (
+        <Link
+          to="/plano"
+          className="flex min-h-11 items-center justify-between gap-2 rounded-2xl bg-pastel-peach/80 px-3.5 py-2 text-xs text-[#141312] transition hover:opacity-95 dark:bg-surface-2 dark:text-[#FAF6EC]"
         >
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0 flex-1 space-y-1">
-              <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-                <h2 className="font-display text-base font-bold">
-                  Primeiros passos · {hubProgress.flow.shortLabel}
-                </h2>
-                <span className="text-xs font-semibold tabular-nums text-accent-ink">
-                  {hubProgress.readyCount}/{hubProgress.totalCount} ligadas
-                </span>
-              </div>
-              <p className="text-xs leading-relaxed opacity-85">
-                Liga horários, provas, pastas de estudo e o Gemini para um plano sempre afinado.
-              </p>
-            </div>
-            <div className="flex shrink-0 items-center justify-between gap-2 sm:justify-end">
-              <Button
-                size="sm"
-                variant="primary"
-                onClick={() => openHubModal(null)}
-              >
-                <Sparkles size={13} /> Completar passos
-              </Button>
-              <button
-                type="button"
-                onClick={() => updateSettings({ hubSetupDismissed: true })}
-                aria-label="Dispensar cartão de Primeiros passos"
-                title="Dispensar"
-                className="grid size-11 place-items-center rounded-full text-muted transition hover:bg-surface/70 hover:text-fg"
-              >
-                <X size={16} />
-              </button>
-            </div>
+          <div className="flex min-w-0 items-center gap-2">
+            <Sparkles size={14} className="shrink-0 text-coral" />
+            <span className="truncate font-medium">
+              <strong className="font-semibold">
+                {testMode.mode === 'single_test' ? 'Modo Teste' : 'Testes múltiplos'}:
+              </strong>{' '}
+              {testMode.urgentAssessments
+                .map((u) => `${u.course.shortName} (${u.daysLeft === 0 ? 'hoje' : `${u.daysLeft}d`})`)
+                .join(' · ')}
+            </span>
           </div>
-
-          <div className="mt-3 flex flex-wrap gap-2">
-            {hubProgress.steps.map((step) => {
-              const icon =
-                step.key === 'schedule' ? (
-                  <CalendarClock size={13} />
-                ) : step.key === 'assessments' ? (
-                  <CalendarDays size={13} />
-                ) : step.key === 'drive_hd' ? (
-                  <HardDrive size={13} />
-                ) : (
-                  <BookMarked size={13} />
-                );
-              const chipLabel =
-                step.key === 'schedule'
-                  ? 'Horário'
-                  : step.key === 'assessments'
-                    ? 'Provas'
-                    : step.key === 'drive_hd'
-                      ? 'Drive / PC'
-                      : 'Gemini Notebook';
-              return (
-                <button
-                  key={step.key}
-                  type="button"
-                  onClick={() => openHubModal(step.key)}
-                  className={cx(
-                    'inline-flex min-h-[44px] items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition',
-                    step.ready
-                      ? 'border-ok/35 bg-ok/10 text-ok'
-                      : 'border-line bg-surface/90 text-fg hover:border-accent dark:bg-surface-2',
-                  )}
-                >
-                  {step.ready ? <Check size={13} /> : icon}
-                  <span>{chipLabel}</span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-        )
+          <ArrowRight size={14} className="shrink-0" />
+        </Link>
       )}
 
       {/* Balão interativo do Uni ("Clippy" da Unipedia) */}
@@ -533,8 +435,8 @@ export default function Dashboard() {
           value={scope}
           onChange={(v) => setScope(v as 'today' | 'week')}
           items={[
-            { id: 'today', label: 'Hoje', count: todaySessions.length },
-            { id: 'week', label: 'Semana' },
+            { id: 'today', label: t('scopeToday'), count: todaySessions.length },
+            { id: 'week', label: t('scopeWeek') },
           ]}
         />
         <div className="flex shrink-0 items-center gap-1.5">
@@ -543,141 +445,11 @@ export default function Dashboard() {
               {streak}d
             </StickerBadge>
           )}
-          {!isMinimal && (
-            <button
-              type="button"
-              onClick={() => {
-                void hapticTap();
-                setCollectiblesOpen(true);
-              }}
-              aria-label={`Coleção Uni (${unlockedCollectibles} de ${collectibles.length})`}
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-fg transition hover:border-accent"
-            >
-              <Sparkles size={13} className="text-accent" />
-              {activePet !== 'none' && (
-                <UniPetBuddy pet={activePet} size={18} />
-              )}
-              <span className="hidden sm:inline">Ninho &amp; Coleção · </span>
-              <span className="tabular">{unlockedCollectibles}/{collectibles.length}</span>
-            </button>
-          )}
         </div>
       </div>
 
       <StaggerContainer className="space-y-3.5 sm:space-y-5">
-      {/* Cartão Hero estilo papelaria com métricas inline */}
-      <StaggerItem>
-      <section
-        data-tour="bento-overview"
-        className={cx(
-          'p-4 shadow-card sm:p-5',
-          isMinimal
-            ? 'rounded-2xl border border-line bg-surface text-fg'
-            : 'rounded-[24px] bg-pastel-butter/75 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC] sm:rounded-[26px]',
-        )}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider opacity-70">
-              {scope === 'today' ? 'Resumo de hoje' : 'Pulso da semana'}
-            </p>
-            <h2 className="mt-0.5 font-display text-base font-bold sm:text-lg">
-              {scope === 'today'
-                ? plannedToday > 0
-                  ? `${fmtMinutes(doneToday)} de ${fmtMinutes(plannedToday)} focados`
-                  : nextStudyDayLabel
-                    ? `Dia de descanso · Próx. ${nextStudyDayLabel}`
-                    : 'Dia leve para pôr matéria em dia'
-                : `${fmtMinutes(weekMinutes)} de ${fmtMinutes(weekGoal)} esta semana`}
-            </h2>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              onClick={() => navigate('/plano')}
-              className="flex size-9 items-center justify-center rounded-full bg-surface/85 text-fg shadow-card transition hover:scale-105 dark:bg-black/30 dark:text-[#FAF6EC] sm:size-10"
-              aria-label="Abrir plano"
-            >
-              <CalendarDays size={16} />
-            </button>
-          </div>
-        </div>
-
-        {courses.length > 0 || todaySessions.length > 0 || pendingTasks.length > 0 ? (
-          <>
-            <div className="mt-3 grid grid-cols-4 gap-2 text-left sm:mt-4">
-              <div>
-                <p className="text-xs font-medium opacity-75">Média</p>
-                <p className="mt-0.5 font-display text-lg font-bold tabular sm:text-2xl">{fmtGrade(average)}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium opacity-75">Semana</p>
-                <p className="mt-0.5 font-display text-lg font-bold tabular sm:text-2xl">{weekPct}%</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium opacity-75">Sessões</p>
-                <p className="mt-0.5 font-display text-lg font-bold tabular sm:text-2xl">
-                  {doneSessionsCount}/{todaySessions.length}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs font-medium opacity-75">Provas</p>
-                <p className="mt-0.5 font-display text-lg font-bold tabular sm:text-2xl">{upcoming.length}</p>
-              </div>
-            </div>
-
-            <div className="mt-3 sm:mt-4">
-              <div className="mb-1 flex items-center justify-between text-xs font-medium opacity-80">
-                <span>{scope === 'today' ? 'Progresso de hoje' : 'Meta semanal'}</span>
-                <span className="tabular">{scope === 'today' ? pct(progressToday) : `${weekPct}%`}</span>
-              </div>
-              <Progress
-                value={scope === 'today' ? progressToday : weekPct / 100}
-                color="bg-[#141312] dark:bg-accent"
-              />
-            </div>
-          </>
-        ) : (
-          <div className="mt-3 flex flex-wrap items-center gap-2 sm:mt-4">
-            <Button size="sm" variant="primary" onClick={() => navigate('/cadeiras')}>
-              Adicionar cadeiras
-            </Button>
-            <Button size="sm" variant="secondary" onClick={() => navigate('/plano')}>
-              Criar plano de estudo
-            </Button>
-          </div>
-        )}
-      </section>
-      </StaggerItem>
-
-      {/* Alertas contextuais compactos (omite se o lembrete Modo Teste do topo já estiver visível) */}
-      {testMode.mode !== 'normal' && visibleNudge?.kind !== 'exam_prep' && (
-        <StaggerItem>
-        <Link
-          to="/plano"
-          className="flex items-center justify-between gap-3 rounded-[20px] bg-pastel-peach/80 px-4 py-2.5 text-[#141312] transition hover:opacity-95 dark:bg-surface-2 dark:text-[#FAF6EC]"
-        >
-          <div className="flex min-w-0 items-center gap-2.5">
-            <Sparkles size={16} className="shrink-0 text-coral" />
-            <div className="min-w-0 text-xs sm:text-sm">
-              <span className="font-semibold">
-                {testMode.mode === 'single_test' ? 'Modo Teste (< 10 dias)' : 'Modo Teste Múltiplo'}
-              </span>
-              <span className="ml-1.5 opacity-80">
-                {testMode.urgentAssessments
-                  .map((u) => `${u.course.shortName} (${u.daysLeft === 0 ? 'hoje' : `${u.daysLeft}d`})`)
-                  .join(' · ')}
-                {topAlert && testMode.urgentAssessments.some((u) => u.assessment.id === topAlert.a.id)
-                  ? ` · prep. ${pct(topAlert.ready)}`
-                  : ''}
-              </span>
-            </div>
-          </div>
-          <ArrowRight size={15} className="shrink-0" />
-        </Link>
-        </StaggerItem>
-      )}
-
+      <ExpeditionTodayCard />
       {topAlert &&
         !(
           testMode.mode !== 'normal' &&
@@ -712,7 +484,7 @@ export default function Dashboard() {
         </StaggerItem>
       )}
 
-      {/* Conteúdo principal em blocos lúdicos de papelaria (acima da dobra) */}
+      {/* Conteúdo principal: Próxima sessão / Foco + Tarefas logo acima da dobra no mobile */}
       <StaggerItem>
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <div className="min-w-0 space-y-5">
@@ -835,6 +607,89 @@ export default function Dashboard() {
         </div>
 
         <div className="min-w-0 space-y-5">
+          {/* Cartão Hero estilo papelaria com métricas inline */}
+          <section
+            data-tour="bento-overview"
+            className={cx(
+              'p-4 shadow-card sm:p-5',
+              isMinimal
+                ? 'rounded-2xl border border-line bg-surface text-fg'
+                : 'rounded-[24px] bg-pastel-butter/75 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC] sm:rounded-[26px]',
+            )}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider opacity-70">
+                  {scope === 'today' ? 'Resumo de hoje' : 'Pulso da semana'}
+                </p>
+                <h2 className="mt-0.5 font-display text-base font-bold sm:text-lg">
+                  {scope === 'today'
+                    ? plannedToday > 0
+                      ? `${fmtMinutes(doneToday)} de ${fmtMinutes(plannedToday)} focados`
+                      : nextStudyDayLabel
+                        ? `Dia de descanso · Próx. ${nextStudyDayLabel}`
+                        : 'Dia leve para pôr matéria em dia'
+                    : `${fmtMinutes(weekMinutes)} de ${fmtMinutes(weekGoal)} esta semana`}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate('/plano')}
+                className="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface/85 text-fg shadow-card transition hover:scale-105 dark:bg-black/30 dark:text-[#FAF6EC]"
+                aria-label="Abrir plano"
+              >
+                <CalendarDays size={16} />
+              </button>
+            </div>
+
+            {courses.length > 0 || todaySessions.length > 0 || pendingTasks.length > 0 ? (
+              <>
+                <div className="mt-3 grid grid-cols-4 gap-2 text-left sm:mt-4">
+                  <div>
+                    <p className="text-xs font-medium opacity-75">{t('avgLabel')}</p>
+                    <p className="mt-0.5 font-display text-lg font-bold tabular sm:text-2xl">
+                      {fmtGrade(average, gradingScale, appLang)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium opacity-75">Semana</p>
+                    <p className="mt-0.5 font-display text-lg font-bold tabular sm:text-2xl">{weekPct}%</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium opacity-75">Sessões</p>
+                    <p className="mt-0.5 font-display text-lg font-bold tabular sm:text-2xl">
+                      {doneSessionsCount}/{todaySessions.length}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium opacity-75">Provas</p>
+                    <p className="mt-0.5 font-display text-lg font-bold tabular sm:text-2xl">{upcoming.length}</p>
+                  </div>
+                </div>
+
+                <div className="mt-3 sm:mt-4">
+                  <div className="mb-1 flex items-center justify-between text-xs font-medium opacity-80">
+                    <span>{scope === 'today' ? 'Progresso de hoje' : 'Meta semanal'}</span>
+                    <span className="tabular">{scope === 'today' ? pct(progressToday) : `${weekPct}%`}</span>
+                  </div>
+                  <Progress
+                    value={scope === 'today' ? progressToday : weekPct / 100}
+                    color="bg-[#141312] dark:bg-accent"
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="mt-3 flex flex-wrap items-center gap-2 sm:mt-4">
+                <Button size="sm" variant="primary" onClick={() => navigate('/cadeiras')}>
+                  Adicionar cadeiras
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => navigate('/plano')}>
+                  Criar plano de estudo
+                </Button>
+              </div>
+            )}
+          </section>
+
           {courses.length > 0 && (
             <div className="space-y-2.5">
               <div className="flex items-center justify-between px-1">
@@ -850,7 +705,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          <AgendaRibbonCard dateBadge={format(now, 'd MMM', { locale: pt })} isEmpty={agenda.length === 0}>
+          <AgendaRibbonCard dateBadge={formatAppDate(now, appLang, { day: 'numeric', month: 'short' })} isEmpty={agenda.length === 0}>
             <ol className="space-y-1">
               {agenda.map((item) => {
                 const isNow = !item.allDay && nowTime >= item.start && nowTime < item.end;
@@ -885,9 +740,126 @@ export default function Dashboard() {
         </div>
       </div>
       </StaggerItem>
-      </StaggerContainer>
 
-      <UniCollectiblesModal open={collectiblesOpen} onClose={() => setCollectiblesOpen(false)} />
+      {/* Primeiros passos recolhido para baixo da ação principal no Hoje */}
+      {!settings.hubSetupDismissed && !hubProgress.allReady && (
+        <StaggerItem>
+          {hubProgress.readyCount >= 2 ? (
+            <div
+              aria-label="Primeiros passos da tua configuração"
+              className={cx(
+                'flex min-h-11 items-center justify-between gap-2 py-1 pr-1 pl-3.5 shadow-card',
+                isMinimal
+                  ? 'rounded-2xl border border-line bg-surface text-fg'
+                  : 'rounded-2xl bg-pastel-sage/50 text-[#141312] dark:bg-surface dark:text-fg dark:ring-1 dark:ring-white/10',
+              )}
+            >
+              <button
+                type="button"
+                onClick={() => openHubModal(null)}
+                className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-left text-xs font-semibold"
+              >
+                <Sparkles size={14} className="shrink-0 text-accent" />
+                <span className="truncate">
+                  Primeiros passos · {hubProgress.readyCount}/{hubProgress.totalCount} ligadas
+                </span>
+                <span className="hidden shrink-0 rounded-full bg-surface/85 px-2 py-0.5 text-xs font-bold text-accent-ink dark:bg-surface-2 sm:inline-flex">
+                  Completar
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => updateSettings({ hubSetupDismissed: true })}
+                aria-label="Dispensar cartão de Primeiros passos"
+                title="Dispensar"
+                className="grid size-11 shrink-0 place-items-center rounded-full text-muted transition hover:bg-surface/70 hover:text-fg"
+              >
+                <X size={15} />
+              </button>
+            </div>
+          ) : (
+            <section
+              aria-label="Primeiros passos da tua configuração"
+              className={cx(
+                'p-4 shadow-card',
+                isMinimal
+                  ? 'rounded-2xl border border-line bg-surface text-fg'
+                  : 'rounded-[24px] bg-pastel-sage/55 text-[#141312] dark:bg-surface dark:text-fg dark:ring-1 dark:ring-white/10',
+              )}
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+                    <h2 className="font-display text-base font-bold">
+                      Primeiros passos · {hubProgress.flow.shortLabel}
+                    </h2>
+                    <span className="text-xs font-semibold tabular-nums text-accent-ink">
+                      {hubProgress.readyCount}/{hubProgress.totalCount} ligadas
+                    </span>
+                  </div>
+                  <p className="text-xs leading-relaxed opacity-85">
+                    Liga horários, provas, pastas de estudo e o Gemini para um plano sempre afinado.
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center justify-between gap-2 sm:justify-end">
+                  <Button size="sm" variant="primary" onClick={() => openHubModal(null)}>
+                    <Sparkles size={13} /> Completar passos
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => updateSettings({ hubSetupDismissed: true })}
+                    aria-label="Dispensar cartão de Primeiros passos"
+                    title="Dispensar"
+                    className="grid size-11 place-items-center rounded-full text-muted transition hover:bg-surface/70 hover:text-fg"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                {hubProgress.steps.map((step) => {
+                  const icon =
+                    step.key === 'schedule' ? (
+                      <CalendarClock size={13} />
+                    ) : step.key === 'assessments' ? (
+                      <CalendarDays size={13} />
+                    ) : step.key === 'drive_hd' ? (
+                      <HardDrive size={13} />
+                    ) : (
+                      <BookMarked size={13} />
+                    );
+                  const chipLabel =
+                    step.key === 'schedule'
+                      ? 'Horário'
+                      : step.key === 'assessments'
+                        ? 'Provas'
+                        : step.key === 'drive_hd'
+                          ? 'Drive / PC'
+                          : 'Gemini Notebook';
+                  return (
+                    <button
+                      key={step.key}
+                      type="button"
+                      onClick={() => openHubModal(step.key)}
+                      className={cx(
+                        'inline-flex min-h-[44px] items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition',
+                        step.ready
+                          ? 'border-ok/35 bg-ok/10 text-ok-ink'
+                          : 'border-line bg-surface/90 text-fg hover:border-accent dark:bg-surface-2',
+                      )}
+                    >
+                      {step.ready ? <Check size={13} /> : icon}
+                      <span>{chipLabel}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+        </StaggerItem>
+      )}
+      </StaggerContainer>
 
       <Modal
         open={undoSession !== null}

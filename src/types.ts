@@ -241,6 +241,8 @@ export type UniSkinId =
   | 'ink';
 
 export type UniPetId = 'none' | 'cat' | 'owl' | 'fox' | 'turtle' | 'rabbit';
+export type AppLanguage = 'pt-PT' | 'en';
+export type GradingScale = 'pt20' | 'scale10' | 'pct100';
 
 export type PlannerStrategy = 'balanced' | 'exams_first' | 'srs_focus' | 'catch_up';
 export type PlannerDayPeriod = 'auto' | 'morning' | 'afternoon' | 'evening';
@@ -253,6 +255,8 @@ export interface PlannerPreferences {
   boostCourseIds?: ID[];
   pausedCourseIds?: ID[];
   includeOverdue?: boolean;
+  /** Em Modo Teste único, se verdadeiro dedica 100% do tempo só à prova urgente. */
+  exclusiveTestFocus?: boolean;
 }
 
 export interface ExtraActivity {
@@ -314,10 +318,14 @@ export interface Settings {
   uniSkinAutoRotate?: boolean;
   /** Micropet de papelaria que acompanha o Uni (estilo Finch). */
   uniPet?: UniPetId;
+  /** Tema visual e língua da interface (pt-PT ou en). */
+  language?: AppLanguage;
+  /** Escala de notas da instituição (0–20 PT, 0–10 ES/BR, 0–100%). */
+  gradingScale?: GradingScale;
   /** Preferências guardadas do Criador de Planos em /plano. */
   plannerPrefs?: PlannerPreferences;
   /** Personalidade do Uni nas respostas do Tutor. */
-  uniPersona?: 'amigo' | 'exigente' | 'calmo';
+  uniPersona?: 'amigo' | 'exigente' | 'calmo' | 'curioso' | 'treinador';
   /** Indica se o tour guiado pós-onboarding já foi concluído. */
   tourCompleted?: boolean;
   /** Perfil pós-onboarding escolhido pelo aluno no Hub do Uni. */

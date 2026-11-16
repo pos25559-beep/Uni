@@ -1,0 +1,17 @@
+{
+  "greetingMorning": "Bom dia",
+  "greetingAfternoon": "Boa tarde",
+  "greetingEvening": "Boa noite",
+  "scopeToday": "Hoje",
+  "scopeWeek": "Esta semana",
+  "nextSessionTitle": "Próxima sessão",
+  "startFocus": "Iniciar foco",
+  "allDoneTitle": "Dia concluído",
+  "openPlan": "Abrir plano",
+  "tasksTitle": "Tarefas",
+  "addTaskPlaceholder": "Adicionar tarefa rápida…",
+  "examsTitle": "Próximas avaliações",
+  "summaryTitle": "Resumo do semestre",
+  "avgLabel": "Média",
+  "focusDoneLabel": "Focado"
+}

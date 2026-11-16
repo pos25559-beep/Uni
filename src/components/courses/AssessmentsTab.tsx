@@ -2,9 +2,10 @@ import { ClipboardList, Pencil, Plus, CheckCircle2, AlertTriangle } from 'lucide
 import { useMemo, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { kindLabel } from '../../lib/colors';
+import { GRADE_SCALES } from '../../lib/grading';
 import { daysUntil, fmtGrade, gradeSummary, parsePtGrade } from '../../lib/selectors';
 import { useStore } from '../../store/useStore';
-import type { Assessment, Course } from '../../types';
+import type { AppLanguage, Assessment, Course, GradingScale } from '../../types';
 import { Badge, Button, Card, EmptyState, Input, Modal, Progress } from '../ui';
 import AssessmentFormModal from './AssessmentFormModal';
 import { DeleteButton } from './ConfirmModal';
@@ -16,6 +17,8 @@ interface Props {
 
 export default function AssessmentsTab({ course }: Props) {
   const allAssessments = useStore((s) => s.assessments);
+  const gradingScale = useStore((s) => s.settings.gradingScale) ?? 'pt20';
+  const appLang = useStore((s) => s.settings.language) ?? 'pt-PT';
   const patch = useStore((s) => s.patch);
   const remove = useStore((s) => s.remove);
   const [form, setForm] = useState<Assessment | 'new' | null>(null);
@@ -42,7 +45,9 @@ export default function AssessmentsTab({ course }: Props) {
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
             <p className="text-xs text-muted">Média ponderada atual</p>
-            <p className="mt-1 text-xl font-semibold tabular">{fmtGrade(summary.current)}</p>
+            <p className="mt-1 text-xl font-semibold tabular">
+              {fmtGrade(summary.current, gradingScale, appLang)}
+            </p>
           </div>
           <div className="sm:col-span-2">
             <div className="flex items-center justify-between text-xs text-muted">
@@ -85,8 +90,10 @@ export default function AssessmentsTab({ course }: Props) {
 
               <div className="flex items-center justify-between gap-2 sm:justify-end">
                 <GradeInput
-                  key={`${a.id}-${a.grade ?? ''}`}
+                  key={`${a.id}-${gradingScale}-${a.grade ?? ''}`}
                   value={a.grade}
+                  scale={gradingScale}
+                  lang={appLang}
                   onCommit={(grade) => {
                     const daysLeft = daysUntil(a.date);
                     if (grade !== undefined && daysLeft > 0) {
@@ -154,15 +161,26 @@ export default function AssessmentsTab({ course }: Props) {
   );
 }
 
-/** Nota inline (0–20) em formato português ou decimal. Vazio = ainda não avaliado. */
-function GradeInput({ value, onCommit }: { value?: number; onCommit: (grade: number | undefined) => void }) {
-  const [text, setText] = useState(() => (value !== undefined ? fmtGrade(value) : ''));
+/** Nota inline na escala configurada. Vazio = ainda não avaliado. */
+function GradeInput({
+  value,
+  scale,
+  lang,
+  onCommit,
+}: {
+  value?: number;
+  scale: GradingScale;
+  lang: AppLanguage;
+  onCommit: (grade: number | undefined) => void;
+}) {
+  const max = GRADE_SCALES[scale]?.max ?? 20;
+  const [text, setText] = useState(() => (value !== undefined ? fmtGrade(value, scale, lang) : ''));
   const [error, setError] = useState<string | null>(null);
 
   const commit = () => {
-    const parsed = parsePtGrade(text);
+    const parsed = parsePtGrade(text.replace('%', ''), scale);
     if (parsed === 'invalid') {
-      setError('Usa um valor entre 0 e 20 (ex.: 12,5)');
+      setError(`0–${max}`);
       return;
     }
     setError(null);
@@ -170,7 +188,7 @@ function GradeInput({ value, onCommit }: { value?: number; onCommit: (grade: num
       if (value !== undefined) onCommit(undefined);
       return;
     }
-    setText(fmtGrade(parsed));
+    setText(fmtGrade(parsed, scale, lang));
     if (parsed !== value) onCommit(parsed);
   };
 
@@ -181,7 +199,7 @@ function GradeInput({ value, onCommit }: { value?: number; onCommit: (grade: num
         <Input
           type="text"
           inputMode="decimal"
-          aria-label="Nota (0 a 20)"
+          aria-label={`Nota (0 a ${max})`}
           aria-invalid={Boolean(error)}
           placeholder="—"
           value={text}

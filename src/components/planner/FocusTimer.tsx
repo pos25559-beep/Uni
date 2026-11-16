@@ -12,9 +12,14 @@ import {
   ShieldCheck,
   X,
 } from 'lucide-react';
+import { addDays, format } from 'date-fns';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import { generateUniExpeditionQuestions } from '../../integrations/gemini';
 import { courseColors } from '../../lib/colors';
 import { FocusAudioEngine } from '../../lib/focusAudio';
+import { listTopicSheetsByCourse } from '../../lib/localDb';
 import {
   clearActiveFocusSnapshot,
   createDistractionTracker,
@@ -43,7 +48,18 @@ import { useStore } from '../../store/useStore';
 import type { Course, StudySession, Topic } from '../../types';
 import { Button, Ring } from '../ui';
 import { cx } from '../../lib/uiHelpers';
+import { inferAccessoryFromCourses } from '../../lib/uniAccessories';
+import { saveUniAgent, useUniAgent } from '../../lib/uniAgents';
+import {
+  getStageInfo,
+  pickExpeditionCandidateTopics,
+  recomputeUniAgentProgression,
+  retrieveRelevantSheets,
+  shouldPrepareExpedition,
+} from '../../lib/uniMastery';
+import { UniBuddy } from '../brand/UnipediaMarks';
 import ActivePracticeDeck, { type PracticeOutcomeSummary } from '../practice/ActivePracticeDeck';
+import UniFocusRecallPanel from '../practice/UniFocusRecallPanel';
 import FocusShieldPanel from './FocusShieldPanel';
 
 type Phase = FocusTimerPhase;
@@ -73,11 +89,16 @@ interface FocusTimerProps {
 }
 
 export default function FocusTimer({ session, course, topic, onClose }: FocusTimerProps) {
+  const { t, i18n } = useTranslation(['plan', 'common']);
+  const appLang = i18n.language?.startsWith('en') ? ('en' as const) : ('pt-PT' as const);
+  const navigate = useNavigate();
   const patch = useStore((s) => s.patch);
   const updateTopic = useStore((s) => s.updateTopic);
   const reconcileFuturePlan = useStore((s) => s.reconcileFuturePlan);
+  const aiConsent = Boolean(useStore((s) => s.settings.aiConsent));
   const setFocusTimerOpen = useHubUiStore((s) => s.setFocusTimerOpen);
   const setFocusShieldRunning = useHubUiStore((s) => s.setFocusShieldRunning);
+  const { agent: uniAgent } = useUniAgent(course?.id);
 
   const [initialRecovery] = useState(() => {
     if (session.done) return null;
@@ -100,6 +121,7 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
   const [confirmEarlyFinish, setConfirmEarlyFinish] = useState(false);
   const [confidenceSet, setConfidenceSet] = useState<Topic['confidence'] | null>(null);
   const [showManualConfidence, setShowManualConfidence] = useState(false);
+  const [practiceMode, setPracticeMode] = useState<'uni_recall' | 'cards'>('uni_recall');
   const [pickedTopicId, setPickedTopicId] = useState<string>(
     () => session.topicId ?? course?.topics[0]?.id ?? '',
   );
@@ -420,6 +442,51 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
     void disengageShieldAndAudio();
   };
 
+  const syncCourseUniProgression = (allowExpedition: boolean) => {
+    if (!uniAgent || !course) return;
+    const freshState = useStore.getState();
+    const freshCourse = freshState.courses.find((c) => c.id === course.id) ?? course;
+    const today = todayStr();
+    const { agent: nextAgent } = recomputeUniAgentProgression(
+      uniAgent,
+      freshCourse,
+      freshState.sessions,
+      freshState.assessments,
+      today,
+      freshState.settings.gradingScale ?? 'pt20',
+    );
+    void saveUniAgent(nextAgent).then(async () => {
+      if (!allowExpedition || !aiConsent || !shouldPrepareExpedition(nextAgent, freshCourse, today)) {
+        return;
+      }
+      try {
+        const forDate = format(addDays(new Date(), 1), 'yyyy-MM-dd');
+        const candidateTopics = pickExpeditionCandidateTopics(freshCourse, forDate);
+        const allSheets = await listTopicSheetsByCourse(freshCourse.id);
+        const relevant = retrieveRelevantSheets(
+          candidateTopics.map((ct) => ct.title).join(' '),
+          allSheets,
+          candidateTopics[0]?.id,
+          4,
+        );
+        const expedition = await generateUniExpeditionQuestions({
+          courseName: freshCourse.name,
+          agent: nextAgent,
+          candidateTopics,
+          sheets: relevant,
+          forDate,
+        });
+        await saveUniAgent({
+          ...nextAgent,
+          expedition,
+          updatedAt: new Date().toISOString(),
+        });
+      } catch {
+        // Falha silenciosa em background; aluno pode preparar manualmente ou na próxima sessão.
+      }
+    });
+  };
+
   const commitFinish = (totalMs: number) => {
     if (phase === 'finished') return;
     setConfirmEarlyFinish(false);
@@ -450,6 +517,7 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
       });
     }
     reconcileFuturePlan();
+    syncCourseUniProgression(true);
   };
 
   const finish = () => {
@@ -492,6 +560,7 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
     if (!activePracticeTopic) return;
     updateTopic(session.courseId, activePracticeTopic.id, { confidence: level });
     reconcileFuturePlan();
+    syncCourseUniProgression(false);
   };
 
   const handlePracticeOutcome = (outcome: PracticeOutcomeSummary) => {
@@ -532,6 +601,30 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
         <h2 className="mt-3 text-lg font-semibold tracking-tight">
           {formatSessionDisplay(session, topic).title}
         </h2>
+
+        {phase === 'idle' && uniAgent && course && (
+          <div className="mt-3 flex w-full items-center gap-2.5 rounded-2xl border border-line bg-surface px-3.5 py-2.5 text-left shadow-[var(--shadow-card)]">
+            <UniBuddy
+              size={28}
+              mood="calm"
+              form={uniAgent.formId}
+              stage={uniAgent.stage}
+              accessory={inferAccessoryFromCourses([course])}
+              className="shrink-0"
+            />
+            <p className="min-w-0 flex-1 text-xs leading-relaxed text-muted">
+              <span className="font-semibold text-fg">{uniAgent.name}:</span>{' '}
+              {topic
+                ? uniAgent.notebook.weakSpots[0]
+                  ? t('plan:focus.focusWatchWeak', {
+                      topic: topic.title,
+                      weak: uniAgent.notebook.weakSpots[0].topic,
+                    })
+                  : t('plan:focus.readyToAccompany', { topic: topic.title })
+                : `${getStageInfo(uniAgent.stage, appLang).localizedLabel} (${uniAgent.mastery}%)`}
+            </p>
+          </div>
+        )}
 
         {recoveredNotice && !finished && (
           <div className="mt-3 flex w-full items-center justify-between gap-2 rounded-xl border border-accent/30 bg-accent-soft px-3 py-2 text-left text-xs text-accent-ink">
@@ -642,6 +735,28 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
                   onChangeVolume={handleChangeVolume}
                   onOpenDndSettings={handleOpenDndSettings}
                 />
+
+                {uniAgent && course && phase !== 'idle' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (phase === 'running') pause();
+                      onClose();
+                      navigate(`/assistente?course=${course.id}`);
+                    }}
+                    className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full border border-line bg-surface/80 px-3.5 py-1.5 text-xs text-muted transition hover:border-line-strong hover:text-fg"
+                  >
+                    <UniBuddy
+                      size={22}
+                      mood="calm"
+                      dormant
+                      form={uniAgent.formId}
+                      stage={uniAgent.stage}
+                      accessory={inferAccessoryFromCourses([course])}
+                    />
+                    <span>{t('plan:focus.silentStatus', { name: uniAgent.name })}</span>
+                  </button>
+                )}
               </>
             )}
           </>
@@ -692,12 +807,64 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
 
             {activePracticeTopic ? (
               <div className="space-y-3 text-left">
-                <ActivePracticeDeck
-                  course={course}
-                  topic={activePracticeTopic}
-                  autoPrepare
-                  onOutcome={handlePracticeOutcome}
-                />
+                {uniAgent && course && aiConsent && (
+                  <div
+                    role="tablist"
+                    aria-label="Modo de prática pós-sessão"
+                    className="grid grid-cols-2 gap-1 rounded-2xl border border-line bg-surface-2 p-1"
+                  >
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={practiceMode === 'uni_recall'}
+                      onClick={() => setPracticeMode('uni_recall')}
+                      className={cx(
+                        'min-h-11 rounded-xl px-2.5 text-xs font-medium transition',
+                        practiceMode === 'uni_recall'
+                          ? 'bg-surface text-fg shadow-[var(--shadow-card)]'
+                          : 'text-muted hover:text-fg',
+                      )}
+                    >
+                      {t('plan:focus.tabUniRecall')}
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={practiceMode === 'cards'}
+                      onClick={() => setPracticeMode('cards')}
+                      className={cx(
+                        'min-h-11 rounded-xl px-2.5 text-xs font-medium transition',
+                        practiceMode === 'cards'
+                          ? 'bg-surface text-fg shadow-[var(--shadow-card)]'
+                          : 'text-muted hover:text-fg',
+                      )}
+                    >
+                      {t('plan:focus.tabCards')}
+                    </button>
+                  </div>
+                )}
+
+                {uniAgent && course && aiConsent && practiceMode === 'uni_recall' ? (
+                  <UniFocusRecallPanel
+                    key={`${activePracticeTopic.id}-${uniAgent.courseId}`}
+                    course={course}
+                    topic={activePracticeTopic}
+                    agent={uniAgent}
+                    onOutcome={handlePracticeOutcome}
+                    onOpenTutor={() => {
+                      onClose();
+                      navigate(`/assistente?course=${course.id}`);
+                    }}
+                    onFallbackToDeck={() => setPracticeMode('cards')}
+                  />
+                ) : (
+                  <ActivePracticeDeck
+                    course={course}
+                    topic={activePracticeTopic}
+                    autoPrepare
+                    onOutcome={handlePracticeOutcome}
+                  />
+                )}
 
                 <div className="rounded-2xl border border-line bg-surface-2/60 px-3 py-2 text-center">
                   <button

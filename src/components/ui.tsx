@@ -197,7 +197,7 @@ type Tone = 'neutral' | 'accent' | 'ok' | 'warn' | 'danger';
 const toneStyles: Record<Tone, string> = {
   neutral: 'bg-surface-2 text-muted',
   accent: 'bg-accent-soft text-accent-ink',
-  ok: 'bg-accent-soft text-ok',
+  ok: 'bg-accent-soft text-ok-ink',
   warn: 'bg-[#FCE99F]/85 text-[#6B4800] dark:bg-[#352D14] dark:text-[#FDE68A]',
   danger: 'bg-coral-soft text-coral-ink',
 };
@@ -587,6 +587,8 @@ export function Modal({
   maxWidthClass?: string;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const wasOpenRef = useRef(false);
   const titleId = useId();
   const pressedOutsideRef = useRef(false);
 
@@ -599,12 +601,23 @@ export function Modal({
 
   useEffect(() => {
     const dialog = dialogRef.current;
-    if (!dialog) return;
-    if (open && !dialog.open) {
+    if (open && !wasOpenRef.current) {
+      previousFocusRef.current =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    }
+    if (open && dialog && !dialog.open) {
       dialog.showModal();
-    } else if (!open && dialog.open) {
+    } else if (!open && dialog && dialog.open) {
       dialog.close();
     }
+    if (!open && wasOpenRef.current) {
+      const target = previousFocusRef.current;
+      previousFocusRef.current = null;
+      if (target && target.isConnected) {
+        requestAnimationFrame(() => target.focus());
+      }
+    }
+    wasOpenRef.current = open;
   }, [open]);
 
   if (!open) return null;

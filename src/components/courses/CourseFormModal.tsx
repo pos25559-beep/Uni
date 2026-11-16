@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { courseColors, colorNames } from '../../lib/colors';
+import { GRADE_SCALES } from '../../lib/grading';
 import { newId, useStore } from '../../store/useStore';
 import type { Course, CourseColor } from '../../types';
+import { DeleteButton } from './ConfirmModal';
 import { Button, Field, Input, Modal } from '../ui';
 import { cx } from '../../lib/uiHelpers';
 
@@ -10,18 +12,22 @@ interface Props {
   /** Cadeira a editar; omitir para criar uma nova. */
   course?: Course;
   onClose: () => void;
+  onDelete?: () => void;
 }
 
 const parseNumber = (v: string) => (v.trim() === '' ? NaN : Number(v.replace(',', '.')));
 
-export default function CourseFormModal({ course, onClose }: Props) {
+export default function CourseFormModal({ course, onClose, onDelete }: Props) {
   const upsert = useStore((s) => s.upsert);
+  const gradingScale = useStore((s) => s.settings.gradingScale) ?? 'pt20';
+  const maxGrade = GRADE_SCALES[gradingScale]?.max ?? 20;
+  const defaultTarget = gradingScale === 'pct100' ? 60 : gradingScale === 'scale10' ? 7 : 10;
   const [code, setCode] = useState(course?.code ?? '');
   const [name, setName] = useState(course?.name ?? '');
   const [shortName, setShortName] = useState(course?.shortName ?? '');
   const [ects, setEcts] = useState(String(course?.ects ?? 6));
   const [teacher, setTeacher] = useState(course?.teacher ?? '');
-  const [targetGrade, setTargetGrade] = useState(String(course?.targetGrade ?? 10));
+  const [targetGrade, setTargetGrade] = useState(String(course?.targetGrade ?? defaultTarget));
   const [color, setColor] = useState<CourseColor>(course?.color && course.color !== 'violet' ? course.color : 'emerald');
   const [notebookUrl, setNotebookUrl] = useState(course?.notebookUrl ?? '');
   const [driveFolderUrl, setDriveFolderUrl] = useState(course?.driveFolderUrl ?? '');
@@ -36,7 +42,9 @@ export default function CourseFormModal({ course, onClose }: Props) {
     if (!name.trim()) next.name = 'Indique o nome da cadeira.';
     if (!shortName.trim()) next.shortName = 'Indique um nome curto.';
     if (!Number.isFinite(ectsNum) || ectsNum < 0) next.ects = 'Valor inválido.';
-    if (!Number.isFinite(targetNum) || targetNum < 0 || targetNum > 20) next.targetGrade = 'Entre 0 e 20.';
+    if (!Number.isFinite(targetNum) || targetNum < 0 || targetNum > maxGrade) {
+      next.targetGrade = `0–${maxGrade}`;
+    }
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
@@ -63,10 +71,24 @@ export default function CourseFormModal({ course, onClose }: Props) {
       onClose={onClose}
       title={course ? 'Editar cadeira' : 'Nova cadeira'}
       footer={
-        <>
-          <Button onClick={onClose}>Cancelar</Button>
-          <Button variant="primary" type="submit" form="course-form">Guardar</Button>
-        </>
+        <div className="flex w-full flex-wrap items-center justify-between gap-2">
+          <div>
+            {course && onDelete && (
+              <DeleteButton
+                label="Apagar"
+                message={`Apagar "${course.name}"? Também são apagadas as avaliações, aulas, sessões, tarefas e materiais desta cadeira. Esta ação não pode ser desfeita.`}
+                onConfirm={() => {
+                  onClose();
+                  onDelete();
+                }}
+              />
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button onClick={onClose}>Cancelar</Button>
+            <Button variant="primary" type="submit" form="course-form">Guardar</Button>
+          </div>
+        </div>
       }
     >
       <form id="course-form" onSubmit={save} className="space-y-4" noValidate>
@@ -89,7 +111,7 @@ export default function CourseFormModal({ course, onClose }: Props) {
           <Field label="Docente">
             <Input value={teacher} onChange={(e) => setTeacher(e.target.value)} placeholder="Prof. Nome" />
           </Field>
-          <Field label="Objetivo (0–20)">
+          <Field label={`Objetivo (0–${maxGrade})`}>
             <Input inputMode="decimal" value={targetGrade} onChange={(e) => setTargetGrade(e.target.value)} />
             {errors.targetGrade && <span className="mt-1 block text-xs text-danger">{errors.targetGrade}</span>}
           </Field>

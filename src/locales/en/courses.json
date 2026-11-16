@@ -1,0 +1,22 @@
+{
+  "eyebrow": "Semester",
+  "title": "Your",
+  "accentTitle": "courses",
+  "newCourse": "New course",
+  "importCurriculum": "Import courses",
+  "courseNotFound": "Course not found",
+  "backToCourses": "Back to courses",
+  "tabs": {
+    "overview": "Overview & Rules",
+    "topics": "Syllabus & Grades",
+    "materials": "Materials",
+    "emails": "Emails"
+  },
+  "targetLabel": "Target",
+  "currentGrade": "Current grade",
+  "nextAssessment": "Next Assessment",
+  "topicProgress": "Syllabus progress",
+  "hoursStudied": "Time studied",
+  "completedSessions": "Completed sessions",
+  "editCourse": "Edit course"
+}

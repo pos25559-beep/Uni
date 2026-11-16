@@ -1,3 +1,6 @@
+import type { AppLanguage } from '../types';
+import type { UniFormId } from './localDb';
+
 /**
  * Acessórios e estilos temáticos do Uni por área do conhecimento.
  */
@@ -12,19 +15,80 @@ export type UniAccessoryId =
 
 export type UniAccessoryPreference = 'auto' | UniAccessoryId;
 
-export type UniPersonaMode = 'amigo' | 'exigente' | 'calmo';
+export type UniPersonaMode = 'amigo' | 'exigente' | 'calmo' | 'curioso' | 'treinador';
 
 export interface UniPersonaMeta {
   id: UniPersonaMode;
   label: string;
+  labelEn: string;
   hint: string;
+  hintEn: string;
+  example: string;
+  exampleEn: string;
 }
 
 export const UNI_PERSONAS: UniPersonaMeta[] = [
-  { id: 'amigo', label: 'Amigo', hint: 'Caloroso, claro e com ritmo leve' },
-  { id: 'exigente', label: 'Exigente', hint: 'Direto ao exame e sem rodeios' },
-  { id: 'calmo', label: 'Anti-stress', hint: 'Passo a passo para dias difíceis' },
+  {
+    id: 'amigo',
+    label: 'Amigo',
+    labelEn: 'Friend',
+    hint: 'Caloroso, claro e com ritmo leve',
+    hintEn: 'Warm, clear, everyday analogies first',
+    example: 'Pensa num carro a travar: é isso que a derivada mede.',
+    exampleEn: 'Think of a braking car: that rate of change is the derivative.',
+  },
+  {
+    id: 'exigente',
+    label: 'Exigente',
+    labelEn: 'Strict',
+    hint: 'Direto ao exame e sem rodeios',
+    hintEn: 'Exam-focused, concise, zero fluff',
+    example: 'Isto sai no teste. 3 minutos, resolve passo a passo.',
+    exampleEn: 'This shows up on the exam. 3 minutes — walk me through it.',
+  },
+  {
+    id: 'calmo',
+    label: 'Anti-stress',
+    labelEn: 'Calm',
+    hint: 'Passo a passo para dias difíceis',
+    hintEn: 'Step by step for overwhelming days',
+    example: 'Vamos só ao primeiro passo. O resto espera.',
+    exampleEn: "Let's tackle just the first step. Everything else can wait.",
+  },
+  {
+    id: 'curioso',
+    label: 'Curioso',
+    labelEn: 'Curious',
+    hint: 'Socrático: faz perguntas e entusiasma-se',
+    hintEn: 'Socratic: asks probing questions',
+    example: 'E se x fosse negativo? O que muda no sinal?',
+    exampleEn: 'What if x were negative? What shifts in the sign?',
+  },
+  {
+    id: 'treinador',
+    label: 'Treinador',
+    labelEn: 'Coach',
+    hint: 'Enérgico, metas curtas por sessão',
+    hintEn: 'Energetic, short session targets',
+    example: 'Meta de hoje: 5 limites certos seguidos.',
+    exampleEn: "Today's drill: 5 limits solved cleanly in a row.",
+  },
 ];
+
+export function getLocalizedPersonas(lang: AppLanguage | string = 'pt-PT'): Array<{
+  id: UniPersonaMode;
+  label: string;
+  hint: string;
+  example: string;
+}> {
+  const isEn = String(lang).toLowerCase().startsWith('en');
+  return UNI_PERSONAS.map((p) => ({
+    id: p.id,
+    label: isEn ? p.labelEn : p.label,
+    hint: isEn ? p.hintEn : p.hint,
+    example: isEn ? p.exampleEn : p.example,
+  }));
+}
 
 export interface UniAccessoryMeta {
   id: UniAccessoryId;
@@ -119,4 +183,35 @@ export function resolveUniAccessory(
     if (rule.re.test(combined)) return rule.id;
   }
   return 'default';
+}
+
+/** Infere o acessório de área do Uni a partir de uma ou mais cadeiras. */
+export function inferAccessoryFromCourses(
+  courses: Array<{ shortName?: string; name?: string; code?: string }>,
+): UniAccessoryId {
+  return resolveUniAccessory(
+    'auto',
+    ...courses.flatMap((c) => [c.shortName, c.name, c.code]),
+  );
+}
+
+const AREA_DEFAULT_FORM: Record<UniAccessoryId, UniFormId> = {
+  default: 'nuvem',
+  math: 'cristal',
+  tech: 'estrela',
+  health: 'gota',
+  arts: 'nuvem',
+  science: 'folha',
+  humanities: 'nuvem',
+};
+
+/** Sugere a forma base do Uni de acordo com a área da cadeira. */
+export function suggestFormForCourse(course?: {
+  shortName?: string;
+  name?: string;
+  code?: string;
+}): UniFormId {
+  if (!course) return 'nuvem';
+  const accessory = inferAccessoryFromCourses([course]);
+  return AREA_DEFAULT_FORM[accessory] ?? 'nuvem';
 }

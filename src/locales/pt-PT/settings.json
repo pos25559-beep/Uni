@@ -1,0 +1,17 @@
+{
+  "eyebrow": "Preferências",
+  "title": "As tuas",
+  "accentTitle": "definições",
+  "profileTitle": "Perfil e semestre",
+  "nameLabel": "Nome",
+  "namePlaceholder": "Como te devemos chamar?",
+  "semesterLabel": "Semestre",
+  "languageLabel": "Idioma da interface",
+  "languageHint": "Cada Uni de cadeira pode usar um idioma independente.",
+  "gradingScaleLabel": "Escala de notas",
+  "gradingScaleHint": "Os gráficos e cálculos do Modo Teste convertem automaticamente para percentagem.",
+  "dailyMinutesLabel": "Minutos de estudo por dia",
+  "studyDaysLabel": "Dias de estudo",
+  "uniPersonaLabel": "Personalidade padrão do Uni",
+  "saveBtn": "Guardar alterações"
+}

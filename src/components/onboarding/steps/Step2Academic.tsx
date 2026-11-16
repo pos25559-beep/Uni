@@ -139,7 +139,7 @@ export default function Step2Academic({
               <option value="outra">Outra instituição (escrever manualmente)</option>
               {catalog.map((u) => (
                 <option key={u.id} value={u.id}>
-                  {u.shortName} — {u.name}
+                  {u.name.startsWith(u.shortName) ? u.name : `${u.shortName} — ${u.name}`}
                 </option>
               ))}
             </Select>

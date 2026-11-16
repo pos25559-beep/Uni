@@ -27,7 +27,7 @@ export default function DayColumn({
   date, sessions, budget, isToday, isStudyDay, courseById, topicById, assessmentById,
   onFocus, onEdit, onAdd,
 }: DayColumnProps) {
-  const planned = sessions.reduce((sum, s) => sum + s.minutes, 0);
+  const planned = sessions.reduce((sum, s) => sum + (s.done ? sessionMinutes(s) : s.minutes), 0);
   const doneMinutes = sessions.reduce((sum, s) => sum + sessionMinutes(s), 0);
   const over = budget > 0 && planned > budget;
   const ratio = budget > 0 ? planned / budget : 0;

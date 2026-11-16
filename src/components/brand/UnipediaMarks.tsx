@@ -1,4 +1,5 @@
 import { motion } from 'motion/react';
+import type { UniFormId, UniStage } from '../../lib/localDb';
 import type { UniAccessoryId } from '../../lib/uniAccessories';
 import type { UniPetId, UniSkinId } from '../../lib/uniCollectibles';
 import { useStore } from '../../store/useStore';
@@ -85,6 +86,9 @@ const SKIN_PALETTE_MAP: Record<
 export function UniBuddy({
   mood = 'happy',
   accessory = 'default',
+  form = 'nuvem',
+  stage,
+  dormant = false,
   skin,
   size = 56,
   className,
@@ -94,6 +98,9 @@ export function UniBuddy({
 }: {
   mood?: BuddyMood;
   accessory?: UniAccessoryId;
+  form?: UniFormId;
+  stage?: UniStage;
+  dormant?: boolean;
   skin?: UniSkinId;
   size?: number;
   className?: string;
@@ -108,6 +115,8 @@ export function UniBuddy({
   const ink = isDarkSkin ? '#FAF8F2' : '#141312';
   const pupilHighlight = isDarkSkin ? '#FCE99F' : '#FFFFFF';
   const bookmarkFill = palette.bookmark;
+  const effectiveAccessory: UniAccessoryId =
+    stage !== undefined && stage < 2 ? 'default' : accessory;
 
   const classicMoodFill: Partial<Record<BuddyMood, string>> = {
     celebrate: '#FCE99F',
@@ -122,14 +131,29 @@ export function UniBuddy({
       ? classicMoodFill[mood] ?? palette.fill
       : palette.fill;
 
-  const floatAnimate =
-    mood === 'celebrate'
+  const floatAnimate = dormant
+    ? { y: [0, -1.5, 0], rotate: [0, 0.5, 0] }
+    : mood === 'celebrate'
       ? { y: [0, -6, 0], rotate: [0, -4, 4, 0], scale: [1, 1.06, 1] }
       : mood === 'thinking'
         ? { y: [0, -4, 0], rotate: [-2.5, 2.5, -2.5] }
         : mood === 'shy'
           ? { y: [0, 2, 0], rotate: [-3, -1, -3] }
           : { y: [0, -4, 0], rotate: [-1.5, 1.5, -1.5] };
+
+  const FORM_BODY_PATHS: Record<UniFormId, string> = {
+    nuvem:
+      'M40 8C46.5 8 51.2 12.2 54.8 14.2C59.2 16.6 64.5 17.5 67.2 22.2C69.8 26.8 68 32.3 69.2 37.5C70.4 42.6 74 47.4 71.8 52.8C69.7 58 63.8 59.8 59.3 63.1C54.9 66.3 51.2 71.8 45.4 72C39.6 72.2 35.4 67.5 30.1 66.2C24.8 64.9 18.2 66.8 14.3 62.6C10.4 58.3 12.1 51.7 10.6 46.2C9.1 40.8 5.2 35.8 7.4 30.2C9.5 24.7 15.8 23.8 19.8 19.6C23.8 15.3 25.4 9.5 31.1 8.4C34.2 7.8 37.2 8 40 8Z',
+    gota:
+      'M40 8C48 16 68 32 68 50C68 63.5 55.5 72 40 72C24.5 72 12 63.5 12 50C12 32 32 16 40 8Z',
+    estrela:
+      'M40 7C44 17 50 19 62 20C70 21 71 29 63 36C59 40 60 46 65 56C69 65 62 71 53 66C45 62 35 62 27 66C18 71 11 65 15 56C20 46 21 40 17 36C9 29 10 21 18 20C30 19 36 17 40 7Z',
+    cristal:
+      'M40 7L64 20C67.5 22 69 25 69 29L67 52C66.5 56.5 64 59 60 61L40 72L20 61C16 59 13.5 56.5 13 52L11 29C11 25 12.5 22 16 20Z',
+    folha:
+      'M40 8C56 12 69 26 68 46C67 62 54 71 40 72C26 71 13 62 12 46C11 26 24 12 40 8Z',
+  };
+  const bodyPath = FORM_BODY_PATHS[form] ?? FORM_BODY_PATHS.nuvem;
 
   const svg = (
     <motion.svg
@@ -153,28 +177,97 @@ export function UniBuddy({
       aria-hidden={onClick ? undefined : true}
     >
       {/* Marcador coral padrão (escondido apenas quando leva chapéu em cima) */}
-      {(accessory === 'default' || accessory === 'humanities' || accessory === 'science') && (
+      {(effectiveAccessory === 'default' || effectiveAccessory === 'humanities' || effectiveAccessory === 'science') && (
         <path d="M36 9V2L40 5.5L44 2V9" fill={bookmarkFill} stroke="#141312" strokeWidth="1.8" strokeLinejoin="round" />
       )}
 
       {/* Auscultadores Tech por trás do topo */}
-      {accessory === 'tech' && (
+      {effectiveAccessory === 'tech' && (
         <g>
           <path d="M12 36C12 16 24 4 40 4C56 4 68 16 68 36" stroke="#141312" strokeWidth="4.2" strokeLinecap="round" />
           <path d="M12 36C12 16 24 4 40 4C56 4 68 16 68 36" stroke="#6EE7B7" strokeWidth="1.8" strokeLinecap="round" />
         </g>
       )}
 
-      {/* Corpo em nuvem / página recortada de caderno */}
+      {/* Corpo do Uni (5 formas base de papelaria) */}
       <path
-        d="M40 8C46.5 8 51.2 12.2 54.8 14.2C59.2 16.6 64.5 17.5 67.2 22.2C69.8 26.8 68 32.3 69.2 37.5C70.4 42.6 74 47.4 71.8 52.8C69.7 58 63.8 59.8 59.3 63.1C54.9 66.3 51.2 71.8 45.4 72C39.6 72.2 35.4 67.5 30.1 66.2C24.8 64.9 18.2 66.8 14.3 62.6C10.4 58.3 12.1 51.7 10.6 46.2C9.1 40.8 5.2 35.8 7.4 30.2C9.5 24.7 15.8 23.8 19.8 19.6C23.8 15.3 25.4 9.5 31.1 8.4C34.2 7.8 37.2 8 40 8Z"
+        d={bodyPath}
         fill={bg}
         stroke={isDarkSkin ? '#FCE99F' : '#141312'}
         strokeWidth="2.2"
       />
 
+      {/* Facetas discretas nas formas Cristal e Folha */}
+      {form === 'cristal' && (
+        <path
+          d="M16 21L40 28L64 21M40 7V28"
+          stroke={ink}
+          strokeWidth="1.2"
+          strokeOpacity="0.22"
+          strokeLinecap="round"
+        />
+      )}
+      {form === 'folha' && (
+        <path
+          d="M40 16V68M40 31L51 24M40 44L29 37"
+          stroke={ink}
+          strokeWidth="1.2"
+          strokeOpacity="0.18"
+          strokeLinecap="round"
+        />
+      )}
+
+      {/* Estágio 0 (Ovo): casca de papel creme protetora na base */}
+      {stage === 0 && (
+        <path
+          d="M15 49L22 44L29 49L35 44L40 49L46 44L52 49L58 44L65 49C64 62 54 71 40 71C26 71 16 62 15 49Z"
+          fill="#FAF8F2"
+          stroke="#141312"
+          strokeWidth="2"
+          strokeLinejoin="round"
+        />
+      )}
+
+      {/* Estágio 3 (Especialista): selo dourado de exame no colarinho */}
+      {stage !== undefined && stage >= 3 && (
+        <g>
+          <path
+            d="M32 63L40 67L48 63L45 73L40 70L35 73Z"
+            fill="#FCE99F"
+            stroke="#141312"
+            strokeWidth="1.6"
+            strokeLinejoin="round"
+          />
+          <circle cx="40" cy="64" r="3.4" fill="#157F58" stroke="#141312" strokeWidth="1.5" />
+        </g>
+      )}
+
+      {/* Estágio 4 (Mestre): louros de graduação */}
+      {stage !== undefined && stage >= 4 && (
+        <g>
+          <path
+            d="M11 49C9 58 14 66 23 69M69 49C71 58 66 66 57 69"
+            stroke="#157F58"
+            strokeWidth="2.4"
+            strokeLinecap="round"
+          />
+          <path
+            d="M13 54L18 52M15 61L20 58M67 54L62 52M65 61L60 58"
+            stroke="#C9DC9F"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+          <path
+            d="M66 5L68 9L72 10L68 11.5L66 15.5L64 11.5L60 10L64 9Z"
+            fill="#FCE99F"
+            stroke="#141312"
+            strokeWidth="1.2"
+          />
+        </g>
+      )}
+
       {/* Almofadas dos auscultadores nas laterais (Tech) */}
-      {accessory === 'tech' && (
+      {effectiveAccessory === 'tech' && (
         <g>
           <rect x="3" y="29" width="9" height="17" rx="4.5" fill="#157F58" stroke="#141312" strokeWidth="2" />
           <rect x="68" y="29" width="9" height="17" rx="4.5" fill="#157F58" stroke="#141312" strokeWidth="2" />
@@ -185,8 +278,13 @@ export function UniBuddy({
       <circle cx="26.5" cy="43.5" r="3.5" fill={palette.cheek} fillOpacity={palette.cheekOpacity} />
       <circle cx="53.5" cy="43.5" r="3.5" fill={palette.cheek} fillOpacity={palette.cheekOpacity} />
 
-      {/* Olhos reativos com piscar natural */}
-      {mood === 'celebrate' ? (
+      {/* Olhos reativos com piscar natural (ou repouso em Ovo/dormente) */}
+      {dormant || stage === 0 ? (
+        <>
+          <path d="M26 36C28.2 38 31.8 38 34 36" stroke={ink} strokeWidth="2.4" strokeLinecap="round" />
+          <path d="M46 36C48.2 38 51.8 38 54 36" stroke={ink} strokeWidth="2.4" strokeLinecap="round" />
+        </>
+      ) : mood === 'celebrate' ? (
         <>
           <path d="M26 36.5C28 33 32 33 34 36.5" stroke={ink} strokeWidth="2.7" strokeLinecap="round" />
           <path d="M46 36.5C48 33 52 33 54 36.5" stroke={ink} strokeWidth="2.7" strokeLinecap="round" />
@@ -249,8 +347,8 @@ export function UniBuddy({
         />
       )}
 
-      {/* Acessórios por área do conhecimento */}
-      {accessory === 'math' && (
+      {/* Acessórios por área do conhecimento (visíveis sempre que global ou a partir de Explorador) */}
+      {effectiveAccessory === 'math' && (
         <g>
           {/* Chapéu pontiagudo de matemática com Pi */}
           <path
@@ -272,7 +370,7 @@ export function UniBuddy({
         </g>
       )}
 
-      {accessory === 'arts' && (
+      {effectiveAccessory === 'arts' && (
         <g transform="rotate(-10 40 8)">
           {/* Boina artística coral */}
           <path
@@ -286,7 +384,7 @@ export function UniBuddy({
         </g>
       )}
 
-      {accessory === 'health' && (
+      {effectiveAccessory === 'health' && (
         <g>
           {/* Rebento de saúde no topo + pequeno estetoscópio */}
           <path d="M40 9V0" stroke="#141312" strokeWidth="2" strokeLinecap="round" />
@@ -297,7 +395,7 @@ export function UniBuddy({
         </g>
       )}
 
-      {accessory === 'science' && (
+      {effectiveAccessory === 'science' && (
         <g>
           {/* Óculos de proteção na testa */}
           <rect x="21" y="13" width="16" height="10" rx="4" fill="#BCEEE0" stroke="#141312" strokeWidth="1.9" />
@@ -306,7 +404,7 @@ export function UniBuddy({
         </g>
       )}
 
-      {accessory === 'humanities' && (
+      {effectiveAccessory === 'humanities' && (
         <g>
           {mood !== 'shy' && mood !== 'peek' && (
             <g stroke="#141312" strokeWidth="1.7">

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { Assessment, ClassSlot, Course, Settings, StudySession } from '../../types';
 import { useStore } from '../../store/useStore';
 import { analyzeTestMode, generatePlan, rescheduleOverdueSessions } from '../planner';
+import { pickActiveInAppNudge } from '../uniNotifications';
 import { formatSessionDisplay } from '../selectors';
 
 const baseSettings: Settings = {
@@ -278,5 +279,148 @@ describe('planner.rescheduleOverdueSessions', () => {
     expect(res.unscheduledCount).toBe(0);
     expect(res.updated).toHaveLength(1);
     expect(res.updated[0]!.date >= '2026-11-15').toBe(true);
+  });
+
+  it('nunca agenda Revisão espaçada nem Consolidação no mesmo dia depois da hora do exame', () => {
+    const courseWithDue: Course = {
+      ...baseCourse,
+      topics: [
+        {
+          id: 't1',
+          title: 'Derivadas',
+          status: 'review',
+          confidence: 3,
+          nextReviewDate: '2026-11-18',
+          srsIntervalDays: 3,
+        },
+        { id: 't2', title: 'Integrais', status: 'todo', confidence: 2 },
+      ],
+    };
+    const assessments: Assessment[] = [
+      {
+        id: 'a1',
+        courseId: 'c1',
+        kind: 'teste',
+        title: '1.º Teste',
+        date: '2026-11-20T10:00:00',
+        weight: 50,
+        topicIds: ['t1', 't2'],
+        source: 'local',
+      },
+    ];
+    const sessions = generatePlan({
+      courses: [courseWithDue],
+      assessments,
+      classes: [],
+      events: [],
+      settings: baseSettings,
+      from: '2026-11-20',
+      nowMinutes: 16 * 60 + 30,
+      days: 1,
+    });
+    expect(sessions.filter((s) => s.courseId === 'c1')).toEqual([]);
+  });
+
+  it('arredonda horários de início a múltiplos de 5 min após sessões reais curtas (evita 17:11)', () => {
+    const assessments: Assessment[] = [
+      {
+        id: 'a1',
+        courseId: 'c1',
+        kind: 'teste',
+        title: '1.º Teste',
+        date: '2026-11-22T10:00:00',
+        weight: 50,
+        topicIds: ['t1', 't2'],
+        source: 'local',
+      },
+    ];
+    const doneShort: StudySession = {
+      id: 'done-1m',
+      courseId: 'c1',
+      topicId: 't1',
+      date: '2026-11-16',
+      start: '17:00',
+      minutes: 50,
+      actualMinutes: 1,
+      done: true,
+      generated: true,
+    };
+    const sessions = generatePlan({
+      courses: [baseCourse],
+      assessments,
+      classes: [],
+      events: [],
+      settings: baseSettings,
+      existing: [doneShort],
+      from: '2026-11-16',
+      days: 1,
+    });
+    expect(sessions.length).toBeGreaterThan(0);
+    for (const s of sessions) {
+      const mm = Number(s.start?.split(':')[1] ?? 0);
+      expect(mm % 5).toBe(0);
+    }
+  });
+
+  it('reserva manutenção leve para outras cadeiras em Modo Teste (> 2 dias) salvo foco exclusivo', () => {
+    const secondCourse: Course = {
+      id: 'c2',
+      code: 'F1',
+      name: 'Física I',
+      shortName: 'F1',
+      ects: 6,
+      color: 'amber',
+      targetGrade: 14,
+      topics: [{ id: 't3', title: 'Cinemática', status: 'todo', confidence: 2 }],
+    };
+    const assessments: Assessment[] = [
+      {
+        id: 'a1',
+        courseId: 'c1',
+        kind: 'teste',
+        title: '1.º Teste',
+        date: '2026-11-22T10:00:00', // 6 dias depois
+        weight: 50,
+        topicIds: ['t1', 't2'],
+        source: 'local',
+      },
+    ];
+    const balanced = generatePlan({
+      courses: [baseCourse, secondCourse],
+      assessments,
+      classes: [],
+      events: [],
+      settings: { ...baseSettings, dailyStudyMinutes: 180 },
+      from: '2026-11-16',
+      days: 1,
+    });
+    expect(balanced.some((s) => s.courseId === 'c2')).toBe(true);
+
+    const exclusive = generatePlan({
+      courses: [baseCourse, secondCourse],
+      assessments,
+      classes: [],
+      events: [],
+      settings: { ...baseSettings, dailyStudyMinutes: 180 },
+      from: '2026-11-16',
+      days: 1,
+      exclusiveTestFocus: true,
+    });
+    expect(exclusive.some((s) => s.courseId === 'c2')).toBe(false);
+  });
+
+  it('não mostra Balanço de domingo no dia 1 para conta nova sem atividade prévia', () => {
+    const sundayNow = new Date(2026, 10, 15, 21, 0, 0); // domingo 15 nov 21:00
+    const nudge = pickActiveInAppNudge({
+      courses: [baseCourse],
+      assessments: [],
+      classes: [],
+      sessions: [],
+      weeklyCheckIns: [],
+      studyLogs: [],
+      settings: baseSettings,
+      now: sundayNow,
+    });
+    expect(nudge?.kind).not.toBe('sunday');
   });
 });

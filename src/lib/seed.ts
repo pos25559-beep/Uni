@@ -20,6 +20,8 @@ export const defaultSettings: Settings = {
   uniSkinAutoRotate: true,
   uniPet: 'cat',
   uniPersona: 'amigo',
+  language: 'pt-PT',
+  gradingScale: 'pt20',
   seenTabGuides: [],
   notifications: {
     enabled: false,

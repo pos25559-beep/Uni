@@ -13,6 +13,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { UniBuddy } from '../components/brand/UnipediaMarks';
 import { AnimatedPage, StickerBadge } from '../components/motion/Primitives';
@@ -44,6 +45,7 @@ const THEME_LABELS: Record<SettingsType['theme'], string> = {
 };
 
 export default function SettingsPage() {
+  const { t } = useTranslation('settings');
   const { section } = useParams<{ section?: string }>();
   const navigate = useNavigate();
   const settings = useStore((s) => s.settings);
@@ -168,10 +170,10 @@ export default function SettingsPage() {
   return (
     <AnimatedPage className="flex flex-col gap-6">
       <PageHeader
-        eyebrow="Preferências"
-        title="As tuas"
-        accentTitle="definições"
-        subtitle={[settings.semesterName.trim(), `tema ${THEME_LABELS[settings.theme]}`].filter(Boolean).join(' · ')}
+        eyebrow={t('eyebrow')}
+        title={t('title')}
+        accentTitle={t('accentTitle')}
+        subtitle={[settings.semesterName.trim(), THEME_LABELS[settings.theme]].filter(Boolean).join(' · ')}
         actions={<TabGuideHelpButton tabKey="definicoes" />}
       />
 

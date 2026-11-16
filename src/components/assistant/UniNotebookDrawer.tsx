@@ -1,5 +1,5 @@
-import { BookOpen, ClipboardPaste, Copy, Download, ExternalLink, FileText, Image as ImageIcon, Loader2, Paperclip, Sparkles, X } from 'lucide-react';
-import { useRef, useState, type ChangeEvent } from 'react';
+import { BookOpen, ClipboardPaste, Copy, Download, ExternalLink, FileText, Image as ImageIcon, Loader2, Paperclip, Sparkles, Trash2, X } from 'lucide-react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import {
   fileToChatAttachment,
   generateNotebookBrief,
@@ -8,21 +8,41 @@ import {
   type NotebookSourceInput,
 } from '../../integrations/gemini';
 import { getDailyQuotaSnapshot } from '../../lib/aiQuota';
+import {
+  deleteTopicSheet,
+  listTopicSheetsByCourse,
+  putTopicSheet,
+  type TopicSheetRecord,
+} from '../../lib/localDb';
 import { getAiMaterialLimit, resolveMaterialsForAI } from '../../lib/materialContent';
 import { openInAppBrowser } from '../../lib/nativeBridge';
 import { buildNotebookPdfBytes, downloadPdfFile } from '../../lib/pdfExport';
 import type { UniAccessoryId, UniPersonaMode } from '../../lib/uniAccessories';
-import { useStore } from '../../store/useStore';
-import type { Material } from '../../types';
+import { newId, useStore } from '../../store/useStore';
+import type { ID, Material } from '../../types';
 import { UniBuddy } from '../brand/UnipediaMarks';
 import { Button, Modal, Textarea } from '../ui';
 import { cx, showToast } from '../../lib/uiHelpers';
 import { Markdown } from './Markdown';
 
+function deriveSheetTitle(markdown: string, mode: 'guide' | 'quiz' | 'summary', courseName?: string): string {
+  const heading = markdown
+    .split('\n')
+    .map((line) => line.trim())
+    .find((line) => line.startsWith('#'));
+  if (heading) {
+    return heading.replace(/^#+\s*/, '').slice(0, 72);
+  }
+  const modeLabel = mode === 'guide' ? 'Guia de Estudo' : mode === 'quiz' ? 'Quiz com Citações' : 'Resumo Rápido';
+  return courseName ? `${modeLabel} · ${courseName}` : modeLabel;
+}
+
 export default function UniNotebookDrawer({
   open,
   onClose,
+  courseId,
   courseName,
+  courseTopics = [],
   attachedMaterials,
   accessory,
   persona,
@@ -30,7 +50,9 @@ export default function UniNotebookDrawer({
 }: {
   open: boolean;
   onClose: () => void;
+  courseId?: ID;
   courseName?: string;
+  courseTopics?: Array<{ id: ID; title: string }>;
   attachedMaterials: Material[];
   accessory: UniAccessoryId;
   persona: UniPersonaMode;
@@ -40,11 +62,27 @@ export default function UniNotebookDrawer({
   const [notesSource, setNotesSource] = useState('');
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const [mode, setMode] = useState<'guide' | 'quiz' | 'summary'>('guide');
+  const [selectedTopicId, setSelectedTopicId] = useState<string>('');
   const [busy, setBusy] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [output, setOutput] = useState<string | null>(null);
+  const [savedSheets, setSavedSheets] = useState<TopicSheetRecord[]>([]);
+  const [activeSheetId, setActiveSheetId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const scopedCourseKey: ID | 'general' = courseId || 'general';
+
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+    void listTopicSheetsByCourse(scopedCourseKey).then((items) => {
+      if (active) setSavedSheets(items);
+    });
+    return () => {
+      active = false;
+    };
+  }, [open, scopedCourseKey]);
 
   const customKeyActive = hasCustomGeminiKey();
   const maxAiFiles = getAiMaterialLimit(customKeyActive);
@@ -127,6 +165,23 @@ export default function UniNotebookDrawer({
         accessory,
       });
       setOutput(result);
+      const validTopicId =
+        selectedTopicId && courseTopics.some((t) => t.id === selectedTopicId)
+          ? selectedTopicId
+          : undefined;
+      const saved = await putTopicSheet({
+        id: newId(),
+        courseId: scopedCourseKey,
+        ...(validTopicId ? { topicId: validTopicId } : {}),
+        title: deriveSheetTitle(result, mode, courseName),
+        mode,
+        summary: result,
+        keyConcepts: resolved.readTitles.slice(0, 6),
+        materialIds: attachedMaterials.map((m) => m.id),
+        updatedAt: new Date().toISOString(),
+      });
+      setActiveSheetId(saved.id);
+      setSavedSheets((prev) => [saved, ...prev.filter((item) => item.id !== saved.id)]);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Não foi possível gerar este caderno agora.');
     } finally {
@@ -322,6 +377,43 @@ export default function UniNotebookDrawer({
           )}
         </div>
 
+        {courseTopics.length > 0 && (
+          <div>
+            <p className="mb-1.5 text-xs font-semibold text-muted">
+              Associar ficha a um tópico (ajuda o Tutor e o Foco)
+            </p>
+            <div className="flex max-h-24 flex-wrap gap-1.5 overflow-y-auto">
+              <button
+                type="button"
+                onClick={() => setSelectedTopicId('')}
+                className={cx(
+                  'min-h-11 rounded-full border px-3 text-xs font-medium transition',
+                  !selectedTopicId
+                    ? 'border-accent bg-accent-soft text-accent-ink'
+                    : 'border-line bg-surface-2 text-muted hover:text-fg',
+                )}
+              >
+                Geral
+              </button>
+              {courseTopics.slice(0, 10).map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setSelectedTopicId(t.id)}
+                  className={cx(
+                    'min-h-11 rounded-full border px-3 text-xs font-medium transition',
+                    selectedTopicId === t.id
+                      ? 'border-accent bg-accent-soft text-accent-ink'
+                      : 'border-line bg-surface-2 text-muted hover:text-fg',
+                  )}
+                >
+                  {t.title}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-1.5">
             {(
@@ -375,6 +467,66 @@ export default function UniNotebookDrawer({
               <BookOpen size={13} /> Resultado do Caderno
             </div>
             <Markdown text={output} />
+          </div>
+        )}
+
+        {savedSheets.length > 0 && (
+          <div className="space-y-2 border-t border-line pt-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-muted">
+                Fichas guardadas localmente ({savedSheets.length})
+              </p>
+            </div>
+            <div className="max-h-44 space-y-1.5 overflow-y-auto pr-1">
+              {savedSheets.map((sheet) => {
+                const isSelected = activeSheetId === sheet.id;
+                const modeLabel =
+                  sheet.mode === 'guide' ? 'Guia' : sheet.mode === 'quiz' ? 'Quiz' : 'Resumo';
+                return (
+                  <div
+                    key={sheet.id}
+                    className={cx(
+                      'flex items-center gap-1.5 rounded-2xl border p-1.5 transition',
+                      isSelected
+                        ? 'border-accent bg-accent-soft/40'
+                        : 'border-line bg-surface-2/50 hover:border-line-strong',
+                    )}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveSheetId(sheet.id);
+                        setMode(sheet.mode);
+                        setOutput(sheet.summary);
+                      }}
+                      className="flex min-h-11 min-w-0 flex-1 items-center justify-between gap-2 rounded-xl px-2.5 text-left"
+                    >
+                      <span className="min-w-0 truncate text-xs font-semibold text-fg">
+                        {sheet.title}
+                      </span>
+                      <span className="shrink-0 rounded-full bg-surface px-2 py-0.5 text-xs font-medium text-muted">
+                        {modeLabel}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Apagar ficha ${sheet.title}`}
+                      onClick={async () => {
+                        await deleteTopicSheet(sheet.id);
+                        setSavedSheets((prev) => prev.filter((item) => item.id !== sheet.id));
+                        if (activeSheetId === sheet.id) {
+                          setActiveSheetId(null);
+                          setOutput(null);
+                        }
+                      }}
+                      className="grid size-11 shrink-0 place-items-center rounded-xl text-muted hover:bg-coral-soft hover:text-coral"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

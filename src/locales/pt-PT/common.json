@@ -1,0 +1,35 @@
+{
+  "nav": {
+    "today": "Hoje",
+    "courses": "Cadeiras",
+    "plan": "Plano",
+    "calendar": "Calendário",
+    "materials": "Materiais",
+    "progress": "Progresso",
+    "tutor": "Tutor",
+    "settings": "Definições",
+    "more": "Mais",
+    "skipToContent": "Saltar para o conteúdo"
+  },
+  "actions": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "close": "Fechar",
+    "done": "Concluir",
+    "edit": "Editar",
+    "delete": "Apagar",
+    "focus": "Focar",
+    "add": "Adicionar",
+    "open": "Abrir",
+    "back": "Voltar"
+  },
+  "languages": {
+    "pt-PT": "Português (Portugal)",
+    "en": "English"
+  },
+  "theme": {
+    "system": "Automático",
+    "dark": "Escuro",
+    "light": "Claro"
+  }
+}

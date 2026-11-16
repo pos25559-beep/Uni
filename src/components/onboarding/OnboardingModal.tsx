@@ -13,7 +13,7 @@ export default function OnboardingModal({
   open,
   onClose,
   fullScreen = false,
-  initialStepId = 'identidade',
+  initialStepId = 'curso',
   title = 'Configurar percurso e ritmo',
 }: OnboardingModalProps) {
   if (!open) return null;

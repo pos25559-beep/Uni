@@ -617,6 +617,8 @@ export function planSmartNotifications(input: NotificationPlannerInput): Schedul
 
   const logs = input.studyLogs ?? [];
   const checkIns = input.weeklyCheckIns ?? [];
+  const hasPriorActivity =
+    input.sessions.length > 0 || logs.length > 0 || checkIns.length > 0;
 
   // 5) Notificação pós-aula: como foi a aula e que matéria deu
   if (prefs.postClassCheckIn) {
@@ -698,8 +700,8 @@ export function planSmartNotifications(input: NotificationPlannerInput): Schedul
     }
   }
 
-  // 7) Balanço semanal de domingo
-  if (prefs.sundayReview) {
+  // 7) Balanço semanal de domingo (nunca no dia 1 de uma conta sem atividade prévia)
+  if (prefs.sundayReview && hasPriorActivity) {
     const sundayHour = prefs.sundayHour ?? 18;
     for (const offset of [0, 1, 2]) {
       const dayDate = addDaysLocal(now, offset);
@@ -882,6 +884,8 @@ export function pickActiveInAppNudge(input: NotificationPlannerInput): InAppUniN
   const courseMap = new Map(input.courses.map((c) => [c.id, c]));
   const logs = input.studyLogs ?? [];
   const checkIns = input.weeklyCheckIns ?? [];
+  const hasPriorActivity =
+    input.sessions.length > 0 || logs.length > 0 || checkIns.length > 0;
   const nowMins = now.getHours() * 60 + now.getMinutes();
   const weekday = now.getDay();
 
@@ -962,8 +966,8 @@ export function pickActiveInAppNudge(input: NotificationPlannerInput): InAppUniN
     }
   }
 
-  // 4) Balanço semanal de domingo
-  if (prefs.sundayReview && weekday === 0 && now.getHours() >= 15 && !hasLoggedWeek(logs, checkIns, now)) {
+  // 4) Balanço semanal de domingo (apenas quando já existe atividade prévia do aluno)
+  if (prefs.sundayReview && hasPriorActivity && weekday === 0 && now.getHours() >= 15 && !hasLoggedWeek(logs, checkIns, now)) {
     const copy = formatSundayCopy(tone);
     return {
       key: `inapp-sunday-${todayYmd}`,

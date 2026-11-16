@@ -71,6 +71,8 @@ function TopLayerPickerDialog({
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const wasOpenRef = useRef(false);
 
   useSheetSwipeDismiss({
     ref: sheetRef,
@@ -81,12 +83,23 @@ function TopLayerPickerDialog({
 
   useEffect(() => {
     const dialog = dialogRef.current;
-    if (!dialog) return;
-    if (open && !dialog.open) {
+    if (open && !wasOpenRef.current) {
+      previousFocusRef.current =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    }
+    if (open && dialog && !dialog.open) {
       dialog.showModal();
-    } else if (!open && dialog.open) {
+    } else if (!open && dialog && dialog.open) {
       dialog.close();
     }
+    if (!open && wasOpenRef.current) {
+      const target = previousFocusRef.current;
+      previousFocusRef.current = null;
+      if (target && target.isConnected) {
+        requestAnimationFrame(() => target.focus());
+      }
+    }
+    wasOpenRef.current = open;
   }, [open]);
 
   if (!open || typeof document === 'undefined') return null;
@@ -424,6 +437,7 @@ function DatePanel({
               type="button"
               onClick={() => pickDate(day)}
               aria-label={format(day, "d 'de' MMMM 'de' yyyy", { locale: pt })}
+              aria-current={isToday ? 'date' : undefined}
               aria-pressed={isSelected}
               className={cx(
                 'grid min-h-[40px] place-items-center rounded-xl text-xs font-semibold tabular transition',

@@ -1,9 +1,10 @@
 import { Palette, Sparkles, Sun, Moon, Monitor } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { APP_PALETTES } from '../../../lib/academicCredits';
 import { hapticTap } from '../../../lib/nativeBridge';
 import {
+  getLocalizedPersonas,
   UNI_ACCESSORIES,
-  UNI_PERSONAS,
   type UniAccessoryId,
   type UniPersonaMode,
 } from '../../../lib/uniAccessories';
@@ -57,6 +58,9 @@ export default function Step1Identity({
   uniLiveCompanions,
   setUniLiveCompanions,
 }: Step1IdentityProps) {
+  const { i18n } = useTranslation();
+  const appLang = i18n.language?.startsWith('en') ? 'en' : 'pt-PT';
+  const personas = getLocalizedPersonas(appLang);
   const previewAcc = uniAccessory === 'auto' ? 'default' : uniAccessory;
   const isMinimal = appTone === 'serio';
 
@@ -82,11 +86,11 @@ export default function Step1Identity({
         <div className="min-w-0 flex-1 space-y-1.5">
           {isMinimal ? (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-3 py-1 text-xs font-semibold text-muted">
-              <Sparkles size={13} /> Passo 1 · Em 2 minutos
+              <Sparkles size={13} /> Passo 3 · Estilo pessoal
             </span>
           ) : (
             <StickerBadge tone="sage" tilt={-2}>
-              <Sparkles size={12} /> Passo 1 · Em 2 minutos
+              <Sparkles size={12} /> Passo 3 · Estilo pessoal
             </StickerBadge>
           )}
           <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl">
@@ -213,7 +217,7 @@ export default function Step1Identity({
       <div className="space-y-3 rounded-[24px] border border-line bg-surface p-4 shadow-[var(--shadow-card)] sm:p-5">
         <h3 className="font-display text-base font-bold text-fg">Estilo e voz do Uni</h3>
         <div className="grid gap-2 sm:grid-cols-2">
-          {UNI_PERSONAS.map((p) => {
+          {personas.map((p) => {
             const active = uniPersona === p.id;
             return (
               <button

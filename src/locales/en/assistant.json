@@ -1,0 +1,11 @@
+{
+  "srHeading": "Chat with Uni",
+  "allCourses": "All courses",
+  "placeholder": "Ask Uni…",
+  "needConsentPlaceholder": "Enable Uni above to start chatting…",
+  "wrongAnswerBtn": "This is wrong",
+  "fixNotebookBtn": "Fix notebook",
+  "notebookBtn": "Notebook",
+  "whatKnowsBtn": "What {{name}} knows",
+  "specialistIntro": "Stage {{stage}} · Mastery {{mastery}}/100. Ask about sheets or clarify doubts in this course."
+}

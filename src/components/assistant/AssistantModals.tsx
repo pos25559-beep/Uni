@@ -334,7 +334,9 @@ export default function AssistantModals({
       <UniNotebookDrawer
         open={notebookOpen}
         onClose={onCloseNotebook}
+        courseId={activeCourse?.id}
         courseName={activeCourse?.shortName || activeCourse?.name}
+        courseTopics={activeCourse?.topics}
         attachedMaterials={attachedMaterials}
         accessory={uniAccessory}
         persona={uniPersona}

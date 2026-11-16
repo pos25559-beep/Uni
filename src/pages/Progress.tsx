@@ -1,8 +1,8 @@
-import { ArrowRight, BarChart3, BookOpenCheck, Lock, Plus, Sparkles, Trash2 } from 'lucide-react';
+import { ArrowRight, BarChart3, BookOpenCheck, Plus, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import UniCollectiblesModal from '../components/brand/UniCollectiblesModal';
-import { UniBuddy, UniPetBuddy } from '../components/brand/UnipediaMarks';
 import { AnimatedPage } from '../components/motion/Primitives';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import { CourseTimeChart } from '../components/progress/CourseTimeChart';
@@ -13,21 +13,26 @@ import { ReadinessChart } from '../components/progress/ReadinessChart';
 import { RetentionFocusChart } from '../components/progress/RetentionFocusChart';
 import { StreakHeatmap } from '../components/progress/StreakHeatmap';
 import { StudyByDayChart } from '../components/progress/StudyByDayChart';
+import UniShelfSection from '../components/progress/UniShelfSection';
 import { WeaknessChart } from '../components/progress/WeaknessChart';
 import ActiveReviewModal from '../components/practice/ActiveReviewModal';
-import { Badge, Button, Card, PageHeader, Progress, Ring, SegmentedControl } from '../components/ui';
+import { Badge, Button, Card, PageHeader, Ring, SegmentedControl } from '../components/ui';
 import { cx, showToast } from '../lib/uiHelpers';
 import { openUniCheckIn } from '../lib/uniCheckInBus';
 import type { StudyLogKind } from '../types';
 import {
   computeUniCompanionState,
   getUniCollectibleStates,
+  getUniPetStates,
   readCollectibleTelemetry,
 } from '../lib/uniCollectibles';
 import { fmtGrade, fmtMinutes, semesterAverage, sessionMinutes, studyStreak, todayStr } from '../lib/selectors';
 import { useStore } from '../store/useStore';
 
 export default function ProgressPage() {
+  const { t, i18n } = useTranslation('progress');
+  const appLang = i18n.language?.startsWith('en') ? ('en' as const) : ('pt-PT' as const);
+  const [progressTab, setProgressTab] = useState<'week' | 'semester'>('week');
   const [period, setPeriod] = useState<Period>('30d');
   const [logFilter, setLogFilter] = useState<'all' | StudyLogKind>('all');
   const [collectiblesOpen, setCollectiblesOpen] = useState(false);
@@ -45,6 +50,7 @@ export default function ProgressPage() {
 
   const activeSkin = settings.uniSkin ?? 'classic';
   const activePet = settings.uniPet ?? 'cat';
+  const gradingScale = settings.gradingScale ?? 'pt20';
   const [now] = useState(() => new Date());
   const today = useMemo(() => todayStr(), []);
   const companion = useMemo(
@@ -60,15 +66,13 @@ export default function ProgressPage() {
   );
   const range = useMemo(() => periodRange(period, settings, now), [period, settings, now]);
 
-  const collectibles = useMemo(
-    () => getUniCollectibleStates(readCollectibleTelemetry(sessions, courses, weeklyCheckIns)),
+  const telemetry = useMemo(
+    () => readCollectibleTelemetry(sessions, courses, weeklyCheckIns),
     [sessions, courses, weeklyCheckIns],
   );
+  const collectibles = useMemo(() => getUniCollectibleStates(telemetry), [telemetry]);
+  const petStates = useMemo(() => getUniPetStates(telemetry), [telemetry]);
   const unlockedCount = collectibles.filter((c) => c.unlocked).length;
-  const nextLocked = collectibles.find((c) => !c.unlocked);
-  const nextLockedPct = nextLocked && nextLocked.progressTarget > 0
-    ? Math.max(0, Math.min(1, nextLocked.progressCurrent / nextLocked.progressTarget))
-    : 0;
 
   const hasSessions = sessions.length > 0;
   const hasTopics = courses.some((c) => c.topics.length > 0);
@@ -98,9 +102,9 @@ export default function ProgressPage() {
   return (
     <AnimatedPage className="space-y-5">
       <PageHeader
-        eyebrow="Análise"
-        title="O teu"
-        accentTitle="progresso"
+        eyebrow={t('eyebrow')}
+        title={t('title')}
+        accentTitle={t('accentTitle')}
         subtitle={settings.semesterName.trim() || undefined}
         actions={
           <div className="flex max-w-full flex-wrap items-center gap-2">
@@ -117,6 +121,18 @@ export default function ProgressPage() {
 
       <TabGuideBanner tabKey="progresso" />
 
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <SegmentedControl
+          layoutId="progress-section-tabs"
+          value={progressTab}
+          onChange={(v) => setProgressTab(v as 'week' | 'semester')}
+          items={[
+            { id: 'week', label: t('tabWeek') },
+            { id: 'semester', label: t('tabSemester') },
+          ]}
+        />
+      </div>
+
       {/* Cartão Hero Bento "Progresso Geral" com anel estilo papelaria */}
       <section className="flex flex-wrap items-center justify-between gap-5 rounded-[26px] bg-pastel-sky/75 p-5 text-[#141312] shadow-card dark:bg-surface-2 dark:text-[#FAF6EC]">
         <div className="min-w-0 flex-1 space-y-1">
@@ -128,7 +144,7 @@ export default function ProgressPage() {
               : 'Adiciona tópicos nas cadeiras para acompanhar a preparação'}
           </p>
           <div className="flex flex-wrap items-center gap-4 pt-2 text-xs font-medium">
-            <span className="tabular">Média: <strong>{fmtGrade(summary.avg)}</strong></span>
+            <span className="tabular">{t('avgLabel')}: <strong>{fmtGrade(summary.avg, gradingScale, appLang)}</strong></span>
             <span className="tabular">Estudado: <strong>{fmtMinutes(summary.totalDoneMin)}</strong></span>
             <span className="tabular">Sequência: <strong>{summary.streak}d</strong></span>
             <span className="tabular">
@@ -143,7 +159,7 @@ export default function ProgressPage() {
                 <button
                   type="button"
                   onClick={() => setReviewTarget({})}
-                  className="font-bold underline decoration-dotted underline-offset-2 hover:opacity-80"
+                  className="inline-flex min-h-11 items-center font-bold underline decoration-dotted underline-offset-2 hover:opacity-80"
                 >
                   {retention.dueCount} devidas
                 </button>
@@ -158,85 +174,29 @@ export default function ProgressPage() {
         </Ring>
       </section>
 
-      {/* Showcase inline dos Colecionáveis do Uni */}
-      <section className="space-y-4 rounded-[26px] bg-pastel-butter/70 p-5 text-[#141312] shadow-card dark:bg-surface-2 dark:text-[#FAF6EC]">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-xs font-bold uppercase tracking-[0.12em] opacity-70">
-                Coleção do Uni · {unlockedCount}/{collectibles.length} cores
-              </p>
-              <Badge tone="ok">{companion.stage.label} · ⚡ {companion.dailyEnergy}/{companion.dailyEnergyGoal}</Badge>
-            </div>
-            <h2 className="mt-0.5 font-display text-lg font-bold">
-              {nextLocked
-                ? `Próximo: ${nextLocked.skin.name} (${nextLocked.progressLabel})`
-                : 'Coleção completa desbloqueada!'}
-            </h2>
-          </div>
-          <div className="flex items-center gap-2">
-            {activePet !== 'none' && (
-              <div className="hidden items-center gap-1 rounded-full bg-white/75 px-2.5 py-1 dark:bg-black/25 sm:flex">
-                <UniPetBuddy pet={activePet} size={22} />
-              </div>
-            )}
-            <Button size="sm" variant="secondary" onClick={() => setCollectiblesOpen(true)}>
-              <Sparkles size={14} /> Abrir ninho &amp; pets
-            </Button>
-          </div>
-        </div>
+      {/* Estante unificada do Uni (Unis & Diplomas + Aparências & Micropets) */}
+      {progressTab === 'semester' && (
+        <UniShelfSection
+          collectibles={collectibles}
+          petStates={petStates}
+          unlockedCount={unlockedCount}
+          activeSkin={activeSkin}
+          activePet={activePet}
+          companion={companion}
+          onSelectSkin={(skinId) => {
+            updateSettings({ uniSkin: skinId });
+            showToast('Visual do Uni atualizado!');
+          }}
+          onSelectPet={(petId) => {
+            updateSettings({ uniPet: petId });
+            showToast(petId === 'none' ? 'Companheiro guardado na estante.' : 'Companheiro equipado!');
+          }}
+          onOpenCustomize={() => setCollectiblesOpen(true)}
+        />
+      )}
 
-        {nextLocked && (
-          <div className="space-y-1">
-            <div className="flex items-center justify-between text-xs opacity-80">
-              <span>{nextLocked.skin.unlockHint}</span>
-              <span className="font-mono tabular">{Math.round(nextLockedPct * 100)}%</span>
-            </div>
-            <Progress value={nextLockedPct} color="bg-[#157F58] dark:bg-accent" />
-          </div>
-        )}
-
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-          {collectibles.map((item) => {
-            const isEquipped = activeSkin === item.skin.id;
-            return (
-              <button
-                key={item.skin.id}
-                type="button"
-                onClick={() => {
-                  if (item.unlocked) {
-                    updateSettings({ uniSkin: item.skin.id });
-                    showToast(`${item.skin.name} equipado!`);
-                  } else {
-                    setCollectiblesOpen(true);
-                  }
-                }}
-                className={cx(
-                  'flex min-h-[76px] flex-col items-center justify-center gap-1.5 rounded-[18px] border px-1.5 py-2 text-center transition',
-                  isEquipped
-                    ? 'border-[#157F58] bg-white/95 shadow-card dark:border-accent dark:bg-surface'
-                    : item.unlocked
-                      ? 'border-black/10 bg-white/65 hover:bg-white dark:border-white/10 dark:bg-black/20'
-                      : 'border-dashed border-black/15 bg-white/35 opacity-75 dark:border-white/15 dark:bg-black/10',
-                )}
-              >
-                <div className="relative">
-                  <UniBuddy size={36} skin={item.skin.id} mood={item.unlocked ? 'happy' : 'calm'} interactive={false} />
-                  {!item.unlocked && (
-                    <span className="absolute -right-1 -bottom-1 grid size-4 place-items-center rounded-full bg-[#141312] text-white">
-                      <Lock size={9} />
-                    </span>
-                  )}
-                </div>
-                <span className="line-clamp-1 text-xs font-semibold">
-                  {item.skin.name.replace(/^Uni\s+/, '')}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
+      {progressTab === 'week' ? (
+      <>
       {!hasSessions && !showEmptyCharts ? (
         <section className="space-y-4 rounded-[26px] bg-pastel-mint/55 p-5 text-[#141312] shadow-card dark:bg-surface-2 dark:text-[#FAF6EC]">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -270,7 +230,7 @@ export default function ProgressPage() {
             </div>
             <div className="rounded-[18px] bg-white/75 p-3 dark:bg-black/20">
               <p className="text-xs font-bold">2. Mapa de consistência</p>
-              <p className="mt-1 text-xs opacity-75">Sequência ativa para desbloquear novos Unies.</p>
+              <p className="mt-1 text-xs opacity-75">Sequência ativa para acompanhar o ritmo.</p>
             </div>
             <div className="rounded-[18px] bg-white/75 p-3 dark:bg-black/20">
               <p className="text-xs font-bold">3. Preparação &amp; notas</p>
@@ -285,16 +245,8 @@ export default function ProgressPage() {
               <StudyByDayChart courses={courses} sessions={sessions} settings={settings} range={range} />
               <PlannedDoneChart sessions={sessions} range={range} />
               <CourseTimeChart courses={courses} sessions={sessions} range={range} />
-              <StreakHeatmap sessions={sessions} now={now} />
             </>
           )}
-          {(hasGradesOrAssessments || showEmptyCharts) && (
-            <>
-              <GradeBullets courses={courses} assessments={assessments} />
-              <ReadinessChart assessments={assessments} courses={courses} />
-            </>
-          )}
-          {(hasTopics || showEmptyCharts) && <WeaknessChart courses={courses} />}
           {(hasTopics || hasSessions || showEmptyCharts) && (
             <RetentionFocusChart
               courses={courses}
@@ -343,7 +295,7 @@ export default function ProgressPage() {
                 type="button"
                 onClick={() => setLogFilter(f.id)}
                 className={cx(
-                  'min-h-[38px] rounded-full border px-3 py-1 text-xs font-semibold transition',
+                  'min-h-[44px] rounded-full border px-3 py-1 text-xs font-semibold transition',
                   logFilter === f.id
                     ? 'border-accent bg-accent text-accent-fg'
                     : 'border-line bg-surface-2/60 text-muted hover:text-fg',
@@ -424,7 +376,7 @@ export default function ProgressPage() {
                           showToast('Registo removido do diário.', 'neutral');
                         }}
                         aria-label="Apagar registo do diário"
-                        className="grid size-9 shrink-0 place-items-center rounded-full text-muted transition hover:bg-surface hover:text-danger"
+                        className="grid size-11 shrink-0 place-items-center rounded-full text-muted transition hover:bg-surface hover:text-danger"
                       >
                         <Trash2 size={14} />
                       </button>
@@ -436,6 +388,15 @@ export default function ProgressPage() {
           })()}
         </div>
       </Card>
+      </>
+      ) : (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <StreakHeatmap sessions={sessions} now={now} />
+          <GradeBullets courses={courses} assessments={assessments} />
+          <ReadinessChart assessments={assessments} courses={courses} />
+          <WeaknessChart courses={courses} />
+        </div>
+      )}
 
       <UniCollectiblesModal open={collectiblesOpen} onClose={() => setCollectiblesOpen(false)} />
 

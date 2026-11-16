@@ -1,4 +1,6 @@
 import type { AppState } from '../store/useStore';
+import { putUniAgent, type UniAgentRecord } from './localDb';
+import { notifyUniAgentsChanged } from './uniAgents';
 import type {
   AcademicProfile,
   Assessment,
@@ -23,7 +25,7 @@ export const pickItems = <T,>(v: unknown): T[] =>
   Array.isArray(v) ? (v.filter(hasId) as T[]) : [];
 
 /** Serializa todos os dados locais sem expor a chave Gemini do utilizador. */
-export function buildBackupPayload(s: AppState) {
+export function buildBackupPayload(s: AppState, uniAgents: UniAgentRecord[] = []) {
   return {
     app: 'unipedia',
     version: 1,
@@ -40,6 +42,7 @@ export function buildBackupPayload(s: AppState) {
     academicProfile: s.academicProfile,
     weeklyCheckIns: s.weeklyCheckIns,
     studyLogs: s.studyLogs,
+    uniAgents,
     settings: { ...s.settings, geminiApiKey: '' },
   };
 }
@@ -99,6 +102,21 @@ export function applyBackupJson(rawText: string, st: AppState): number {
       Object.entries(parsed.settings).filter(([k]) => k !== 'geminiApiKey'),
     );
     st.updateSettings(incoming as Partial<Settings>);
+  }
+
+  if (Array.isArray(parsed.uniAgents)) {
+    const validAgents = parsed.uniAgents.filter(
+      (a): a is UniAgentRecord =>
+        isRecord(a) &&
+        typeof a.courseId === 'string' &&
+        typeof a.name === 'string' &&
+        isRecord(a.notebook),
+    );
+    if (validAgents.length > 0) {
+      void Promise.all(validAgents.map((agent) => putUniAgent(agent))).then(() => {
+        notifyUniAgentsChanged();
+      });
+    }
   }
 
   return (

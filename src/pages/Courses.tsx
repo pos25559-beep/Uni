@@ -1,5 +1,6 @@
 import { CalendarDays, Camera, GraduationCap, Layers, LayoutGrid, Plus, Upload } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import CourseCard from '../components/courses/CourseCard';
 import CourseFormModal from '../components/courses/CourseFormModal';
@@ -15,9 +16,12 @@ import { useStore } from '../store/useStore';
 import type { Assessment, Course } from '../types';
 
 export default function Courses() {
+  const { t, i18n } = useTranslation('courses');
+  const appLang = i18n.language?.startsWith('en') ? ('en' as const) : ('pt-PT' as const);
   const navigate = useNavigate();
   const courses = useStore((s) => s.courses);
   const assessments = useStore((s) => s.assessments);
+  const gradingScale = useStore((s) => s.settings.gradingScale) ?? 'pt20';
   const [form, setForm] = useState<Course | 'new' | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [smartImport, setSmartImport] = useState<SmartImportInitialMode | null>(null);
@@ -42,18 +46,18 @@ export default function Courses() {
   return (
     <AnimatedPage className="space-y-6">
       <PageHeader
-        eyebrow="Caderno académico"
-        title="As tuas"
-        accentTitle="cadeiras"
-        subtitle={`${courses.length} ${courses.length === 1 ? 'cadeira' : 'cadeiras'} · ${totalEcts} ECTS · média ${fmtGrade(average)}`}
+        eyebrow={t('eyebrow')}
+        title={t('title')}
+        accentTitle={t('accentTitle')}
+        subtitle={`${courses.length} ${courses.length === 1 ? (appLang === 'en' ? 'course' : 'cadeira') : (appLang === 'en' ? 'courses' : 'cadeiras')} · ${totalEcts} ECTS · ${appLang === 'en' ? 'avg' : 'média'} ${fmtGrade(average, gradingScale, appLang)}`}
         actions={
           <div className="flex items-center gap-2">
             <TabGuideHelpButton tabKey="cadeiras" />
-            <Button variant="secondary" onClick={() => setSmartImport('photo')}>
-              <Upload size={16} /> <span className="hidden sm:inline">Importar</span>
+            <Button variant="secondary" onClick={() => setSmartImport('photo')} aria-label={t('importCurriculum')}>
+              <Upload size={16} aria-hidden="true" /> <span className="hidden sm:inline">{t('importCurriculum').split(' ')[0]}</span>
             </Button>
             <Button variant="primary" onClick={() => setForm('new')}>
-              <Plus size={16} /> Nova cadeira
+              <Plus size={16} /> {t('newCourse')}
             </Button>
           </div>
         }

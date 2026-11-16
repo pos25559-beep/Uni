@@ -57,6 +57,8 @@ export interface PlanInput {
   boostCourseIds?: ID[];
   /** Cadeiras pausadas/excluídas temporariamente nesta geração. */
   pausedCourseIds?: ID[];
+  /** Em Modo Teste único (> 2 dias), se verdadeiro concentra 100% na prova sem reservar bloco para outras cadeiras. */
+  exclusiveTestFocus?: boolean;
 }
 
 interface Block {
@@ -117,12 +119,13 @@ const parseDueMinutes = (s: string): number | undefined => {
   const mins = toMin(hhmm);
   return mins >= 7 * 60 && mins <= 22 * 60 ? mins : undefined;
 };
-/** Avança `cursor` até evitar colisões com intervalos ocupados (aulas, eventos, sessões existentes). */
+const roundUp5 = (min: number) => Math.ceil(min / 5) * 5;
+/** Avança `cursor` até evitar colisões com intervalos ocupados (aulas, eventos, sessões existentes), arredondando a múltiplos de 5 min. */
 const advanceCursorPastBusy = (cursor: number, duration: number, busy: BusyInterval[]): number => {
-  let next = cursor;
+  let next = roundUp5(cursor);
   for (const iv of busy) {
     if (next < iv.end && next + duration > iv.start) {
-      next = Math.max(next, iv.end + BREAK);
+      next = roundUp5(Math.max(next, iv.end + BREAK));
     }
   }
   return next;
@@ -185,6 +188,7 @@ export function generatePlan(input: PlanInput): StudySession[] {
     strategy = 'balanced',
     boostCourseIds = [],
     pausedCourseIds = [],
+    exclusiveTestFocus = false,
   } = input;
   const extraPenaltyByWeekday = computeExtraActivityPenaltyByWeekday(extraActivities);
   const days = input.days ?? 14;
@@ -403,16 +407,26 @@ export function generatePlan(input: PlanInput): StudySession[] {
     const blocks: Block[] = [];
     const perCourse = new Map<ID, number>();
 
-    // Avaliações activas neste dia (dentro do horizonte e antes da hora do exame no próprio dia).
+    // Cadeiras cuja avaliação do próprio dia já passou (ou falta < 30 min para começar):
+    // não devem receber revisões nem consolidação depois da hora do exame nesse dia.
+    const finishedExamCourseIdsToday = new Set<ID>();
     const active = items
       .map((it) => ({ ...it, daysLeft: differenceInCalendarDays(it.due, day) }))
       .filter((it) => {
         if (it.daysLeft < 0 || it.daysLeft > HORIZON_DAYS) return false;
         if (it.daysLeft === 0 && it.dueMinutes !== undefined && earliestStart + MIN_BLOCK > it.dueMinutes - 30) {
+          finishedExamCourseIdsToday.add(it.courseId);
           return false;
         }
         return true;
       });
+
+    const activeCourseIds = new Set(active.map((it) => it.courseId));
+    // Se uma cadeira teve exame que já passou hoje e não tem outro exame ativo hoje, fica bloqueada para hoje.
+    const blockedAfterExamToday = new Set(
+      [...finishedExamCourseIdsToday].filter((cid) => !activeCourseIds.has(cid)),
+    );
+    const eligibleCoursesToday = activeCourses.filter((c) => !blockedAfterExamToday.has(c.id));
 
     // Deteção dinâmica de Modo Teste progressivo (<= 10 dias).
     const urgentToday = active.filter((it) => it.daysLeft <= TEST_MODE_DAYS);
@@ -424,8 +438,7 @@ export function generatePlan(input: PlanInput): StudySession[] {
 
     // Revisão geral na véspera de cada avaliação (verificação prévia antes dos limites).
     const hasImminentTomorrow = active.some((it) => it.daysLeft <= 1);
-    const activeCourseIds = new Set(active.map((it) => it.courseId));
-    const dueTopics = activeCourses
+    const dueTopics = eligibleCoursesToday
       .flatMap((c) => c.topics.map((topic) => ({ courseId: c.id, topic })))
       .filter(({ topic }) => {
         const scheduledOn = lastScheduled.get(topic.id);
@@ -450,17 +463,24 @@ export function generatePlan(input: PlanInput): StudySession[] {
         );
       });
 
+    const otherMaintenanceCourses = eligibleCoursesToday.filter(
+      (c) => !urgentCourseIdsToday.has(c.id),
+    );
     const hasOtherPriority =
-      dueTopics.length > 0 || active.some((it) => !urgentCourseIdsToday.has(it.courseId));
+      dueTopics.length > 0 ||
+      active.some((it) => !urgentCourseIdsToday.has(it.courseId)) ||
+      (!exclusiveTestFocus && otherMaintenanceCourses.length > 0);
 
     const courseOk = (courseId: ID) => {
+      if (blockedAfterExamToday.has(courseId)) return false;
       const count = perCourse.get(courseId) ?? 0;
       if (strictSingleTestMode && urgentCourseIdsToday.has(courseId)) {
         return count < MAX_BLOCKS_PER_DAY;
       }
       if (singleTestMode && urgentCourseIdsToday.has(courseId)) {
-        // Quando falta > 3 dias e há margem no dia, reserva 1 bloco para SRS/outras cadeiras.
-        const reserveForOther = minUrgentDays > 3 && budget >= targetBlock * 2 && hasOtherPriority;
+        // Quando falta > 2 dias e há margem no dia (sem foco exclusivo), reserva 1 bloco para SRS/outras cadeiras.
+        const reserveForOther =
+          !exclusiveTestFocus && minUrgentDays > 2 && budget >= targetBlock * 2 && hasOtherPriority;
         return count < (reserveForOther ? MAX_BLOCKS_PER_DAY - 1 : MAX_BLOCKS_PER_DAY);
       }
       if (multiTestMode && urgentCourseIdsToday.has(courseId) && urgentCourseIdsToday.size >= 3) {
@@ -491,11 +511,14 @@ export function generatePlan(input: PlanInput): StudySession[] {
     }
 
     // Revisão espaçada contínua (SRS 1→3→7→21d): reserva 1 slot diário (ou 2 em srs_focus) quando há matéria vencida.
-    if (!hasImminentTomorrow && !strictSingleTestMode && dueTopics.length > 0 && canTake()) {
+    // Mesmo em véspera/Modo Teste crítico, não adia revisões vencidas da própria cadeira da prova para depois do exame.
+    if (dueTopics.length > 0 && canTake()) {
       const srsQuota = active.length === 0 ? dueTopics.length : strategy === 'srs_focus' ? 2 : 1;
       let addedSrs = 0;
       for (const s of dueTopics) {
         if (addedSrs >= srsQuota || !canTake()) break;
+        const isUrgentSrs = urgentCourseIdsToday.has(s.courseId);
+        if ((hasImminentTomorrow || strictSingleTestMode) && !isUrgentSrs) continue;
         if (!courseOk(s.courseId)) continue;
         add({
           courseId: s.courseId,
@@ -594,11 +617,60 @@ export function generatePlan(input: PlanInput): StudySession[] {
       effort.set(best.topic.id, Math.max(0, eff - minutes));
     }
 
-    if (active.length === 0 && activeCourses.length > 0 && canTake()) {
+    // Manutenção leve de outras cadeiras em Modo Teste (> 2 dias) quando há tempo livre no dia.
+    if (
+      singleTestMode &&
+      !strictSingleTestMode &&
+      !exclusiveTestFocus &&
+      otherMaintenanceCourses.length > 0 &&
+      canTake()
+    ) {
+      let pickedMaint: { course: Course; topic?: Topic; score: number } | null = null;
+      for (const c of otherMaintenanceCourses) {
+        if (!courseOk(c.id)) continue;
+        const pool = c.topics.filter((t) => !(t.status === 'done' && t.confidence >= 4));
+        const list = pool.length > 0 ? pool : c.topics;
+        const sortedTopics = [...list].sort((a, b) => {
+          const pickDiff = (starterTopicPicks.get(a.id) ?? 0) - (starterTopicPicks.get(b.id) ?? 0);
+          if (pickDiff !== 0) return pickDiff;
+          return a.confidence - b.confidence;
+        });
+        const topic = sortedTopics[0];
+        const loadPenalty = 1 + (starterMinutesByCourse.get(c.id) ?? 0) / 60;
+        const diffBoost = difficultSet.has(c.id) || postClassHardCourseSet.has(c.id) ? 1.3 : 1.0;
+        const score = diffBoost / loadPenalty;
+        if (!pickedMaint || score > pickedMaint.score) {
+          pickedMaint = { course: c, topic, score };
+        }
+      }
+      if (pickedMaint) {
+        const maintMin = Math.min(Math.min(targetBlock, 35), remaining);
+        if (maintMin >= MIN_BLOCK) {
+          add({
+            courseId: pickedMaint.course.id,
+            ...(pickedMaint.topic ? { topicId: pickedMaint.topic.id } : {}),
+            minutes: maintMin,
+            notes: 'Manutenção · ritmo contínuo',
+          });
+          starterMinutesByCourse.set(
+            pickedMaint.course.id,
+            (starterMinutesByCourse.get(pickedMaint.course.id) ?? 0) + maintMin,
+          );
+          if (pickedMaint.topic) {
+            starterTopicPicks.set(
+              pickedMaint.topic.id,
+              (starterTopicPicks.get(pickedMaint.topic.id) ?? 0) + 1,
+            );
+          }
+        }
+      }
+    }
+
+    if (active.length === 0 && eligibleCoursesToday.length > 0 && canTake()) {
       // Modo Arranque de Semestre: distribui preparação contínua equilibrada quando ainda não existem provas marcadas.
       while (canTake()) {
         let picked: { course: Course; topic?: Topic; score: number } | null = null;
-        for (const c of activeCourses) {
+        for (const c of eligibleCoursesToday) {
           if (!courseOk(c.id)) continue;
           const candidateTopics = c.topics.filter(
             (t) => !(t.status === 'done' && t.confidence >= 4),
@@ -676,7 +748,7 @@ export function generatePlan(input: PlanInput): StudySession[] {
         ...(b.notes ? { notes: b.notes } : {}),
         generated: true,
       });
-      cursor += b.minutes + BREAK;
+      cursor = roundUp5(cursor + b.minutes + BREAK);
     }
   }
 
@@ -807,7 +879,7 @@ export function rescheduleOverdueSessions(args: {
       dayBusy.push({ start: cursor, end: cursor + duration });
       dayBusy.sort((a, b) => a.start - b.start);
       remaining -= duration;
-      cursor += duration + BREAK;
+      cursor = roundUp5(cursor + duration + BREAK);
       qIdx++;
     }
   }

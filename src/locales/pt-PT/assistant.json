@@ -1,0 +1,11 @@
+{
+  "srHeading": "Conversa com o Uni",
+  "allCourses": "Todas as cadeiras",
+  "placeholder": "Pergunta ao Uni…",
+  "needConsentPlaceholder": "Ativa o Uni acima para começares a conversar…",
+  "wrongAnswerBtn": "Isto está errado",
+  "fixNotebookBtn": "Corrigir caderno",
+  "notebookBtn": "Caderno",
+  "whatKnowsBtn": "O que {{name}} sabe",
+  "specialistIntro": "Estágio {{stage}} · Mestria {{mastery}}/100. Pergunta sobre fichas ou tira dúvidas desta cadeira."
+}

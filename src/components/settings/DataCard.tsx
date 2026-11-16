@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { applyBackupJson, buildBackupPayload } from '../../lib/backup';
 import { loadDemoData } from '../../lib/demoSeed';
+import { clearLocalDb, listUniAgents } from '../../lib/localDb';
+import { notifyUniAgentsChanged } from '../../lib/uniAgents';
 import { useStore } from '../../store/useStore';
 import { Button, Card, Modal } from '../ui';
 import { errorMessage } from './helpers';
@@ -14,10 +16,11 @@ export default function DataCard() {
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const [confirmDemoOpen, setConfirmDemoOpen] = useState(false);
 
-  const exportBackup = () => {
+  const exportBackup = async () => {
     setError(null);
     try {
-      const payload = buildBackupPayload(useStore.getState());
+      const agents = await listUniAgents();
+      const payload = buildBackupPayload(useStore.getState(), agents);
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -46,6 +49,7 @@ export default function DataCard() {
 
   const confirmClear = () => {
     useStore.getState().clearAll();
+    void clearLocalDb().then(() => notifyUniAgentsChanged());
     setMessage('Dados apagados deste dispositivo. As tuas definições mantêm-se.');
     setError(null);
     setConfirmClearOpen(false);

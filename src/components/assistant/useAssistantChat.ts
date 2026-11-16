@@ -5,11 +5,15 @@ import {
   extractScheduleFromText,
   parseTimetableFromScreenshot,
   streamGeminiChat,
+  summarizeNotebookMemoryDelta,
   SYSTEM_PROMPT,
   type ChatAttachment,
   type ChatMessage,
 } from '../../integrations/gemini';
 import { getDailyQuotaSnapshot } from '../../lib/aiQuota';
+import { listTopicSheetsByCourse, type UniAgentRecord } from '../../lib/localDb';
+import { saveUniAgent } from '../../lib/uniAgents';
+import { retrieveRelevantSheets, sanitizeNotebookDelta } from '../../lib/uniMastery';
 import { auth, onAuthStateChanged, type User } from '../../lib/firebase';
 import {
   appendMessage,
@@ -72,6 +76,7 @@ interface UseAssistantChatArgs {
   hasCustomKey: boolean;
   uniAccessory: UniAccessoryId;
   uniPersona: UniPersonaMode;
+  uniAgent?: UniAgentRecord | null;
   userName: string;
   setIntegration: (key: IntegrationKey, patch: Partial<IntegrationStatus>) => void;
 }
@@ -86,6 +91,7 @@ export function useAssistantChat({
   hasCustomKey,
   uniAccessory,
   uniPersona,
+  uniAgent,
   userName,
   setIntegration,
 }: UseAssistantChatArgs) {
@@ -325,6 +331,9 @@ export function useAssistantChat({
 
         const studyContext = buildStudyContext(useStore.getState());
         const activeCourseName = activeCourse?.shortName || activeCourse?.name;
+        const lastUserText = [...list].reverse().find((m) => m.role === 'user')?.text ?? '';
+        const courseSheets = activeCourse ? await listTopicSheetsByCourse(activeCourse.id) : [];
+        const retrievedSheets = retrieveRelevantSheets(lastUserText, courseSheets, undefined, 4);
         const docContext = buildDocumentContext(attachedMaterials, {
           activeCourseName,
           courseMaterials: availableMaterials,
@@ -336,6 +345,10 @@ export function useAssistantChat({
           accessory: uniAccessory,
           studentName: userName,
           appTone: useStore.getState().settings.appTone,
+          language: useStore.getState().settings.language ?? 'pt-PT',
+          uniAgent,
+          retrievedSheets,
+          courseName: activeCourseName,
         });
 
         const reply = await streamGeminiChat({
@@ -349,7 +362,6 @@ export function useAssistantChat({
         const extractedFromReply = extractUniSyncBlock(reply);
         let syncPayload = extractedFromReply.payload;
 
-        const lastUserText = [...list].reverse().find((m) => m.role === 'user')?.text ?? '';
         const imageAtt = attachments?.find((a) => a.mimeType.startsWith('image/'));
         const displayText =
           extractedFromReply.displayText ||
@@ -394,6 +406,7 @@ export function useAssistantChat({
           text: displayText,
           at: now,
           sourceDocTitles: [
+            ...retrievedSheets.map((s) => `Ficha: ${s.title}`),
             ...resolvedMaterials.readTitles,
             ...attachedMaterials
               .filter(
@@ -417,6 +430,25 @@ export function useAssistantChat({
         setStreamingText(null);
         await appendMessage(targetConvId, modelMsg);
         setIntegration('gemini', { connected: true, lastSync: now, error: undefined });
+
+        if (uniAgent?.memoryEnabled && activeCourse && !syncPayload && lastUserText.trim().length >= 25) {
+          void summarizeNotebookMemoryDelta({
+            courseName: activeCourse.shortName || activeCourse.name,
+            userMessage: lastUserText,
+            assistantReply: displayText,
+            agent: uniAgent,
+          })
+            .then(async (delta) => {
+              if (!delta.weakSpot && !delta.strength) return;
+              const nextNotebook = sanitizeNotebookDelta(uniAgent.notebook, delta);
+              await saveUniAgent({
+                ...uniAgent,
+                notebook: nextNotebook,
+                updatedAt: nextNotebook.updatedAt,
+              });
+            })
+            .catch(() => {});
+        }
       } catch (err) {
         if (controller.signal.aborted) return;
         const message = err instanceof Error ? err.message : 'O Uni teve um percalço ao responder.';
@@ -439,6 +471,7 @@ export function useAssistantChat({
       maxAiFiles,
       setIntegration,
       uniAccessory,
+      uniAgent,
       uniPersona,
       updatePendingSyncForMsg,
       userName,

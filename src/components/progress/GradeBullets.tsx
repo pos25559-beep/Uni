@@ -1,21 +1,27 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { courseColors } from '../../lib/colors';
-import { fmtGrade, semesterAverage } from '../../lib/selectors';
+import { formatGradeByScale, GRADE_SCALES, gradeToPercent } from '../../lib/grading';
+import { semesterAverage } from '../../lib/selectors';
+import { useStore } from '../../store/useStore';
 import type { Assessment, Course } from '../../types';
 import { ChartCard } from './ChartCard';
 import { gradeRows } from './data';
-
-const PASSING_GRADE = 9.5;
-const scale = (grade: number) => `${Math.min(100, Math.max(0, (grade / 20) * 100))}%`;
 
 interface Props {
   courses: Course[];
   assessments: Assessment[];
 }
 
-/** "Como estão as notas face ao objetivo?" — lista de barras (bullet) por cadeira, escala 0–20. */
+/** "Como estão as notas face ao objetivo?" — lista de barras (bullet) por cadeira normalizada na escala ativa. */
 export function GradeBullets({ courses, assessments }: Props) {
+  const gradingScale = useStore((s) => s.settings.gradingScale) ?? 'pt20';
+  const appLang = useStore((s) => s.settings.language) ?? 'pt-PT';
+  const scaleMeta = GRADE_SCALES[gradingScale] ?? GRADE_SCALES.pt20;
+  const passingGrade = scaleMeta.passing;
+  const scale = (grade: number) => `${gradeToPercent(grade, gradingScale)}%`;
+  const fmt = (g: number | null | undefined) => formatGradeByScale(g, gradingScale, appLang);
+
   const rows = useMemo(() => gradeRows(courses, assessments), [courses, assessments]);
   const average = useMemo(() => semesterAverage(courses, assessments), [courses, assessments]);
   const graded = rows.filter((r) => r.current !== null).length;
@@ -33,7 +39,7 @@ export function GradeBullets({ courses, assessments }: Props) {
           'Ainda sem notas lançadas.'
         ) : (
           <>
-            Média ponderada <span className="tabular">{fmtGrade(average)}</span> — <span className="tabular">{below}</span> de{' '}
+            Média ponderada <span className="tabular">{fmt(average)}</span> — <span className="tabular">{below}</span> de{' '}
             <span className="tabular">{graded}</span> {below === 1 ? 'cadeira abaixo' : 'cadeiras abaixo'} do objetivo
           </>
         )
@@ -48,7 +54,7 @@ export function GradeBullets({ courses, assessments }: Props) {
                 <span className="shrink-0 text-muted">sem notas</span>
               ) : (
                 <span className="shrink-0 tabular text-fg">
-                  {fmtGrade(current)} <span className="text-muted">/ objetivo {fmtGrade(course.targetGrade)}</span>
+                  {fmt(current)} <span className="text-muted">/ objetivo {fmt(course.targetGrade)}</span>
                 </span>
               )}
             </div>
@@ -62,18 +68,20 @@ export function GradeBullets({ courses, assessments }: Props) {
               <div
                 className="absolute -inset-y-1 w-0.5 bg-fg"
                 style={{ left: scale(course.targetGrade) }}
-                title={`Objetivo ${fmtGrade(course.targetGrade)}`}
+                title={`Objetivo ${fmt(course.targetGrade)}`}
               />
               <div
                 className="absolute -inset-y-1 border-l border-dotted border-muted"
-                style={{ left: scale(PASSING_GRADE) }}
-                title={`Nota mínima ${fmtGrade(PASSING_GRADE)}`}
+                style={{ left: scale(passingGrade) }}
+                title={`Nota mínima ${fmt(passingGrade)}`}
               />
             </div>
           </li>
         ))}
       </ul>
-      <p className="mt-5 text-xs text-muted">Traço escuro: objetivo. Pontilhado: nota mínima de aprovação ({fmtGrade(PASSING_GRADE)}).</p>
+      <p className="mt-5 text-xs text-muted">
+        Traço escuro: objetivo. Pontilhado: nota mínima de aprovação ({fmt(passingGrade)}).
+      </p>
     </ChartCard>
   );
 }

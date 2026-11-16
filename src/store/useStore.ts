@@ -133,6 +133,7 @@ function maybeReconcileSessions(
     strategy: prefs?.strategy,
     boostCourseIds: prefs?.boostCourseIds,
     pausedCourseIds: prefs?.pausedCourseIds,
+    exclusiveTestFocus: prefs?.exclusiveTestFocus,
     existing: preserved,
     difficultCourseIds: s.academicProfile.difficultCourseIds,
     weeklyCheckIns: s.weeklyCheckIns,

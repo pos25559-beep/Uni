@@ -1,8 +1,11 @@
 import { CalendarClock } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { courseColors, kindLabel } from '../../lib/colors';
+import { GRADE_SCALES } from '../../lib/grading';
 import { fmtGrade, topicProgress, type GradeSummary } from '../../lib/selectors';
-import type { Assessment, Course } from '../../types';
+import { useStore } from '../../store/useStore';
+import type { AppLanguage, Assessment, Course, GradingScale } from '../../types';
 import { Badge, Ring } from '../ui';
 import { cx } from '../../lib/uiHelpers';
 import { dueLabel } from './helpers';
@@ -14,16 +17,37 @@ interface Props {
 }
 
 /** Estado do objetivo: no caminho certo, precisa de X, ou fora de alcance. */
-function trackBadge(course: Course, summary: GradeSummary) {
+function trackBadge(
+  course: Course,
+  summary: GradeSummary,
+  scale: GradingScale,
+  lang: AppLanguage,
+) {
   const { current, needed } = summary;
-  if (current !== null && current >= course.targetGrade) return <Badge tone="ok">No objetivo</Badge>;
-  if (needed === null) return <Badge tone="danger">Objetivo não atingido</Badge>;
-  if (needed <= 0) return <Badge tone="ok">No objetivo</Badge>;
-  if (needed > 20) return <Badge tone="danger">Objetivo fora de alcance</Badge>;
-  return <Badge tone="warn">Precisa de {fmtGrade(needed)} no que falta</Badge>;
+  const maxGrade = GRADE_SCALES[scale]?.max ?? 20;
+  if (current !== null && current >= course.targetGrade) {
+    return <Badge tone="ok">{lang === 'en' ? 'On target' : 'No objetivo'}</Badge>;
+  }
+  if (needed === null) {
+    return <Badge tone="danger">{lang === 'en' ? 'Target missed' : 'Objetivo não atingido'}</Badge>;
+  }
+  if (needed <= 0) return <Badge tone="ok">{lang === 'en' ? 'On target' : 'No objetivo'}</Badge>;
+  if (needed > maxGrade) {
+    return <Badge tone="danger">{lang === 'en' ? 'Target out of reach' : 'Objetivo fora de alcance'}</Badge>;
+  }
+  return (
+    <Badge tone="warn">
+      {lang === 'en'
+        ? `Needs ${fmtGrade(needed, scale, lang)} remaining`
+        : `Precisa de ${fmtGrade(needed, scale, lang)} no que falta`}
+    </Badge>
+  );
 }
 
 export default function CourseCard({ course, summary, next }: Props) {
+  const { t, i18n } = useTranslation('courses');
+  const appLang: AppLanguage = i18n.language?.startsWith('en') ? 'en' : 'pt-PT';
+  const gradingScale = useStore((s) => s.settings.gradingScale) ?? 'pt20';
   const progress = topicProgress(course);
   const colors = courseColors[course.color];
 
@@ -44,7 +68,7 @@ export default function CourseCard({ course, summary, next }: Props) {
           <div className="min-w-0">
             <h2 className="truncate font-display text-base font-bold tracking-tight group-hover:text-accent">{course.name}</h2>
             <p className="mt-0.5 truncate text-xs text-muted">
-              {course.teacher || 'Sem docente atribuído'}
+              {course.teacher || (appLang === 'en' ? 'No instructor set' : 'Sem docente atribuído')}
             </p>
           </div>
           <Ring value={progress} size={56} stroke={5} color={colors.hex}>
@@ -54,16 +78,20 @@ export default function CourseCard({ course, summary, next }: Props) {
 
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-xl bg-surface-2 p-3">
-            <p className="text-xs text-muted">Nota atual</p>
-            <p className="mt-1 text-lg font-semibold tabular">{fmtGrade(summary.current)}</p>
+            <p className="text-xs text-muted">{t('currentGrade')}</p>
+            <p className="mt-1 text-lg font-semibold tabular">
+              {fmtGrade(summary.current, gradingScale, appLang)}
+            </p>
           </div>
           <div className="rounded-xl bg-surface-2 p-3">
-            <p className="text-xs text-muted">Objetivo</p>
-            <p className="mt-1 text-lg font-semibold tabular">{fmtGrade(course.targetGrade)}</p>
+            <p className="text-xs text-muted">{t('targetLabel')}</p>
+            <p className="mt-1 text-lg font-semibold tabular">
+              {fmtGrade(course.targetGrade, gradingScale, appLang)}
+            </p>
           </div>
         </div>
 
-        <div>{trackBadge(course, summary)}</div>
+        <div>{trackBadge(course, summary, gradingScale, appLang)}</div>
 
         <div className="mt-auto flex items-center gap-2 border-t border-line pt-3 text-xs text-muted">
           <CalendarClock size={14} className="shrink-0" />

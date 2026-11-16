@@ -13,10 +13,11 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import AssessmentsTab from '../components/courses/AssessmentsTab';
 import CourseFormModal from '../components/courses/CourseFormModal';
-import { DeleteButton } from '../components/courses/ConfirmModal';
+import CourseUniCard from '../components/courses/CourseUniCard';
 import ScheduleTab from '../components/courses/ScheduleTab';
 import TasksTab from '../components/courses/TasksTab';
 import TopicsTab from '../components/courses/TopicsTab';
@@ -52,11 +53,14 @@ const tabs: { key: TabKey; label: string }[] = [
 ];
 
 export default function CourseDetail() {
+  const { t, i18n } = useTranslation('courses');
+  const appLang = i18n.language?.startsWith('en') ? ('en' as const) : ('pt-PT' as const);
   const { id = '' } = useParams();
   const navigate = useNavigate();
   const course = useStore((s) => s.courses.find((c) => c.id === id));
   const assessments = useStore((s) => s.assessments);
   const sessions = useStore((s) => s.sessions);
+  const gradingScale = useStore((s) => s.settings.gradingScale) ?? 'pt20';
   const remove = useStore((s) => s.remove);
 
   const [editing, setEditing] = useState(false);
@@ -85,11 +89,11 @@ export default function CourseDetail() {
     return (
       <EmptyState
         icon={<GraduationCap size={28} />}
-        title="Esta cadeira não existe"
+        title={t('courseNotFound')}
         hint="Pode ter sido apagada ou o link está incorreto."
         action={
           <Link to="/cadeiras" className="text-sm font-medium text-accent hover:underline">
-            Voltar às cadeiras
+            {t('backToCourses')}
           </Link>
         }
       />
@@ -124,24 +128,16 @@ export default function CourseDetail() {
             <Button
               size="sm"
               variant="secondary"
-              onClick={() => navigate('/assistente')}
+              onClick={() => navigate(`/assistente?course=${encodeURIComponent(course.id)}`)}
               className="gap-1.5"
             >
               <Sparkles size={14} className="text-accent" />
               <span className="hidden sm:inline">Tutor Gemini</span>
               <span className="sm:hidden">Tutor</span>
             </Button>
-            <Button size="sm" onClick={() => setEditing(true)}>
-              <Pencil size={14} /> <span className="hidden sm:inline">Editar</span>
+            <Button size="sm" onClick={() => setEditing(true)} aria-label="Editar cadeira">
+              <Pencil size={14} aria-hidden="true" /> <span className="hidden sm:inline">Editar</span>
             </Button>
-            <DeleteButton
-              label="Apagar"
-              message={`Apagar "${course.name}"? Também são apagadas as avaliações, aulas, sessões, tarefas e materiais desta cadeira. Esta ação não pode ser desfeita.`}
-              onConfirm={() => {
-                remove('courses', course.id);
-                navigate('/cadeiras');
-              }}
-            />
           </div>
         }
       />
@@ -173,13 +169,13 @@ export default function CourseDetail() {
       {/* Estatísticas e Painel Superior */}
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat
-          label="Nota atual"
-          value={fmtGrade(summary.current)}
-          hint={`${Math.round(summary.gradedWeight)}% do peso avaliado`}
+          label={t('currentGrade')}
+          value={fmtGrade(summary.current, gradingScale, appLang)}
+          hint={`${Math.round(summary.gradedWeight)}% ${appLang === 'en' ? 'weight graded' : 'do peso avaliado'}`}
           icon={<TrendingUp size={14} />}
         />
         <Stat
-          label="Próxima Avaliação"
+          label={t('nextAssessment')}
           value={
             nextAssessment ? (
               <span className="text-accent">{nextAssessment.title}</span>
@@ -237,6 +233,7 @@ export default function CourseDetail() {
       <div role="tabpanel">
         {tab === 'visao' && (
           <div className="space-y-6">
+            <CourseUniCard course={course} />
             <CourseRulesTab
               course={course}
               onOpenClipModal={() => setClipModalOpen(true)}
@@ -292,7 +289,16 @@ export default function CourseDetail() {
         {tab === 'tarefas' && <TasksTab course={course} />}
       </div>
 
-      {editing && <CourseFormModal course={course} onClose={() => setEditing(false)} />}
+      {editing && (
+        <CourseFormModal
+          course={course}
+          onClose={() => setEditing(false)}
+          onDelete={() => {
+            remove('courses', course.id);
+            navigate('/cadeiras');
+          }}
+        />
+      )}
       {clipModalOpen && <ClipCourseModal course={course} onClose={() => setClipModalOpen(false)} />}
       {uploadOpen && <FileUploadModal initialCourseId={course.id} onClose={() => setUploadOpen(false)} />}
     </AnimatedPage>

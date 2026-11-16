@@ -19,6 +19,12 @@ import {
   type User,
 } from './firebase';
 import { useStore } from '../store/useStore';
+import { clearLocalDb, listUniAgents, type UniAgentRecord } from './localDb';
+import {
+  applyRemoteUniAgents,
+  notifyUniAgentsChanged,
+  registerUniAgentCloudHandlers,
+} from './uniAgents';
 import type {
   AcademicProfile,
   Collections,
@@ -61,6 +67,8 @@ const SETTINGS_KEYS: Array<keyof Settings> = [
   'aiConsent',
   'cloudSyncConsent',
   'tourCompleted',
+  'language',
+  'gradingScale',
 ];
 
 const OPTIONAL_EMAIL_OR_URL_KEYS = new Set<string>([
@@ -195,11 +203,85 @@ function sanitizeStudyLog(log: StudyLogEntry): Record<string, unknown> {
   });
 }
 
+function sanitizeUniAgent(agent: UniAgentRecord): Record<string, unknown> {
+  return stripUndefined({
+    courseId: String(agent.courseId).slice(0, 100),
+    name: String(agent.name || 'Uni').trim().slice(0, 60) || 'Uni',
+    formId: agent.formId,
+    personaId: agent.personaId,
+    language: String(agent.language || 'pt-PT').slice(0, 15),
+    memoryEnabled: Boolean(agent.memoryEnabled),
+    stage: Math.max(0, Math.min(4, Math.round(Number(agent.stage) || 0))),
+    mastery: Math.max(0, Math.min(100, Math.round(Number(agent.mastery) || 0))),
+    milestones: (agent.milestones ?? []).slice(0, 30),
+    items: (agent.items ?? []).slice(0, 30).map((it) => String(it).slice(0, 80)),
+    notebook: {
+      goals: (agent.notebook?.goals ?? []).slice(0, 20).map((g) => String(g).slice(0, 140)),
+      ...(agent.notebook?.learningStyle ? { learningStyle: agent.notebook.learningStyle } : {}),
+      weakSpots: (agent.notebook?.weakSpots ?? []).slice(0, 30),
+      strengths: (agent.notebook?.strengths ?? []).slice(0, 30).map((s) => String(s).slice(0, 140)),
+      ...(Array.isArray(agent.notebook?.customNotes)
+        ? {
+            customNotes: agent.notebook.customNotes
+              .slice(0, 30)
+              .map((n) => String(n).slice(0, 220)),
+          }
+        : {}),
+      ...(agent.notebook?.nextAssessment
+        ? { nextAssessment: agent.notebook.nextAssessment }
+        : {}),
+      updatedAt: String(agent.notebook?.updatedAt || agent.updatedAt || new Date().toISOString()).slice(
+        0,
+        45,
+      ),
+    },
+    ...(agent.expedition
+      ? {
+          expedition: {
+            preparedAt: String(agent.expedition.preparedAt || new Date().toISOString()).slice(0, 45),
+            forDate: String(agent.expedition.forDate || '').slice(0, 15),
+            questions: (agent.expedition.questions ?? []).slice(0, 5).map((q) => ({
+              id: String(q.id || 'q').slice(0, 80),
+              ...(q.topicId ? { topicId: String(q.topicId).slice(0, 80) } : {}),
+              topicTitle: String(q.topicTitle || '').slice(0, 120),
+              q: String(q.q || '').slice(0, 500),
+              hint: String(q.hint || '').slice(0, 260),
+              sourceRef: String(q.sourceRef || '').slice(0, 120),
+              ...(q.answeredScore === 1 || q.answeredScore === 2 || q.answeredScore === 3
+                ? { answeredScore: q.answeredScore }
+                : {}),
+            })),
+          },
+        }
+      : {}),
+    ...(agent.diploma
+      ? {
+          diploma: {
+            issuedAt: String(agent.diploma.issuedAt || new Date().toISOString()).slice(0, 45),
+            ...(typeof agent.diploma.finalGrade === 'number' && Number.isFinite(agent.diploma.finalGrade)
+              ? { finalGrade: Math.max(0, Math.min(100, agent.diploma.finalGrade)) }
+              : {}),
+            masteredTopicCount: Math.max(0, Math.min(500, Math.round(agent.diploma.masteredTopicCount || 0))),
+            totalTopicCount: Math.max(0, Math.min(500, Math.round(agent.diploma.totalTopicCount || 0))),
+            stageAtGraduation: Math.max(0, Math.min(4, Math.round(Number(agent.diploma.stageAtGraduation) || 0))),
+          },
+        }
+      : {}),
+    createdAt: String(agent.createdAt || new Date().toISOString()).slice(0, 45),
+    updatedAt: String(agent.updatedAt || new Date().toISOString()).slice(0, 45),
+  });
+}
+
 /**
  * Inicia a escuta em tempo real de todas as coleções do utilizador autenticado no Firestore.
  * Suporta múltiplos utilizadores com isolamento por `uid` (`/users/{uid}`).
  */
 export function initFirestoreSync() {
+  registerUniAgentCloudHandlers({
+    sync: syncUniAgent,
+    remove: deleteUniAgentFromCloud,
+  });
+
   onAuthStateChanged(auth, async (user: User | null) => {
     activeUnsubscribers.forEach((u) => u());
     activeUnsubscribers = [];
@@ -370,6 +452,36 @@ export function initFirestoreSync() {
       });
       activeUnsubscribers.push(unsub);
     }
+
+    // 5. Escuta dos Unis especialistas (`/users/{uid}/uniAgents`) quando cloudSyncConsent está ativo
+    const uniAgentsRef = collection(db, 'users', uid, 'uniAgents');
+    let firstUniAgentsSyncDone = false;
+    const unsubUniAgents = onSnapshot(uniAgentsRef, (snapshot) => {
+      if (!useStore.getState().settings.cloudSyncConsent) return;
+      const items = snapshot.docs.map((d) => ({
+        ...(d.data() as UniAgentRecord),
+        courseId: d.id,
+      }));
+
+      if (!firstUniAgentsSyncDone && !snapshot.metadata.fromCache && snapshot.empty) {
+        firstUniAgentsSyncDone = true;
+        void listUniAgents().then((localAgents) => {
+          for (const ag of localAgents) {
+            void syncUniAgent(ag).catch(() => {});
+          }
+        });
+        return;
+      }
+      if (!snapshot.metadata.fromCache) {
+        firstUniAgentsSyncDone = true;
+      }
+
+      isApplyingRemote = true;
+      void applyRemoteUniAgents(items).finally(() => {
+        isApplyingRemote = false;
+      });
+    });
+    activeUnsubscribers.push(unsubUniAgents);
   });
 }
 
@@ -523,6 +635,21 @@ export async function deleteStudyLogFromCloud(logId: ID) {
   await deleteDoc(doc(db, 'users', user.uid, 'studyLogs', logId));
 }
 
+/** Sincroniza um Uni especialista de cadeira em `/users/{uid}/uniAgents/{courseId}` se `cloudSyncConsent` estiver ativo. */
+export async function syncUniAgent(agent: UniAgentRecord) {
+  const user = auth.currentUser;
+  if (!user || isApplyingRemote || !useStore.getState().settings.cloudSyncConsent) return;
+  const ref = doc(db, 'users', user.uid, 'uniAgents', agent.courseId);
+  await setDoc(ref, sanitizeUniAgent(agent), { merge: true });
+}
+
+/** Remove um Uni especialista de cadeira no Firestore. */
+export async function deleteUniAgentFromCloud(courseId: ID) {
+  const user = auth.currentUser;
+  if (!user || isApplyingRemote || !useStore.getState().settings.cloudSyncConsent) return;
+  await deleteDoc(doc(db, 'users', user.uid, 'uniAgents', courseId));
+}
+
 /** Substitui/sincroniza em lote um conjunto de cadeiras geradas pelo onboarding curricular. */
 export async function syncCourseBatch(courses: Course[]) {
   const user = auth.currentUser;
@@ -570,6 +697,7 @@ export async function deleteCurrentAccountAndCloudData(): Promise<void> {
       'weeklyCheckIns',
       'studyLogs',
       'profile',
+      'uniAgents',
     ] as const;
 
     for (const sub of subcollections) {
@@ -586,6 +714,8 @@ export async function deleteCurrentAccountAndCloudData(): Promise<void> {
   }
 
   useStore.getState().clearAll();
+  await clearLocalDb().catch(() => {});
+  notifyUniAgentsChanged();
   localStorage.removeItem('uni-erp-v5');
   localStorage.removeItem('unipedia-onboarding-v1');
   localStorage.removeItem('uni-checkin-drafts-v1');
@@ -688,6 +818,12 @@ export async function migrateLocalDataToCloud(): Promise<void> {
       const ref = doc(db, 'users', user.uid, colKey, item.id);
       batch.set(ref, stripUndefined(item), { merge: true });
     }
+  }
+
+  const localUniAgents = await listUniAgents().catch(() => []);
+  for (const agent of localUniAgents) {
+    const ref = doc(db, 'users', user.uid, 'uniAgents', agent.courseId);
+    batch.set(ref, sanitizeUniAgent(agent), { merge: true });
   }
 
   await batch.commit();

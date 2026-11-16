@@ -18,6 +18,8 @@ service cloud.firestore {
     //   - photoURL: string (optional, valid URL, max 500 chars)
     //   - userName: string (optional, max 100 chars)
     //   - theme: string (optional, 'light' | 'dark')
+    //   - language: string (optional, 'pt-PT' | 'en')
+    //   - gradingScale: string (optional, 'pt20' | 'scale10' | 'pct100')
     //   - semesterName: string (optional, max 100 chars)
     //   - semesterStart: string/timestamp (optional, date format, max 35 chars)
     //   - semesterEnd: string/timestamp (optional, date format, max 35 chars)
@@ -251,6 +253,26 @@ service cloud.firestore {
     //   - userId: string (optional, immutable, must match {userId})
     //   - createdAt: timestamp/string (optional, immutable)
     //
+    // Collection: users/{userId}/uniAgents/{courseId}
+    // Document ID: courseId (string, 1 - 100 chars)
+    // Fields:
+    //   - courseId: string (required, immutable, 1 - 100 chars, must match {courseId})
+    //   - name: string (required, 1 - 60 chars)
+    //   - formId: string (required, 'nuvem'|'gota'|'estrela'|'cristal'|'folha')
+    //   - personaId: string (required, 'amigo'|'exigente'|'calmo'|'curioso'|'treinador')
+    //   - language: string (required, 2 - 15 chars)
+    //   - memoryEnabled: bool (required)
+    //   - stage: number (required, 0 - 4)
+    //   - mastery: number (required, 0 - 100)
+    //   - milestones: list (required, max 30 items)
+    //   - items: list (required, max 30 items)
+    //   - notebook: map (required, allowed keys: goals, learningStyle, weakSpots, strengths, customNotes, nextAssessment, updatedAt)
+    //   - expedition: map (optional, allowed keys: preparedAt, forDate, questions)
+    //   - diploma: map (optional, allowed keys: issuedAt, finalGrade, masteredTopicCount, totalTopicCount, stageAtGraduation)
+    //   - createdAt: timestamp/string (optional, immutable, max 45 chars if string)
+    //   - updatedAt: timestamp/string (optional, max 45 chars if string)
+    //   - userId: string (optional, immutable, must match {userId})
+    //
     // Collection: curricula/{curriculumId}
     // Document ID: curriculumId (string)
     // Fields:
@@ -432,7 +454,8 @@ service cloud.firestore {
     function isValidSettingsMap(settings) {
       return settings is map &&
         settings.keys().hasOnly([
-          'userName', 'theme', 'semesterName', 'semesterStart', 'semesterEnd',
+          'userName', 'theme', 'language', 'gradingScale',
+          'semesterName', 'semesterStart', 'semesterEnd',
           'dailyStudyMinutes', 'studyDays', 'geminiApiKey', 'geminiModel',
           'googleClientId', 'msClientId', 'academicEmail', 'personalEmail',
           'personalNotebookUrl', 'gdprAcceptedAt', 'gdprPolicyVersion',
@@ -440,6 +463,8 @@ service cloud.firestore {
         ]) &&
         isValidOptionalString(settings, 'userName', 0, 100) &&
         (!('theme' in settings) || settings.theme in ['light', 'dark']) &&
+        (!('language' in settings) || (settings.language is string && settings.language in ['pt-PT', 'en'])) &&
+        (!('gradingScale' in settings) || (settings.gradingScale is string && settings.gradingScale in ['pt20', 'scale10', 'pct100'])) &&
         isValidOptionalString(settings, 'semesterName', 0, 100) &&
         isValidOptionalDateOrTimestamp(settings, 'semesterStart') &&
         isValidOptionalDateOrTimestamp(settings, 'semesterEnd') &&
@@ -464,7 +489,7 @@ service cloud.firestore {
     function isValidUser(data, userId) {
       return data.keys().hasOnly([
           'uid', 'id', 'email', 'displayName', 'photoURL', 'userName',
-          'theme', 'semesterName', 'semesterStart', 'semesterEnd',
+          'theme', 'language', 'gradingScale', 'semesterName', 'semesterStart', 'semesterEnd',
           'dailyStudyMinutes', 'studyDays', 'geminiApiKey', 'geminiModel',
           'googleClientId', 'msClientId', 'academicEmail', 'personalEmail',
           'personalNotebookUrl', 'gdprAcceptedAt', 'gdprPolicyVersion',
@@ -478,6 +503,8 @@ service cloud.firestore {
         isValidOptionalUrl(data, 'photoURL') &&
         isValidOptionalString(data, 'userName', 0, 100) &&
         (!('theme' in data) || data.theme in ['light', 'dark']) &&
+        (!('language' in data) || (data.language is string && data.language in ['pt-PT', 'en'])) &&
+        (!('gradingScale' in data) || (data.gradingScale is string && data.gradingScale in ['pt20', 'scale10', 'pct100'])) &&
         isValidOptionalString(data, 'semesterName', 0, 100) &&
         isValidOptionalDateOrTimestamp(data, 'semesterStart') &&
         isValidOptionalDateOrTimestamp(data, 'semesterEnd') &&
@@ -807,6 +834,74 @@ service cloud.firestore {
         isValidOptionalDateOrTimestamp(data, 'updatedAt');
     }
 
+    // Validates Uni agent notebook map
+    function isValidUniAgentNotebook(nb) {
+      return nb is map &&
+        nb.keys().hasOnly([
+          'goals', 'learningStyle', 'weakSpots', 'strengths',
+          'customNotes', 'nextAssessment', 'updatedAt'
+        ]) &&
+        nb.keys().hasAll(['goals', 'strengths', 'weakSpots', 'updatedAt']) &&
+        nb.goals is list && nb.goals.size() <= 20 &&
+        nb.strengths is list && nb.strengths.size() <= 30 &&
+        nb.weakSpots is list && nb.weakSpots.size() <= 30 &&
+        nb.updatedAt is string && nb.updatedAt.size() >= 1 && nb.updatedAt.size() <= 45 &&
+        (!('learningStyle' in nb) || (nb.learningStyle is string && nb.learningStyle in ['exemplos', 'teoria', 'exercicios'])) &&
+        (!('customNotes' in nb) || (nb.customNotes is list && nb.customNotes.size() <= 30)) &&
+        (!('nextAssessment' in nb) || (nb.nextAssessment is map && nb.nextAssessment.size() <= 20));
+    }
+
+    // Validates Uni agent expedition map
+    function isValidUniAgentExpedition(exp) {
+      return exp is map &&
+        exp.keys().hasOnly(['preparedAt', 'forDate', 'questions']) &&
+        exp.keys().hasAll(['preparedAt', 'forDate', 'questions']) &&
+        exp.preparedAt is string && exp.preparedAt.size() >= 1 && exp.preparedAt.size() <= 45 &&
+        exp.forDate is string && exp.forDate.size() >= 8 && exp.forDate.size() <= 15 &&
+        exp.questions is list && exp.questions.size() <= 5;
+    }
+
+    // Validates Uni agent diploma map
+    function isValidUniAgentDiploma(dip) {
+      return dip is map &&
+        dip.keys().hasOnly(['issuedAt', 'finalGrade', 'masteredTopicCount', 'totalTopicCount', 'stageAtGraduation']) &&
+        dip.keys().hasAll(['issuedAt', 'masteredTopicCount', 'totalTopicCount', 'stageAtGraduation']) &&
+        dip.issuedAt is string && dip.issuedAt.size() >= 1 && dip.issuedAt.size() <= 45 &&
+        (!('finalGrade' in dip) || (dip.finalGrade is number && dip.finalGrade >= 0 && dip.finalGrade <= 100)) &&
+        dip.masteredTopicCount is number && dip.masteredTopicCount >= 0 && dip.masteredTopicCount <= 500 &&
+        dip.totalTopicCount is number && dip.totalTopicCount >= 0 && dip.totalTopicCount <= 500 &&
+        dip.stageAtGraduation is number && dip.stageAtGraduation >= 0 && dip.stageAtGraduation <= 4;
+    }
+
+    // Validates Uni agent document (/users/{userId}/uniAgents/{courseId})
+    function isValidUniAgent(data, userId, courseId) {
+      return data.keys().hasOnly([
+          'courseId', 'name', 'formId', 'personaId', 'language',
+          'memoryEnabled', 'stage', 'mastery', 'milestones', 'items',
+          'notebook', 'expedition', 'diploma', 'createdAt', 'updatedAt', 'userId'
+        ]) &&
+        data.keys().hasAll([
+          'courseId', 'name', 'formId', 'personaId', 'language',
+          'memoryEnabled', 'stage', 'mastery', 'milestones', 'items', 'notebook'
+        ]) &&
+        data.courseId is string && data.courseId.size() >= 1 && data.courseId.size() <= 100 && data.courseId == courseId &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 60 &&
+        data.formId is string && data.formId in ['nuvem', 'gota', 'estrela', 'cristal', 'folha'] &&
+        data.personaId is string && data.personaId in ['amigo', 'exigente', 'calmo', 'curioso', 'treinador'] &&
+        data.language is string && data.language.size() >= 2 && data.language.size() <= 15 &&
+        data.memoryEnabled is bool &&
+        data.stage is number && data.stage >= 0 && data.stage <= 4 &&
+        data.mastery is number && data.mastery >= 0 && data.mastery <= 100 &&
+        data.milestones is list && data.milestones.size() <= 30 &&
+        data.items is list && data.items.size() <= 30 &&
+        isValidUniAgentNotebook(data.notebook) &&
+        (!('expedition' in data) || isValidUniAgentExpedition(data.expedition)) &&
+        (!('diploma' in data) || isValidUniAgentDiploma(data.diploma)) &&
+        (!('createdAt' in data) || (data.createdAt is timestamp) || (data.createdAt is string && data.createdAt.size() >= 1 && data.createdAt.size() <= 45)) &&
+        (!('updatedAt' in data) || (data.updatedAt is timestamp) || (data.updatedAt is string && data.updatedAt.size() >= 1 && data.updatedAt.size() <= 45)) &&
+        (!('userId' in data) || (data.userId is string && data.userId == userId));
+    }
+
     // Validates shared Portuguese curriculum document (/curricula/{curriculumId})
     function isValidCurriculum(data) {
       return data.keys().hasOnly([
@@ -942,6 +1037,14 @@ service cloud.firestore {
         allow read: if isOwner(userId);
         allow create: if isOwner(userId) && isValidStudyLog(request.resource.data, userId);
         allow update: if isOwner(userId) && isValidStudyLog(request.resource.data, userId) && areImmutableFieldsUnchanged(['id', 'userId', 'createdAt']);
+        allow delete: if isOwner(userId);
+      }
+
+      // Uni Agents Subcollection
+      match /uniAgents/{courseId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidUniAgent(request.resource.data, userId, courseId);
+        allow update: if isOwner(userId) && isValidUniAgent(request.resource.data, userId, courseId) && areImmutableFieldsUnchanged(['courseId', 'userId', 'createdAt']);
         allow delete: if isOwner(userId);
       }
 

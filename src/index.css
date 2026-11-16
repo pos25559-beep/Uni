@@ -21,6 +21,7 @@
   --ink-cta: #141312;
   --ink-cta-fg: #FAF8F2;
   --ok: #157F58;
+  --ok-ink: #0D5C3E;
   --warn: #A16207;
   --danger: #D64550;
   --pastel-butter: #FCE99F;
@@ -57,6 +58,7 @@
   --ink-cta: #FAF6EC;
   --ink-cta-fg: #141311;
   --ok: #4ADE80;
+  --ok-ink: #4ADE80;
   --warn: #FBBF24;
   --danger: #FB7185;
   --shadow-card: 0 4px 16px -6px rgba(0, 0, 0, 0.35);
@@ -295,6 +297,7 @@
   --color-ink-cta: var(--ink-cta);
   --color-ink-cta-fg: var(--ink-cta-fg);
   --color-ok: var(--ok);
+  --color-ok-ink: var(--ok-ink);
   --color-warn: var(--warn);
   --color-danger: var(--danger);
   --color-pastel-butter: var(--pastel-butter);

@@ -15,6 +15,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import WeeklyTutorModal from '../components/assistant/WeeklyTutorModal';
 import ActiveReviewModal from '../components/practice/ActiveReviewModal';
@@ -56,6 +57,7 @@ function studyDaysLabel(days: number[]): string {
 }
 
 export default function Planner() {
+  const { t } = useTranslation('plan');
   const courses = useStore((s) => s.courses);
   const assessments = useStore((s) => s.assessments);
   const classes = useStore((s) => s.classes);
@@ -216,6 +218,7 @@ export default function Planner() {
       strategy: plannerPrefs?.strategy,
       boostCourseIds: plannerPrefs?.boostCourseIds,
       pausedCourseIds: plannerPrefs?.pausedCourseIds,
+      exclusiveTestFocus: plannerPrefs?.exclusiveTestFocus,
     });
     replaceGeneratedSessions(today, plan);
     setBuilderOpen(false);
@@ -326,20 +329,20 @@ export default function Planner() {
   return (
     <AnimatedPage className="space-y-5">
       <PageHeader
-        eyebrow="Planeador"
-        title="Plano de"
-        accentTitle="estudo"
-        subtitle={`${fmtMinutes(settings.dailyStudyMinutes)} por dia · ${studyDaysLabel(settings.studyDays)}${plannerPrefs ? ` · blocos ${plannerPrefs.blockMinutes}m (${plannerPrefs.horizonDays}d)` : ''}`}
+        eyebrow={t('plannerEyebrow')}
+        title={t('plannerTitle')}
+        accentTitle={t('plannerAccent')}
+        subtitle={`${fmtMinutes(settings.dailyStudyMinutes)} · ${studyDaysLabel(settings.studyDays)}${plannerPrefs ? ` · ${plannerPrefs.blockMinutes}m (${plannerPrefs.horizonDays}d)` : ''}`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <TabGuideHelpButton tabKey="plano" />
             {dueReviewCount > 0 && (
               <Button variant="secondary" onClick={() => setReviewOpen(true)}>
-                <Brain size={16} /> Rever devidos ({dueReviewCount})
+                <Brain size={16} /> {t('reviewDue')} ({dueReviewCount})
               </Button>
             )}
             <Button variant="primary" onClick={onGenerate} disabled={noPlanInputs}>
-              <Sparkles size={16} /> Gerar plano
+              <Sparkles size={16} /> {t('generatePlan')}
             </Button>
             <Button
               variant="secondary"
@@ -379,11 +382,11 @@ export default function Planner() {
                   {testMode.mode === 'single_test' ? 'Foco intensivo' : 'Equilíbrio'}
                 </Badge>
               </div>
-              <p className="mt-1 text-xs opacity-75">
-                {testMode.mode === 'single_test'
-                  ? `Foco total em ${testMode.urgentAssessments[0].course.shortName} (${testMode.urgentAssessments[0].assessment.title} em ${testMode.urgentAssessments[0].daysLeft}d).`
-                  : `Equilíbrio entre ${testMode.urgentAssessments.map((u) => `${u.course.shortName} (${u.daysLeft}d)`).join(' · ')}.`}
-              </p>
+                <p className="mt-1 text-xs opacity-75">
+                  {testMode.mode === 'single_test'
+                    ? `${plannerPrefs?.exclusiveTestFocus ? 'Foco exclusivo' : 'Prioridade com manutenção leve'} em ${testMode.urgentAssessments[0].course.shortName} (${testMode.urgentAssessments[0].assessment.title} em ${testMode.urgentAssessments[0].daysLeft}d).`
+                    : `Equilíbrio entre ${testMode.urgentAssessments.map((u) => `${u.course.shortName} (${u.daysLeft}d)`).join(' · ')}.`}
+                </p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
