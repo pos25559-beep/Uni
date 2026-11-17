@@ -64,12 +64,14 @@
     "mode": {
       "guide": "Guia de Estudo",
       "quiz": "Quiz com Citações",
-      "summary": "Resumo Rápido"
+      "summary": "Resumo Rápido",
+      "podcast": "Podcast"
     },
     "short": {
       "guide": "Guia",
       "quiz": "Quiz",
-      "summary": "Resumo"
+      "summary": "Resumo",
+      "podcast": "Podcast"
     },
     "title": "Caderno do Uni",
     "maxFiles": "Podes juntar até {{count}} ficheiros por geração.",
@@ -167,6 +169,38 @@
       "refineDone": "Tópico atualizado.",
       "refineFail": "Não consegui refazer este tópico. Tenta pedir de outra forma.",
       "refineNoSources": "Para refazer um tópico, junta outra vez as fontes ao caderno."
+    },
+    "podcast": {
+      "hint": "O Uni e um colega conversam sobre as tuas fontes, como um podcast para ouvires a estudar.",
+      "generate": "Gerar podcast a partir das fontes",
+      "writing": "O Uni está a escrever o episódio…",
+      "playerLabel": "Leitor de podcast",
+      "episode": "Podcast de estudo",
+      "meta": "Cerca de {{duration}} min · {{host}} e {{coHost}}",
+      "play": "Ouvir",
+      "pause": "Pausar",
+      "stop": "Parar",
+      "speed": "Velocidade {{rate}}x, tocar para mudar",
+      "copy": "Copiar transcrição",
+      "copied": "Transcrição copiada.",
+      "progress": "Progresso do episódio",
+      "preparing": "A preparar o áudio…",
+      "deviceNote": "A ouvir com as vozes do teu dispositivo. As vozes naturais precisam de uma chave pessoal nas Definições.",
+      "fallback": "Não foi possível criar o áudio natural agora. A usar as vozes do dispositivo.",
+      "deviceUnavailable": "Este dispositivo não tem síntese de voz disponível.",
+      "transcript": "Transcrição do episódio"
+    },
+    "voiceNotes": {
+      "record": "Gravar apontamentos",
+      "pickFile": "Escolher áudio",
+      "recording": "A gravar",
+      "stop": "Parar e transcrever",
+      "cancel": "Cancelar",
+      "transcribing": "A transcrever o áudio…",
+      "done": "Apontamentos transcritos e juntados ao caderno.",
+      "fail": "Não foi possível transcrever o áudio.",
+      "micDenied": "Não consegui aceder ao microfone. Verifica a permissão nas definições do navegador.",
+      "tooLarge": "O áudio é demasiado grande (máximo {{mb}} MB)."
     }
   },
   "page": {

@@ -64,12 +64,14 @@
     "mode": {
       "guide": "Study guide",
       "quiz": "Quiz with citations",
-      "summary": "Quick summary"
+      "summary": "Quick summary",
+      "podcast": "Podcast"
     },
     "short": {
       "guide": "Guide",
       "quiz": "Quiz",
-      "summary": "Summary"
+      "summary": "Summary",
+      "podcast": "Podcast"
     },
     "title": "Uni's Notebook",
     "maxFiles": "You can add up to {{count}} files per generation.",
@@ -167,6 +169,38 @@
       "refineDone": "Topic updated.",
       "refineFail": "I couldn't redo this topic. Try asking in a different way.",
       "refineNoSources": "To redo a topic, add the sources to the notebook again."
+    },
+    "podcast": {
+      "hint": "Uni and a classmate talk through your sources, like a podcast you can listen to while you study.",
+      "generate": "Generate podcast from sources",
+      "writing": "Uni is writing the episode…",
+      "playerLabel": "Podcast player",
+      "episode": "Study podcast",
+      "meta": "About {{duration}} min · {{host}} and {{coHost}}",
+      "play": "Listen",
+      "pause": "Pause",
+      "stop": "Stop",
+      "speed": "Speed {{rate}}x, tap to change",
+      "copy": "Copy transcript",
+      "copied": "Transcript copied.",
+      "progress": "Episode progress",
+      "preparing": "Preparing the audio…",
+      "deviceNote": "Listening with your device voices. Natural voices need a personal key in Settings.",
+      "fallback": "Could not create the natural audio right now. Using device voices instead.",
+      "deviceUnavailable": "This device has no speech synthesis available.",
+      "transcript": "Episode transcript"
+    },
+    "voiceNotes": {
+      "record": "Record notes",
+      "pickFile": "Choose audio",
+      "recording": "Recording",
+      "stop": "Stop and transcribe",
+      "cancel": "Cancel",
+      "transcribing": "Transcribing the audio…",
+      "done": "Notes transcribed and added to the notebook.",
+      "fail": "Could not transcribe the audio.",
+      "micDenied": "Could not access the microphone. Check the permission in your browser settings.",
+      "tooLarge": "The audio is too large (max {{mb}} MB)."
     }
   },
   "page": {

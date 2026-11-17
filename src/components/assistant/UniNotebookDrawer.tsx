@@ -1,9 +1,9 @@
-import { BookOpen, ChevronDown, ClipboardPaste, Copy, Download, ExternalLink, FileText, Image as ImageIcon, Library, Loader2, Paperclip, Sparkles, Trash2, X } from 'lucide-react';
+import { BookOpen, ChevronDown, ClipboardPaste, Copy, Download, ExternalLink, FileAudio, FileText, Headphones, Image as ImageIcon, Library, Loader2, Mic, Paperclip, Sparkles, Square, Trash2, X } from 'lucide-react';
 import { differenceInCalendarDays, parseISO } from 'date-fns';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
-import { resolveIntlLocale } from '../../lib/grading';
+import { normalizeAppLanguage, resolveIntlLocale } from '../../lib/grading';
 import {
   fileToChatAttachment,
   generateNotebookBrief,
@@ -18,10 +18,30 @@ import {
 import { getDailyQuotaSnapshot } from '../../lib/aiQuota';
 import {
   deleteTopicSheet,
+  getUniAgent,
   listTopicSheetsByCourse,
   putTopicSheet,
+  type TopicSheetMode,
   type TopicSheetRecord,
+  type UniAgentRecord,
 } from '../../lib/localDb';
+import {
+  audioFileToBase64,
+  isAudioRecordingSupported,
+  startAudioRecording,
+  MAX_CUSTOM_AUDIO_BYTES,
+  MAX_NATIVE_AUDIO_BYTES,
+  type ActiveAudioRecorder,
+} from '../../lib/audioRecorder';
+import {
+  deleteSheetPodcast,
+  loadSheetPodcast,
+  podcastScriptToMarkdown,
+  saveSheetPodcast,
+  type PodcastScript,
+} from '../../lib/uniVoice';
+import { hasAiAccess } from '../../lib/aiAccess';
+import { requestAiConsent } from '../../store/useAiConsentStore';
 import { getAiMaterialLimit, resolveMaterialsForAI } from '../../lib/materialContent';
 import { openInAppBrowser } from '../../lib/nativeBridge';
 import { buildNotebookPdfBytes, downloadPdfFile } from '../../lib/pdfExport';
@@ -50,6 +70,7 @@ const SOURCE_GROUP_KEY: Record<SourceGroupKey, string> = {
 };
 
 const StudyGuideReader = lazy(() => import('./StudyGuideReader'));
+const PodcastPlayer = lazy(() => import('./PodcastPlayer'));
 
 /** Entradas da última geração, para «Refazer este tópico» sem voltar a ler os materiais. */
 interface GenerationContext {
@@ -58,7 +79,7 @@ interface GenerationContext {
   assessment: NotebookAssessmentContext | null;
 }
 
-function deriveSheetTitle(markdown: string, mode: 'guide' | 'quiz' | 'summary', courseName?: string): string {
+function deriveSheetTitle(markdown: string, mode: TopicSheetMode, courseName?: string): string {
   const heading = markdown
     .split('\n')
     .map((line) => line.trim())
@@ -95,10 +116,12 @@ export default function UniNotebookDrawer({
   const { t: tCommon } = useTranslation('common');
   const assessments = useStore((s) => s.assessments);
   const personalNotebookUrl = useStore((s) => s.settings.personalNotebookUrl?.trim() ?? '');
+  const appLanguage = normalizeAppLanguage(useStore((s) => s.settings.language));
+  const globalVoice = useStore((s) => s.settings.uniVoice);
   const [notesSource, setNotesSource] = useState('');
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const [sourcesExpanded, setSourcesExpanded] = useState(false);
-  const [mode, setMode] = useState<'guide' | 'quiz' | 'summary'>('guide');
+  const [mode, setMode] = useState<TopicSheetMode>('guide');
   const [selectedTopicId, setSelectedTopicId] = useState<string>('');
   const [busy, setBusy] = useState(false);
   const [progressLabel, setProgressLabel] = useState<string | null>(null);
@@ -107,12 +130,21 @@ export default function UniNotebookDrawer({
   const [error, setError] = useState<string | null>(null);
   const [output, setOutput] = useState<string | null>(null);
   const [guide, setGuide] = useState<StudyGuide | null>(null);
+  const [podcast, setPodcast] = useState<PodcastScript | null>(null);
+  const [loadedAgent, setUniAgent] = useState<UniAgentRecord | null>(null);
+  const [recorder, setRecorder] = useState<ActiveAudioRecorder | null>(null);
+  const [recordSeconds, setRecordSeconds] = useState(0);
+  const [transcribing, setTranscribing] = useState(false);
+  const audioInputRef = useRef<HTMLInputElement>(null);
+  const recorderRef = useRef<ActiveAudioRecorder | null>(null);
   const [readerOpen, setReaderOpen] = useState(false);
   const guideRef = useRef<StudyGuide | null>(null);
   const generationRef = useRef<GenerationContext | null>(null);
   const [savedSheets, setSavedSheets] = useState<TopicSheetRecord[]>([]);
   const [activeSheetId, setActiveSheetId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const uniAgent = open && courseId && loadedAgent?.courseId === courseId ? loadedAgent : null;
 
   const groupedSources = useMemo(() => groupSources(attachedMaterials), [attachedMaterials]);
 
@@ -132,6 +164,28 @@ export default function UniNotebookDrawer({
   useEffect(() => {
     guideRef.current = guide;
   }, [guide]);
+
+  useEffect(() => {
+    if (!open || !courseId) return;
+    let active = true;
+    void getUniAgent(courseId).then((agent) => {
+      if (active) setUniAgent(agent);
+    });
+    return () => {
+      active = false;
+    };
+  }, [open, courseId]);
+
+  // Cancela uma gravação em curso quando o caderno fecha ou o componente desaparece.
+  useEffect(() => {
+    recorderRef.current = recorder;
+  }, [recorder]);
+  useEffect(() => {
+    if (!recorder) return;
+    const id = window.setInterval(() => setRecordSeconds((s) => s + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [recorder]);
+  useEffect(() => () => recorderRef.current?.cancel(), []);
 
   const customKeyActive = hasCustomGeminiKey();
   const maxAiFiles = getAiMaterialLimit(customKeyActive);
@@ -156,6 +210,97 @@ export default function UniNotebookDrawer({
       }
     }
     if (next.length > 0) setAttachments((prev) => [...prev, ...next]);
+  };
+
+  const audioLimitBytes = customKeyActive ? MAX_CUSTOM_AUDIO_BYTES : MAX_NATIVE_AUDIO_BYTES;
+
+  const transcribeClip = async (clip: { base64: string; mimeType: string; sizeBytes: number }) => {
+    if (clip.sizeBytes > audioLimitBytes) {
+      showToast(
+        t('notebook.voiceNotes.tooLarge', { mb: Math.round(audioLimitBytes / (1024 * 1024)) }),
+        'danger',
+      );
+      return;
+    }
+    if (!hasAiAccess(useStore.getState().settings)) {
+      requestAiConsent();
+      return;
+    }
+    setTranscribing(true);
+    try {
+      const { transcribeAudioNotes } = await import('../../integrations/geminiAudio');
+      const { transcript } = await transcribeAudioNotes({
+        base64Data: clip.base64,
+        mimeType: clip.mimeType,
+        sizeBytes: clip.sizeBytes,
+        courseName,
+        language: appLanguage,
+      });
+      setNotesSource((prev) => (prev.trim() ? `${prev.trim()}\n\n${transcript}` : transcript));
+      showToast(t('notebook.voiceNotes.done'));
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AiConsentRequiredError') {
+        requestAiConsent();
+      } else {
+        showToast(err instanceof Error && err.message ? err.message : t('notebook.voiceNotes.fail'), 'danger');
+      }
+    } finally {
+      setTranscribing(false);
+    }
+  };
+
+  const handleStartRecording = async () => {
+    if (!hasAiAccess(useStore.getState().settings)) {
+      requestAiConsent();
+      return;
+    }
+    try {
+      const started = await startAudioRecording();
+      setRecordSeconds(0);
+      setRecorder(started);
+    } catch {
+      showToast(t('notebook.voiceNotes.micDenied'), 'danger');
+    }
+  };
+
+  const handleStopRecording = async () => {
+    const active = recorder;
+    if (!active) return;
+    setRecorder(null);
+    try {
+      await transcribeClip(await active.stop());
+    } catch {
+      showToast(t('notebook.voiceNotes.fail'), 'danger');
+    }
+  };
+
+  const handleCancelRecording = () => {
+    recorder?.cancel();
+    setRecorder(null);
+  };
+
+  const handleClose = () => {
+    handleCancelRecording();
+    setReaderOpen(false);
+    onClose();
+  };
+
+  const handlePickAudio = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (file.size > audioLimitBytes) {
+      showToast(
+        t('notebook.voiceNotes.tooLarge', { mb: Math.round(audioLimitBytes / (1024 * 1024)) }),
+        'danger',
+      );
+      return;
+    }
+    try {
+      await transcribeClip(await audioFileToBase64(file));
+    } catch {
+      showToast(t('notebook.voiceNotes.fail'), 'danger');
+    }
   };
 
   const findNextAssessment = (): NotebookAssessmentContext | null => {
@@ -233,7 +378,20 @@ export default function UniNotebookDrawer({
 
       let result: string;
       let structured: StudyGuide | null = null;
-      if (mode === 'guide') {
+      let script: PodcastScript | null = null;
+      if (mode === 'podcast') {
+        const { generatePodcastScript } = await import('../../integrations/geminiAudio');
+        script = await generatePodcastScript({
+          sources,
+          attachments: mergedAttachments,
+          courseName,
+          uniName: uniAgent?.name,
+          persona: uniAgent?.personaId ?? persona,
+          language: appLanguage,
+          assessment,
+        });
+        result = podcastScriptToMarkdown(script);
+      } else if (mode === 'guide') {
         const generated = await generateStudyGuide({
           sources,
           attachments: mergedAttachments,
@@ -263,6 +421,7 @@ export default function UniNotebookDrawer({
       }
       setOutput(result);
       setGuide(structured);
+      setPodcast(script);
       const validTopicId =
         selectedTopicId && courseTopics.some((t) => t.id === selectedTopicId)
           ? selectedTopicId
@@ -271,7 +430,7 @@ export default function UniNotebookDrawer({
         id: newId(),
         courseId: scopedCourseKey,
         ...(validTopicId ? { topicId: validTopicId } : {}),
-        title: structured?.title.trim().slice(0, 72) || deriveSheetTitle(result, mode, courseName),
+        title: structured?.title.trim().slice(0, 72) || script?.title.trim().slice(0, 72) || deriveSheetTitle(result, mode, courseName),
         mode,
         summary: result,
         keyConcepts: readTitles.slice(0, 6),
@@ -282,6 +441,7 @@ export default function UniNotebookDrawer({
         saveSheetGuide(saved.id, structured);
         setReaderOpen(true);
       }
+      if (script) saveSheetPodcast(saved.id, script);
       setActiveSheetId(saved.id);
       setSavedSheets((prev) => [saved, ...prev.filter((item) => item.id !== saved.id)]);
     } catch (e) {
@@ -389,15 +549,13 @@ export default function UniNotebookDrawer({
   };
 
   const guideReady = Boolean(guide && mode === 'guide');
+  const podcastReady = Boolean(podcast && mode === 'podcast');
 
   return (
     <>
     <Modal
       open={open}
-      onClose={() => {
-        setReaderOpen(false);
-        onClose();
-      }}
+      onClose={handleClose}
       title={courseName ? `${t('notebook.title')} · ${courseName}` : t('notebook.title')}
       footer={
         <div className="flex w-full flex-wrap items-center justify-between gap-2">
@@ -439,10 +597,7 @@ export default function UniNotebookDrawer({
             )}
             <Button
               size="sm"
-              onClick={() => {
-                setReaderOpen(false);
-                onClose();
-              }}
+              onClick={handleClose}
             >
               {t('notebook.close')}
             </Button>
@@ -570,6 +725,60 @@ export default function UniNotebookDrawer({
             placeholder={t('notebook.placeholder')}
             className="min-h-24"
           />
+          <input
+            ref={audioInputRef}
+            type="file"
+            accept="audio/*"
+            onChange={(e) => void handlePickAudio(e)}
+            className="hidden"
+          />
+          {recorder ? (
+            <div
+              role="group"
+              aria-label={t('notebook.voiceNotes.recording')}
+              className="flex flex-wrap items-center gap-2 rounded-2xl border border-coral/40 bg-coral-soft/60 p-2"
+            >
+              <span className="flex min-h-11 min-w-0 flex-1 items-center gap-2 px-2 text-xs font-semibold text-coral-ink">
+                <span className="size-2.5 shrink-0 animate-pulse rounded-full bg-coral" aria-hidden="true" />
+                <span className="truncate">{t('notebook.voiceNotes.recording')}</span>
+                <span className="tabular-nums" role="timer">
+                  {Math.floor(recordSeconds / 60)}:{String(recordSeconds % 60).padStart(2, '0')}
+                </span>
+              </span>
+              <Button size="sm" variant="primary" onClick={() => void handleStopRecording()}>
+                <Square size={13} aria-hidden="true" /> {t('notebook.voiceNotes.stop')}
+              </Button>
+              <Button size="sm" variant="secondary" onClick={handleCancelRecording}>
+                {t('notebook.voiceNotes.cancel')}
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {isAudioRecordingSupported() && (
+                <button
+                  type="button"
+                  onClick={() => void handleStartRecording()}
+                  disabled={busy || transcribing}
+                  className="inline-flex min-h-11 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-xl border border-line bg-surface-2 px-3 text-xs font-semibold text-fg transition hover:border-line-strong disabled:opacity-45"
+                >
+                  <Mic size={13} aria-hidden="true" /> {t('notebook.voiceNotes.record')}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => audioInputRef.current?.click()}
+                disabled={busy || transcribing}
+                className="inline-flex min-h-11 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-xl border border-line bg-surface-2 px-3 text-xs font-semibold text-fg transition hover:border-line-strong disabled:opacity-45"
+              >
+                <FileAudio size={13} aria-hidden="true" /> {t('notebook.voiceNotes.pickFile')}
+              </button>
+              {transcribing && (
+                <span role="status" className="inline-flex items-center gap-1.5 text-xs font-medium text-muted">
+                  <Loader2 size={13} className="animate-spin" aria-hidden="true" /> {t('notebook.voiceNotes.transcribing')}
+                </span>
+              )}
+            </div>
+          )}
           {attachments.length > 0 && (
             <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface-2/50">
               {attachments.map((att, idx) => (
@@ -630,13 +839,14 @@ export default function UniNotebookDrawer({
           <div
             role="tablist"
             aria-label={t('notebook.title')}
-            className="grid grid-cols-3 gap-1 rounded-2xl border border-line/80 bg-surface-2 p-1"
+            className="grid grid-cols-2 gap-1 rounded-2xl border border-line/80 bg-surface-2 p-1 min-[480px]:grid-cols-4"
           >
             {(
               [
                 ['guide', t('notebook.mode.guide')],
                 ['quiz', t('notebook.mode.quiz')],
                 ['summary', t('notebook.mode.summary')],
+                ['podcast', t('notebook.mode.podcast')],
               ] as const
             ).map(([id, label]) => {
               const active = mode === id;
@@ -654,11 +864,15 @@ export default function UniNotebookDrawer({
                       : 'text-muted hover:text-fg',
                   )}
                 >
+                  {id === 'podcast' && <Headphones size={14} className="mr-1.5 shrink-0" aria-hidden="true" />}
                   {label}
                 </button>
               );
             })}
           </div>
+          {mode === 'podcast' && (
+            <p className="text-xs text-muted">{t('notebook.podcast.hint')}</p>
+          )}
         </div>
 
         <Button
@@ -670,7 +884,11 @@ export default function UniNotebookDrawer({
           className="w-full"
         >
           {busy ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
-          {busy ? (progressLabel ?? t('notebook.busy')) : t('notebook.generate')}
+          {busy
+            ? (progressLabel ?? (mode === 'podcast' ? t('notebook.podcast.writing') : t('notebook.busy')))
+            : mode === 'podcast'
+              ? t('notebook.podcast.generate')
+              : t('notebook.generate')}
         </Button>
         {busy && progressLabel && (
           <p role="status" className="sr-only">
@@ -701,7 +919,21 @@ export default function UniNotebookDrawer({
           </div>
         )}
 
-        {output && !guideReady && (
+        {output && podcast && podcastReady && activeSheetId && (
+          <Suspense fallback={null}>
+            <PodcastPlayer
+              key={activeSheetId}
+              sheetId={activeSheetId}
+              script={podcast}
+              language={appLanguage}
+              persona={uniAgent?.personaId ?? persona}
+              agent={uniAgent}
+              globalVoice={globalVoice}
+            />
+          </Suspense>
+        )}
+
+        {output && !guideReady && !podcastReady && (
           <div className="max-h-[60vh] overflow-y-auto rounded-[20px] border border-line bg-surface-2/60 p-4 text-sm">
             <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-accent">
               <BookOpen size={13} /> {t('notebook.result')}
@@ -731,15 +963,20 @@ export default function UniNotebookDrawer({
                       type="button"
                       onClick={() => {
                         setActiveSheetId(sheet.id);
-                        if (sheet.mode !== 'podcast') setMode(sheet.mode);
+                        setMode(sheet.mode);
                         setOutput(sheet.summary);
+                        setPodcast(sheet.mode === 'podcast' ? loadSheetPodcast(sheet.id) : null);
                         const stored = sheet.mode === 'guide' ? loadSheetGuide(sheet.id) : null;
                         setGuide(stored);
                         if (stored) setReaderOpen(true);
                       }}
                       className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 rounded-xl px-2 text-left"
                     >
-                      <BookOpen size={14} className={cx('shrink-0', isSelected ? 'text-accent-ink' : 'text-muted')} />
+                      {sheet.mode === 'podcast' ? (
+                        <Headphones size={14} className={cx('shrink-0', isSelected ? 'text-accent-ink' : 'text-muted')} aria-hidden="true" />
+                      ) : (
+                        <BookOpen size={14} className={cx('shrink-0', isSelected ? 'text-accent-ink' : 'text-muted')} aria-hidden="true" />
+                      )}
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-xs font-semibold text-fg">{sheet.title}</span>
                         <span className="block text-xs text-muted">{modeLabel}</span>
@@ -751,11 +988,13 @@ export default function UniNotebookDrawer({
                       onClick={async () => {
                         await deleteTopicSheet(sheet.id);
                         deleteSheetGuide(sheet.id);
+                        deleteSheetPodcast(sheet.id);
                         setSavedSheets((prev) => prev.filter((item) => item.id !== sheet.id));
                         if (activeSheetId === sheet.id) {
                           setActiveSheetId(null);
                           setOutput(null);
                           setGuide(null);
+                          setPodcast(null);
                           setReaderOpen(false);
                         }
                       }}
