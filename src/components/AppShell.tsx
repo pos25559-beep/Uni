@@ -5,6 +5,8 @@ import {
   FolderOpen,
   LayoutDashboard,
   MoreHorizontal,
+  PanelLeftClose,
+  PanelLeftOpen,
   Settings,
   ShieldCheck,
   Sparkles,
@@ -113,6 +115,8 @@ export default function AppShell() {
   const hubModalOpen = useHubUiStore((s) => s.modalOpen);
   const hubModalStep = useHubUiStore((s) => s.focusStep);
   const closeHubModal = useHubUiStore((s) => s.closeModal);
+  const sidebarCollapsed = useHubUiStore((s) => s.sidebarCollapsed);
+  const toggleSidebarCollapsed = useHubUiStore((s) => s.toggleSidebarCollapsed);
 
   const isBypassRoute = BYPASS_ONBOARDING_PATHS.some((p) => location.pathname.startsWith(p));
   const isFullBleedRoute =
@@ -314,24 +318,47 @@ export default function AppShell() {
       <AiConsentDialog />
       <FocusHost />
 
-      {/* Navegação lateral (Desktop & Tablet) */}
+      {/* Navegação lateral (Desktop & Tablet) — expansível ou recolhida numa fila de ícones */}
       {!isBypassRoute && (
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-line bg-surface px-3.5 py-5 md:flex">
-        <div className="mb-6 flex items-center gap-2.5 px-2">
-          <UnipediaLogoMark size={36} />
-          <div className="min-w-0 leading-tight">
-            <div className="font-display text-base font-extrabold tracking-tight">Unipedia</div>
-            <div className="truncate text-xs text-muted">
-              {[
-                academicProfile?.onboardingCompleted && academicProfile.universityName
-                  ? academicProfile.universityName.split('—')[0].trim()
-                  : '',
-                semesterName.trim(),
-              ]
-                .filter(Boolean)
-                .join(' · ') || t('defaultSemester')}
-            </div>
+      <aside
+        className={cx(
+          'hidden shrink-0 flex-col border-r border-line bg-surface py-5 transition-[width,padding] duration-200 md:flex',
+          sidebarCollapsed ? 'w-[76px] px-2' : 'w-64 px-3.5',
+        )}
+      >
+        <div
+          className={cx(
+            'mb-5 flex items-center',
+            sidebarCollapsed ? 'flex-col gap-2 px-0' : 'justify-between gap-2 px-1.5',
+          )}
+        >
+          <div className={cx('flex min-w-0 items-center gap-2.5', sidebarCollapsed && 'justify-center')}>
+            <UnipediaLogoMark size={sidebarCollapsed ? 32 : 36} />
+            {!sidebarCollapsed && (
+              <div className="min-w-0 leading-tight">
+                <div className="font-display text-base font-extrabold tracking-tight">Unipedia</div>
+                <div className="truncate text-xs text-muted">
+                  {[
+                    academicProfile?.onboardingCompleted && academicProfile.universityName
+                      ? academicProfile.universityName.split('—')[0].trim()
+                      : '',
+                    semesterName.trim(),
+                  ]
+                    .filter(Boolean)
+                    .join(' · ') || t('defaultSemester')}
+                </div>
+              </div>
+            )}
           </div>
+          <button
+            type="button"
+            onClick={toggleSidebarCollapsed}
+            aria-label={sidebarCollapsed ? t('nav.expandSidebar') : t('nav.collapseSidebar')}
+            title={sidebarCollapsed ? t('nav.expandSidebar') : t('nav.collapseSidebar')}
+            className="flex size-10 shrink-0 items-center justify-center rounded-xl text-muted transition hover:bg-surface-2 hover:text-fg"
+          >
+            {sidebarCollapsed ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}
+          </button>
         </div>
 
         <nav className="flex flex-1 flex-col gap-1" aria-label={t('nav.mainAria')}>
@@ -341,37 +368,47 @@ export default function AppShell() {
               to={to}
               end={end}
               data-tour={tour}
+              aria-label={sidebarCollapsed ? t(key) : undefined}
+              title={sidebarCollapsed ? t(key) : undefined}
               className={({ isActive }) =>
                 cx(
-                  'relative flex min-h-11 items-center gap-3 rounded-full px-3.5 py-2 text-sm font-semibold transition',
+                  'relative flex min-h-11 items-center rounded-full text-sm font-semibold transition',
+                  sidebarCollapsed ? 'mx-auto size-11 justify-center px-0' : 'gap-3 px-3.5 py-2',
                   isActive ? 'bg-ink-cta text-ink-cta-fg' : 'text-muted hover:bg-surface-2 hover:text-fg',
                 )
               }
             >
-              <Icon size={18} aria-hidden="true" />
-              {t(key)}
+              <Icon size={18} aria-hidden="true" className="shrink-0" />
+              {!sidebarCollapsed && <span className="truncate">{t(key)}</span>}
             </NavLink>
           ))}
         </nav>
 
-        <AuthStatus />
+        {/* Espaço dedicado quando o estudante encaixa o temporizador de Foco na barra lateral. */}
+        <div id="unipedia-sidebar-focus-slot" className="my-2 empty:hidden" />
 
-        <div className="mt-3 flex items-center justify-between border-t border-line/70 px-3 pt-3 text-xs text-muted">
-          <NavLink to="/privacidade" className="hover:text-fg hover:underline">
-            {t('footer.privacy')}
-          </NavLink>
-          <span aria-hidden="true">·</span>
-          <NavLink to="/termos" className="hover:text-fg hover:underline">
-            {t('footer.terms')}
-          </NavLink>
-          <span aria-hidden="true">·</span>
-          <NavLink to="/eliminar-conta" className="hover:text-fg hover:underline">
-            {t('footer.data')}
-          </NavLink>
-        </div>
-        <p className="px-3 pt-1.5 font-mono text-xs tabular-nums text-muted/70">
-          Unipedia · {APP_VERSION_LABEL}
-        </p>
+        <AuthStatus compact={sidebarCollapsed} />
+
+        {!sidebarCollapsed && (
+          <>
+            <div className="mt-3 flex items-center justify-between border-t border-line/70 px-3 pt-3 text-xs text-muted">
+              <NavLink to="/privacidade" className="hover:text-fg hover:underline">
+                {t('footer.privacy')}
+              </NavLink>
+              <span aria-hidden="true">·</span>
+              <NavLink to="/termos" className="hover:text-fg hover:underline">
+                {t('footer.terms')}
+              </NavLink>
+              <span aria-hidden="true">·</span>
+              <NavLink to="/eliminar-conta" className="hover:text-fg hover:underline">
+                {t('footer.data')}
+              </NavLink>
+            </div>
+            <p className="px-3 pt-1.5 font-mono text-xs tabular-nums text-muted/70">
+              Unipedia · {APP_VERSION_LABEL}
+            </p>
+          </>
+        )}
       </aside>
       )}
 

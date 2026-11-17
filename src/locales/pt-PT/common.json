@@ -15,7 +15,9 @@
     "skipToContent": "Saltar para o conteúdo",
     "mainAria": "Navegação principal",
     "barAria": "Barra de navegação",
-    "moreAria": "Mais opções e definições"
+    "moreAria": "Mais opções e definições",
+    "collapseSidebar": "Minimizar barra lateral",
+    "expandSidebar": "Expandir barra lateral"
   },
   "actions": {
     "save": "Guardar",

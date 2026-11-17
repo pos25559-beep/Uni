@@ -136,7 +136,11 @@
       "expand": "Voltar ao ecrã de foco",
       "back": "Foco",
       "minimize": "Continuar a contar e usar a app",
-      "drag": "Arrastar para mover (setas ou duplo clique para repor)"
+      "drag": "Arrastar para mover (setas ou duplo clique para repor)",
+      "compact": "Reduzir para micro-bolha",
+      "regular": "Mostrar bolha completa",
+      "dockSidebar": "Encaixar na barra lateral",
+      "undockFloat": "Soltar como janela flutuante"
     },
     "chat": {
       "open": "Perguntar a {{name}} aqui, sem sair do foco",

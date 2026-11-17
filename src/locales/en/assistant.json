@@ -424,7 +424,10 @@
     "topic": "Topic",
     "noCourses": "No courses",
     "noTopics": "No topics",
-    "send": "Send"
+    "send": "Send",
+    "sheetTitle": "Quick suggestions",
+    "tabQuiz": "Quiz",
+    "tabExplain": "Explain"
   },
   "subject": {
     "geral": "General",

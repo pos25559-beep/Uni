@@ -11,7 +11,7 @@ import { showToast } from '../../lib/uiHelpers';
  * Cartão compacto de estado da conta para sidebar e folha "Mais":
  * direciona para o ecrã dedicado `/entrar` sem esmagar inputs no telemóvel.
  */
-export default function AuthStatus() {
+export default function AuthStatus({ compact = false }: { compact?: boolean }) {
   const { t } = useTranslation('common');
   const [user, setUser] = useState<User | null>(() => auth.currentUser);
   const [syncing, setSyncing] = useState(false);
@@ -38,6 +38,38 @@ export default function AuthStatus() {
       setSyncing(false);
     }
   };
+
+  if (compact) {
+    if (!user) {
+      return (
+        <Link
+          to="/entrar"
+          aria-label={t('authStatus.signInOrCreate')}
+          title={t('authStatus.signInOrCreate')}
+          className="mx-auto mb-1 flex size-11 items-center justify-center rounded-full border border-line bg-bg text-accent-ink transition hover:bg-surface-2"
+        >
+          <Cloud size={18} aria-hidden="true" />
+        </Link>
+      );
+    }
+    const label = user.displayName || t('authStatus.userFallback');
+    return (
+      <Link
+        to="/entrar?manage=1"
+        aria-label={label}
+        title={`${label} · ${t('authStatus.cloudActive')}`}
+        className="mx-auto mb-1 flex size-11 items-center justify-center rounded-full border border-line bg-bg transition hover:bg-surface-2"
+      >
+        {user.photoURL ? (
+          <img src={user.photoURL} alt="" className="size-8 rounded-full object-cover" />
+        ) : (
+          <span className="grid size-8 place-items-center rounded-full bg-accent-soft text-xs font-bold text-accent-ink">
+            {(user.displayName || user.email || 'U').slice(0, 1).toUpperCase()}
+          </span>
+        )}
+      </Link>
+    );
+  }
 
   if (!user) {
     return (

@@ -424,7 +424,10 @@
     "topic": "Matéria",
     "noCourses": "Sem cadeiras",
     "noTopics": "Sem matéria",
-    "send": "Enviar"
+    "send": "Enviar",
+    "sheetTitle": "Sugestões rápidas",
+    "tabQuiz": "Quiz",
+    "tabExplain": "Explicar"
   },
   "subject": {
     "geral": "Geral",

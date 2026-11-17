@@ -15,7 +15,9 @@
     "skipToContent": "Skip to content",
     "mainAria": "Main navigation",
     "barAria": "Navigation bar",
-    "moreAria": "More options and settings"
+    "moreAria": "More options and settings",
+    "collapseSidebar": "Collapse sidebar",
+    "expandSidebar": "Expand sidebar"
   },
   "actions": {
     "save": "Save",

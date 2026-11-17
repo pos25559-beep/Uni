@@ -37,7 +37,7 @@ import {
 import { UniBuddy, UniPetBuddy } from '../components/brand/UnipediaMarks';
 import { UniNotebookMemoryModal } from '../components/courses/CourseUniModals';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
-import { Badge, Button, PillSelect, SegmentedControl } from '../components/ui';
+import { Badge, Button, Modal, PillSelect, SegmentedControl } from '../components/ui';
 import { hasCustomGeminiKey } from '../integrations/gemini';
 import { recordWrongAnswerFeedback } from '../lib/aiQuota';
 import { normalizeAppLanguage } from '../lib/grading';
@@ -96,6 +96,7 @@ export default function Assistant() {
   const [convsModalMode, setConvsModalMode] = useState<'list' | 'new' | null>(null);
   const [confirmDeleteConv, setConfirmDeleteConv] = useState(false);
   const [showActions, setShowActions] = useState(false);
+  const [mobileSuggestionsOpen, setMobileSuggestionsOpen] = useState(false);
   const [sourcesOpen, setSourcesOpen] = useState(false);
   const [tutorOpen, setTutorOpen] = useState(false);
   const [keyGuideOpen, setKeyGuideOpen] = useState(false);
@@ -956,11 +957,11 @@ export default function Assistant() {
           </button>
         </div>
 
-        {(activeCourse || attachedMaterials.length > 0) && (
-          <div className="flex min-w-0 items-center gap-1.5 md:hidden">
+        <div className="flex min-w-0 items-center justify-between gap-1.5 md:hidden">
+          <div className="flex min-w-0 items-center gap-1.5">
             {activeCourse && (
               <span className="inline-flex min-h-11 min-w-0 items-center gap-1 rounded-full bg-accent-soft pl-3 pr-0.5 text-xs font-medium text-accent-ink">
-                <span className="max-w-[120px] truncate">{activeCourse.shortName || activeCourse.name}</span>
+                <span className="max-w-[100px] truncate">{activeCourse.shortName || activeCourse.name}</span>
                 <button
                   type="button"
                   onClick={() => setActiveCourseId('all')}
@@ -973,7 +974,16 @@ export default function Assistant() {
             )}
             <SourcesPill count={attachedMaterials.length} onClick={() => setSourcesOpen(true)} />
           </div>
-        )}
+          <button
+            type="button"
+            onClick={() => setMobileSuggestionsOpen(true)}
+            aria-expanded={mobileSuggestionsOpen}
+            className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface px-3 text-xs font-semibold text-fg transition hover:border-accent/50"
+          >
+            <Sparkles size={13} className="text-accent" aria-hidden="true" />
+            <span>{t('page.suggestions')}</span>
+          </button>
+        </div>
 
         {pendingSeedPrompt && (
           <div className="mb-2 flex items-center justify-between gap-2 rounded-2xl border border-accent/40 bg-accent-soft/65 px-3.5 py-2.5 text-xs">
@@ -1007,7 +1017,11 @@ export default function Assistant() {
           </div>
         )}
 
-        {showActions && <QuickActions disabled={loading || !aiConsent} onSend={send} />}
+        {showActions && (
+          <div className="hidden md:block">
+            <QuickActions disabled={loading || !aiConsent} activeCourseId={activeCourseId} onSend={send} />
+          </div>
+        )}
         <Composer
           disabled={loading || !aiConsent}
           loading={loading}
@@ -1081,12 +1095,12 @@ export default function Assistant() {
                   type="button"
                   onClick={() => {
                     setMobileComposerToolsOpen(false);
-                    setShowActions((v) => !v);
+                    setMobileSuggestionsOpen(true);
                   }}
                   className="flex min-h-11 items-center gap-1 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg"
                 >
                   <Sparkles size={13} />
-                  <span>{showActions ? t('page.hide') : t('page.suggestions')}</span>
+                  <span>{t('page.suggestions')}</span>
                 </button>
                 <button
                   type="button"
@@ -1124,6 +1138,20 @@ export default function Assistant() {
         onSelectMany={selectAllMaterials}
         onOpenAttach={() => setShowDocPicker(true)}
       />
+
+      <Modal
+        open={mobileSuggestionsOpen}
+        onClose={() => setMobileSuggestionsOpen(false)}
+        title={t('quick.sheetTitle')}
+      >
+        <QuickActions
+          variant="mobile-sheet"
+          disabled={loading || !aiConsent}
+          activeCourseId={activeCourseId}
+          onSend={send}
+          onAfterSend={() => setMobileSuggestionsOpen(false)}
+        />
+      </Modal>
 
       <AssistantModals
         menuOpen={menuOpen}

@@ -424,7 +424,10 @@
     "topic": "Tema",
     "noCourses": "Sin asignaturas",
     "noTopics": "Sin temas",
-    "send": "Enviar"
+    "send": "Enviar",
+    "sheetTitle": "Sugerencias rápidas",
+    "tabQuiz": "Test",
+    "tabExplain": "Explicar"
   },
   "subject": {
     "geral": "General",

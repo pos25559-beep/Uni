@@ -136,7 +136,11 @@
       "expand": "Back to the focus screen",
       "back": "Focus",
       "minimize": "Keep the timer running and use the app",
-      "drag": "Drag to move (arrow keys or double-click to reset)"
+      "drag": "Drag to move (arrow keys or double-click to reset)",
+      "compact": "Shrink to micro-pill",
+      "regular": "Show full focus pill",
+      "dockSidebar": "Dock in sidebar",
+      "undockFloat": "Pop out as floating pill"
     },
     "chat": {
       "open": "Ask {{name}} here without leaving focus",

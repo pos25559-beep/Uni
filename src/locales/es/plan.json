@@ -136,7 +136,11 @@
       "expand": "Volver a la pantalla de foco",
       "back": "Foco",
       "minimize": "Seguir contando y usar la app",
-      "drag": "Arrastrar para mover (flechas o doble clic para restablecer)"
+      "drag": "Arrastrar para mover (flechas o doble clic para restablecer)",
+      "compact": "Reducir a microburbuja",
+      "regular": "Mostrar burbuja completa",
+      "dockSidebar": "Anclar en la barra lateral",
+      "undockFloat": "Soltar como ventana flotante"
     },
     "chat": {
       "open": "Preguntar a {{name}} aquí, sin salir del foco",

@@ -612,6 +612,10 @@ export default function FocusTimer({
       <FloatingFocusPill
         regionLabel={t('plan:focus.mini.region')}
         dragLabel={t('plan:focus.mini.drag')}
+        compactLabel={t('plan:focus.mini.compact')}
+        regularLabel={t('plan:focus.mini.regular')}
+        dockSidebarLabel={t('plan:focus.mini.dockSidebar')}
+        undockFloatLabel={t('plan:focus.mini.undockFloat')}
         courseName={course?.shortName ?? t('common:actions.focus')}
         courseDotClass={course ? courseColors[course.color].dot : undefined}
         clockText={formatClock(remainingMs)}
