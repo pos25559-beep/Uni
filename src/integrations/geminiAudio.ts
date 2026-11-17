@@ -4,6 +4,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { tr } from '../i18n/tr';
 import { hasAiAccess } from '../lib/aiAccess';
+import { pcmBase64ToWavBase64 } from '../lib/audioPlayer';
 import { MAX_CUSTOM_AUDIO_BYTES, MAX_NATIVE_AUDIO_BYTES } from '../lib/audioRecorder';
 import { friendlyCustomKeyError } from '../lib/geminiErrors';
 import { normalizeAppLanguage } from '../lib/grading';
@@ -62,7 +63,53 @@ function defaultStyleByLang(lang: AppLanguage): string {
 }
 
 function buildGenAiClient(apiKey: string): GoogleGenAI {
-  return new GoogleGenAI({ apiKey: apiKey.trim() });
+  // A configuração de voz (speechConfig) só existe na API v1beta; a biblioteca usa v1 por omissão.
+  return new GoogleGenAI({ apiKey: apiKey.trim(), apiVersion: 'v1beta' });
+}
+
+/** Modelos de voz conhecidos, a tentar depois do preferido se este não existir na conta. */
+const TTS_FALLBACK_MODELS = ['gemini-2.5-flash-preview-tts', 'gemini-2.5-pro-preview-tts'];
+
+function isModelUnavailable(err: unknown): boolean {
+  const raw = err instanceof Error ? err.message : String(err ?? '');
+  const lower = raw.toLowerCase();
+  return (
+    lower.includes('"code":404') ||
+    lower.includes('not found') ||
+    lower.includes('is not supported') ||
+    lower.includes('not_found') ||
+    lower.includes('does not support')
+  );
+}
+
+/** Tenta cada modelo pela ordem; passa ao seguinte só quando o modelo não existe ou não suporta o pedido. */
+async function generateWithModelFallback<T>(
+  models: string[],
+  run: (model: string) => Promise<T>,
+): Promise<{ result: T; model: string }> {
+  let lastError: unknown;
+  for (const model of [...new Set(models)]) {
+    try {
+      return { result: await run(model), model };
+    } catch (err) {
+      lastError = err;
+      if (!isModelUnavailable(err)) throw err;
+    }
+  }
+  throw lastError;
+}
+
+function styleInstruction(style: string, lang: AppLanguage): string {
+  switch (lang) {
+    case 'en':
+      return `Read aloud in this style (${style}):`;
+    case 'es':
+      return `Lee en voz alta con este estilo (${style}):`;
+    case 'pt-BR':
+      return `Leia em voz alta com este estilo (${style}):`;
+    default:
+      return `Lê em voz alta com este estilo (${style}):`;
+  }
 }
 
 export async function synthesizeUniSpeech(args: {
@@ -99,35 +146,30 @@ export async function synthesizeUniSpeech(args: {
 
   try {
     const ai = buildGenAiClient(customKey);
-    const response = await ai.models.generateContent({
-      model: targetModel,
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            {
-              text: spokenText,
-              speechMetadata: { style },
+    const { result: response, model } = await generateWithModelFallback(
+      [targetModel, ...TTS_FALLBACK_MODELS],
+      (candidate) =>
+        ai.models.generateContent({
+          model: candidate,
+          // O estilo vai no próprio texto: é assim que os modelos de voz do Gemini o recebem.
+          contents: [{ role: 'user', parts: [{ text: `${styleInstruction(style, lang)}\n\n${spokenText}` }] }],
+          config: {
+            abortSignal: args.signal,
+            responseModalities: ['AUDIO'],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: { voiceName: resolved.voiceName },
+              },
             },
-          ],
-        },
-      ],
-      config: {
-        abortSignal: args.signal,
-        responseModalities: ['AUDIO'],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: resolved.voiceName },
           },
-        },
-      },
-    });
+        }),
+    );
 
-    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    if (!base64Audio) {
+    const audioPart = response.candidates?.[0]?.content?.parts?.find((part) => part.inlineData?.data)?.inlineData;
+    if (!audioPart?.data) {
       throw new Error(tr('common:errors.audioSynthesizeFail'));
     }
-    return { wavBase64: base64Audio, model: targetModel };
+    return { wavBase64: pcmBase64ToWavBase64(audioPart.data, audioPart.mimeType), model };
   } catch (err) {
     if (args.signal?.aborted) throw err;
     throw friendlyCustomKeyError(err);
@@ -234,28 +276,27 @@ export async function synthesizePodcastWav(args: {
         ? 'Estudiante universitario curioso y atento que dialoga con naturalidad'
         : 'Estudante universitário curioso, expressivo e atento num diálogo natural';
 
-  const parts = args.script.lines.map((line, idx) => {
-    const isHost = line.speaker.toLowerCase() === args.script.hostName.toLowerCase();
-    const cleaned = markdownLatexToSpeechText(line.text, lang);
-    const enriched =
-      idx === 0
-        ? `<breath> ${cleaned}`
-        : !isHost && idx % 4 === 1
-          ? `|mhm| ${cleaned}`
-          : cleaned;
-    return {
-      text: `${line.speaker}: ${enriched}`,
-      speechMetadata: {
-        speaker: isHost ? args.script.hostName : args.script.coHostName,
-        style: isHost ? hostStyle : coHostStyle,
-      },
-    };
-  });
+  const conversation = args.script.lines
+    .map((line) => {
+      const isHost = line.speaker.toLowerCase() === args.script.hostName.toLowerCase();
+      const cleaned = markdownLatexToSpeechText(line.text, lang);
+      const speaker = isHost ? args.script.hostName : args.script.coHostName;
+      return `${speaker}: ${cleaned}`;
+    })
+    .join('\n');
+  const direction =
+    lang === 'en'
+      ? `Read this study conversation aloud. ${args.script.hostName} speaks in this style: ${hostStyle}. ${args.script.coHostName} speaks in this style: ${coHostStyle}.`
+      : lang === 'es'
+        ? `Lee en voz alta esta conversación de estudio. ${args.script.hostName} habla con este estilo: ${hostStyle}. ${args.script.coHostName} habla con este estilo: ${coHostStyle}.`
+        : `Lê em voz alta esta conversa de estudo. ${args.script.hostName} fala com este estilo: ${hostStyle}. ${args.script.coHostName} fala com este estilo: ${coHostStyle}.`;
+  const parts = [{ text: `${direction}\n\n${conversation}` }];
 
   try {
     const ai = buildGenAiClient(customKey);
-    const response = await ai.models.generateContent({
-      model: TTS_DESIGN_MODEL,
+    const { result: response } = await generateWithModelFallback([TTS_DESIGN_MODEL, ...TTS_FALLBACK_MODELS], (candidate) =>
+      ai.models.generateContent({
+      model: candidate,
       contents: [{ role: 'user', parts }],
       config: {
         abortSignal: args.signal,
@@ -280,13 +321,14 @@ export async function synthesizePodcastWav(args: {
           },
         },
       },
-    });
+    }),
+    );
 
-    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    if (!base64Audio) {
+    const audioPart = response.candidates?.[0]?.content?.parts?.find((part) => part.inlineData?.data)?.inlineData;
+    if (!audioPart?.data) {
       throw new Error(tr('common:errors.audioSynthesizeFail'));
     }
-    return { wavBase64: base64Audio };
+    return { wavBase64: pcmBase64ToWavBase64(audioPart.data, audioPart.mimeType) };
   } catch (err) {
     if (args.signal?.aborted) throw err;
     throw friendlyCustomKeyError(err);
@@ -326,8 +368,10 @@ export async function transcribeAudioNotes(args: {
   if (customKey) {
     try {
       const ai = buildGenAiClient(customKey);
-      const response = await ai.models.generateContent({
-        model: TRANSCRIBE_MODEL,
+      const { result: response, model: usedModel } = await generateWithModelFallback(
+        [TRANSCRIBE_MODEL, DEFAULT_MODEL, 'gemini-2.5-flash'],
+        (candidate) => ai.models.generateContent({
+        model: candidate,
         contents: {
           parts: [
             {
@@ -342,12 +386,13 @@ export async function transcribeAudioNotes(args: {
         config: {
           abortSignal: args.signal,
         },
-      });
+      }),
+      );
       const transcript = (response.text ?? '').trim();
       if (!transcript) {
         throw new Error(tr('common:errors.audioTranscribeFail'));
       }
-      return { transcript, usedModel: TRANSCRIBE_MODEL };
+      return { transcript, usedModel };
     } catch (err) {
       if (args.signal?.aborted) throw err;
       throw friendlyCustomKeyError(err);

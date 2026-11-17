@@ -14,7 +14,6 @@ import {
 import { useStore } from '../../store/useStore';
 import type { UniVoiceConfig, UniVoiceName } from '../../types';
 import { Button, Field, Input } from '../ui';
-import { errorMessage } from './helpers';
 
 const STYLE_MAX = 120;
 
@@ -60,19 +59,29 @@ export default function UniVoiceCard() {
       // Carregado só ao ouvir: o módulo de áudio traz o SDK da Gemini e fica fora do chunk de Definições.
       const audio = await import('../../integrations/geminiAudio');
       if (audio.getAudioExecutionTier() === 'ai-studio-key') {
-        const { wavBase64 } = await audio.synthesizeUniSpeech({
-          text: sample,
-          voiceConfig,
-          language: appLang,
-        });
-        await playWavBase64('uni-voice-preview', wavBase64);
+        try {
+          const { wavBase64 } = await audio.synthesizeUniSpeech({
+            text: sample,
+            voiceConfig,
+            language: appLang,
+          });
+          await playWavBase64('uni-voice-preview', wavBase64);
+        } catch (neuralErr) {
+          // A voz neural falhou (modelo indisponível, quota, rede): toca com a voz do dispositivo
+          // e explica em linguagem simples, sem mostrar o erro técnico da Google.
+          if (import.meta.env.DEV) console.warn('[Uni voz]', neuralErr);
+          if (!isDeviceSpeechSupported()) throw neuralErr;
+          await playDeviceSpeech('uni-voice-preview', sample, { lang: appLang, voiceHint: voice });
+          setError(t('settings:uniVoice.neuralFallback'));
+        }
       } else if (isDeviceSpeechSupported()) {
         await playDeviceSpeech('uni-voice-preview', sample, { lang: appLang, voiceHint: voice });
       } else {
         setError(t('settings:uniVoice.previewError'));
       }
     } catch (e) {
-      setError(errorMessage(e, t('settings:uniVoice.previewError')));
+      if (import.meta.env.DEV) console.warn('[Uni voz]', e);
+      setError(t('settings:uniVoice.previewError'));
     } finally {
       setPreviewing(false);
     }

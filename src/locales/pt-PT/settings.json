@@ -488,6 +488,7 @@
     "saved": "Voz do Uni guardada.",
     "sample": "Olá, sou o teu Uni. Vamos rever este tema juntos, passo a passo.",
     "deviceNote": "Estás a ouvir a voz do dispositivo. A voz neural do Uni precisa de uma chave pessoal: Definições → Tutor → Avançado.",
-    "previewError": "Não foi possível ouvir o exemplo. Tenta outra vez."
+    "previewError": "Não foi possível ouvir o exemplo. Tenta outra vez.",
+    "neuralFallback": "A voz natural da Google não respondeu agora; estás a ouvir a voz do dispositivo."
   }
 }

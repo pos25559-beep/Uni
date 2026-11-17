@@ -407,3 +407,39 @@ export function useUniAudioPlayer(sourceId: string) {
     setLoading: () => setUniAudioLoading(sourceId),
   };
 }
+
+/**
+ * A voz do Gemini vem em PCM 16 bits sem cabeçalho («audio/L16;rate=24000»). O navegador só a
+ * toca dentro de um WAV, por isso junta-se o cabeçalho RIFF de 44 bytes.
+ */
+export function pcmBase64ToWavBase64(pcmBase64: string, mimeType?: string): string {
+  const binary = atob(pcmBase64);
+  if (binary.startsWith('RIFF')) return pcmBase64;
+  const rateMatch = /rate=(\d+)/i.exec(mimeType ?? '');
+  const sampleRate = rateMatch ? Number(rateMatch[1]) : 24_000;
+  const channels = 1;
+  const bitsPerSample = 16;
+  const dataLength = binary.length;
+  const header = new ArrayBuffer(44);
+  const view = new DataView(header);
+  const writeStr = (offset: number, str: string) => {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+  };
+  writeStr(0, 'RIFF');
+  view.setUint32(4, 36 + dataLength, true);
+  writeStr(8, 'WAVE');
+  writeStr(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, channels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, (sampleRate * channels * bitsPerSample) / 8, true);
+  view.setUint16(32, (channels * bitsPerSample) / 8, true);
+  view.setUint16(34, bitsPerSample, true);
+  writeStr(36, 'data');
+  view.setUint32(40, dataLength, true);
+  let headerStr = '';
+  const headerBytes = new Uint8Array(header);
+  for (let i = 0; i < headerBytes.length; i++) headerStr += String.fromCharCode(headerBytes[i]);
+  return btoa(headerStr + binary);
+}

@@ -488,6 +488,7 @@
     "saved": "Uni's voice saved.",
     "sample": "Hi, I'm your Uni. Let's review this topic together, step by step.",
     "deviceNote": "You are hearing the device voice. Uni's neural voice needs a personal key: Settings → Tutor → Advanced.",
-    "previewError": "Could not play the sample. Please try again."
+    "previewError": "Could not play the sample. Please try again.",
+    "neuralFallback": "Google's natural voice did not respond just now; you are hearing your device's voice."
   }
 }
