@@ -594,11 +594,36 @@ export default function Assistant() {
             <h2 className="mt-4 font-display text-2xl font-bold leading-tight tracking-tight text-fg sm:mt-5 sm:text-3xl">
               {t('page.hello', { name: firstName ? `, ${firstName}` : '' })}{' '}
               <span className="block sm:inline">
-                {courseUniAgent ? t('page.hereIs', { name: courseUniAgent.name }) : t('page.whatOn')}{' '}
-                <span className={cx(!isMinimal && 'font-serif font-medium italic text-accent-ink dark:text-accent')}>
-                  {courseUniAgent ? `(${activeCourse?.shortName})` : t('page.thinking')}
-                </span>
-                {courseUniAgent ? '.' : '?'}
+                {courseUniAgent ? (
+                  activeCourse?.shortName &&
+                  courseUniAgent.name.trim().toLowerCase() === activeCourse.shortName.trim().toLowerCase() ? (
+                    <>
+                      {t('page.hereIs', { name: '' }).trim()}{' '}
+                      <span className={cx(!isMinimal && 'font-serif font-medium italic text-accent-ink dark:text-accent')}>
+                        {courseUniAgent.name}
+                      </span>
+                      .
+                    </>
+                  ) : (
+                    <>
+                      {t('page.hereIs', { name: courseUniAgent.name })}{' '}
+                      {activeCourse?.shortName && (
+                        <span className={cx(!isMinimal && 'font-serif font-medium italic text-accent-ink dark:text-accent')}>
+                          ({activeCourse.shortName})
+                        </span>
+                      )}
+                      .
+                    </>
+                  )
+                ) : (
+                  <>
+                    {t('page.whatOn')}{' '}
+                    <span className={cx(!isMinimal && 'font-serif font-medium italic text-accent-ink dark:text-accent')}>
+                      {t('page.thinking')}
+                    </span>
+                    ?
+                  </>
+                )}
               </span>
             </h2>
             <p className="mt-2 max-w-sm text-xs leading-relaxed text-muted sm:text-sm">
@@ -959,19 +984,23 @@ export default function Assistant() {
 
         <div className="flex min-w-0 items-center justify-between gap-1.5 md:hidden">
           <div className="flex min-w-0 items-center gap-1.5">
-            {activeCourse && (
-              <span className="inline-flex min-h-11 min-w-0 items-center gap-1 rounded-full bg-accent-soft pl-3 pr-0.5 text-xs font-medium text-accent-ink">
-                <span className="max-w-[100px] truncate">{activeCourse.shortName || activeCourse.name}</span>
-                <button
-                  type="button"
-                  onClick={() => setActiveCourseId('all')}
-                  aria-label={t('page.clearCourse')}
-                  className="grid size-11 place-items-center rounded-full hover:text-danger"
-                >
-                  <X size={13} />
-                </button>
-              </span>
-            )}
+            <PillSelect
+              value={activeCourseId}
+              onChange={setActiveCourseId}
+              placement="up"
+              icon={<BookOpen size={13} />}
+              ariaLabel={t('page.courseContext')}
+              className="min-w-0 [&>button]:min-h-11 [&>button]:max-w-[140px] [&>button]:px-2.5"
+              options={[
+                { value: 'all', label: t('page.allCoursesOpt'), shortLabel: t('page.allShort'), hint: t('page.semesterOverview') },
+                ...courses.map((c) => ({
+                  value: c.id,
+                  label: c.shortName || c.name,
+                  hint: c.name !== c.shortName ? c.name : undefined,
+                  dotClass: courseColors[c.color]?.dot,
+                })),
+              ]}
+            />
             <SourcesPill count={attachedMaterials.length} onClick={() => setSourcesOpen(true)} />
           </div>
           <button
@@ -1063,53 +1092,15 @@ export default function Assistant() {
                   <Paperclip size={13} />
                   <span>{t('page.photoPdf')}</span>
                 </button>
-                <PillSelect
-                  value={activeCourseId}
-                  onChange={setActiveCourseId}
-                  placement="up"
-                  icon={<BookOpen size={13} />}
-                  ariaLabel={t('page.courseContext')}
-                  className="min-w-0 [&>button]:min-h-11 [&>button]:max-w-[140px] [&>button]:px-2.5"
-                  options={[
-                    { value: 'all', label: t('page.allCoursesOpt'), shortLabel: t('page.allShort'), hint: t('page.semesterOverview') },
-                    ...courses.map((c) => ({
-                      value: c.id,
-                      label: c.shortName || c.name,
-                      hint: c.name !== c.shortName ? c.name : undefined,
-                      dotClass: courseColors[c.color]?.dot,
-                    })),
-                  ]}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMobileComposerToolsOpen(false);
-                    setSourcesOpen(true);
-                  }}
-                  className="flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg"
-                >
-                  <FileText size={13} />
-                  <span>{t('page.notes')}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMobileComposerToolsOpen(false);
-                    setMobileSuggestionsOpen(true);
-                  }}
-                  className="flex min-h-11 items-center gap-1 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg"
-                >
-                  <Sparkles size={13} />
-                  <span>{t('page.suggestions')}</span>
-                </button>
                 <button
                   type="button"
                   onClick={() => {
                     setMobileComposerToolsOpen(false);
                     setNotebookOpen(true);
                   }}
-                  className="flex min-h-11 items-center gap-1 rounded-full bg-pastel-butter/80 px-3 text-xs font-semibold text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]"
+                  className="flex min-h-11 items-center gap-1.5 rounded-full bg-pastel-butter/80 px-3 text-xs font-semibold text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]"
                 >
+                  <Sparkles size={13} />
                   <span>{t('page.notebook')}</span>
                 </button>
                 <button
@@ -1118,10 +1109,21 @@ export default function Assistant() {
                     setMobileComposerToolsOpen(false);
                     openUniCheckIn({ kind: 'day', courseId: activeCourse?.id });
                   }}
-                  className="flex min-h-11 items-center gap-1 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg"
+                  className="flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg"
                 >
                   <BookOpenCheck size={13} />
                   <span>{t('page.journal')}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileComposerToolsOpen(false);
+                    setLiveVoiceOpen(true);
+                  }}
+                  className="flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg"
+                >
+                  <Mic size={13} />
+                  <span>{t('liveVoice.openBtn')}</span>
                 </button>
               </div>
             ) : null

@@ -94,6 +94,8 @@
     "introTitle": "Cuaderno de Uni dentro de la app",
     "introBody": "Pega apuntes de clase o resúmenes y añade PDF o fotos para generar fichas y quizzes con citas.",
     "attachedSources": "Fuentes adjuntas ({{count}})",
+    "viewSources": "Ver fuentes",
+    "hideSources": "Ocultar",
     "pasteLabel": "Pega apuntes, resúmenes o adjunta un PDF",
     "clipboardEmpty": "El portapapeles está vacío.",
     "pasted": "Texto pegado en el cuaderno.",

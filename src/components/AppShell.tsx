@@ -323,7 +323,7 @@ export default function AppShell() {
       <aside
         className={cx(
           'hidden shrink-0 flex-col border-r border-line bg-surface py-5 transition-[width,padding] duration-200 md:flex',
-          sidebarCollapsed ? 'w-[76px] px-2' : 'w-64 px-3.5',
+          sidebarCollapsed ? 'w-[88px] px-2' : 'w-64 px-3.5',
         )}
       >
         <div

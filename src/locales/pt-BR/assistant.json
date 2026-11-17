@@ -94,6 +94,8 @@
     "introTitle": "Caderno do Uni dentro do app",
     "introBody": "Cole anotações da aula ou resumos e junte PDFs ou fotos para gerar fichas e quizzes com citações.",
     "attachedSources": "Fontes anexadas ({{count}})",
+    "viewSources": "Ver fontes",
+    "hideSources": "Ocultar",
     "pasteLabel": "Cole anotações, resumos ou anexe PDF",
     "clipboardEmpty": "A área de transferência está vazia.",
     "pasted": "Texto colado no caderno.",

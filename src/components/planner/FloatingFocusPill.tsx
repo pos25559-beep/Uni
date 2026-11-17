@@ -259,27 +259,30 @@ export default function FloatingFocusPill({
         <div
           role="region"
           aria-label={regionLabel}
-          className="mx-auto flex w-full flex-col items-center gap-1.5 rounded-2xl border border-line bg-bg p-1.5 shadow-card"
+          className="mx-auto flex w-full flex-col items-center rounded-2xl border border-line bg-bg px-1.5 py-2 shadow-card"
         >
           <button
             type="button"
             onClick={onExpand}
             aria-label={expandLabel}
             title={`${courseName} · ${clockText} — ${expandLabel}`}
-            className="flex w-full flex-col items-center gap-1 rounded-xl py-1 text-fg transition hover:bg-surface-2"
+            className="flex min-h-11 w-full flex-col items-center justify-center gap-1 rounded-xl px-1 py-1 text-fg transition hover:bg-surface-2"
           >
-            {courseDotClass && <span className={cx('size-2 rounded-full', courseDotClass)} aria-hidden="true" />}
+            <span className="flex items-center gap-1">
+              {courseDotClass && <span className={cx('size-2 rounded-full', courseDotClass)} aria-hidden="true" />}
+              {running && <span className="size-1.5 animate-pulse rounded-full bg-accent" aria-hidden="true" />}
+            </span>
             <span className="tabular-nums font-mono text-xs font-bold tracking-tight text-fg" aria-live="off">
               {clockText}
             </span>
           </button>
-          <div className="flex w-full items-center justify-center gap-1">
+          <div className="mt-1 flex w-full items-center gap-1 border-t border-line/60 pt-1.5">
             <button
               type="button"
               onClick={onToggleRun}
               aria-label={running ? pauseLabel : resumeLabel}
               title={running ? pauseLabel : resumeLabel}
-              className="flex size-7 items-center justify-center rounded-lg text-fg transition hover:bg-surface-2"
+              className="flex h-8 flex-1 items-center justify-center rounded-xl bg-surface-2/75 text-fg transition hover:bg-surface-2"
             >
               {running ? <Pause size={13} /> : <Play size={13} />}
             </button>
@@ -288,7 +291,7 @@ export default function FloatingFocusPill({
               onClick={() => setFocusBubbleMode('floating')}
               aria-label={undockFloatLabel}
               title={undockFloatLabel}
-              className="flex size-7 items-center justify-center rounded-lg text-muted transition hover:bg-surface-2 hover:text-fg"
+              className="flex h-8 flex-1 items-center justify-center rounded-xl text-muted transition hover:bg-surface-2 hover:text-fg"
             >
               <Maximize2 size={13} />
             </button>

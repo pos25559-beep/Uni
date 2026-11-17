@@ -94,6 +94,8 @@
     "introTitle": "Uni's Notebook inside the app",
     "introBody": "Paste class notes or summaries and add PDFs or photos to generate study sheets and quizzes with citations.",
     "attachedSources": "Attached sources ({{count}})",
+    "viewSources": "View sources",
+    "hideSources": "Hide",
     "pasteLabel": "Paste notes, summaries or attach a PDF",
     "clipboardEmpty": "Your clipboard is empty.",
     "pasted": "Text pasted into the notebook.",

@@ -1,6 +1,6 @@
-import { BookOpen, ClipboardPaste, Copy, Download, ExternalLink, FileText, Image as ImageIcon, Loader2, Paperclip, Sparkles, Trash2, X } from 'lucide-react';
+import { BookOpen, ChevronDown, ClipboardPaste, Copy, Download, ExternalLink, FileText, Image as ImageIcon, Library, Loader2, Paperclip, Sparkles, Trash2, X } from 'lucide-react';
 import { differenceInCalendarDays, parseISO } from 'date-fns';
-import { lazy, Suspense, useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
 import { resolveIntlLocale } from '../../lib/grading';
@@ -25,11 +25,12 @@ import {
 import { getAiMaterialLimit, resolveMaterialsForAI } from '../../lib/materialContent';
 import { openInAppBrowser } from '../../lib/nativeBridge';
 import { buildNotebookPdfBytes, downloadPdfFile } from '../../lib/pdfExport';
+import { groupSources, type SourceGroupKey } from '../../lib/tutorSources';
 import type { UniAccessoryId, UniPersonaMode } from '../../lib/uniAccessories';
 import { newId, useStore } from '../../store/useStore';
 import type { ID, Material } from '../../types';
 import { UniBuddy } from '../brand/UnipediaMarks';
-import { Button, Modal, Textarea } from '../ui';
+import { Button, Modal, PillSelect, Textarea } from '../ui';
 import { cx, showToast } from '../../lib/uiHelpers';
 import {
   deleteSheetGuide,
@@ -39,6 +40,14 @@ import {
   type StudyGuide,
 } from '../../lib/studyGuide';
 import { Markdown } from './Markdown';
+
+const SOURCE_GROUP_KEY: Record<SourceGroupKey, string> = {
+  lessons: 'sources.groupLessons',
+  tests: 'sources.groupTests',
+  problems: 'sources.groupProblems',
+  images: 'sources.groupImages',
+  other: 'sources.groupOther',
+};
 
 const StudyGuideReader = lazy(() => import('./StudyGuideReader'));
 
@@ -83,10 +92,12 @@ export default function UniNotebookDrawer({
   onSendToChat: (markdown: string) => void;
 }) {
   const { t } = useTranslation('assistant');
+  const { t: tCommon } = useTranslation('common');
   const assessments = useStore((s) => s.assessments);
   const personalNotebookUrl = useStore((s) => s.settings.personalNotebookUrl?.trim() ?? '');
   const [notesSource, setNotesSource] = useState('');
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
+  const [sourcesExpanded, setSourcesExpanded] = useState(false);
   const [mode, setMode] = useState<'guide' | 'quiz' | 'summary'>('guide');
   const [selectedTopicId, setSelectedTopicId] = useState<string>('');
   const [busy, setBusy] = useState(false);
@@ -102,6 +113,8 @@ export default function UniNotebookDrawer({
   const [savedSheets, setSavedSheets] = useState<TopicSheetRecord[]>([]);
   const [activeSheetId, setActiveSheetId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const groupedSources = useMemo(() => groupSources(attachedMaterials), [attachedMaterials]);
 
   const scopedCourseKey: ID | 'general' = courseId || 'general';
 
@@ -438,35 +451,77 @@ export default function UniNotebookDrawer({
       }
     >
       <div className="space-y-4">
-        <div className="flex items-center gap-3 rounded-2xl bg-[#FCE99F]/70 p-3.5 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]">
-          <UniBuddy mood={busy ? 'thinking' : 'curious'} accessory={accessory} size={46} interactive={false} />
-          <div className="min-w-0 text-xs">
+        <div className="flex items-center gap-3 rounded-2xl bg-[#FCE99F]/70 p-3 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]">
+          <UniBuddy mood={busy ? 'thinking' : 'curious'} accessory={accessory} size={40} interactive={false} />
+          <div className="min-w-0 text-xs leading-relaxed">
             <p className="font-bold">{t('notebook.introTitle')}</p>
-            <p className="opacity-80">
-              {t('notebook.introBody')}
-            </p>
+            <p className="opacity-80">{t('notebook.introBody')}</p>
           </div>
         </div>
 
         {attachedMaterials.length > 0 && (
-          <div className="space-y-1.5">
-            <p className="text-xs font-semibold text-muted">{t('notebook.attachedSources', { count: attachedMaterials.length })}</p>
-            <div className="flex flex-wrap gap-1.5">
-              {attachedMaterials.map((m) => (
-                <span
-                  key={m.id}
-                  className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2.5 py-1 text-xs text-fg"
-                >
-                  <FileText size={12} className="text-accent" />
-                  <span className="max-w-[160px] truncate">{m.title}</span>
+          <div className="overflow-hidden rounded-2xl border border-line bg-surface-2/50">
+            <button
+              type="button"
+              onClick={() => setSourcesExpanded((v) => !v)}
+              aria-expanded={sourcesExpanded}
+              className="flex min-h-11 w-full items-center justify-between gap-3 px-3.5 py-2.5 text-left transition hover:bg-surface-2"
+            >
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent-ink">
+                  <Library size={15} aria-hidden="true" />
                 </span>
-              ))}
-            </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-fg">
+                    {t('notebook.attachedSources', { count: attachedMaterials.length })}
+                  </p>
+                  <p className="truncate text-xs text-muted">
+                    {groupedSources
+                      .map((g) => `${g.items.length} ${tCommon(SOURCE_GROUP_KEY[g.key]).toLowerCase()}`)
+                      .join(' · ')}
+                  </p>
+                </div>
+              </div>
+              <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-accent-ink dark:text-accent">
+                <span>{sourcesExpanded ? t('notebook.hideSources') : t('notebook.viewSources')}</span>
+                <ChevronDown
+                  size={15}
+                  className={cx('transition-transform duration-150', sourcesExpanded && 'rotate-180')}
+                  aria-hidden="true"
+                />
+              </span>
+            </button>
+
+            {sourcesExpanded && (
+              <div className="max-h-52 space-y-3 overflow-y-auto border-t border-line/70 px-3.5 py-3">
+                {groupedSources.map((group) => (
+                  <div key={group.key} className="space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                      {tCommon(SOURCE_GROUP_KEY[group.key])} · {group.items.length}
+                    </p>
+                    <ul className="divide-y divide-line/50">
+                      {group.items.map((m) => (
+                        <li key={m.id} className="flex items-center gap-2 py-1.5 text-xs text-fg">
+                          {group.key === 'images' ? (
+                            <ImageIcon size={13} className="shrink-0 text-accent" aria-hidden="true" />
+                          ) : (
+                            <FileText size={13} className="shrink-0 text-accent" aria-hidden="true" />
+                          )}
+                          <span className="min-w-0 flex-1 truncate" title={m.title}>
+                            {m.title}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        <div>
-          <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <label className="min-w-0 text-xs font-semibold text-muted">
               {t('notebook.pasteLabel')}
             </label>
@@ -495,17 +550,17 @@ export default function UniNotebookDrawer({
                   }
                 }}
                 disabled={busy}
-                className="inline-flex min-h-11 shrink-0 whitespace-nowrap items-center gap-1 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg transition hover:border-line-strong disabled:opacity-45"
+                className="inline-flex min-h-11 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-xl border border-line bg-surface-2 px-3 text-xs font-semibold text-fg transition hover:border-line-strong disabled:opacity-45"
               >
-                <ClipboardPaste size={12} /> {t('notebook.pasteBtn')}
+                <ClipboardPaste size={13} /> {t('notebook.pasteBtn')}
               </button>
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={busy || attachments.length >= 3}
-                className="inline-flex min-h-11 shrink-0 whitespace-nowrap items-center gap-1 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg transition hover:border-line-strong disabled:opacity-45"
+                disabled={busy || attachments.length >= maxLocalUploadSlots}
+                className="inline-flex min-h-11 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-xl border border-line bg-surface-2 px-3 text-xs font-semibold text-fg transition hover:border-line-strong disabled:opacity-45"
               >
-                <Paperclip size={12} /> {t('notebook.attachBtn')}
+                <Paperclip size={13} /> {t('notebook.attachBtn')}
               </button>
             </div>
           </div>
@@ -513,101 +568,97 @@ export default function UniNotebookDrawer({
             value={notesSource}
             onChange={(e) => setNotesSource(e.target.value)}
             placeholder={t('notebook.placeholder')}
-            className="min-h-28"
+            className="min-h-24"
           />
           {attachments.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
+            <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface-2/50">
               {attachments.map((att, idx) => (
-                <span
+                <li
                   key={`${att.name}-${idx}`}
-                  className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-surface-2 py-1 pl-3 pr-1.5 text-xs font-medium text-fg"
+                  className="flex items-center justify-between gap-2 pl-3 pr-1 py-1 text-xs text-fg"
                 >
-                  {att.mimeType.startsWith('image/') ? (
-                    <ImageIcon size={12} className="text-accent" />
-                  ) : (
-                    <FileText size={12} className="text-accent" />
-                  )}
-                  <span className="max-w-[140px] truncate">{att.name}</span>
+                  <div className="flex min-w-0 items-center gap-2">
+                    {att.mimeType.startsWith('image/') ? (
+                      <ImageIcon size={13} className="shrink-0 text-accent" />
+                    ) : (
+                      <FileText size={13} className="shrink-0 text-accent" />
+                    )}
+                    <span className="truncate font-medium">{att.name}</span>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== idx))}
                     aria-label={t('notebook.remove', { name: att.name })}
-                    className="grid size-11 place-items-center rounded-full text-muted hover:bg-surface hover:text-fg"
+                    className="grid size-11 shrink-0 place-items-center rounded-xl text-muted hover:bg-surface hover:text-fg"
                   >
-                    <X size={13} />
+                    <X size={14} />
                   </button>
-                </span>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </div>
 
         {courseTopics.length > 0 && (
-          <div>
-            <p className="mb-1.5 text-xs font-semibold text-muted">
-              {t('notebook.linkTopic')}
-            </p>
-            <div className="flex max-h-24 flex-wrap gap-1.5 overflow-y-auto">
-              <button
-                type="button"
-                onClick={() => setSelectedTopicId('')}
-                className={cx(
-                  'min-h-11 rounded-full border px-3 text-xs font-medium transition',
-                  !selectedTopicId
-                    ? 'border-accent bg-accent-soft text-accent-ink'
-                    : 'border-line bg-surface-2 text-muted hover:text-fg',
-                )}
-              >
-                {t('notebook.general')}
-              </button>
-              {courseTopics.slice(0, 10).map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setSelectedTopicId(t.id)}
-                  className={cx(
-                    'min-h-11 rounded-full border px-3 text-xs font-medium transition',
-                    selectedTopicId === t.id
-                      ? 'border-accent bg-accent-soft text-accent-ink'
-                      : 'border-line bg-surface-2 text-muted hover:text-fg',
-                  )}
-                >
-                  {t.title}
-                </button>
-              ))}
-            </div>
+          <div className="space-y-1.5">
+            <p className="text-xs font-semibold text-muted">{t('notebook.linkTopic')}</p>
+            <PillSelect
+              value={selectedTopicId}
+              onChange={setSelectedTopicId}
+              ariaLabel={t('notebook.linkTopic')}
+              className="w-full [&>button]:w-full [&>button]:max-w-none [&>button]:justify-between [&>button]:rounded-xl [&>button]:bg-surface-2/60"
+              options={[
+                { value: '', label: t('notebook.general') },
+                ...courseTopics.map((topic) => ({
+                  value: topic.id,
+                  label: topic.title,
+                })),
+              ]}
+            />
           </div>
         )}
 
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-1.5">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold text-muted">{t('notebook.title')}</span>
+            <span className="text-xs font-medium text-muted">
+              {customKeyActive
+                ? t('notebook.keyUnlimited')
+                : t('notebook.genToday', { remaining: quota.notebookRemaining, limit: quota.notebookLimit })}
+            </span>
+          </div>
+          <div
+            role="tablist"
+            aria-label={t('notebook.title')}
+            className="grid grid-cols-3 gap-1 rounded-2xl border border-line/80 bg-surface-2 p-1"
+          >
             {(
               [
                 ['guide', t('notebook.mode.guide')],
                 ['quiz', t('notebook.mode.quiz')],
                 ['summary', t('notebook.mode.summary')],
               ] as const
-            ).map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setMode(id)}
-                className={cx(
-                  'min-h-11 rounded-full border px-3.5 text-xs font-semibold transition',
-                  mode === id
-                    ? 'border-accent bg-accent-soft text-accent'
-                    : 'border-line bg-surface-2 text-muted hover:text-fg',
-                )}
-              >
-                {label}
-              </button>
-            ))}
+            ).map(([id, label]) => {
+              const active = mode === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setMode(id)}
+                  className={cx(
+                    'flex min-h-11 items-center justify-center rounded-xl px-2 py-1.5 text-center text-xs font-semibold leading-tight transition',
+                    active
+                      ? 'bg-surface text-fg shadow-card'
+                      : 'text-muted hover:text-fg',
+                  )}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
-          <span className="text-xs font-medium text-muted">
-            {customKeyActive
-              ? t('notebook.keyUnlimited')
-              : t('notebook.genToday', { remaining: quota.notebookRemaining, limit: quota.notebookLimit })}
-          </span>
         </div>
 
         <Button
@@ -661,24 +712,19 @@ export default function UniNotebookDrawer({
 
         {savedSheets.length > 0 && (
           <div className="space-y-2 border-t border-line pt-3">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-semibold text-muted">
-                {t('notebook.savedSheets', { count: savedSheets.length })}
-              </p>
-            </div>
-            <div className="max-h-44 space-y-1.5 overflow-y-auto pr-1">
+            <p className="text-xs font-semibold text-muted">
+              {t('notebook.savedSheets', { count: savedSheets.length })}
+            </p>
+            <div className="max-h-48 divide-y divide-line overflow-y-auto rounded-2xl border border-line bg-surface-2/40">
               {savedSheets.map((sheet) => {
                 const isSelected = activeSheetId === sheet.id;
-                const modeLabel =
-                  t(`notebook.short.${sheet.mode}`);
+                const modeLabel = t(`notebook.short.${sheet.mode}`);
                 return (
                   <div
                     key={sheet.id}
                     className={cx(
-                      'flex items-center gap-1.5 rounded-2xl border p-1.5 transition',
-                      isSelected
-                        ? 'border-accent bg-accent-soft/40'
-                        : 'border-line bg-surface-2/50 hover:border-line-strong',
+                      'flex items-center gap-1.5 px-1.5 py-1 transition',
+                      isSelected ? 'bg-accent-soft/40' : 'hover:bg-surface-2/70',
                     )}
                   >
                     <button
@@ -691,13 +737,12 @@ export default function UniNotebookDrawer({
                         setGuide(stored);
                         if (stored) setReaderOpen(true);
                       }}
-                      className="flex min-h-11 min-w-0 flex-1 items-center justify-between gap-2 rounded-xl px-2.5 text-left"
+                      className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 rounded-xl px-2 text-left"
                     >
-                      <span className="min-w-0 truncate text-xs font-semibold text-fg">
-                        {sheet.title}
-                      </span>
-                      <span className="shrink-0 rounded-full bg-surface px-2 py-0.5 text-xs font-medium text-muted">
-                        {modeLabel}
+                      <BookOpen size={14} className={cx('shrink-0', isSelected ? 'text-accent-ink' : 'text-muted')} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-xs font-semibold text-fg">{sheet.title}</span>
+                        <span className="block text-xs text-muted">{modeLabel}</span>
                       </span>
                     </button>
                     <button
