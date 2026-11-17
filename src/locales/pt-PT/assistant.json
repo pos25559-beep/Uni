@@ -111,7 +111,26 @@
     "result": "Resultado do Caderno",
     "savedSheets": "Fichas guardadas localmente ({{count}})",
     "deleteSheet": "Apagar ficha {{title}}",
-    "pdfPage": "Unipedia · Página {{current}} de {{total}}"
+    "pdfPage": "Unipedia · Página {{current}} de {{total}}",
+    "guide": {
+      "goal": "Objetivo",
+      "keyIdeas": "Ideias-chave",
+      "formulas": "Fórmulas",
+      "pitfalls": "Armadilhas",
+      "sources": "Fontes",
+      "examTraps": "Armadilhas de teste",
+      "revisionPlan": "Plano de revisão",
+      "selfCheck": "Testa-te",
+      "answer": "Resposta",
+      "page": "p. {{page}}",
+      "showAnswer": "Ver resposta",
+      "hideAnswer": "Esconder resposta",
+      "topicOpen": "Abrir {{title}}",
+      "topicClose": "Fechar {{title}}",
+      "doneStep": "Marcar como feito: {{task}}",
+      "noPlan": "Sem plano de revisão.",
+      "minutes": "{{count}} min"
+    }
   },
   "page": {
     "sugExamCourse": "Revê comigo a matéria alinhada de {{course}} para o teste",

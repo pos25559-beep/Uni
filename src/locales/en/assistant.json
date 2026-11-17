@@ -111,7 +111,26 @@
     "result": "Notebook result",
     "savedSheets": "Sheets saved on this device ({{count}})",
     "deleteSheet": "Delete sheet {{title}}",
-    "pdfPage": "Unipedia · Page {{current}} of {{total}}"
+    "pdfPage": "Unipedia · Page {{current}} of {{total}}",
+    "guide": {
+      "goal": "Goal",
+      "keyIdeas": "Key ideas",
+      "formulas": "Formulas",
+      "pitfalls": "Common pitfalls",
+      "sources": "Sources",
+      "examTraps": "Exam traps",
+      "revisionPlan": "Revision plan",
+      "selfCheck": "Test yourself",
+      "answer": "Answer",
+      "page": "p. {{page}}",
+      "showAnswer": "Show answer",
+      "hideAnswer": "Hide answer",
+      "topicOpen": "Open {{title}}",
+      "topicClose": "Close {{title}}",
+      "doneStep": "Mark as done: {{task}}",
+      "noPlan": "No revision plan.",
+      "minutes": "{{count}} min"
+    }
   },
   "page": {
     "sugExamCourse": "Review the material for the {{course}} test with me",

@@ -1,4 +1,5 @@
 import { BookOpen, ClipboardPaste, Copy, Download, ExternalLink, FileText, Image as ImageIcon, Loader2, Paperclip, Sparkles, Trash2, X } from 'lucide-react';
+import { differenceInCalendarDays, parseISO } from 'date-fns';
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
@@ -6,6 +7,8 @@ import { resolveIntlLocale } from '../../lib/grading';
 import {
   fileToChatAttachment,
   generateNotebookBrief,
+  generateStudyGuide,
+  type NotebookAssessmentContext,
   hasCustomGeminiKey,
   type ChatAttachment,
   type NotebookSourceInput,
@@ -26,7 +29,9 @@ import type { ID, Material } from '../../types';
 import { UniBuddy } from '../brand/UnipediaMarks';
 import { Button, Modal, Textarea } from '../ui';
 import { cx, showToast } from '../../lib/uiHelpers';
+import type { StudyGuide } from '../../lib/studyGuide';
 import { Markdown } from './Markdown';
+import StudyGuideView from './StudyGuideView';
 
 function deriveSheetTitle(markdown: string, mode: 'guide' | 'quiz' | 'summary', courseName?: string): string {
   const heading = markdown
@@ -62,6 +67,7 @@ export default function UniNotebookDrawer({
   onSendToChat: (markdown: string) => void;
 }) {
   const { t } = useTranslation('assistant');
+  const assessments = useStore((s) => s.assessments);
   const personalNotebookUrl = useStore((s) => s.settings.personalNotebookUrl?.trim() ?? '');
   const [notesSource, setNotesSource] = useState('');
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
@@ -71,6 +77,7 @@ export default function UniNotebookDrawer({
   const [exportingPdf, setExportingPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [output, setOutput] = useState<string | null>(null);
+  const [guide, setGuide] = useState<StudyGuide | null>(null);
   const [savedSheets, setSavedSheets] = useState<TopicSheetRecord[]>([]);
   const [activeSheetId, setActiveSheetId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -111,6 +118,23 @@ export default function UniNotebookDrawer({
       }
     }
     if (next.length > 0) setAttachments((prev) => [...prev, ...next]);
+  };
+
+  const findNextAssessment = (): NotebookAssessmentContext | null => {
+    if (!courseId) return null;
+    const now = new Date();
+    const next = assessments
+      .filter((a) => a.courseId === courseId && a.grade === undefined && parseISO(a.date).getTime() >= now.getTime())
+      .sort((a, b) => a.date.localeCompare(b.date))[0];
+    if (!next) return null;
+    const titleById = new Map(courseTopics.map((topic) => [topic.id, topic.title]));
+    return {
+      title: next.title,
+      date: next.date,
+      daysLeft: Math.max(0, differenceInCalendarDays(parseISO(next.date), now)),
+      ...(next.weight ? { weight: next.weight } : {}),
+      topicTitles: next.topicIds.map((id) => titleById.get(id)).filter((x): x is string => Boolean(x)),
+    };
   };
 
   const handleGenerate = async () => {
@@ -160,15 +184,31 @@ export default function UniNotebookDrawer({
         customKeyActive ? maxAiFiles + 2 : 4,
       );
 
-      const result = await generateNotebookBrief({
-        mode,
-        sources,
-        attachments: mergedAttachments,
-        courseName,
-        persona,
-        accessory,
-      });
+      let result: string;
+      let structured: StudyGuide | null = null;
+      if (mode === 'guide') {
+        const generated = await generateStudyGuide({
+          sources,
+          attachments: mergedAttachments,
+          courseName,
+          persona,
+          accessory,
+          assessment: findNextAssessment(),
+        });
+        result = generated.markdown;
+        structured = generated.guide;
+      } else {
+        result = await generateNotebookBrief({
+          mode,
+          sources,
+          attachments: mergedAttachments,
+          courseName,
+          persona,
+          accessory,
+        });
+      }
       setOutput(result);
+      setGuide(structured);
       const validTopicId =
         selectedTopicId && courseTopics.some((t) => t.id === selectedTopicId)
           ? selectedTopicId
@@ -177,7 +217,7 @@ export default function UniNotebookDrawer({
         id: newId(),
         courseId: scopedCourseKey,
         ...(validTopicId ? { topicId: validTopicId } : {}),
-        title: deriveSheetTitle(result, mode, courseName),
+        title: structured?.title.trim().slice(0, 72) || deriveSheetTitle(result, mode, courseName),
         mode,
         summary: result,
         keyConcepts: resolved.readTitles.slice(0, 6),
@@ -468,11 +508,11 @@ export default function UniNotebookDrawer({
         )}
 
         {output && (
-          <div className="max-h-64 overflow-y-auto rounded-[20px] border border-line bg-surface-2/60 p-4 text-sm">
+          <div className="max-h-[60vh] overflow-y-auto rounded-[20px] border border-line bg-surface-2/60 p-4 text-sm">
             <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-accent">
               <BookOpen size={13} /> {t('notebook.result')}
             </div>
-            <Markdown text={output} />
+            {guide && mode === 'guide' ? <StudyGuideView guide={guide} /> : <Markdown text={output} />}
           </div>
         )}
 
@@ -504,6 +544,7 @@ export default function UniNotebookDrawer({
                         setActiveSheetId(sheet.id);
                         setMode(sheet.mode);
                         setOutput(sheet.summary);
+                        setGuide(null);
                       }}
                       className="flex min-h-11 min-w-0 flex-1 items-center justify-between gap-2 rounded-xl px-2.5 text-left"
                     >
@@ -523,6 +564,7 @@ export default function UniNotebookDrawer({
                         if (activeSheetId === sheet.id) {
                           setActiveSheetId(null);
                           setOutput(null);
+                          setGuide(null);
                         }
                       }}
                       className="grid size-11 shrink-0 place-items-center rounded-xl text-muted hover:bg-coral-soft hover:text-coral"

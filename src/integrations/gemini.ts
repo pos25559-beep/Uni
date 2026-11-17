@@ -4,6 +4,12 @@
 import { format, parseISO } from 'date-fns';
 import type { Content, GenerationConfig } from 'firebase/ai';
 import { tr } from '../i18n/tr';
+import {
+  parseStudyGuide,
+  studyGuideToMarkdown,
+  type StudyGuide,
+  type StudyGuideLabels,
+} from '../lib/studyGuide';
 import { CONTEXT_COPY } from './gemini/contextCopy';
 import { normalizeAppLanguage, resolveDateFnsLocale } from '../lib/grading';
 import type {
@@ -67,6 +73,7 @@ import {
   NOTEBOOK_MEMORY_DELTA_SCHEMA,
   PRACTICE_SET_SCHEMA,
   RECALL_CHALLENGE_SCHEMA,
+  STUDY_GUIDE_SCHEMA,
   TOPIC_SHEET_SCHEMA,
   UNI_EXPEDITION_SCHEMA,
   UNI_RECALL_EVAL_SCHEMA,
@@ -812,39 +819,87 @@ export interface NotebookSourceInput {
   content: string;
 }
 
-export async function generateNotebookBrief(args: {
+/** Próxima avaliação da cadeira, para o Guia de Estudo apontar ao teste certo. */
+export interface NotebookAssessmentContext {
+  title: string;
+  /** ISO da data (ex.: 2026-12-03T14:00:00). */
+  date: string;
+  daysLeft: number;
+  weight?: number;
+  topicTitles: string[];
+}
+
+export interface NotebookBriefArgs {
   mode: 'guide' | 'quiz' | 'summary';
   sources: NotebookSourceInput[];
   attachments?: ChatAttachment[];
   courseName?: string;
   persona?: UniPersonaMode;
   accessory?: UniAccessoryId;
-}): Promise<string> {
-  const { customKey, model } = resolveGeminiConfig();
+  assessment?: NotebookAssessmentContext | null;
+}
+
+export interface StudyGuideResult {
+  /** Guia estruturado; null quando o modelo não devolveu JSON válido (então `markdown` é o texto livre). */
+  guide: StudyGuide | null;
+  markdown: string;
+}
+
+export function getStudyGuideLabels(): StudyGuideLabels {
+  return {
+    goal: tr('assistant:notebook.guide.goal'),
+    keyIdeas: tr('assistant:notebook.guide.keyIdeas'),
+    formulas: tr('assistant:notebook.guide.formulas'),
+    pitfalls: tr('assistant:notebook.guide.pitfalls'),
+    sources: tr('assistant:notebook.guide.sources'),
+    examTraps: tr('assistant:notebook.guide.examTraps'),
+    revisionPlan: tr('assistant:notebook.guide.revisionPlan'),
+    selfCheck: tr('assistant:notebook.guide.selfCheck'),
+    answer: tr('assistant:notebook.guide.answer'),
+    minutes: (n) => tr('assistant:notebook.guide.minutes', { count: n }),
+    page: (p) => tr('assistant:notebook.guide.page', { page: p }),
+  };
+}
+
+function buildStudyGuidePrompt(assessment: NotebookAssessmentContext | null | undefined): string {
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const target = assessment
+    ? `PRÓXIMA AVALIAÇÃO DA CADEIRA: "${assessment.title}" em ${assessment.date.slice(0, 10)} (faltam ${assessment.daysLeft} dias${
+        assessment.weight ? `, peso ${assessment.weight}%` : ''
+      }). Tópicos que abrange: ${assessment.topicTitles.length ? assessment.topicTitles.join('; ') : 'não indicados (usa as fontes)'}.
+O plano de revisão começa em ${today}, tem de terminar antes de ${assessment.date.slice(0, 10)} e tem de cobrir estes tópicos. Em "goal" diz numa frase qual é a avaliação, a data e o que abrange.`
+    : `Não há nenhuma avaliação futura registada para esta cadeira: diz isso em "goal" e planeia 7 dias a partir de ${today}.`;
+  return `Cria um Guia de Estudo estruturado, orientado à próxima avaliação.
+${target}
+
+Regras do JSON:
+- "title": título curto e útil para o guia (sem prefixos numerados).
+- "topics": um por tópico a estudar, com ideias-chave, fórmulas (LaTeX permitido, sem cifrões à volta), armadilhas e fontes.
+- Em "sources" cita o título da fonte e, quando visível, a página ou o slide em "page". Nunca inventes fontes nem páginas.
+- Se faltar matéria importante nos materiais, diz o que falta em "goal" ou nas "examTraps".
+- "examTraps": erros típicos em testes. "revisionPlan": "day" em data ISO (aaaa-mm-dd), "task" concreta, "minutes" realistas. "selfCheck": perguntas com resposta curta.
+- Nunca coloques JSON nem blocos de código dentro dos campos de texto.`;
+}
+
+async function runNotebookText(
+  args: NotebookBriefArgs,
+  customKey: string,
+  model: string,
+  goalPrompt: string,
+  asJson: boolean,
+): Promise<string> {
   const formattedSources = args.sources
     .filter((s) => s.content.trim())
     .map((s, i) => `### [Fonte ${i + 1}: ${s.title}]\n${s.content.trim().slice(0, 5000)}`)
     .join('\n\n');
-
-  const hasAttachments = Boolean(args.attachments && args.attachments.length > 0);
-  if (!formattedSources && !hasAttachments) {
-    throw new Error(tr('common:errors.notebookEmptySources'));
-  }
-
-  const goalPrompt =
-    args.mode === 'guide'
-      ? 'Cria um **Guia de Estudo Estruturado** claro com conceitos-chave, armadilhas comuns de teste e plano rápido de revisão, citando sempre as fontes como [Fonte N] ou o nome do ficheiro.'
-      : args.mode === 'quiz'
-        ? 'Cria **5 perguntas de treino de exame** com resposta e explicação curta escondida em secção final, citando a origem de cada uma como [Fonte N] ou nome do ficheiro.'
-        : 'Faz um **Resumo Executivo por Tópicos** direto e memorável, citando de onde veio cada ideia como [Fonte N] ou nome do ficheiro.';
 
   const system = `És o Uni a organizar um Caderno de Estudo interno da Unipedia${args.courseName ? ` para ${args.courseName}` : ''}.
 ${PERSONA_INSTRUCTIONS_BY_LANG[getActiveAppLanguage()][args.persona ?? 'amigo']}
 ${AREA_VOICE_HINTS[args.accessory ?? 'default']}
 Regras estritas:
 - Baseia-te exclusivamente nas fontes e anexos fornecidos pelo estudante.
-- Cita sempre as fontes relevantes no texto usando [Fonte 1], [Fonte 2] ou o nome do documento.
-- Usa Markdown limpo.
+- Cita sempre as fontes relevantes ${asJson ? 'pelo título do documento e página/slide quando visíveis' : 'no texto usando [Fonte 1], [Fonte 2] ou o nome do documento'}.
+- ${asJson ? 'Devolve apenas JSON válido conforme o esquema.' : 'Usa Markdown limpo.'}
 - ${outputLanguageInstruction()}`;
 
   const userPrompt = formattedSources
@@ -853,14 +908,62 @@ Regras estritas:
 
   const contents = buildContentsWithAttachments([{ role: 'user', text: userPrompt }], args.attachments);
   const generationConfig: GenerationConfig = {
-    temperature: 0.45,
+    temperature: asJson ? 0.35 : 0.45,
     thinkingConfig: resolveChatThinkingConfig(model),
+    ...(asJson ? { responseMimeType: 'application/json', responseSchema: STUDY_GUIDE_SCHEMA } : {}),
   };
 
+  return customKey
+    ? callDirectRest({ key: customKey, model, contents, system, generationConfig })
+    : runNativeGenerate({ model, contents, system, generationConfig });
+}
+
+function assertNotebookInputs(args: NotebookBriefArgs): void {
+  const hasText = args.sources.some((s) => s.content.trim());
+  const hasAttachments = Boolean(args.attachments && args.attachments.length > 0);
+  if (!hasText && !hasAttachments) {
+    throw new Error(tr('common:errors.notebookEmptySources'));
+  }
+}
+
+const GUIDE_MARKDOWN_PROMPT =
+  'Cria um **Guia de Estudo Estruturado** claro com conceitos-chave, armadilhas comuns de teste e plano rápido de revisão, citando sempre as fontes como [Fonte N] ou o nome do ficheiro.';
+
+/**
+ * Guia de Estudo estruturado (JSON estrito). Se o modelo devolver JSON inválido, recorre ao
+ * caminho antigo em Markdown dentro da mesma quota (só se cobra uma geração).
+ */
+export async function generateStudyGuide(args: Omit<NotebookBriefArgs, 'mode'>): Promise<StudyGuideResult> {
+  const { customKey, model } = resolveGeminiConfig();
+  const full: NotebookBriefArgs = { ...args, mode: 'guide' };
+  assertNotebookInputs(full);
+
+  const result = await withQuotaAndFallback('notebook', customKey, async (): Promise<StudyGuideResult> => {
+    const raw = await runNotebookText(full, customKey, model, buildStudyGuidePrompt(args.assessment), true);
+    const guide = parseStudyGuide(raw);
+    if (guide) return { guide, markdown: studyGuideToMarkdown(guide, getStudyGuideLabels()) };
+    const markdown = await runNotebookText(full, customKey, model, GUIDE_MARKDOWN_PROMPT, false);
+    return { guide: null, markdown };
+  });
+
+  if (!result.markdown) throw new Error(tr('common:errors.notebookGenFail'));
+  return result;
+}
+
+export async function generateNotebookBrief(args: NotebookBriefArgs): Promise<string> {
+  if (args.mode === 'guide') {
+    return (await generateStudyGuide(args)).markdown;
+  }
+  const { customKey, model } = resolveGeminiConfig();
+  assertNotebookInputs(args);
+
+  const goalPrompt =
+    args.mode === 'quiz'
+      ? 'Cria **5 perguntas de treino de exame** com resposta e explicação curta escondida em secção final, citando a origem de cada uma como [Fonte N] ou nome do ficheiro.'
+      : 'Faz um **Resumo Executivo por Tópicos** direto e memorável, citando de onde veio cada ideia como [Fonte N] ou nome do ficheiro.';
+
   const text = await withQuotaAndFallback('notebook', customKey, () =>
-    customKey
-      ? callDirectRest({ key: customKey, model, contents, system, generationConfig })
-      : runNativeGenerate({ model, contents, system, generationConfig }),
+    runNotebookText(args, customKey, model, goalPrompt, false),
   );
 
   if (!text) throw new Error(tr('common:errors.notebookGenFail'));

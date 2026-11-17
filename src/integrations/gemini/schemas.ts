@@ -88,6 +88,65 @@ export const PRACTICE_SET_SCHEMA: SchemaRequest = {
   required: ['cards'],
 };
 
+const STRING_LIST = { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } } as const;
+
+export const STUDY_GUIDE_SCHEMA: SchemaRequest = {
+  type: SchemaType.OBJECT,
+  properties: {
+    title: { type: SchemaType.STRING },
+    goal: { type: SchemaType.STRING },
+    topics: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          title: { type: SchemaType.STRING },
+          keyIdeas: STRING_LIST,
+          formulas: STRING_LIST,
+          pitfalls: STRING_LIST,
+          sources: {
+            type: SchemaType.ARRAY,
+            items: {
+              type: SchemaType.OBJECT,
+              properties: {
+                title: { type: SchemaType.STRING },
+                page: { type: SchemaType.STRING, nullable: true },
+              },
+              required: ['title'],
+            },
+          },
+        },
+        required: ['title', 'keyIdeas', 'formulas', 'pitfalls', 'sources'],
+      },
+    },
+    examTraps: STRING_LIST,
+    revisionPlan: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          day: { type: SchemaType.STRING },
+          task: { type: SchemaType.STRING },
+          minutes: { type: SchemaType.INTEGER },
+        },
+        required: ['day', 'task', 'minutes'],
+      },
+    },
+    selfCheck: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          question: { type: SchemaType.STRING },
+          answer: { type: SchemaType.STRING },
+        },
+        required: ['question', 'answer'],
+      },
+    },
+  },
+  required: ['title', 'goal', 'topics', 'examTraps', 'revisionPlan', 'selfCheck'],
+};
+
 export const RECALL_CHALLENGE_SCHEMA: SchemaRequest = {
   type: SchemaType.OBJECT,
   properties: {
