@@ -129,6 +129,13 @@
       "volume": "Volume",
       "pinHint": "O Android pede confirmação para afixar o ecrã. Para sair mais cedo, mantém Voltar + Recentes.",
       "hint": "Silencia lembretes da app durante o bloco e regista saídas do ecrã sem penalizar o teu progresso."
+    },
+    "askUniKeepRunning": "Perguntar a {{name}} sem parar o foco",
+    "mini": {
+      "region": "Foco a decorrer",
+      "expand": "Voltar ao ecrã de foco",
+      "back": "Foco",
+      "minimize": "Continuar a contar e usar a app"
     }
   },
   "ui": {

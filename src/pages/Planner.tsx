@@ -9,7 +9,6 @@ import {
   Flame,
   MessageSquare,
   MoreHorizontal,
-  Play,
   Plus,
   Sparkles,
 } from 'lucide-react';
@@ -27,7 +26,7 @@ import {
 import { celebrateStationery } from '../lib/motionTokens';
 import CourseDistribution from '../components/planner/CourseDistribution';
 import DayColumn from '../components/planner/DayColumn';
-import FocusTimer from '../components/planner/FocusTimer';
+import FocusResumeCard from '../components/planner/FocusResumeCard';
 import PlanBuilderModal from '../components/planner/PlanBuilderModal';
 import SessionModal from '../components/planner/SessionModal';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
@@ -35,7 +34,6 @@ import { openUniCheckIn } from '../lib/uniCheckInBus';
 import { ActionSheet, Badge, Button, Card, CourseChip, EmptyState, PageHeader, SegmentedControl } from '../components/ui';
 import { showToast } from '../lib/uiHelpers';
 import { weekdayShort } from '../lib/colors';
-import { clearActiveFocusSnapshot, loadActiveFocusSnapshot, resolveRecoveredFocusState } from '../lib/focusShield';
 import { hapticTap } from '../lib/nativeBridge';
 import { analyzeTestMode, generatePlan, planSummary, rescheduleOverdueSessions } from '../lib/planner';
 import { getDueReviewQueue } from '../lib/spacedRepetition';
@@ -76,7 +74,7 @@ export default function Planner() {
   const remove = useStore((s) => s.remove);
   const updateSettings = useStore((s) => s.updateSettings);
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const today = useMemo(() => todayStr(), []);
   const legacyReconciledRef = useRef(false);
@@ -102,8 +100,17 @@ export default function Planner() {
   const [tutorOpen, setTutorOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [modal, setModal] = useState<{ session?: StudySession; date: string } | null>(null);
-  const [focusId, setFocusId] = useState<string | null>(() => searchParams.get('focus'));
-  const [snapshotNonce, setSnapshotNonce] = useState(0);
+  const openFocus = useHubUiStore((st) => st.openFocus);
+  const setFocusId = (id: string) => openFocus(id);
+  // Ligações antigas e notificações abrem o foco com ?focus=<id>.
+  useEffect(() => {
+    const fromUrl = searchParams.get('focus');
+    if (!fromUrl) return;
+    openFocus(fromUrl);
+    const next = new URLSearchParams(searchParams);
+    next.delete('focus');
+    setSearchParams(next, { replace: true });
+  }, [openFocus, searchParams, setSearchParams]);
 
   const dueReviewCount = useMemo(
     () => getDueReviewQueue(courses, today).length,
@@ -179,24 +186,6 @@ export default function Planner() {
 
   const noPlanInputs = courses.length === 0;
   const starterOnlyMode = courses.length > 0 && !assessments.some((a) => a.grade === undefined);
-  const focusSession = focusId ? sessions.find((s) => s.id === focusId) : undefined;
-  const recoverableFocus = useMemo(() => {
-    void snapshotNonce;
-    if (focusId) return null;
-    const snap = loadActiveFocusSnapshot();
-    if (!snap) return null;
-    const match = sessions.find((s) => s.id === snap.sessionId && !s.done);
-    if (!match) return null;
-    const state = resolveRecoveredFocusState(snap);
-    return {
-      session: match,
-      course: courseById.get(match.courseId),
-      topic: match.topicId ? topicById.get(match.topicId) : undefined,
-      elapsedMinutes: Math.max(0, Math.round(state.accumulatedMs / 60_000)),
-      plannedMinutes: Math.round(state.budgetMs / 60_000),
-    };
-  }, [courseById, focusId, sessions, snapshotNonce, topicById]);
-
   const plannerPrefs = settings.plannerPrefs;
 
   const generate = () => {
@@ -432,37 +421,7 @@ export default function Planner() {
         </div>
       )}
 
-      {recoverableFocus && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-accent/35 bg-accent-soft px-4 py-3 text-fg shadow-[var(--shadow-card)]">
-          <div className="min-w-0 flex-1 text-xs leading-relaxed">
-            <p className="font-bold text-accent-ink">{t('ui.focusInProgress')}</p>
-            <p className="mt-0.5 truncate text-fg">
-              {recoverableFocus.course ? `${recoverableFocus.course.shortName} · ` : ''}
-              {formatSessionDisplay(recoverableFocus.session, recoverableFocus.topic, i18n.language).title} (
-              {t('focus.ui.nOf', { a: recoverableFocus.elapsedMinutes, b: recoverableFocus.plannedMinutes })})
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={() => setFocusId(recoverableFocus.session.id)}
-            >
-              <Play size={14} /> {t('ui.resumeFocus')}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                clearActiveFocusSnapshot(recoverableFocus.session.id);
-                setSnapshotNonce((n) => n + 1);
-              }}
-            >
-              {t('ui.discard')}
-            </Button>
-          </div>
-        </div>
-      )}
+      <FocusResumeCard />
 
       {sessions.length === 0 ? (
         <EmptyState
@@ -717,18 +676,6 @@ export default function Planner() {
           session={modal.session}
           defaultDate={modal.date}
           onClose={() => setModal(null)}
-        />
-      )}
-
-      {focusSession && (
-        <FocusTimer
-          session={focusSession}
-          course={courseById.get(focusSession.courseId)}
-          topic={focusSession.topicId ? topicById.get(focusSession.topicId) : undefined}
-          onClose={() => {
-            setFocusId(null);
-            setSnapshotNonce((n) => n + 1);
-          }}
         />
       )}
 

@@ -3,6 +3,8 @@
 import {
   Check,
   ChevronDown,
+  Maximize2,
+  Minimize2,
   ChevronUp,
   Pause,
   Play,
@@ -86,9 +88,21 @@ interface FocusTimerProps {
   course?: Course;
   topic?: Topic;
   onClose: () => void;
+  /** Foco a correr em segundo plano: mostra só uma pílula e mantém o tempo a contar. */
+  minimized?: boolean;
+  onMinimize?: () => void;
+  onExpand?: () => void;
 }
 
-export default function FocusTimer({ session, course, topic, onClose }: FocusTimerProps) {
+export default function FocusTimer({
+  session,
+  course,
+  topic,
+  onClose,
+  minimized = false,
+  onMinimize,
+  onExpand,
+}: FocusTimerProps) {
   const { t, i18n } = useTranslation(['plan', 'common']);
   const appLang = normalizeAppLanguage(i18n.language);
   const navigate = useNavigate();
@@ -217,7 +231,10 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
   const color = course ? courseColors[course.color].hex : 'var(--accent)';
 
   useEffect(() => {
-    setFocusTimerOpen(true);
+    setFocusTimerOpen(!minimized);
+  }, [minimized, setFocusTimerOpen]);
+
+  useEffect(() => {
     return () => {
       setFocusTimerOpen(false);
       setFocusShieldRunning(false);
@@ -333,11 +350,11 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
   // Tecla Escape fecha o overlay.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') handleClose();
+      if (e.key === 'Escape' && !minimized) handleClose();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [handleClose]);
+  }, [handleClose, minimized]);
 
   const engageRunningShieldAndAudio = async (prefs: FocusShieldDevicePrefs) => {
     const engaged = await engagePlatformFocusShield(prefs);
@@ -547,9 +564,12 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
     onClose();
   };
 
-  // Ao chegar a zero, conclui sozinho.
+  // Ao chegar a zero, conclui sozinho (e volta ao ecrã inteiro para o recall).
   useEffect(() => {
-    if (phase === 'running' && remainingMs === 0) commitFinish(budgetMs);
+    if (phase === 'running' && remainingMs === 0) {
+      commitFinish(budgetMs);
+      onExpand?.();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, remainingMs]);
 
@@ -577,8 +597,52 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
   const recordedMin = Math.max(1, elapsedMin);
   const remainingBudgetMin = Math.max(0, Math.round(budgetMs / 60_000) - recordedMin);
 
+  if (minimized) {
+    return (
+      <div
+        role="region"
+        aria-label={t('plan:focus.mini.region')}
+        className="fixed left-1/2 top-[max(0.75rem,env(safe-area-inset-top))] z-40 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full border border-line bg-surface/95 py-1 pl-3 pr-1 text-xs shadow-float backdrop-blur-md lg:left-auto lg:right-6 lg:translate-x-0"
+      >
+        {course && <span className={cx('size-2 shrink-0 rounded-full', courseColors[course.color].dot)} aria-hidden="true" />}
+        <span className="max-w-[7rem] truncate font-semibold text-fg">{course?.shortName ?? t('common:actions.focus')}</span>
+        <span className="tabular shrink-0 px-1.5 font-mono text-sm font-semibold text-fg" aria-live="off">
+          {formatClock(remainingMs)}
+        </span>
+        <button
+          type="button"
+          onClick={running ? pause : start}
+          aria-label={running ? t('plan:focus.ui.pause') : t('plan:focus.ui.resume')}
+          className="flex size-11 items-center justify-center rounded-full text-fg hover:bg-surface-2"
+        >
+          {running ? <Pause size={16} /> : <Play size={16} />}
+        </button>
+        <button
+          type="button"
+          onClick={onExpand}
+          aria-label={t('plan:focus.mini.expand')}
+          className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-full bg-ink-cta px-3.5 font-semibold text-ink-cta-fg"
+        >
+          <Maximize2 size={14} aria-hidden="true" />
+          <span>{t('plan:focus.mini.back')}</span>
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center overflow-y-auto bg-bg/95 px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] backdrop-blur-md">
+      {onMinimize && !finished && phase !== 'idle' && (
+        <button
+          type="button"
+          onClick={onMinimize}
+          aria-label={t('plan:focus.mini.minimize')}
+          title={t('plan:focus.mini.minimize')}
+          className="fixed left-[max(1rem,env(safe-area-inset-left))] top-[max(1rem,env(safe-area-inset-top))] z-10 flex min-h-11 min-w-11 items-center justify-center rounded-xl p-2 text-muted hover:bg-surface-2 hover:text-fg"
+        >
+          <Minimize2 size={20} />
+        </button>
+      )}
       <button
         type="button"
         onClick={handleClose}
@@ -743,8 +807,12 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
                   <button
                     type="button"
                     onClick={() => {
-                      if (phase === 'running') pause();
-                      onClose();
+                      // O foco continua a contar numa pílula enquanto o estudante fala com o Uni.
+                      if (onMinimize) onMinimize();
+                      else {
+                        if (phase === 'running') pause();
+                        onClose();
+                      }
                       navigate(`/assistente?course=${course.id}`);
                     }}
                     className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full border border-line bg-surface/80 px-3.5 py-1.5 text-xs text-muted transition hover:border-line-strong hover:text-fg"
@@ -757,7 +825,7 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
                       stage={uniAgent.stage}
                       accessory={inferAccessoryFromCourses([course])}
                     />
-                    <span>{t('plan:focus.silentStatus', { name: uniAgent.name })}</span>
+                    <span>{t(onMinimize ? 'plan:focus.askUniKeepRunning' : 'plan:focus.silentStatus', { name: uniAgent.name })}</span>
                   </button>
                 )}
               </>

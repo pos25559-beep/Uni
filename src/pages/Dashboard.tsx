@@ -23,6 +23,7 @@ import { UniBuddy } from '../components/brand/UnipediaMarks';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import AcademicGmailWidget from '../components/home/AcademicGmailWidget';
 import ExpeditionTodayCard from '../components/home/ExpeditionTodayCard';
+import FocusResumeCard from '../components/planner/FocusResumeCard';
 import {
   AssessmentRow,
   SessionRow,
@@ -92,6 +93,7 @@ export default function Dashboard() {
     }
   });
   const openHubModal = useHubUiStore((s) => s.openModal);
+  const openFocus = useHubUiStore((s) => s.openFocus);
 
   const hubProgress = useMemo(
     () =>
@@ -224,7 +226,7 @@ export default function Dashboard() {
       if (minutes < pendingToday.minutes) {
         patch('sessions', pendingToday.id, { minutes });
       }
-      navigate(`/plano?focus=${encodeURIComponent(pendingToday.id)}`);
+      openFocus(pendingToday.id);
       return;
     }
     const targetCourse = nextCourse ?? courses[0];
@@ -246,7 +248,7 @@ export default function Dashboard() {
       generated: false,
       notes: minutes === 10 ? 'Revisão espaçada' : 'Consolidação',
     });
-    navigate(`/plano?focus=${encodeURIComponent(id)}`);
+    openFocus(id);
   };
 
   const addTask = () => {
@@ -467,6 +469,8 @@ export default function Dashboard() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <FocusResumeCard />
 
       {/* Switcher compacto alinhado numa só faixa com a coleção/sequência */}
       <div className="flex flex-wrap items-center justify-between gap-2">

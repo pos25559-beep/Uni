@@ -45,6 +45,7 @@ import { courseColors } from '../lib/colors';
 import { TUTOR_SUBJECTS, subjectLabel } from '../lib/geminiConversations';
 import { commitScheduleSyncToStore } from '../lib/scheduleSync';
 import { cx, showToast } from '../lib/uiHelpers';
+import { useHubUiStore } from '../store/useHubUiStore';
 import { getLocalizedPersonas, resolveUniAccessory } from '../lib/uniAccessories';
 import { saveUniAgent, useUniAgent } from '../lib/uniAgents';
 import { getStageInfo } from '../lib/uniMastery';
@@ -54,6 +55,7 @@ import { googleService } from '../services/googleService';
 import { useStore } from '../store/useStore';
 
 export default function Assistant() {
+  const focusPillVisible = useHubUiStore((s) => Boolean(s.focusSessionId) && s.focusMinimized);
   const { t, i18n } = useTranslation('assistant');
   const appLang = normalizeAppLanguage(i18n.language);
   const personas = getLocalizedPersonas(appLang);
@@ -229,7 +231,15 @@ export default function Assistant() {
   const firstName = userName?.trim().split(/\s+/)[0] || '';
 
   return (
-    <div className="flex h-[calc(100dvh-5.25rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)-var(--keyboard-height,0px))] min-h-0 flex-col md:h-[calc(100dvh-3.5rem)]">
+    <div
+      className={cx(
+        'flex min-h-0 flex-col md:h-[calc(100dvh-3.5rem)]',
+        // A pílula do foco em segundo plano ocupa 4rem no topo do telemóvel.
+        focusPillVisible
+          ? 'h-[calc(100dvh-9.25rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)-var(--keyboard-height,0px))]'
+          : 'h-[calc(100dvh-5.25rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)-var(--keyboard-height,0px))]',
+      )}
+    >
       {/* Cabeçalho minimalista estilo app Gemini no telemóvel (< md) */}
       <div className="shrink-0 space-y-2 pb-1 md:hidden">
         <h1 className="sr-only">{t('srHeading')}</h1>

@@ -129,6 +129,13 @@
       "volume": "Volume",
       "pinHint": "O Android pede confirmação para fixar a tela. Para sair antes, segure Voltar + Recentes.",
       "hint": "Silencia lembretes do app durante o bloco e registra saídas da tela sem penalizar seu progresso."
+    },
+    "askUniKeepRunning": "Perguntar a {{name}} sem pausar o foco",
+    "mini": {
+      "region": "Foco em andamento",
+      "expand": "Voltar à tela de foco",
+      "back": "Foco",
+      "minimize": "Continuar contando e usar o app"
     }
   },
   "ui": {

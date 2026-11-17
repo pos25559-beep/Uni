@@ -129,6 +129,13 @@
       "volume": "Volume",
       "pinHint": "Android asks to confirm screen pinning. To leave early, hold Back + Recents.",
       "hint": "Mutes app reminders during the block and logs screen exits without penalising your progress."
+    },
+    "askUniKeepRunning": "Ask {{name}} without stopping focus",
+    "mini": {
+      "region": "Focus in progress",
+      "expand": "Back to the focus screen",
+      "back": "Focus",
+      "minimize": "Keep the timer running and use the app"
     }
   },
   "ui": {
