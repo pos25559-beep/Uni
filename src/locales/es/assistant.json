@@ -168,7 +168,18 @@
       "refineBusy": "Rehaciendo…",
       "refineDone": "Tema actualizado.",
       "refineFail": "No he podido rehacer este tema. Prueba a pedirlo de otra forma.",
-      "refineNoSources": "Para rehacer un tema, vuelve a añadir las fuentes al cuaderno."
+      "refineNoSources": "Para rehacer un tema, vuelve a añadir las fuentes al cuaderno.",
+      "tocDoc": "Índice del documento",
+      "tocTitleDoc": "En este documento",
+      "open": "Abrir",
+      "ready": {
+        "guide": "Guía lista",
+        "quiz": "Cuestionario listo",
+        "summary": "Resumen listo",
+        "podcast": "Pódcast listo"
+      },
+      "showAnswer": "Ver respuesta {{n}}",
+      "podcastSubtitle": "Pódcast · 2 voces · ~{{minutes}} min"
     },
     "podcast": {
       "hint": "Uni y un compañero conversan sobre tus fuentes, como un pódcast para escuchar mientras estudias.",

@@ -168,7 +168,18 @@
       "refineBusy": "Refazendo…",
       "refineDone": "Tópico atualizado.",
       "refineFail": "Não consegui refazer este tópico. Tente pedir de outra forma.",
-      "refineNoSources": "Para refazer um tópico, adicione as fontes de novo ao caderno."
+      "refineNoSources": "Para refazer um tópico, adicione as fontes de novo ao caderno.",
+      "tocDoc": "Índice do documento",
+      "tocTitleDoc": "Neste documento",
+      "open": "Abrir",
+      "ready": {
+        "guide": "Guia pronto",
+        "quiz": "Quiz pronto",
+        "summary": "Resumo pronto",
+        "podcast": "Podcast pronto"
+      },
+      "showAnswer": "Ver resposta {{n}}",
+      "podcastSubtitle": "Podcast · 2 vozes · ~{{minutes}} min"
     },
     "podcast": {
       "hint": "O Uni e um colega conversam sobre as suas fontes, como um podcast para ouvir enquanto estuda.",

@@ -1,4 +1,4 @@
-import { BookOpen, ChevronDown, ClipboardPaste, Copy, Download, ExternalLink, FileAudio, FileText, Headphones, Image as ImageIcon, Library, Loader2, Mic, Paperclip, Sparkles, Square, Trash2, X } from 'lucide-react';
+import { BookOpen, ChevronDown, ClipboardPaste, Copy, Download, ExternalLink, FileAudio, FileText, Headphones, Image as ImageIcon, Library, ListChecks, Loader2, Mic, Paperclip, Sparkles, Square, Trash2, X } from 'lucide-react';
 import { differenceInCalendarDays, parseISO } from 'date-fns';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -59,7 +59,8 @@ import {
   studyGuideToMarkdown,
   type StudyGuide,
 } from '../../lib/studyGuide';
-import { Markdown } from './Markdown';
+import { markdownTitle } from '../../lib/markdownSections';
+import { estimatePodcastMinutes } from '../../lib/podcastMeta';
 
 const SOURCE_GROUP_KEY: Record<SourceGroupKey, string> = {
   lessons: 'sources.groupLessons',
@@ -70,7 +71,10 @@ const SOURCE_GROUP_KEY: Record<SourceGroupKey, string> = {
 };
 
 const StudyGuideReader = lazy(() => import('./StudyGuideReader'));
-const PodcastPlayer = lazy(() => import('./PodcastPlayer'));
+const MarkdownReader = lazy(() => import('./reader/MarkdownReader'));
+const PodcastReader = lazy(() => import('./reader/PodcastReader'));
+
+const MODE_ICON = { guide: BookOpen, quiz: ListChecks, summary: FileText, podcast: Headphones } as const;
 
 /** Entradas da última geração, para «Refazer este tópico» sem voltar a ler os materiais. */
 interface GenerationContext {
@@ -437,12 +441,10 @@ export default function UniNotebookDrawer({
         materialIds: attachedMaterials.map((m) => m.id),
         updatedAt: new Date().toISOString(),
       });
-      if (structured) {
-        saveSheetGuide(saved.id, structured);
-        setReaderOpen(true);
-      }
+      if (structured) saveSheetGuide(saved.id, structured);
       if (script) saveSheetPodcast(saved.id, script);
       setActiveSheetId(saved.id);
+      setReaderOpen(true);
       setSavedSheets((prev) => [saved, ...prev.filter((item) => item.id !== saved.id)]);
     } catch (e) {
       setError(e instanceof Error ? e.message : t('notebook.genError'));
@@ -452,6 +454,9 @@ export default function UniNotebookDrawer({
     }
   };
 
+  const activeSheet = savedSheets.find((item) => item.id === activeSheetId) ?? null;
+  /** Tipo do resultado mostrado (a ficha ativa), que pode diferir do separador escolhido para gerar. */
+  const outMode: TopicSheetMode = activeSheet?.mode ?? mode;
   const exportableMarkdown = output || notesSource.trim();
 
   const handleCopyMarkdown = async () => {
@@ -468,10 +473,10 @@ export default function UniNotebookDrawer({
     if (!exportableMarkdown) return;
     setExportingPdf(true);
     try {
-      const modeTitle = t(`notebook.mode.${mode}`);
+      const modeTitle = t(`notebook.mode.${outMode}`);
       const subtitle = t('notebook.generatedOn', { date: new Date().toLocaleDateString(resolveIntlLocale(i18n.language)) });
       let bytes: Uint8Array | null = null;
-      if (guide && mode === 'guide') {
+      if (guide && outMode === 'guide') {
         // Guia estruturado: PDF com o aspeto da app (fórmulas reais); se falhar, cai no PDF de texto.
         try {
           const [{ rasterizeStudyGuide }, { buildStudyGuidePdfBytes }] = await Promise.all([
@@ -548,8 +553,19 @@ export default function UniNotebookDrawer({
     }
   };
 
-  const guideReady = Boolean(guide && mode === 'guide');
-  const podcastReady = Boolean(podcast && mode === 'podcast');
+  const guideReady = Boolean(guide && outMode === 'guide');
+  const podcastReady = Boolean(podcast && outMode === 'podcast' && activeSheetId);
+  const readyTitle = guideReady
+    ? guide?.title.trim() || t('notebook.reader.fallbackTitle')
+    : podcastReady
+      ? podcast?.title.trim() || t('notebook.podcast.episode')
+      : (output && markdownTitle(output)) || activeSheet?.title || t(`notebook.mode.${outMode}`);
+  const readyMeta = guideReady
+    ? t('notebook.reader.topicsCount', { count: guide?.topics.length ?? 0 })
+    : podcastReady && podcast
+      ? t('notebook.reader.podcastSubtitle', { minutes: estimatePodcastMinutes(podcast) })
+      : [t(`notebook.mode.${outMode}`), courseName].filter(Boolean).join(' · ');
+  const ReadyIcon = MODE_ICON[outMode];
 
   return (
     <>
@@ -903,42 +919,21 @@ export default function UniNotebookDrawer({
           <p className="rounded-xl bg-coral-soft px-3 py-2 text-xs font-medium text-coral">{error}</p>
         )}
 
-        {output && guide && guideReady && (
+        {output && activeSheetId && (
           <div className="flex flex-wrap items-center gap-3 rounded-[20px] border border-accent/30 bg-accent-soft/50 p-4">
             <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-surface text-accent-ink">
-              <BookOpen size={20} aria-hidden />
+              <ReadyIcon size={20} aria-hidden />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold uppercase tracking-wide text-accent-ink">{t('notebook.reader.readyTitle')}</p>
-              <p className="truncate text-sm font-bold text-fg">{guide.title || t('notebook.reader.fallbackTitle')}</p>
-              <p className="text-xs text-muted">{t('notebook.reader.topicsCount', { count: guide.topics.length })}</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-accent-ink">
+                {t(`notebook.reader.ready.${outMode}`)}
+              </p>
+              <p className="truncate text-sm font-bold text-fg">{readyTitle}</p>
+              <p className="truncate text-xs text-muted">{readyMeta}</p>
             </div>
             <Button variant="primary" onClick={() => setReaderOpen(true)}>
-              <BookOpen size={15} /> {t('notebook.reader.openGuide')}
+              <ReadyIcon size={15} aria-hidden /> {t('notebook.reader.open')}
             </Button>
-          </div>
-        )}
-
-        {output && podcast && podcastReady && activeSheetId && (
-          <Suspense fallback={null}>
-            <PodcastPlayer
-              key={activeSheetId}
-              sheetId={activeSheetId}
-              script={podcast}
-              language={appLanguage}
-              persona={uniAgent?.personaId ?? persona}
-              agent={uniAgent}
-              globalVoice={globalVoice}
-            />
-          </Suspense>
-        )}
-
-        {output && !guideReady && !podcastReady && (
-          <div className="max-h-[60vh] overflow-y-auto rounded-[20px] border border-line bg-surface-2/60 p-4 text-sm">
-            <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-accent">
-              <BookOpen size={13} /> {t('notebook.result')}
-            </div>
-            <Markdown text={output} />
           </div>
         )}
 
@@ -951,6 +946,7 @@ export default function UniNotebookDrawer({
               {savedSheets.map((sheet) => {
                 const isSelected = activeSheetId === sheet.id;
                 const modeLabel = t(`notebook.short.${sheet.mode}`);
+                const SheetIcon = MODE_ICON[sheet.mode];
                 return (
                   <div
                     key={sheet.id}
@@ -966,17 +962,19 @@ export default function UniNotebookDrawer({
                         setMode(sheet.mode);
                         setOutput(sheet.summary);
                         setPodcast(sheet.mode === 'podcast' ? loadSheetPodcast(sheet.id) : null);
-                        const stored = sheet.mode === 'guide' ? loadSheetGuide(sheet.id) : null;
-                        setGuide(stored);
-                        if (stored) setReaderOpen(true);
+                        setGuide(sheet.mode === 'guide' ? loadSheetGuide(sheet.id) : null);
+                        setReaderOpen(true);
                       }}
                       className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 rounded-xl px-2 text-left"
                     >
-                      {sheet.mode === 'podcast' ? (
-                        <Headphones size={14} className={cx('shrink-0', isSelected ? 'text-accent-ink' : 'text-muted')} aria-hidden="true" />
-                      ) : (
-                        <BookOpen size={14} className={cx('shrink-0', isSelected ? 'text-accent-ink' : 'text-muted')} aria-hidden="true" />
-                      )}
+                      <span
+                        className={cx(
+                          'grid size-8 shrink-0 place-items-center rounded-xl',
+                          isSelected ? 'bg-accent-soft text-accent-ink' : 'bg-surface text-muted',
+                        )}
+                      >
+                        <SheetIcon size={15} aria-hidden="true" />
+                      </span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-xs font-semibold text-fg">{sheet.title}</span>
                         <span className="block text-xs text-muted">{modeLabel}</span>
@@ -1010,19 +1008,47 @@ export default function UniNotebookDrawer({
         )}
       </div>
     </Modal>
-    {open && readerOpen && guide && guideReady && (
+    {open && readerOpen && output && (
       <Suspense fallback={null}>
-        <StudyGuideReader
-          open
-          guide={guide}
-          courseName={courseName}
-          onClose={() => setReaderOpen(false)}
-          onCopy={() => void handleCopyMarkdown()}
-          onExportPdf={() => void handleExportPdf()}
-          exportingPdf={exportingPdf}
-          onUseInTutor={handleUseInTutor}
-          onRefineTopic={handleRefineTopic}
-        />
+        {guide && guideReady ? (
+          <StudyGuideReader
+            open
+            guide={guide}
+            courseName={courseName}
+            onClose={() => setReaderOpen(false)}
+            onCopy={() => void handleCopyMarkdown()}
+            onExportPdf={() => void handleExportPdf()}
+            exportingPdf={exportingPdf}
+            onUseInTutor={handleUseInTutor}
+            onRefineTopic={handleRefineTopic}
+          />
+        ) : podcast && podcastReady && activeSheetId ? (
+          <PodcastReader
+            open
+            sheetId={activeSheetId}
+            script={podcast}
+            language={appLanguage}
+            persona={uniAgent?.personaId ?? persona}
+            agent={uniAgent}
+            globalVoice={globalVoice}
+            onClose={() => setReaderOpen(false)}
+            onCopy={() => void handleCopyMarkdown()}
+            onUseInTutor={handleUseInTutor}
+          />
+        ) : (
+          <MarkdownReader
+            open
+            markdown={output}
+            mode={outMode}
+            fallbackTitle={activeSheet?.title || t(`notebook.mode.${outMode}`)}
+            courseName={courseName}
+            onClose={() => setReaderOpen(false)}
+            onCopy={() => void handleCopyMarkdown()}
+            onExportPdf={() => void handleExportPdf()}
+            exportingPdf={exportingPdf}
+            onUseInTutor={handleUseInTutor}
+          />
+        )}
       </Suspense>
     )}
     </>

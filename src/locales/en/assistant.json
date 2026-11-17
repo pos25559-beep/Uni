@@ -168,7 +168,18 @@
       "refineBusy": "Redoing…",
       "refineDone": "Topic updated.",
       "refineFail": "I couldn't redo this topic. Try asking in a different way.",
-      "refineNoSources": "To redo a topic, add the sources to the notebook again."
+      "refineNoSources": "To redo a topic, add the sources to the notebook again.",
+      "tocDoc": "Document contents",
+      "tocTitleDoc": "In this document",
+      "open": "Open",
+      "ready": {
+        "guide": "Guide ready",
+        "quiz": "Quiz ready",
+        "summary": "Summary ready",
+        "podcast": "Podcast ready"
+      },
+      "showAnswer": "Show answer {{n}}",
+      "podcastSubtitle": "Podcast · 2 voices · ~{{minutes}} min"
     },
     "podcast": {
       "hint": "Uni and a classmate talk through your sources, like a podcast you can listen to while you study.",
