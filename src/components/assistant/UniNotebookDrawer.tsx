@@ -1,6 +1,6 @@
 import { BookOpen, ClipboardPaste, Copy, Download, ExternalLink, FileText, Image as ImageIcon, Loader2, Paperclip, Sparkles, Trash2, X } from 'lucide-react';
 import { differenceInCalendarDays, parseISO } from 'date-fns';
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
 import { resolveIntlLocale } from '../../lib/grading';
@@ -8,6 +8,8 @@ import {
   fileToChatAttachment,
   generateNotebookBrief,
   generateStudyGuide,
+  getStudyGuideLabels,
+  refineStudyGuideTopic,
   type NotebookAssessmentContext,
   hasCustomGeminiKey,
   type ChatAttachment,
@@ -29,9 +31,23 @@ import type { ID, Material } from '../../types';
 import { UniBuddy } from '../brand/UnipediaMarks';
 import { Button, Modal, Textarea } from '../ui';
 import { cx, showToast } from '../../lib/uiHelpers';
-import type { StudyGuide } from '../../lib/studyGuide';
+import {
+  deleteSheetGuide,
+  loadSheetGuide,
+  saveSheetGuide,
+  studyGuideToMarkdown,
+  type StudyGuide,
+} from '../../lib/studyGuide';
 import { Markdown } from './Markdown';
-import StudyGuideView from './StudyGuideView';
+
+const StudyGuideReader = lazy(() => import('./StudyGuideReader'));
+
+/** Entradas da última geração, para «Refazer este tópico» sem voltar a ler os materiais. */
+interface GenerationContext {
+  sources: NotebookSourceInput[];
+  attachments: ChatAttachment[];
+  assessment: NotebookAssessmentContext | null;
+}
 
 function deriveSheetTitle(markdown: string, mode: 'guide' | 'quiz' | 'summary', courseName?: string): string {
   const heading = markdown
@@ -80,6 +96,9 @@ export default function UniNotebookDrawer({
   const [error, setError] = useState<string | null>(null);
   const [output, setOutput] = useState<string | null>(null);
   const [guide, setGuide] = useState<StudyGuide | null>(null);
+  const [readerOpen, setReaderOpen] = useState(false);
+  const guideRef = useRef<StudyGuide | null>(null);
+  const generationRef = useRef<GenerationContext | null>(null);
   const [savedSheets, setSavedSheets] = useState<TopicSheetRecord[]>([]);
   const [activeSheetId, setActiveSheetId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -96,6 +115,10 @@ export default function UniNotebookDrawer({
       active = false;
     };
   }, [open, scopedCourseKey]);
+
+  useEffect(() => {
+    guideRef.current = guide;
+  }, [guide]);
 
   const customKeyActive = hasCustomGeminiKey();
   const maxAiFiles = getAiMaterialLimit(customKeyActive);
@@ -139,53 +162,61 @@ export default function UniNotebookDrawer({
     };
   };
 
+  /** Lê os materiais e junta fontes, anexos e notas: as entradas de qualquer geração. */
+  const prepareInputs = async () => {
+    const resolved =
+      attachedMaterials.length > 0
+        ? await resolveMaterialsForAI(attachedMaterials, { maxFiles: maxAiFiles })
+        : {
+            attachments: [] as ChatAttachment[],
+            textExcerpts: [],
+            readTitles: [] as string[],
+            skipped: [],
+            needsDriveAuth: false, contextTokens: 0, contextTokenBudget: null,
+          };
+
+    if (resolved.needsDriveAuth) {
+      showToast(t('notebook.driveAuth'));
+    }
+
+    const sources: NotebookSourceInput[] = [];
+    for (const excerpt of resolved.textExcerpts) {
+      sources.push({
+        title: excerpt.title,
+        content: excerpt.content,
+      });
+    }
+    for (const m of attachedMaterials) {
+      if (resolved.readTitles.includes(m.title)) continue;
+      sources.push({
+        title: m.title,
+        content: m.url
+          ? t('notebook.refMaterial', { provider: m.provider, title: m.title, url: m.url })
+          : t('notebook.savedMaterial', { title: m.title }),
+      });
+    }
+    if (notesSource.trim()) {
+      sources.push({
+        title: courseName ? t('notebook.notesCourse', { course: courseName }) : t('notebook.myNotes'),
+        content: notesSource.trim(),
+      });
+    }
+
+    const mergedAttachments = [...resolved.attachments, ...attachments].slice(
+      0,
+      customKeyActive ? maxAiFiles + 2 : 4,
+    );
+    return { sources, mergedAttachments, readTitles: resolved.readTitles };
+  };
+
   const handleGenerate = async () => {
     setBusy(true);
     setError(null);
     setNotice(null);
     try {
-      const resolved =
-        attachedMaterials.length > 0
-          ? await resolveMaterialsForAI(attachedMaterials, { maxFiles: maxAiFiles })
-          : {
-              attachments: [] as ChatAttachment[],
-              textExcerpts: [],
-              readTitles: [],
-              skipped: [],
-              needsDriveAuth: false, contextTokens: 0, contextTokenBudget: null,
-            };
-
-      if (resolved.needsDriveAuth) {
-        showToast(t('notebook.driveAuth'));
-      }
-
-      const sources: NotebookSourceInput[] = [];
-      for (const excerpt of resolved.textExcerpts) {
-        sources.push({
-          title: excerpt.title,
-          content: excerpt.content,
-        });
-      }
-      for (const m of attachedMaterials) {
-        if (resolved.readTitles.includes(m.title)) continue;
-        sources.push({
-          title: m.title,
-          content: m.url
-            ? t('notebook.refMaterial', { provider: m.provider, title: m.title, url: m.url })
-            : t('notebook.savedMaterial', { title: m.title }),
-        });
-      }
-      if (notesSource.trim()) {
-        sources.push({
-          title: courseName ? t('notebook.notesCourse', { course: courseName }) : t('notebook.myNotes'),
-          content: notesSource.trim(),
-        });
-      }
-
-      const mergedAttachments = [...resolved.attachments, ...attachments].slice(
-        0,
-        customKeyActive ? maxAiFiles + 2 : 4,
-      );
+      const { sources, mergedAttachments, readTitles } = await prepareInputs();
+      const assessment = findNextAssessment();
+      generationRef.current = { sources, attachments: mergedAttachments, assessment };
 
       let result: string;
       let structured: StudyGuide | null = null;
@@ -196,7 +227,7 @@ export default function UniNotebookDrawer({
           courseName,
           persona,
           accessory,
-          assessment: findNextAssessment(),
+          assessment,
           onProgress: (p) =>
             setProgressLabel(
               p.phase === 'mapping'
@@ -230,10 +261,14 @@ export default function UniNotebookDrawer({
         title: structured?.title.trim().slice(0, 72) || deriveSheetTitle(result, mode, courseName),
         mode,
         summary: result,
-        keyConcepts: resolved.readTitles.slice(0, 6),
+        keyConcepts: readTitles.slice(0, 6),
         materialIds: attachedMaterials.map((m) => m.id),
         updatedAt: new Date().toISOString(),
       });
+      if (structured) {
+        saveSheetGuide(saved.id, structured);
+        setReaderOpen(true);
+      }
       setActiveSheetId(saved.id);
       setSavedSheets((prev) => [saved, ...prev.filter((item) => item.id !== saved.id)]);
     } catch (e) {
@@ -290,10 +325,66 @@ export default function UniNotebookDrawer({
     }
   };
 
+  const handleUseInTutor = () => {
+    if (!output) return;
+    onSendToChat(output);
+    setReaderOpen(false);
+    onClose();
+  };
+
+  /** «Refazer este tópico»: devolve null se correu bem, ou a mensagem de erro para o tópico. */
+  const handleRefineTopic = async (idx: number, instruction: string): Promise<string | null> => {
+    const current = guideRef.current;
+    const topic = current?.topics[idx];
+    if (!current || !topic) return t('notebook.reader.refineFail');
+    try {
+      let ctx = generationRef.current;
+      if (!ctx) {
+        // Ficha reaberta noutra sessão: reaproveita as fontes que estão agora no caderno.
+        const prepared = await prepareInputs();
+        ctx = { sources: prepared.sources, attachments: prepared.mergedAttachments, assessment: findNextAssessment() };
+        if (ctx.sources.length === 0 && ctx.attachments.length === 0) return t('notebook.reader.refineNoSources');
+        generationRef.current = ctx;
+      }
+      const next = await refineStudyGuideTopic({
+        sources: ctx.sources,
+        attachments: ctx.attachments,
+        courseName,
+        persona,
+        accessory,
+        assessment: ctx.assessment,
+        topic,
+        instruction,
+        otherTopicTitles: current.topics.filter((_, i) => i !== idx).map((x) => x.title),
+      });
+      if (!next) return t('notebook.reader.refineFail');
+      const latest = guideRef.current ?? current;
+      const nextGuide: StudyGuide = { ...latest, topics: latest.topics.map((x, i) => (i === idx ? next : x)) };
+      const markdown = studyGuideToMarkdown(nextGuide, getStudyGuideLabels());
+      setGuide(nextGuide);
+      setOutput(markdown);
+      const sheet = savedSheets.find((item) => item.id === activeSheetId);
+      if (sheet) {
+        const updated = await putTopicSheet({ ...sheet, summary: markdown, updatedAt: new Date().toISOString() });
+        saveSheetGuide(updated.id, nextGuide);
+        setSavedSheets((prev) => [updated, ...prev.filter((item) => item.id !== updated.id)]);
+      }
+      return null;
+    } catch (e) {
+      return e instanceof Error && e.message ? e.message : t('notebook.reader.refineFail');
+    }
+  };
+
+  const guideReady = Boolean(guide && mode === 'guide');
+
   return (
+    <>
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={() => {
+        setReaderOpen(false);
+        onClose();
+      }}
       title={courseName ? `${t('notebook.title')} · ${courseName}` : t('notebook.title')}
       footer={
         <div className="flex w-full flex-wrap items-center justify-between gap-2">
@@ -328,15 +419,18 @@ export default function UniNotebookDrawer({
               <Button
                 size="sm"
                 variant="secondary"
-                onClick={() => {
-                  onSendToChat(output);
-                  onClose();
-                }}
+                onClick={handleUseInTutor}
               >
                 {t('notebook.useInTutor')}
               </Button>
             )}
-            <Button size="sm" onClick={onClose}>
+            <Button
+              size="sm"
+              onClick={() => {
+                setReaderOpen(false);
+                onClose();
+              }}
+            >
               {t('notebook.close')}
             </Button>
           </div>
@@ -540,12 +634,28 @@ export default function UniNotebookDrawer({
           <p className="rounded-xl bg-coral-soft px-3 py-2 text-xs font-medium text-coral">{error}</p>
         )}
 
-        {output && (
+        {output && guide && guideReady && (
+          <div className="flex flex-wrap items-center gap-3 rounded-[20px] border border-accent/30 bg-accent-soft/50 p-4">
+            <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-surface text-accent-ink">
+              <BookOpen size={20} aria-hidden />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold uppercase tracking-wide text-accent-ink">{t('notebook.reader.readyTitle')}</p>
+              <p className="truncate text-sm font-bold text-fg">{guide.title || t('notebook.reader.fallbackTitle')}</p>
+              <p className="text-xs text-muted">{t('notebook.reader.topicsCount', { count: guide.topics.length })}</p>
+            </div>
+            <Button variant="primary" onClick={() => setReaderOpen(true)}>
+              <BookOpen size={15} /> {t('notebook.reader.openGuide')}
+            </Button>
+          </div>
+        )}
+
+        {output && !guideReady && (
           <div className="max-h-[60vh] overflow-y-auto rounded-[20px] border border-line bg-surface-2/60 p-4 text-sm">
             <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-accent">
               <BookOpen size={13} /> {t('notebook.result')}
             </div>
-            {guide && mode === 'guide' ? <StudyGuideView guide={guide} /> : <Markdown text={output} />}
+            <Markdown text={output} />
           </div>
         )}
 
@@ -577,7 +687,9 @@ export default function UniNotebookDrawer({
                         setActiveSheetId(sheet.id);
                         setMode(sheet.mode);
                         setOutput(sheet.summary);
-                        setGuide(null);
+                        const stored = sheet.mode === 'guide' ? loadSheetGuide(sheet.id) : null;
+                        setGuide(stored);
+                        if (stored) setReaderOpen(true);
                       }}
                       className="flex min-h-11 min-w-0 flex-1 items-center justify-between gap-2 rounded-xl px-2.5 text-left"
                     >
@@ -593,11 +705,13 @@ export default function UniNotebookDrawer({
                       aria-label={t('notebook.deleteSheet', { title: sheet.title })}
                       onClick={async () => {
                         await deleteTopicSheet(sheet.id);
+                        deleteSheetGuide(sheet.id);
                         setSavedSheets((prev) => prev.filter((item) => item.id !== sheet.id));
                         if (activeSheetId === sheet.id) {
                           setActiveSheetId(null);
                           setOutput(null);
                           setGuide(null);
+                          setReaderOpen(false);
                         }
                       }}
                       className="grid size-11 shrink-0 place-items-center rounded-xl text-muted hover:bg-coral-soft hover:text-coral"
@@ -612,5 +726,21 @@ export default function UniNotebookDrawer({
         )}
       </div>
     </Modal>
+    {open && readerOpen && guide && guideReady && (
+      <Suspense fallback={null}>
+        <StudyGuideReader
+          open
+          guide={guide}
+          courseName={courseName}
+          onClose={() => setReaderOpen(false)}
+          onCopy={() => void handleCopyMarkdown()}
+          onExportPdf={() => void handleExportPdf()}
+          exportingPdf={exportingPdf}
+          onUseInTutor={handleUseInTutor}
+          onRefineTopic={handleRefineTopic}
+        />
+      </Suspense>
+    )}
+    </>
   );
 }

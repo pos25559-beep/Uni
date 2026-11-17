@@ -811,6 +811,7 @@ CAMADA 4 — CONTEXTO DO MOMENTO:
     - \`<uni-tool>{"name":"criar_sessao","args":{"topicTitle":"Tópico","minutes":35,"date":"yyyy-MM-dd","notes":"Foco sugerido"}}</uni-tool>\`
     - \`<uni-tool>{"name":"criar_flashcards","args":{"topicTitle":"Tópico","cards":[{"front":"Pergunta","back":"Resposta curta"}]}}</uni-tool>\`
     - \`<uni-tool>{"name":"marcar_duvida","args":{"topicTitle":"Tópico","note":"Dúvida objetiva para levar ao professor"}}</uni-tool>\`
+  • Estas ações só acontecem quando o estudante confirma o cartão. No texto descreve-as como proposta («Preparei a mudança do plano, confirma abaixo»), nunca como feitas («já registei», «vou deixar em pausa»). Se não emitires a ferramenta, não fales da ação.
 ${sheetsBlock}${docContext ? `\n${docContext}\n` : ''}
 Resumo atual do caderno do estudante${firstName ? ` (${firstName})` : ''}:
 """
@@ -989,7 +990,9 @@ Campos:
 - "practice": 3 a 5 perguntas ao estilo do teste com resposta (numérica com unidades quando aplicável).
 - "sources": só documentos que usaste, com página ou slide quando visíveis. Nunca inventes fontes nem páginas.
 
-Usa $...$ para matemática dentro do texto (summary, keyIdeas, steps, practice). Verifica todas as contas e unidades antes de responder. Não escrevas JSON nem blocos de código dentro dos campos.`;
+Usa $...$ para matemática dentro do texto (summary, keyIdeas, steps, practice, meaning). Nunca escrevas símbolos por extenso (sigma_y, tau, sqrt(3)): usa $\\sigma_y$, $\\tau$, $\\sqrt{3}$.
+Citações: quando uma frase vem de uma fonte, termina-a com [n], onde n é a posição (1, 2, 3…) dessa fonte na lista "sources" que devolves. Usa só números que existam na lista.
+Verifica todas as contas e unidades antes de responder. Não escrevas JSON nem blocos de código dentro dos campos.`;
 }
 
 /** Junta a secção aprofundada ao tópico do mapa, mantendo as fontes de ambos. */
@@ -1094,6 +1097,32 @@ export async function generateStudyGuide(
 
   if (!result.markdown) throw new Error(tr('common:errors.notebookGenFail'));
   return result;
+}
+
+/**
+ * Refaz um tópico do guia com um pedido do estudante («mais exemplos de Tresca»).
+ * Conta como uma geração do caderno. Devolve null se o modelo não devolver uma secção válida.
+ */
+export async function refineStudyGuideTopic(
+  args: Omit<NotebookBriefArgs, 'mode'> & { topic: StudyGuideTopic; instruction: string; otherTopicTitles: string[] },
+): Promise<StudyGuideTopic | null> {
+  const { customKey, model } = resolveGeminiConfig();
+  const { topic, instruction, otherTopicTitles, ...rest } = args;
+  const full: NotebookBriefArgs = { ...rest, mode: 'guide' };
+  assertNotebookInputs(full);
+  const current = JSON.stringify(topic).slice(0, 12_000);
+  const prompt = `${buildStudyGuideTopicPrompt(topic, otherTopicTitles, args.assessment, args.courseName)}
+
+Esta é a versão atual da secção (JSON):
+${current}
+
+Pedido do estudante para esta secção: «${instruction.trim().slice(0, 500)}»
+Reescreve a secção completa a cumprir o pedido, mantendo o que estava certo e melhorando o resto.`;
+  const raw = await withQuotaAndFallback('notebook', customKey, () =>
+    runNotebookText(full, customKey, model, prompt, true, { schema: STUDY_GUIDE_TOPIC_SCHEMA, deep: true }),
+  );
+  const parsed = parseStudyGuideTopic(raw);
+  return parsed ? mergeGuideTopic(topic, parsed) : null;
 }
 
 export async function generateNotebookBrief(args: NotebookBriefArgs): Promise<string> {

@@ -138,6 +138,33 @@
       "building": "Building the guide: {{done}} of {{total}} topics…",
       "mapping": "Reading your materials and mapping the test…",
       "partial": "I could not generate {{count}} topic(s); the rest of the guide is complete."
+    },
+    "reader": {
+      "fallbackTitle": "Study guide",
+      "back": "Back to notebook",
+      "toc": "Guide contents",
+      "tocTitle": "In this guide",
+      "readyTitle": "Guide ready",
+      "openGuide": "Open guide",
+      "topicsCount_one": "{{count}} topic to read at your own pace",
+      "topicsCount_other": "{{count}} topics to read at your own pace",
+      "topicOf": "Topic {{n}} of {{total}}",
+      "formulasCount_one": "{{count}} formula",
+      "formulasCount_other": "{{count}} formulas",
+      "exampleCount_one": "{{count}} example",
+      "exampleCount_other": "{{count}} examples",
+      "questionsCount_one": "{{count}} question",
+      "questionsCount_other": "{{count}} questions",
+      "sourceLabel": "Source {{n}}",
+      "sourceAria": "Source {{n}}: {{source}}",
+      "sourceClose": "Close source",
+      "refineLabel": "Ask for a change to this topic",
+      "refinePlaceholder": "More examples, explain the formula better…",
+      "refineBtn": "Redo this topic",
+      "refineBusy": "Redoing…",
+      "refineDone": "Topic updated.",
+      "refineFail": "I couldn't redo this topic. Try asking in a different way.",
+      "refineNoSources": "To redo a topic, add the sources to the notebook again."
     }
   },
   "page": {

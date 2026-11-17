@@ -138,6 +138,33 @@
       "building": "A preparar o guia: {{done}} de {{total}} tópicos…",
       "mapping": "A ler os materiais e a mapear o teste…",
       "partial": "Não consegui gerar {{count}} tópico(s); o resto do guia está completo."
+    },
+    "reader": {
+      "fallbackTitle": "Guia de estudo",
+      "back": "Voltar ao caderno",
+      "toc": "Índice do guia",
+      "tocTitle": "Neste guia",
+      "readyTitle": "Guia pronto",
+      "openGuide": "Abrir guia",
+      "topicsCount_one": "{{count}} tópico para ler com calma",
+      "topicsCount_other": "{{count}} tópicos para ler com calma",
+      "topicOf": "Tópico {{n}} de {{total}}",
+      "formulasCount_one": "{{count}} fórmula",
+      "formulasCount_other": "{{count}} fórmulas",
+      "exampleCount_one": "{{count}} exemplo",
+      "exampleCount_other": "{{count}} exemplos",
+      "questionsCount_one": "{{count}} pergunta",
+      "questionsCount_other": "{{count}} perguntas",
+      "sourceLabel": "Fonte {{n}}",
+      "sourceAria": "Fonte {{n}}: {{source}}",
+      "sourceClose": "Fechar fonte",
+      "refineLabel": "Pede uma alteração a este tópico",
+      "refinePlaceholder": "Mais exemplos, explica melhor a fórmula…",
+      "refineBtn": "Refazer este tópico",
+      "refineBusy": "A refazer…",
+      "refineDone": "Tópico atualizado.",
+      "refineFail": "Não consegui refazer este tópico. Tenta pedir de outra forma.",
+      "refineNoSources": "Para refazer um tópico, junta outra vez as fontes ao caderno."
     }
   },
   "page": {

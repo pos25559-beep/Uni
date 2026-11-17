@@ -347,3 +347,99 @@ export function normalizeGuideMath(guide: StudyGuide): StudyGuide {
     selfCheck: mChecks(guide.selfCheck),
   };
 }
+
+// ---------------------------------------------------------------------------------------------
+// Citações no texto («[1]», «[2, 3]») e persistência do guia estruturado ao lado da ficha.
+// ---------------------------------------------------------------------------------------------
+
+export type CitationSegment =
+  | { type: 'text'; text: string }
+  | { type: 'cite'; numbers: number[]; raw: string };
+
+const CITATION = /\[(\d+(?:\s*,\s*\d+)*)\](?!\()/g;
+/** Zonas onde «[1]» não é citação: LaTeX ($$…$$, $…$, \(…\), \[…\]) e código em linha. */
+const PROTECTED = /\$\$[\s\S]*?\$\$|\$[^$\n]+\$|\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]|`[^`\n]+`/g;
+
+/**
+ * Parte o texto em segmentos de texto e de citações. `sourceCount` é o número de fontes do
+ * tópico: só contam números de 1 a sourceCount. Marcadores sem nenhum número válido ficam como
+ * texto; se só alguns forem válidos, a citação leva só esses. Nunca mexe em «[ ]» nem em LaTeX.
+ */
+export function splitCitations(text: string, sourceCount: number): CitationSegment[] {
+  if (!text) return [];
+  if (sourceCount < 1 || !text.includes('[')) return [{ type: 'text', text }];
+
+  const protectedRanges: Array<[number, number]> = [];
+  for (const m of text.matchAll(PROTECTED)) {
+    protectedRanges.push([m.index ?? 0, (m.index ?? 0) + m[0].length]);
+  }
+  const isProtected = (i: number) => protectedRanges.some(([a, b]) => i >= a && i < b);
+
+  const out: CitationSegment[] = [];
+  let last = 0;
+  const pushText = (t: string) => {
+    if (!t) return;
+    const prev = out[out.length - 1];
+    if (prev && prev.type === 'text') prev.text += t;
+    else out.push({ type: 'text', text: t });
+  };
+
+  for (const m of text.matchAll(CITATION)) {
+    const start = m.index ?? 0;
+    if (isProtected(start)) continue;
+    const numbers = Array.from(
+      new Set(
+        m[1]
+          .split(',')
+          .map((n) => Number(n.trim()))
+          .filter((n) => Number.isInteger(n) && n >= 1 && n <= sourceCount),
+      ),
+    );
+    if (numbers.length === 0) continue;
+    pushText(text.slice(last, start));
+    out.push({ type: 'cite', numbers, raw: m[0] });
+    last = start + m[0].length;
+  }
+  pushText(text.slice(last));
+  return out;
+}
+
+/** Contagens pequenas de um tópico para o índice do leitor. */
+export function topicCounts(topic: StudyGuideTopic): { formulas: number; example: number; questions: number } {
+  return {
+    formulas: topic.formulaDetails?.length ? topic.formulaDetails.length : topic.formulas.length,
+    example: topic.workedExample ? 1 : 0,
+    questions: topic.practice?.length ?? 0,
+  };
+}
+
+const GUIDE_KEY_PREFIX = 'unipedia.studyGuide.';
+
+/** Guarda o guia estruturado da ficha (a ficha em si só leva o Markdown). Nunca lança. */
+export function saveSheetGuide(sheetId: string, guide: StudyGuide): void {
+  try {
+    localStorage.setItem(GUIDE_KEY_PREFIX + sheetId, JSON.stringify(guide));
+  } catch {
+    /* sem espaço ou sem localStorage: a ficha abre em Markdown */
+  }
+}
+
+export function loadSheetGuide(sheetId: string): StudyGuide | null {
+  try {
+    const raw = localStorage.getItem(GUIDE_KEY_PREFIX + sheetId);
+    if (!raw) return null;
+    const data: unknown = JSON.parse(raw);
+    if (!isRecord(data) || !Array.isArray(data.topics) || data.topics.length === 0) return null;
+    return parseStudyGuide(raw) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function deleteSheetGuide(sheetId: string): void {
+  try {
+    localStorage.removeItem(GUIDE_KEY_PREFIX + sheetId);
+  } catch {
+    /* ignorar */
+  }
+}

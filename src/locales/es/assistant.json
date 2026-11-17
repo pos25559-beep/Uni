@@ -138,6 +138,33 @@
       "building": "Preparando la guía: {{done}} de {{total}} temas…",
       "mapping": "Leyendo los materiales y mapeando el examen…",
       "partial": "No pude generar {{count}} tema(s); el resto de la guía está completo."
+    },
+    "reader": {
+      "fallbackTitle": "Guía de estudio",
+      "back": "Volver al cuaderno",
+      "toc": "Índice de la guía",
+      "tocTitle": "En esta guía",
+      "readyTitle": "Guía lista",
+      "openGuide": "Abrir guía",
+      "topicsCount_one": "{{count}} tema para leer con calma",
+      "topicsCount_other": "{{count}} temas para leer con calma",
+      "topicOf": "Tema {{n}} de {{total}}",
+      "formulasCount_one": "{{count}} fórmula",
+      "formulasCount_other": "{{count}} fórmulas",
+      "exampleCount_one": "{{count}} ejemplo",
+      "exampleCount_other": "{{count}} ejemplos",
+      "questionsCount_one": "{{count}} pregunta",
+      "questionsCount_other": "{{count}} preguntas",
+      "sourceLabel": "Fuente {{n}}",
+      "sourceAria": "Fuente {{n}}: {{source}}",
+      "sourceClose": "Cerrar fuente",
+      "refineLabel": "Pide un cambio en este tema",
+      "refinePlaceholder": "Más ejemplos, explica mejor la fórmula…",
+      "refineBtn": "Rehacer este tema",
+      "refineBusy": "Rehaciendo…",
+      "refineDone": "Tema actualizado.",
+      "refineFail": "No he podido rehacer este tema. Prueba a pedirlo de otra forma.",
+      "refineNoSources": "Para rehacer un tema, vuelve a añadir las fuentes al cuaderno."
     }
   },
   "page": {
