@@ -24,6 +24,7 @@ import {
   type User,
 } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { tr } from '../i18n/tr';
 
 export const firebaseConfig = {
   apiKey: import.meta.env?.VITE_FIREBASE_API_KEY || 'AIzaSyCEhC7Ppe8BsFitlgqfYeSgHFfN_sUS4ro',
@@ -213,7 +214,7 @@ async function loginGoogleNative(scopes: string[]): Promise<{ idToken: string; a
     options: { scopes },
   });
   if (res.result.responseType !== 'online' || !res.result.idToken) {
-    throw new Error('Autenticação Google cancelada ou sem token de identidade.');
+    throw new Error(tr('common:errors.googleAuthCancelled'));
   }
   return {
     idToken: res.result.idToken,
@@ -423,7 +424,7 @@ export async function reauthenticateCurrentUser(password?: string): Promise<void
   }
 
   if (hasPassword && !password) {
-    const err = new Error('Introduz a tua palavra-passe atual para confirmar.');
+    const err = new Error(tr('common:errors.reauthPasswordRequired'));
     (err as Error & { code?: string }).code = 'auth/missing-password';
     throw err;
   }

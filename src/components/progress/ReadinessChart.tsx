@@ -5,7 +5,7 @@ import {
   Cell, CartesianGrid, ReferenceLine, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis,
   type TooltipContentProps,
 } from 'recharts';
-import { appDateLocale as pt } from '../../lib/dateLocale';
+import { resolveDateFnsLocale } from '../../lib/grading';
 import type { Assessment, Course } from '../../types';
 import { ChartCard } from './ChartCard';
 import { animation, axisProps, gridProps } from './chartStyle';
@@ -14,7 +14,7 @@ import { plural, readinessPoints, type ReadinessPoint } from './data';
 const COMFORT = 60;
 
 function ReadinessTooltip({ active, payload }: TooltipContentProps) {
-  const { t } = useTranslation('progress');
+  const { t, i18n } = useTranslation('progress');
   const point = active ? (payload?.[0]?.payload as ReadinessPoint | undefined) : undefined;
   if (!point) return null;
   return (
@@ -26,7 +26,9 @@ function ReadinessTooltip({ active, payload }: TooltipContentProps) {
       </p>
       <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-0.5 tabular">
         <dt className="text-muted">{t('charts.readiness.date')}</dt>
-        <dd className="text-right text-fg">{format(parseISO(point.date), 'EEE d MMM', { locale: pt })}</dd>
+        <dd className="text-right text-fg">
+          {format(parseISO(point.date), 'EEE d MMM', { locale: resolveDateFnsLocale(i18n.language) })}
+        </dd>
         <dt className="text-muted">{t('charts.readiness.weight')}</dt>
         <dd className="text-right text-fg">{point.weight}%</dd>
         <dt className="text-muted">{t('charts.readiness.readiness')}</dt>

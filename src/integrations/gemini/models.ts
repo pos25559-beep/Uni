@@ -1,10 +1,12 @@
 // Modelos, tempos limite e erros do cliente Gemini. Funções puras, sem rede nem estado.
-import type { GenerationConfig } from 'firebase/ai';
+import { ThinkingLevel, type GenerationConfig, type ThinkingConfig } from 'firebase/ai';
+import { tr } from '../../i18n/tr';
 import { isRetryableAiStatus } from '../../lib/aiAccess';
 import { HttpStatusError, ModelTimeoutError } from '../../lib/geminiErrors';
 
 export const DEFAULT_MODEL = 'gemini-4-hydrogen';
-export const FALLBACK_MODELS = ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'] as const;
+export const FALLBACK_MODELS = ['gemini-3.1-flash-lite'] as const;
+export const LEGACY_REMOVED_MODELS = new Set(['gemini-3.8-flash', 'gemini-3.5-flash-lite']);
 export const PRIMARY_TIMEOUT_MS = 10_000;
 export const CHAT_ATTACHMENT_PRIMARY_TIMEOUT_MS = 18_000;
 export const OCR_PRIMARY_TIMEOUT_MS = 8_000;
@@ -12,9 +14,18 @@ export const FALLBACK_TIMEOUT_MS = 25_000;
 export const STREAM_IDLE_TIMEOUT_MS = 25_000;
 export const MODEL_COOLDOWN_MS = 120_000;
 
+/** Perfis de raciocínio interno (ThinkingLevel) aplicados a modelos Gemini 4. */
+export const THINKING_FAST: ThinkingConfig = { thinkingLevel: ThinkingLevel.LOW };
+export const THINKING_BALANCED: ThinkingConfig = { thinkingLevel: ThinkingLevel.MEDIUM };
+export const THINKING_DEEP: ThinkingConfig = { thinkingLevel: ThinkingLevel.HIGH };
+
+export function resolveChatThinkingConfig(model: string): ThinkingConfig {
+  return model.startsWith('gemini-4-argon') ? THINKING_DEEP : THINKING_BALANCED;
+}
+
 export class AiConsentRequiredError extends Error {
   constructor() {
-    super('Ativa primeiro o Uni com 1 toque para que ele possa responder às tuas perguntas.');
+    super(tr('common:errors.aiConsentRequired'));
     this.name = 'AiConsentRequiredError';
   }
 }
@@ -51,15 +62,18 @@ export function sanitizeGenerationConfigForModel(
 ): GenerationConfig | undefined {
   if (!config) return undefined;
   const isGemini4 = model.startsWith('gemini-4');
-  const isFlashLite35 = model.startsWith('gemini-3.5-flash-lite');
-  if (!isGemini4 && !isFlashLite35) {
-    return config;
-  }
   const next: GenerationConfig = { ...config };
+
+  if (!isGemini4) {
+    // Modelos de fallback fora da série 4 (ex.: gemini-3.1-flash-lite) não recebem thinkingLevel 4.x
+    delete next.thinkingConfig;
+    return Object.keys(next).length > 0 ? next : undefined;
+  }
+
   delete next.temperature;
   delete next.topP;
   delete next.topK;
-  if (isGemini4 && next.maxOutputTokens !== undefined && next.maxOutputTokens < 32768) {
+  if (next.maxOutputTokens !== undefined && next.maxOutputTokens < 32768) {
     next.maxOutputTokens = 32768;
   }
   return Object.keys(next).length > 0 ? next : undefined;

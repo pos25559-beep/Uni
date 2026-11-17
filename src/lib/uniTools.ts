@@ -18,9 +18,10 @@ export type UniToolName =
   | 'registar_recall'
   | 'criar_sessao'
   | 'criar_flashcards'
-  | 'marcar_duvida';
+  | 'marcar_duvida'
+  | 'focar_plano';
 
-export type UniWriteToolName = 'criar_sessao' | 'criar_flashcards' | 'marcar_duvida';
+export type UniWriteToolName = 'criar_sessao' | 'criar_flashcards' | 'marcar_duvida' | 'focar_plano';
 
 export interface UniToolCallInput {
   id?: string;
@@ -61,6 +62,11 @@ export interface UniToolProposal {
     note: string;
     createTask?: boolean;
   };
+  /** Payload específico para focar_plano */
+  planFocus?: {
+    exclusive: boolean;
+    reason: string;
+  };
 }
 
 export const READ_OR_RECALL_TOOLS: ReadonlySet<UniToolName> = new Set([
@@ -73,6 +79,7 @@ export const WRITE_CONFIRM_TOOLS: ReadonlySet<UniToolName> = new Set([
   'criar_sessao',
   'criar_flashcards',
   'marcar_duvida',
+  'focar_plano',
 ]);
 
 export function isUniToolName(name: string): name is UniToolName {
@@ -82,7 +89,8 @@ export function isUniToolName(name: string): name is UniToolName {
     name === 'registar_recall' ||
     name === 'criar_sessao' ||
     name === 'criar_flashcards' ||
-    name === 'marcar_duvida'
+    name === 'marcar_duvida' ||
+    name === 'focar_plano'
   );
 }
 
@@ -196,6 +204,24 @@ export const UNI_TOOL_DECLARATIONS: FunctionDeclaration[] = [
         note: { type: Type.STRING, description: 'Descrição objetiva da dúvida.' },
       },
       required: ['topicTitle', 'note'],
+    },
+  },
+  {
+    name: 'focar_plano',
+    description:
+      'Propõe focar o plano de estudo numa cadeira específica (opcionalmente em modo exclusivo 100% até ao próximo teste) e regenerar sessões futuras. Exige sempre confirmação.',
+    behavior: Behavior.NON_BLOCKING,
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        courseId: { type: Type.STRING, description: 'ID ou sigla da cadeira a priorizar.' },
+        exclusive: {
+          type: Type.BOOLEAN,
+          description: 'true para dedicar 100% dos blocos futuros a esta cadeira; false para reforçar peso mantendo outras cadeiras.',
+        },
+        reason: { type: Type.STRING, description: 'Motivo breve do ajuste (ex.: Foco total até ao teste).' },
+      },
+      required: ['courseId'],
     },
   },
 ];
@@ -481,6 +507,29 @@ export function buildUniToolProposal(
     };
   }
 
+  if (toolName === 'focar_plano') {
+    if (!targetCourse) return null;
+    const exclusive =
+      call.args.exclusive === true ||
+      String(call.args.exclusive ?? '').toLowerCase() === 'true';
+    const reason =
+      typeof call.args.reason === 'string' && call.args.reason.trim()
+        ? call.args.reason.trim().slice(0, 140)
+        : targetCourse.shortName || targetCourse.name;
+    return {
+      id,
+      toolName: 'focar_plano',
+      courseId: targetCourse.id,
+      courseLabel: targetCourse.shortName ?? targetCourse.name ?? tr('uni:uniTools.defaultLabel'),
+      topicTitle: targetCourse.shortName || targetCourse.name,
+      status: 'pending',
+      planFocus: {
+        exclusive,
+        reason,
+      },
+    };
+  }
+
   const note = String(call.args.note ?? call.args.question ?? '').trim();
   if (!note) return null;
 
@@ -587,6 +636,36 @@ export async function commitUniToolProposal(
     store.upsert('tasks', task);
     return {
       summary: tr('uni:uniTools.doubtSaved', { topic: proposal.topicTitle }),
+    };
+  }
+
+  if (proposal.toolName === 'focar_plano' && proposal.planFocus) {
+    if (!course) {
+      throw new Error(tr('uni:uniTools.needCourseFocus'));
+    }
+    const prev = store.settings.plannerPrefs;
+    const boostCourseIds = [
+      course.id,
+      ...(prev?.boostCourseIds ?? []).filter((id) => id !== course.id),
+    ];
+    const pausedCourseIds = (prev?.pausedCourseIds ?? []).filter((id) => id !== course.id);
+    store.updateSettings({
+      plannerPrefs: {
+        horizonDays: prev?.horizonDays ?? 14,
+        preferredPeriod: prev?.preferredPeriod ?? 'auto',
+        blockMinutes: prev?.blockMinutes ?? 50,
+        strategy: prev?.strategy ?? 'balanced',
+        ...prev,
+        boostCourseIds,
+        pausedCourseIds,
+        exclusiveTestFocus: proposal.planFocus.exclusive,
+      },
+    });
+    store.reconcileFuturePlan(true);
+    return {
+      summary: tr('uni:uniTools.planFocusApplied', {
+        course: course.shortName || course.name,
+      }),
     };
   }
 

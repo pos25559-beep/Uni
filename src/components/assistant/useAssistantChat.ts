@@ -391,6 +391,8 @@ export function useAssistantChat({
     setActiveConvId(id);
     if (resolvedCourseId) setActiveCourseId(resolvedCourseId);
     setMessages([]);
+    setStreamingText(null);
+    setError(null);
   };
 
   const handleRenameConversation = async (conv: Conversation, title: string) => {

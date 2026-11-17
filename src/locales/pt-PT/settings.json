@@ -368,7 +368,7 @@
     "showKey": "Mostrar chave",
     "modelFieldLabel": "Modelo do Uni (predefinido: Gemini 4 Hydrogen)",
     "presetRecommended": "Gemini 4 Hydrogen (Recomendado)",
-    "presetBackup": "Gemini 3.5 Flash-Lite (Suplente)",
+    "presetBackup": "Gemini 3.1 Flash-Lite (Suplente)",
     "testing": "A testar…",
     "testKey": "Testar chave pessoal",
     "getKey": "Obter chave",

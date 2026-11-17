@@ -1,7 +1,8 @@
 // Funções puras que preparam os dados dos gráficos de Progresso. Sem React.
 import { addDays, format, parseISO, startOfDay, startOfWeek } from 'date-fns';
-import { appDateLocale as pt } from '../../lib/dateLocale';
+import i18n from '../../i18n';
 import { courseColors } from '../../lib/colors';
+import { normalizeAppLanguage, resolveDateFnsLocale } from '../../lib/grading';
 import {
   daysUntil, gradeSummary, readiness, sessionMinutes, toDateStr, topicProgress, upcomingAssessments,
 } from '../../lib/selectors';
@@ -72,12 +73,31 @@ export function periodRange(
 const weekStart = (date: string) => ymd(startOfWeek(parseISO(date), { weekStartsOn: 1 }));
 const bucketKey = (date: string, r: PeriodRange) => (r.byWeek ? weekStart(date) : date);
 
-export const fmtShortDate = (d: string) => format(parseISO(d), 'd MMM', { locale: pt });
-const fmtDay = (d: string, period: Period) => format(parseISO(d), period === '7d' ? 'EEE d' : 'd MMM', { locale: pt });
+function activeLang(lang?: string): string {
+  return lang ?? (i18n.isInitialized ? i18n.language : undefined) ?? 'pt-PT';
+}
 
-/** Horas no eixo Y (ex.: 1,5 h). */
-export const fmtHours = (m: number) => `${(m / 60).toFixed(Number.isInteger(m / 60) ? 0 : 1).replace('.', ',')} h`;
-export const fmtDec = (n: number) => n.toFixed(1).replace('.', ',');
+function decimalSep(lang?: string): '.' | ',' {
+  return normalizeAppLanguage(activeLang(lang)) === 'en' ? '.' : ',';
+}
+
+export const fmtShortDate = (d: string, lang?: string) =>
+  format(parseISO(d), 'd MMM', { locale: resolveDateFnsLocale(activeLang(lang)) });
+
+const fmtDay = (d: string, period: Period, lang?: string) =>
+  format(parseISO(d), period === '7d' ? 'EEE d' : 'd MMM', { locale: resolveDateFnsLocale(activeLang(lang)) });
+
+/** Horas no eixo Y (ex.: 1,5 h ou 1.5 h em EN). */
+export const fmtHours = (m: number, lang?: string) => {
+  const num = (m / 60).toFixed(Number.isInteger(m / 60) ? 0 : 1);
+  return `${decimalSep(lang) === ',' ? num.replace('.', ',') : num} h`;
+};
+
+export const fmtDec = (n: number, lang?: string) => {
+  const num = n.toFixed(1);
+  return decimalSep(lang) === ',' ? num.replace('.', ',') : num;
+};
+
 export const fmtPct = (n: number) => `${Math.round(n)}%`;
 export const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
@@ -105,6 +125,7 @@ export function studyByBucket(
   sessions: StudySession[],
   courses: Course[],
   r: PeriodRange,
+  lang?: string,
 ): { rows: StudyRow[]; series: SeriesDef[] } {
   const series: SeriesDef[] = courses.map((c, i) => ({
     key: `s${i}`, name: c.shortName, color: courseColors[c.color].hex,
@@ -112,7 +133,7 @@ export function studyByBucket(
   const index = new Map(courses.map((c, i) => [c.id, i]));
   const rows = new Map<string, StudyRow>();
   for (const k of r.byWeek ? r.weeks : r.days) {
-    const row: StudyRow = { key: k, label: r.byWeek ? fmtShortDate(k) : fmtDay(k, r.period), total: 0 };
+    const row: StudyRow = { key: k, label: r.byWeek ? fmtShortDate(k, lang) : fmtDay(k, r.period, lang), total: 0 };
     for (const s of series) row[s.key] = 0;
     rows.set(k, row);
   }
@@ -131,9 +152,9 @@ export function studyByBucket(
 export interface PlanRow { key: string; label: string; planned: number; done: number }
 
 /** Planeado (todas as sessões) vs. feito (sessões concluídas), por semana. */
-export function plannedByWeek(sessions: StudySession[], r: PeriodRange): PlanRow[] {
+export function plannedByWeek(sessions: StudySession[], r: PeriodRange, lang?: string): PlanRow[] {
   const rows = new Map<string, PlanRow>(
-    r.weeks.map((w) => [w, { key: w, label: fmtShortDate(w), planned: 0, done: 0 }]),
+    r.weeks.map((w) => [w, { key: w, label: fmtShortDate(w, lang), planned: 0, done: 0 }]),
   );
   for (const s of sessions) {
     if (s.date < r.from || s.date > r.to) continue;

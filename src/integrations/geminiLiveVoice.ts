@@ -14,14 +14,11 @@ import {
 import { useStore } from '../store/useStore';
 import type { AppLanguage, Course } from '../types';
 import { buildStudyContext, SYSTEM_PROMPT } from './gemini';
+import { normalizeAppLanguage } from '../lib/grading';
 import { tr } from '../i18n/tr';
 
 export const LIVE_VOICE_MODEL = 'gemini-3.8-live';
-const LIVE_VOICE_CANDIDATE_MODELS = [
-  LIVE_VOICE_MODEL,
-  'gemini-2.5-flash-native-audio-preview-12-2025',
-  'gemini-2.0-flash-live-001',
-] as const;
+const LIVE_VOICE_CANDIDATE_MODELS = [LIVE_VOICE_MODEL] as const;
 const INPUT_SAMPLE_RATE = 16000;
 const OUTPUT_SAMPLE_RATE = 24000;
 const SILENCE_TIMEOUT_MS = 60_000;
@@ -309,6 +306,15 @@ export async function startUniLiveVoiceSession(
       httpOptions: { apiVersion: 'v1beta' },
     });
     const studyContext = buildStudyContext(useStore.getState());
+    const activeLang = normalizeAppLanguage(args.language);
+    const liveVoiceSuffix =
+      activeLang === 'en'
+        ? 'REAL-TIME VOICE MODE: reply naturally, warmly, concisely, and briefly (2 to 4 sentences per turn) so it is easy to listen to.'
+        : activeLang === 'es'
+          ? 'MODO VOZ EN TIEMPO REAL: responde de forma natural, cercana, objetiva y breve (2 a 4 frases por turno) para facilitar la escucha.'
+          : activeLang === 'pt-BR'
+            ? 'MODO VOZ EM TEMPO REAL: responda de forma natural, acolhedora, objetiva e breve (2 a 4 frases por turno) para facilitar a audição.'
+            : 'MODO VOZ EM TEMPO REAL: responde de forma natural, calorosa, objetiva e breve (2 a 4 frases por turno) para facilitar a audição.';
     const systemText = `${SYSTEM_PROMPT(studyContext, undefined, {
       persona: args.persona,
       accessory: args.accessory,
@@ -317,7 +323,7 @@ export async function startUniLiveVoiceSession(
       language: args.language,
       uniAgent: args.uniAgent,
       courseName: args.activeCourse?.shortName || args.activeCourse?.name,
-    })}\n\nMODO VOZ EM TEMPO REAL: responde de forma natural, calorosa, objetiva e breve (2 a 4 frases por turno) para facilitar a audição.`;
+    })}\n\n${liveVoiceSuffix}`;
 
     let connected = false;
     let lastConnectErr: unknown = null;

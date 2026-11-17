@@ -25,4 +25,50 @@ describe('sincronização de definições', () => {
     expect(payload).not.toHaveProperty('geminiApiKey');
     expect(payload).toHaveProperty('theme', 'dark');
   });
+
+  it('preserva preferências do plano, notificações, setup do Hub e links partilhados na sincronização', async () => {
+    const { sanitizeSettingsPayload } = await import('../firestoreSync');
+    const payload = sanitizeSettingsPayload(
+      {
+        geminiApiKey: 'AIza-segredo',
+        plannerPrefs: {
+          horizonDays: 14,
+          preferredPeriod: 'morning',
+          blockMinutes: 50,
+          strategy: 'exams_first',
+          boostCourseIds: ['c1'],
+          pausedCourseIds: [],
+          exclusiveTestFocus: true,
+        },
+        notifications: {
+          enabled: true,
+          streakSaver: true,
+          srsDue: true,
+          assessments: true,
+          classReminders: true,
+          eveningCheckIn: false,
+          sundayReview: true,
+          classBeforeMinutes: 15,
+          preferredHour: 19,
+          quietStart: '22:30',
+          quietEnd: '08:30',
+          maxDailyNudges: 3,
+        },
+        hubSetupCompleted: true,
+        sharedHubDriveUrls: ['https://drive.google.com/drive/folders/abc'],
+        seenTabGuides: ['today', 'planner'],
+        uniSkinAutoRotate: true,
+      },
+      true,
+    );
+
+    expect(payload).not.toHaveProperty('geminiApiKey');
+    expect(payload).toHaveProperty('plannerPrefs');
+    expect(payload).toHaveProperty('notifications');
+    expect(payload).toHaveProperty('hubSetupCompleted', true);
+    expect(payload).toHaveProperty('sharedHubDriveUrls', ['https://drive.google.com/drive/folders/abc']);
+    expect(payload).toHaveProperty('seenTabGuides', ['today', 'planner']);
+    expect(payload).toHaveProperty('uniSkinAutoRotate', true);
+  });
 });
+

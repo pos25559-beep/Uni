@@ -6,6 +6,7 @@ import {
   refundDailyQuota,
   type QuotaKind,
 } from '../../lib/aiQuota';
+import { tr } from '../../i18n/tr';
 import { friendlyCustomKeyError, HttpStatusError, ModelTimeoutError } from '../../lib/geminiErrors';
 import { hasAiAccess } from '../../lib/aiAccess';
 import { getNativeAI } from '../../lib/firebase';
@@ -15,6 +16,7 @@ import {
   DEFAULT_MODEL,
   FALLBACK_MODELS,
   FALLBACK_TIMEOUT_MS,
+  LEGACY_REMOVED_MODELS,
   MODEL_COOLDOWN_MS,
   PRIMARY_TIMEOUT_MS,
   STREAM_IDLE_TIMEOUT_MS,
@@ -61,6 +63,7 @@ export function resolveGeminiConfig() {
   const raw = geminiModel.trim();
   const isLegacyOrInvalid =
     !raw ||
+    LEGACY_REMOVED_MODELS.has(raw) ||
     raw.startsWith('gemini-1.') ||
     raw.startsWith('gemini-2.');
   const model = isLegacyOrInvalid ? DEFAULT_MODEL : raw;
@@ -179,7 +182,9 @@ async function runModelChain<T>(args: {
 
 function friendlyNativeAiError(err: unknown): Error {
   if (err instanceof ModelTimeoutError) {
-    return new Error('O Uni demorou demasiado tempo a responder agora. Tenta novamente dentro de instantes.');
+    return new Error(
+      tr('common:errors.nativeAiTimeout', { seconds: Math.round(FALLBACK_TIMEOUT_MS / 1000) }),
+    );
   }
   const raw = err instanceof Error ? err.message : String(err ?? '');
   if (import.meta.env.DEV) {
@@ -187,9 +192,7 @@ function friendlyNativeAiError(err: unknown): Error {
   }
   const lower = raw.toLowerCase();
   if (lower.includes('429') || lower.includes('resource_exhausted') || lower.includes('quota')) {
-    return new Error(
-      'O serviço está com muitos pedidos neste momento. Aguarda 1 minuto e tenta novamente ou usa uma chave pessoal em Definições → Tutor.',
-    );
+    return new Error(tr('common:errors.nativeAiQuota'));
   }
   if (
     lower.includes('firebasevertexai') ||
@@ -198,11 +201,9 @@ function friendlyNativeAiError(err: unknown): Error {
     lower.includes('app check') ||
     lower.includes('403')
   ) {
-    return new Error(
-      'O Tutor Uni está temporariamente indisponível para pedidos sem chave própria. Podes tentar novamente mais tarde ou usar uma chave em Definições → Tutor.',
-    );
+    return new Error(tr('common:errors.nativeAiUnavailable'));
   }
-  return new Error('Não foi possível contactar o Uni agora. Tenta novamente dentro de instantes.');
+  return new Error(tr('common:errors.nativeAiGeneric'));
 }
 
 export function buildContentsWithAttachments(
@@ -282,7 +283,7 @@ export async function callDirectRest(args: {
         if (!res.ok) {
           throw new HttpStatusError(
             res.status,
-            data?.error?.message ?? `Erro ${res.status} ao contactar o Uni.`,
+            data?.error?.message ?? tr('common:errors.restHttpError', { status: res.status }),
           );
         }
 
@@ -291,8 +292,8 @@ export async function callDirectRest(args: {
           const reason = data?.promptFeedback?.blockReason;
           throw new Error(
             reason
-              ? `O Uni pediu para reformulares a pergunta (${reason}).`
-              : 'O Uni não devolveu resposta agora. Tenta de novo.',
+              ? tr('common:errors.restBlocked', { reason })
+              : tr('common:errors.restEmpty'),
           );
         }
         if (data?.usageMetadata) {
@@ -346,7 +347,7 @@ export async function callDirectRestStream(args: {
           const errBody = (await res.json().catch(() => null)) as GenerateResponse | null;
           throw new HttpStatusError(
             res.status,
-            errBody?.error?.message ?? `Erro ${res.status} ao contactar o Uni.`,
+            errBody?.error?.message ?? tr('common:errors.restHttpError', { status: res.status }),
           );
         }
 
@@ -381,6 +382,26 @@ export async function callDirectRestStream(args: {
               }
             } catch {
               // Ignora blocos parciais malformados até próximo evento
+            }
+          }
+        }
+        const trailing = buffer + decoder.decode();
+        if (trailing.startsWith('data:')) {
+          const jsonStr = trailing.slice(5).trim();
+          if (jsonStr && jsonStr !== '[DONE]') {
+            try {
+              const chunk = JSON.parse(jsonStr) as GenerateResponse;
+              if (chunk.usageMetadata) {
+                promptTokens = chunk.usageMetadata.promptTokenCount ?? promptTokens;
+                outputTokens = chunk.usageMetadata.candidatesTokenCount ?? outputTokens;
+              }
+              const delta = (chunk.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? '').join('');
+              if (delta) {
+                accumulated += delta;
+                args.onToken(accumulated);
+              }
+            } catch {
+              // ignore incomplete trailing line
             }
           }
         }

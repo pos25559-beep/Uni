@@ -54,6 +54,8 @@ function isAuthError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
   return (
     msg.includes('inicia sessão') ||
+    msg.includes('inicia sesión') ||
+    msg.includes('sign in') ||
     msg.includes('invalid credentials') ||
     msg.includes('unauthorized') ||
     msg.includes('insufficient authentication scopes') ||

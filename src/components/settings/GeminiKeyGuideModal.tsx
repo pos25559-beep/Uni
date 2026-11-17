@@ -166,7 +166,13 @@ export default function GeminiKeyGuideModal({
               {error && (
                 <div className="space-y-1.5 rounded-xl border border-danger/25 bg-danger/10 p-2.5 text-xs text-danger">
                   <p className="break-words">{error}</p>
-                  {(error.toLowerCase().includes('créditos') || error.toLowerCase().includes('credit') || error.toLowerCase().includes('quota') || error.toLowerCase().includes('billing')) && (
+                  {(error.toLowerCase().includes('crédito') ||
+                    error.toLowerCase().includes('credit') ||
+                    error.toLowerCase().includes('quota') ||
+                    error.toLowerCase().includes('cuota') ||
+                    error.toLowerCase().includes('billing') ||
+                    error.toLowerCase().includes('fatura') ||
+                    error.toLowerCase().includes('factura')) && (
                     <a
                       href="https://ai.studio/projects"
                       target="_blank"

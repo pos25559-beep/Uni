@@ -160,8 +160,7 @@ export default function GeminiCard() {
               {[
                 { id: 'gemini-4-hydrogen', label: t('gemini.presetRecommended') },
                 { id: 'gemini-4-argon', label: 'Gemini 4 Argon' },
-                { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash' },
-                { id: 'gemini-3.5-flash-lite', label: t('gemini.presetBackup') },
+                { id: 'gemini-3.1-flash-lite', label: t('gemini.presetBackup') },
               ].map((preset) => {
                 const active = (model || 'gemini-4-hydrogen') === preset.id;
                 return (

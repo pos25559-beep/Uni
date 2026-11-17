@@ -1,6 +1,7 @@
 import { tr } from '../i18n/tr';
 import { sessionMinutes, studyStreak } from './selectors';
 import type {
+  AppLanguage,
   Course,
   StudyLogEntry,
   StudySession,
@@ -131,8 +132,8 @@ const BASE_SKINS: UniSkinMeta[] = [
  * Texto localizado de um campo de metadados. O texto pt-PT escrito no próprio array serve de
  * reserva quando a chave ainda não existe numa língua.
  */
-function metaText(key: string, fallback: string): string {
-  const text = tr(key);
+function metaText(key: string, fallback: string, lang?: AppLanguage | string): string {
+  const text = tr(key, {}, lang);
   return text === key ? fallback : text;
 }
 
@@ -148,6 +149,28 @@ function localizeMeta<T extends object>(base: T, prefix: string, fields: Array<k
     });
   }
   return out;
+}
+
+function resolveSkinForLang(skin: UniSkinMeta, lang?: AppLanguage | string): UniSkinMeta {
+  if (!lang) return skin;
+  return {
+    ...skin,
+    name: metaText(`uni:collectibles.skins.${skin.id}.name`, skin.name, lang),
+    tagline: metaText(`uni:collectibles.skins.${skin.id}.tagline`, skin.tagline, lang),
+    unlockHint: metaText(`uni:collectibles.skins.${skin.id}.unlockHint`, skin.unlockHint, lang),
+    badgeText: metaText(`uni:collectibles.skins.${skin.id}.badgeText`, skin.badgeText, lang),
+  };
+}
+
+function resolvePetForLang(pet: UniPetMeta, lang?: AppLanguage | string): UniPetMeta {
+  if (!lang) return pet;
+  return {
+    ...pet,
+    name: metaText(`uni:collectibles.pets.${pet.id}.name`, pet.name, lang),
+    species: metaText(`uni:collectibles.pets.${pet.id}.species`, pet.species, lang),
+    tagline: metaText(`uni:collectibles.pets.${pet.id}.tagline`, pet.tagline, lang),
+    unlockHint: metaText(`uni:collectibles.pets.${pet.id}.unlockHint`, pet.unlockHint, lang),
+  };
 }
 
 /** Cores do Uni com nome, frase e pista de desbloqueio na língua ativa (resolvidos ao ler). */
@@ -266,18 +289,22 @@ function makeProgress(
   target: number,
   unlocked: boolean,
   lockedText: string,
+  lang?: AppLanguage | string,
 ): { unlocked: boolean; progressCurrent: number; progressTarget: number; progressLabel: string } {
   const bounded = unlocked ? target : Math.min(target, Math.max(0, current));
   return {
     unlocked,
     progressCurrent: bounded,
     progressTarget: target,
-    progressLabel: unlocked ? tr('uni:collectibles.progress.unlocked') : lockedText,
+    progressLabel: unlocked ? tr('uni:collectibles.progress.unlocked', {}, lang) : lockedText,
   };
 }
 
 /** Calcula o estado e progresso real de desbloqueio de cada cor colecionável do Uni. */
-export function getUniCollectibleStates(telemetry: CollectibleTelemetry): UniCollectibleProgress[] {
+export function getUniCollectibleStates(
+  telemetry: CollectibleTelemetry,
+  lang?: AppLanguage | string,
+): UniCollectibleProgress[] {
   const {
     completedSessions,
     totalRecalls,
@@ -287,67 +314,159 @@ export function getUniCollectibleStates(telemetry: CollectibleTelemetry): UniCol
     totalStudyMinutes = completedSessions * 45,
   } = telemetry;
 
-  return UNI_SKINS.map((skin) => {
+  return UNI_SKINS.map((rawSkin) => {
+    const skin = resolveSkinForLang(rawSkin, lang);
     if (skin.starter) {
-      return { skin, ...makeProgress(1, 1, true, '') };
+      return { skin, ...makeProgress(1, 1, true, '', lang) };
     }
     if (skin.id === 'butter') {
       const unlocked = checkInsCount >= 1 || completedSessions >= 3;
       const cur = Math.max(checkInsCount >= 1 ? 3 : 0, Math.min(3, completedSessions));
-      return { skin, ...makeProgress(cur, 3, unlocked, tr('uni:collectibles.progress.sessionsOrCheckin', { current: completedSessions, target: 3 })) };
+      return {
+        skin,
+        ...makeProgress(
+          cur,
+          3,
+          unlocked,
+          tr('uni:collectibles.progress.sessionsOrCheckin', { current: completedSessions, target: 3 }, lang),
+          lang,
+        ),
+      };
     }
     if (skin.id === 'crimson') {
       const unlocked = totalRecalls >= 3 || streakDays >= 3;
       const cur = Math.max(totalRecalls, streakDays);
-      return { skin, ...makeProgress(cur, 3, unlocked, tr('uni:collectibles.progress.recallsOrDays', { current: Math.min(3, cur), target: 3 })) };
+      return {
+        skin,
+        ...makeProgress(
+          cur,
+          3,
+          unlocked,
+          tr('uni:collectibles.progress.recallsOrDays', { current: Math.min(3, cur), target: 3 }, lang),
+          lang,
+        ),
+      };
     }
     if (skin.id === 'sage') {
       const unlocked = totalRecalls >= 5;
-      return { skin, ...makeProgress(totalRecalls, 5, unlocked, tr('uni:collectibles.progress.recalls', { current: Math.min(5, totalRecalls), target: 5 })) };
+      return {
+        skin,
+        ...makeProgress(
+          totalRecalls,
+          5,
+          unlocked,
+          tr('uni:collectibles.progress.recalls', { current: Math.min(5, totalRecalls), target: 5 }, lang),
+          lang,
+        ),
+      };
     }
     if (skin.id === 'terracotta') {
       const unlocked = completedSessions >= 6;
-      return { skin, ...makeProgress(completedSessions, 6, unlocked, tr('uni:collectibles.progress.sessions', { current: Math.min(6, completedSessions), target: 6 })) };
+      return {
+        skin,
+        ...makeProgress(
+          completedSessions,
+          6,
+          unlocked,
+          tr('uni:collectibles.progress.sessions', { current: Math.min(6, completedSessions), target: 6 }, lang),
+          lang,
+        ),
+      };
     }
     if (skin.id === 'espresso') {
       const unlocked = totalStudyMinutes >= 150;
       return {
         skin,
-        ...makeProgress(totalStudyMinutes, 150, unlocked, tr('uni:collectibles.progress.minutes', { current: Math.min(150, totalStudyMinutes), target: 150 })),
+        ...makeProgress(
+          totalStudyMinutes,
+          150,
+          unlocked,
+          tr('uni:collectibles.progress.minutes', { current: Math.min(150, totalStudyMinutes), target: 150 }, lang),
+          lang,
+        ),
       };
     }
     // 'ink'
     const unlocked = mastered21dCount >= 1 || streakDays >= 7 || completedSessions >= 10;
     const cur = mastered21dCount >= 1 ? 7 : Math.max(streakDays, Math.round((completedSessions / 10) * 7));
-    return { skin, ...makeProgress(cur, 7, unlocked, tr('uni:collectibles.progress.daysOrSrs', { current: streakDays, target: 7 })) };
+    return {
+      skin,
+      ...makeProgress(
+        cur,
+        7,
+        unlocked,
+        tr('uni:collectibles.progress.daysOrSrs', { current: streakDays, target: 7 }, lang),
+        lang,
+      ),
+    };
   });
 }
 
 /** Calcula o desbloqueio de cada Micropet companheiro do Uni. */
-export function getUniPetStates(telemetry: CollectibleTelemetry): UniPetProgress[] {
+export function getUniPetStates(
+  telemetry: CollectibleTelemetry,
+  lang?: AppLanguage | string,
+): UniPetProgress[] {
   const { completedSessions, totalRecalls, streakDays, mastered21dCount } = telemetry;
-  return UNI_PETS.map((pet) => {
+  return UNI_PETS.map((rawPet) => {
+    const pet = resolvePetForLang(rawPet, lang);
     if (pet.starter) {
-      return { pet, ...makeProgress(1, 1, true, '') };
+      return { pet, ...makeProgress(1, 1, true, '', lang) };
     }
     if (pet.id === 'owl') {
       const unlocked = completedSessions >= 2 || totalRecalls >= 2;
       const cur = Math.max(completedSessions, totalRecalls);
-      return { pet, ...makeProgress(cur, 2, unlocked, tr('uni:collectibles.progress.sessionsOrRecalls', { current: Math.min(2, cur), target: 2 })) };
+      return {
+        pet,
+        ...makeProgress(
+          cur,
+          2,
+          unlocked,
+          tr('uni:collectibles.progress.sessionsOrRecalls', { current: Math.min(2, cur), target: 2 }, lang),
+          lang,
+        ),
+      };
     }
     if (pet.id === 'fox') {
       const unlocked = streakDays >= 3 || completedSessions >= 4;
       const cur = Math.max(streakDays, Math.round((completedSessions / 4) * 3));
-      return { pet, ...makeProgress(cur, 3, unlocked, tr('uni:collectibles.progress.streakDays', { current: Math.min(3, streakDays), target: 3 })) };
+      return {
+        pet,
+        ...makeProgress(
+          cur,
+          3,
+          unlocked,
+          tr('uni:collectibles.progress.streakDays', { current: Math.min(3, streakDays), target: 3 }, lang),
+          lang,
+        ),
+      };
     }
     if (pet.id === 'turtle') {
       const unlocked = completedSessions >= 5;
-      return { pet, ...makeProgress(completedSessions, 5, unlocked, tr('uni:collectibles.progress.sessions', { current: Math.min(5, completedSessions), target: 5 })) };
+      return {
+        pet,
+        ...makeProgress(
+          completedSessions,
+          5,
+          unlocked,
+          tr('uni:collectibles.progress.sessions', { current: Math.min(5, completedSessions), target: 5 }, lang),
+          lang,
+        ),
+      };
     }
     // 'rabbit'
     const unlocked = completedSessions >= 8 || mastered21dCount >= 1;
     const cur = mastered21dCount >= 1 ? 8 : completedSessions;
-    return { pet, ...makeProgress(cur, 8, unlocked, tr('uni:collectibles.progress.sessions', { current: Math.min(8, cur), target: 8 })) };
+    return {
+      pet,
+      ...makeProgress(
+        cur,
+        8,
+        unlocked,
+        tr('uni:collectibles.progress.sessions', { current: Math.min(8, cur), target: 8 }, lang),
+        lang,
+      ),
+    };
   });
 }
 
@@ -405,15 +524,18 @@ export function recordUniPetCare(todayKey: string): number {
   return next;
 }
 
-export function computeGrowthStage(totalStudyMinutes: number): UniGrowthStage {
+export function computeGrowthStage(
+  totalStudyMinutes: number,
+  lang?: AppLanguage | string,
+): UniGrowthStage {
   if (totalStudyMinutes >= 900) {
-    return { id: 'sabio', label: tr('uni:collectibles.growth.sabio'), minutesRequired: 900 };
+    return { id: 'sabio', label: tr('uni:collectibles.growth.sabio', {}, lang), minutesRequired: 900 };
   }
   if (totalStudyMinutes >= 360) {
     return {
       id: 'estudioso',
-      label: tr('uni:collectibles.growth.estudioso'),
-      nextLabel: tr('uni:collectibles.growth.sabio'),
+      label: tr('uni:collectibles.growth.estudioso', {}, lang),
+      nextLabel: tr('uni:collectibles.growth.sabio', {}, lang),
       minutesRequired: 360,
       nextMinutesRequired: 900,
     };
@@ -421,16 +543,16 @@ export function computeGrowthStage(totalStudyMinutes: number): UniGrowthStage {
   if (totalStudyMinutes >= 120) {
     return {
       id: 'explorador',
-      label: tr('uni:collectibles.growth.explorador'),
-      nextLabel: tr('uni:collectibles.growth.estudioso'),
+      label: tr('uni:collectibles.growth.explorador', {}, lang),
+      nextLabel: tr('uni:collectibles.growth.estudioso', {}, lang),
       minutesRequired: 120,
       nextMinutesRequired: 360,
     };
   }
   return {
     id: 'semente',
-    label: tr('uni:collectibles.growth.semente'),
-    nextLabel: tr('uni:collectibles.growth.explorador'),
+    label: tr('uni:collectibles.growth.semente', {}, lang),
+    nextLabel: tr('uni:collectibles.growth.explorador', {}, lang),
     minutesRequired: 0,
     nextMinutesRequired: 120,
   };
@@ -443,8 +565,9 @@ export function computeUniCompanionState(args: {
   studyLogs?: StudyLogEntry[];
   today: string;
   dailyHugs?: number;
+  lang?: AppLanguage | string;
 }): UniCompanionState {
-  const { sessions, tasks, weeklyCheckIns, today } = args;
+  const { sessions, tasks, weeklyCheckIns, today, lang } = args;
   const doneSessions = sessions.filter((s) => s.done);
   const totalStudyMinutes = doneSessions.reduce((sum, s) => sum + sessionMinutes(s), 0);
   const doneTodaySessions = doneSessions.filter((s) => s.date === today).length;
@@ -466,11 +589,11 @@ export function computeUniCompanionState(args: {
 
   const dayHash = today.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
   const discoveryNote = adventureDone
-    ? tr(`uni:collectibles.discoveries.d${dayHash % CAMPUS_DISCOVERY_COUNT}`)
+    ? tr(`uni:collectibles.discoveries.d${dayHash % CAMPUS_DISCOVERY_COUNT}`, {}, lang)
     : undefined;
 
   return {
-    stage: computeGrowthStage(totalStudyMinutes),
+    stage: computeGrowthStage(totalStudyMinutes, lang),
     totalStudyMinutes,
     dailyEnergy,
     dailyEnergyGoal: DAILY_ENERGY_GOAL,

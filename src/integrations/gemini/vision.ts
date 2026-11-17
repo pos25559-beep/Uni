@@ -13,7 +13,8 @@ import {
 } from '../../lib/visionParsers';
 import { useStore } from '../../store/useStore';
 import { callDirectRest, resolveGeminiConfig, runNativeGenerate } from './core';
-import { OCR_PRIMARY_TIMEOUT_MS } from './models';
+import { OCR_PRIMARY_TIMEOUT_MS, THINKING_FAST } from './models';
+import { ACADEMIC_HISTORY_SCHEMA, TIMETABLE_EXTRACTION_SCHEMA } from './schemas';
 
 export interface KnownCourseHint {
   code?: string;
@@ -90,6 +91,8 @@ Regras:
     temperature: 0.1,
     maxOutputTokens: 4096,
     responseMimeType: 'application/json',
+    responseSchema: ACADEMIC_HISTORY_SCHEMA,
+    thinkingConfig: THINKING_FAST,
   };
 
   const rawText = customKey
@@ -190,6 +193,8 @@ Regras muito importantes para grelhas visuais de horários:
     temperature: 0.1,
     maxOutputTokens: 4096,
     responseMimeType: 'application/json',
+    responseSchema: TIMETABLE_EXTRACTION_SCHEMA,
+    thinkingConfig: THINKING_FAST,
   };
 
   const rawText = customKey
@@ -246,6 +251,8 @@ ${clean.slice(0, 6000)}
     temperature: 0.1,
     maxOutputTokens: 2048,
     responseMimeType: 'application/json',
+    responseSchema: TIMETABLE_EXTRACTION_SCHEMA,
+    thinkingConfig: THINKING_FAST,
   };
 
   const rawJson = customKey

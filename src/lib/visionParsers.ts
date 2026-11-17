@@ -429,9 +429,19 @@ export function looksSyncableReply(text: string): boolean {
     /(teste|exame|frequ[eê]ncia|avalia[cç]|trabalho|projeto|entrega|hor[aá]rio|aula|calend[aá]rio)/i.test(
       clean,
     );
-  const hasDateOrSlotMarker =
-    /(\b\d{1,2}[/.-]\d{1,2}\b|\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}\s+de\s+(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)|\b\d{1,2}[:h]\d{2}\b|\b[2-6][ªa]\b|\b(?:segunda|ter[cç]a|quarta|quinta|sexta)(?:-feira)?\b)/i.test(
+  if (!hasAcademicKind) return false;
+  const hasExplicitDate =
+    /(\b\d{1,2}[/.-]\d{1,2}\b|\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}\s+de\s+(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez))/i.test(
       clean,
     );
-  return hasAcademicKind && hasDateOrSlotMarker;
+  const hasClockTime = /\b\d{1,2}(?:[:h]\d{2}|h)\b/i.test(clean);
+  const hasWeekdayMarker =
+    /(\b[2-6][ªa]\b|\b(?:segunda|ter[cç]a|quarta|quinta|sexta|s[aá]bado)(?:-feira)?\b)/i.test(
+      clean,
+    );
+  return (
+    hasExplicitDate ||
+    (hasClockTime &&
+      (hasWeekdayMarker || /\b(?:[àa]s|das|entre|sala|audit[oó]rio|t|tp|pl|ot)\b/i.test(clean)))
+  );
 }

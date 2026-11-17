@@ -7,21 +7,13 @@ import { StickerBadge } from '../../motion/Primitives';
 import { Button, Field, Input, Textarea } from '../../ui';
 import { cx } from '../../../lib/uiHelpers';
 
-const DAY_LABELS = [
-  { day: 1, label: 'Seg' },
-  { day: 2, label: 'Ter' },
-  { day: 3, label: 'Qua' },
-  { day: 4, label: 'Qui' },
-  { day: 5, label: 'Sex' },
-  { day: 6, label: 'Sáb' },
-  { day: 0, label: 'Dom' },
-];
+const STUDY_DAY_NUMS = [1, 2, 3, 4, 5, 6, 0] as const;
 
 const DAILY_PRESETS = [
-  { minutes: 90, label: '1h30', hint: 'Leve' },
-  { minutes: 120, label: '2h', hint: 'Recomendado' },
-  { minutes: 180, label: '3h', hint: 'Constante' },
-  { minutes: 240, label: '4h', hint: 'Intensivo' },
+  { minutes: 90, label: '1h30' },
+  { minutes: 120, label: '2h' },
+  { minutes: 180, label: '3h' },
+  { minutes: 240, label: '4h' },
 ];
 
 interface Step4RhythmPrivacyProps {
@@ -145,13 +137,13 @@ export default function Step4RhythmPrivacy({
         <div>
           <span className="block text-xs font-medium text-muted">{t('s4.days')}</span>
           <div className="mt-2 flex flex-wrap gap-1.5">
-            {DAY_LABELS.map((d) => {
-              const active = studyDays.includes(d.day);
+            {STUDY_DAY_NUMS.map((day) => {
+              const active = studyDays.includes(day);
               return (
                 <button
-                  key={d.day}
+                  key={day}
                   type="button"
-                  onClick={() => onToggleStudyDay(d.day)}
+                  onClick={() => onToggleStudyDay(day)}
                   className={cx(
                     'min-h-11 min-w-11 rounded-xl border px-3 text-xs font-bold transition',
                     active
@@ -159,7 +151,7 @@ export default function Step4RhythmPrivacy({
                       : 'border-line bg-surface-2 text-muted hover:text-fg',
                   )}
                 >
-                  {t(`s4.day.${d.day}`)}
+                  {t(`s4.day.${day}`)}
                 </button>
               );
             })}

@@ -9,7 +9,7 @@ import { safeHref } from './meta';
 interface NotebookLink { key: string; title: string; href: string; sub: string }
 
 export default function NotebookLMCard() {
-  const { t, i18n } = useTranslation('courses');
+  const { t } = useTranslation('courses');
   const materials = useStore((s) => s.materials);
   const courses = useStore((s) => s.courses);
   const appTone = useStore((s) => s.settings.appTone ?? 'vibrante');
@@ -35,7 +35,7 @@ export default function NotebookLMCard() {
       }
     }
     return out;
-  }, [materials, courses, t, i18n.language]);
+  }, [materials, courses, t]);
 
   return (
     <section

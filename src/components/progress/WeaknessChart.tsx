@@ -16,7 +16,7 @@ interface Props {
 
 /** "Onde estou mais fraco?" — radar por cadeira (3 ou mais); com menos, barras horizontais. */
 export function WeaknessChart({ courses }: Props) {
-  const { t } = useTranslation('progress');
+  const { t, i18n } = useTranslation('progress');
   const rows = useMemo(() => competenceRows(courses), [courses]);
   const weakest = useMemo(
     () => rows.reduce<CompetenceRow | undefined>((w, r) => (!w || competenceScore(r) < competenceScore(w) ? r : w), undefined),
@@ -40,7 +40,7 @@ export function WeaknessChart({ courses }: Props) {
             {t('charts.weakness.takeaway', {
               course: weakest.name,
               progress: fmtPct(weakest.progress),
-              confidence: fmtDec(weakest.confidence),
+              confidence: fmtDec(weakest.confidence, i18n.language),
             })}
           </span>
         )

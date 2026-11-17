@@ -199,14 +199,17 @@ export default function Assistant() {
   };
 
   const recentLogSuggestion = useMemo(() => {
-    const latestExam = studyLogs.find((l) => l.kind === 'exam_prep');
+    const scopedLogs = activeCourse
+      ? studyLogs.filter((l) => l.courseId === activeCourse.id)
+      : studyLogs;
+    const latestExam = scopedLogs.find((l) => l.kind === 'exam_prep');
     if (latestExam) {
       const c = courses.find((x) => x.id === latestExam.courseId);
       return c
         ? t('page.sugExamCourse', { course: c.shortName })
         : t('page.sugExam');
     }
-    const hardClass = studyLogs.find(
+    const hardClass = scopedLogs.find(
       (l) => l.kind === 'class' && (l.feeling === 'dificil' || l.feeling === 'mais_ou_menos'),
     );
     if (hardClass) {
@@ -216,7 +219,7 @@ export default function Assistant() {
         : t('page.sugLastClass', { course: c ? ` (${c.shortName})` : '' });
     }
     return null;
-  }, [studyLogs, courses, t]);
+  }, [studyLogs, courses, activeCourse, t]);
 
   const handleClearAttachedMaterials = () => {
     clearAttachedMaterials();
@@ -280,10 +283,11 @@ export default function Assistant() {
           <div className="flex shrink-0 items-center gap-0.5">
             <button
               type="button"
-              onClick={() => setConvsModalMode('new')}
+              disabled={loading}
+              onClick={() => void handleCreateConversation()}
               aria-label={t('page.newConv')}
               title={t('page.newConv')}
-              className="grid size-11 place-items-center rounded-full text-fg transition hover:bg-surface-2"
+              className="grid size-11 place-items-center rounded-full text-fg transition hover:bg-surface-2 disabled:opacity-45"
             >
               <SquarePen size={18} />
             </button>
@@ -365,10 +369,7 @@ export default function Assistant() {
               <span className="font-serif font-medium italic text-accent-ink">Uni</span>
             </h1>
             <p className="truncate text-xs font-medium text-muted">
-              {user ? t('page.synced') : t('page.thisDevice')} ·{' '}
-              {quota.bypassed
-                ? t('page.unlimited')
-                : `${quota.chatRemaining}/${quota.chatLimit} msgs`}
+              {user ? t('page.synced') : t('page.thisDevice')}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -376,7 +377,8 @@ export default function Assistant() {
             <Button
               size="sm"
               variant="primary"
-              onClick={() => setConvsModalMode('new')}
+              disabled={loading}
+              onClick={() => void handleCreateConversation()}
               aria-label={t('page.newConv')}
               title={t('page.newConv')}
               className="min-h-[44px] px-3.5"

@@ -17,7 +17,7 @@ interface Props {
 /** "Planeado vs. feito" — por semana, planeado (neutro) e feito (accent). */
 export function PlannedDoneChart({ sessions, range }: Props) {
   const { t, i18n } = useTranslation('progress');
-  const rows = useMemo(() => plannedByWeek(sessions, range), [sessions, range, i18n.language]);
+  const rows = useMemo(() => plannedByWeek(sessions, range, i18n.language), [sessions, range, i18n.language]);
   const totals = useMemo(() => planTotals(sessions, range), [sessions, range]);
   const isEmpty = rows.every((r) => r.planned === 0 && r.done === 0);
   const pctDone = totals.planned > 0 ? Math.round((totals.done / totals.planned) * 100) : null;
@@ -48,7 +48,7 @@ export function PlannedDoneChart({ sessions, range }: Props) {
           <BarChart data={rows} margin={{ top: 8, right: 8, bottom: 0, left: 0 }} barGap={4}>
             <CartesianGrid {...gridProps} />
             <XAxis dataKey="label" {...axisProps} />
-            <YAxis {...axisProps} width={44} tickFormatter={(v: number) => fmtHours(v)} />
+            <YAxis {...axisProps} width={44} tickFormatter={(v: number) => fmtHours(v, i18n.language)} />
             <Tooltip cursor={cursorFill} content={(p) => <ChartTooltip {...p} format={fmtMinutes} />} />
             <Bar dataKey="planned" name={t('charts.plannedDone.planned')} fill="var(--muted)" fillOpacity={0.35} radius={barRadius} {...animation()} />
             <Bar dataKey="done" name={t('charts.plannedDone.done')} fill="var(--accent)" radius={barRadius} {...animation()} />

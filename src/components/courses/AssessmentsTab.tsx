@@ -79,12 +79,20 @@ export default function AssessmentsTab({ course }: Props) {
         />
       ) : (
         <ul className="space-y-2">
-          {mine.map((a) => (
+          {mine.map((a) => {
+            const kindText = t(`kinds.${a.kind}`);
+            const normTitle = a.title.trim().toLowerCase();
+            const hideTitle =
+              !normTitle ||
+              normTitle === kindText.trim().toLowerCase() ||
+              normTitle === (kindLabel[a.kind] ?? '').trim().toLowerCase() ||
+              normTitle === a.kind.trim().toLowerCase();
+            return (
             <li key={a.id} className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4 sm:flex-row sm:items-center">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge tone="accent">{kindLabel[a.kind]}</Badge>
-                  <span className="truncate text-sm font-medium">{a.title}</span>
+                  <Badge tone="accent">{kindText}</Badge>
+                  {!hideTitle && <span className="truncate text-sm font-medium">{a.title}</span>}
                 </div>
                 <p className="mt-1 text-xs text-muted tabular">
                   {fmtAssessmentDate(a.date, appLang)} · {dueLabel(a.date, appLang)} · {a.weight}% · {t('assess.topicsCount', { count: a.topicIds.length })}
@@ -118,7 +126,8 @@ export default function AssessmentsTab({ course }: Props) {
                 </div>
               </div>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
 

@@ -2,9 +2,9 @@
 // com App Check e quota conservadora, ou chave pessoal opcional em Definições → Avançado.
 
 import { format, parseISO } from 'date-fns';
-import { pt } from 'date-fns/locale';
 import type { Content, GenerationConfig } from 'firebase/ai';
-import { statusLabel } from '../lib/colors';
+import { tr } from '../i18n/tr';
+import { normalizeAppLanguage, resolveDateFnsLocale } from '../lib/grading';
 import type {
   TopicSheetRecord,
   UniAgentExpedition,
@@ -44,7 +44,6 @@ import {
 import { useStore } from '../store/useStore';
 import type { AppState } from '../store/useStore';
 import type { AppLanguage, AppTone, Material } from '../types';
-import { normalizeAppLanguage } from '../lib/grading';
 import type { ChatAttachment } from './gemini/core';
 import {
   buildContentsWithAttachments,
@@ -56,7 +55,22 @@ import {
   runNativeStream,
   withQuotaAndFallback,
 } from './gemini/core';
-import { CHAT_ATTACHMENT_PRIMARY_TIMEOUT_MS, PRIMARY_TIMEOUT_MS } from './gemini/models';
+import {
+  CHAT_ATTACHMENT_PRIMARY_TIMEOUT_MS,
+  PRIMARY_TIMEOUT_MS,
+  THINKING_BALANCED,
+  THINKING_FAST,
+  resolveChatThinkingConfig,
+} from './gemini/models';
+import {
+  NOTEBOOK_MEMORY_DELTA_SCHEMA,
+  PRACTICE_SET_SCHEMA,
+  RECALL_CHALLENGE_SCHEMA,
+  TOPIC_SHEET_SCHEMA,
+  UNI_EXPEDITION_SCHEMA,
+  UNI_RECALL_EVAL_SCHEMA,
+  UNI_RECALL_PROMPT_SCHEMA,
+} from './gemini/schemas';
 
 export type {
   ExtractedHistoryItem,
@@ -99,10 +113,10 @@ export async function fileToChatAttachment(file: File): Promise<ChatAttachment> 
     /\.(png|jpe?g|webp|gif|heic|heif|bmp)$/i.test(file.name);
   const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
   if (!isImage && !isPdf) {
-    throw new Error(`Formato não suportado (${file.name}). Anexa imagens (PNG/JPG/WebP) ou PDFs.`);
+    throw new Error(tr('common:errors.attUnsupported', { name: file.name }));
   }
   if (file.size > MAX_ATTACHMENT_BYTES) {
-    throw new Error(`O ficheiro "${file.name}" excede 8 MB. Escolhe uma versão mais leve.`);
+    throw new Error(tr('common:errors.attTooLarge', { name: file.name }));
   }
 
   if (isImage) {
@@ -127,7 +141,7 @@ export async function fileToChatAttachment(file: File): Promise<ChatAttachment> 
       const comma = result.indexOf(',');
       resolve(comma >= 0 ? result.slice(comma + 1) : result);
     };
-    reader.onerror = () => reject(new Error(`Não foi possível ler "${file.name}".`));
+    reader.onerror = () => reject(new Error(tr('common:errors.attReadFail', { name: file.name })));
     reader.readAsDataURL(file);
   });
 
@@ -148,7 +162,10 @@ export async function askGemini(args: {
 }): Promise<string> {
   const { customKey, model } = resolveGeminiConfig();
   const contents = buildContentsWithAttachments(args.messages, args.attachments);
-  const generationConfig: GenerationConfig = { temperature: 0.65 };
+  const generationConfig: GenerationConfig = {
+    temperature: 0.65,
+    thinkingConfig: resolveChatThinkingConfig(model),
+  };
 
   const text = await withQuotaAndFallback('chat', customKey, () =>
     customKey
@@ -169,7 +186,7 @@ export async function askGemini(args: {
         }),
   );
 
-  if (!text) throw new Error('O Uni devolveu uma resposta vazia. Tenta de novo.');
+  if (!text) throw new Error(tr('common:errors.aiEmptyReply'));
   return text;
 }
 
@@ -183,7 +200,10 @@ export async function streamGeminiChat(args: {
 }): Promise<string> {
   const { customKey, model } = resolveGeminiConfig();
   const contents = buildContentsWithAttachments(args.messages, args.attachments);
-  const generationConfig: GenerationConfig = { temperature: 0.65 };
+  const generationConfig: GenerationConfig = {
+    temperature: 0.65,
+    thinkingConfig: resolveChatThinkingConfig(model),
+  };
   const primaryTimeoutMs =
     args.attachments && args.attachments.length > 0
       ? CHAT_ATTACHMENT_PRIMARY_TIMEOUT_MS
@@ -212,39 +232,404 @@ export async function streamGeminiChat(args: {
         }),
   );
 
-  if (!text) throw new Error('O Uni devolveu uma resposta vazia. Tenta de novo.');
+  if (!text) throw new Error(tr('common:errors.aiEmptyReply'));
   return text;
 }
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
+interface ContextCopy {
+  todayDate: string;
+  todayPattern: string;
+  semesterLabel: string;
+  profileHeader: string;
+  schoolLabel: string;
+  activeYearsLabel: string;
+  currentYearLabel: string;
+  mastersLabel: (n: number) => string;
+  yearLabel: (n: number) => string;
+  entryLabel: string;
+  semesterOrdinal: (n: number) => string;
+  ectsLabel: (done: number, total: number, pct: number) => string;
+  challengesLabel: string;
+  extraLabel: (desc: string) => string;
+  extraPerWeek: string;
+  hardCoursesLabel: string;
+  studentDifficultiesLabel: string;
+  completedHistoryLabel: (count: number) => string;
+  coursesHeader: string;
+  noCourses: string;
+  impossibleGoal: string;
+  neededGoal: (grade: string) => string;
+  noGradesYet: string;
+  currentAvg: (grade: string, pct: number) => string;
+  priorityTag: string;
+  targetGrade: (ects: number, current: string, target: string, needed: string) => string;
+  topicsLabel: string;
+  confidenceLabel: string;
+  upcomingHeader: string;
+  examModeSingle: (label: string, title: string) => string;
+  examModeMulti: (count: number, names: string) => string;
+  noUpcoming: string;
+  dateTimePattern: string;
+  dateOnlyPattern: string;
+  shortDatePattern: string;
+  todayWhen: (stamp: string) => string;
+  tomorrowWhen: (stamp: string) => string;
+  inDaysWhen: (days: number, stamp: string) => string;
+  topicScopePrefix: string;
+  generalCourse: string;
+  assessmentLine: (
+    courseLabel: string,
+    title: string,
+    kind: string,
+    when: string,
+    weight: number,
+    ready: number,
+    scope: string,
+  ) => string;
+  checkInHeader: (weekOf: string) => string;
+  moodLabel: string;
+  consolidatedLabel: string;
+  missedInClassLabel: string;
+  pendingNextWeekLabel: string;
+  studentNotesLabel: string;
+  logsHeader: string;
+  logKinds: Record<'class' | 'day' | 'week' | 'exam_prep', string>;
+  logState: string;
+  logTopicGiven: string;
+  logMarkedTopics: string;
+  logStudied: string;
+  logDifficulties: string;
+  logNote: string;
+  todayPlanHeader: string;
+  noTodaySessions: string;
+  sessionDone: (dur: string) => string;
+  sessionTodo: (dur: string) => string;
+  studyHeader: string;
+  weeklySummary: (done: string, goal: string) => string;
+  streakLine: (days: number) => string;
+  tasksHeader: string;
+  noTasks: string;
+  duePrefix: string;
+  overdueSuffix: string;
+  truncatedTag: string;
+}
+
+const CONTEXT_COPY: Record<AppLanguage, ContextCopy> = {
+  'pt-PT': {
+    todayDate: 'Data de hoje',
+    todayPattern: "EEEE, d 'de' MMMM 'de' yyyy",
+    semesterLabel: 'Semestre',
+    profileHeader: 'PERFIL ACADÉMICO DO ESTUDANTE (UNIPEDIA):',
+    schoolLabel: 'Faculdade/Curso',
+    activeYearsLabel: 'Anos ativos',
+    currentYearLabel: 'Ano atual',
+    mastersLabel: (n) => `${n}.º Mestrado`,
+    yearLabel: (n) => `${n}.º ano`,
+    entryLabel: 'Ingresso',
+    semesterOrdinal: (n) => `${n}.º semestre`,
+    ectsLabel: (done, total, pct) => `- Créditos ECTS: ${done}/${total} ECTS (${pct}% concluído)`,
+    challengesLabel: '- Dificuldades declaradas de ritmo/estudo:',
+    extraLabel: (desc) => `- Atividades extra-curriculares: ${desc}`,
+    extraPerWeek: 'h/sem',
+    hardCoursesLabel: '- Cadeiras onde tem mais dificuldade:',
+    studentDifficultiesLabel: '- Dificuldades declaradas pelo aluno:',
+    completedHistoryLabel: (count) => `- Histórico de cadeiras já concluídas (${count}):`,
+    coursesHeader: 'CADEIRAS:',
+    noCourses: '- Sem cadeiras registadas.',
+    impossibleGoal: '; objetivo inatingível nas restantes avaliações',
+    neededGoal: (grade) => `; precisa de ${grade} nas restantes`,
+    noGradesYet: 'sem notas ainda',
+    currentAvg: (grade, pct) => `média atual ${grade} (${pct}% avaliado)`,
+    priorityTag: ' [PRIORIDADE/DIFICULDADE]',
+    targetGrade: (ects, current, target, needed) => `(${ects} ECTS): ${current}; objetivo ${target}${needed}.`,
+    topicsLabel: 'Matéria',
+    confidenceLabel: 'confiança',
+    upcomingHeader: 'PRÓXIMAS AVALIAÇÕES:',
+    examModeSingle: (label, title) => `- MODO TESTE ATIVO (<10 dias): Foco intensivo em ${label} (${title}).`,
+    examModeMulti: (count, names) => `- MODO TESTE MÚLTIPLO ATIVO (<10 dias): Equilibrar ${count} avaliações urgentes (${names}).`,
+    noUpcoming: '- Nenhuma avaliação futura registada.',
+    dateTimePattern: "EEEE, d 'de' MMM 'às' HH:mm",
+    dateOnlyPattern: "EEEE, d 'de' MMM",
+    shortDatePattern: 'd MMM',
+    todayWhen: (stamp) => `hoje (${stamp})`,
+    tomorrowWhen: (stamp) => `amanhã (${stamp})`,
+    inDaysWhen: (days, stamp) => `em ${days} dias (${stamp})`,
+    topicScopePrefix: 'matéria que sai',
+    generalCourse: 'Geral',
+    assessmentLine: (c, title, kind, when, weight, ready, scope) =>
+      `- ${c} – ${title} (${kind}) ${when}; peso ${weight}%; preparação ${ready}%${scope}.`,
+    checkInHeader: (w) => `ÚLTIMO CHECK-IN SEMANAL (${w}):`,
+    moodLabel: '- Estado do aluno:',
+    consolidatedLabel: '- O que já consolidou:',
+    missedInClassLabel: '- O que não entendeu na aula:',
+    pendingNextWeekLabel: '- Ficou para a próxima semana:',
+    studentNotesLabel: '- Notas do aluno:',
+    logsHeader: 'DIÁRIO RECENTE (AULAS, ESTUDO DIÁRIO & MODO TESTE):',
+    logKinds: { class: 'Pós-aula', day: 'Fim do dia', week: 'Domingo', exam_prep: 'Modo Teste' },
+    logState: 'estado',
+    logTopicGiven: 'matéria dada',
+    logMarkedTopics: 'tópicos marcados',
+    logStudied: 'já estudou',
+    logDifficulties: 'dificuldades',
+    logNote: 'nota',
+    todayPlanHeader: 'PLANO DE HOJE:',
+    noTodaySessions: '- Sem sessões planeadas hoje.',
+    sessionDone: (dur) => `feita (${dur})`,
+    sessionTodo: (dur) => `por fazer (${dur})`,
+    studyHeader: 'ESTUDO:',
+    weeklySummary: (done, goal) => `- Esta semana: ${done} de ${goal} planeados por semana.`,
+    streakLine: (days) => `- Sequência atual: ${plural(days, 'dia seguido', 'dias seguidos')}.`,
+    tasksHeader: 'TAREFAS PENDENTES:',
+    noTasks: '- Nenhuma tarefa pendente.',
+    duePrefix: 'prazo',
+    overdueSuffix: ' (atrasada)',
+    truncatedTag: '[…resumo truncado]',
+  },
+  'pt-BR': {
+    todayDate: 'Data de hoje',
+    todayPattern: "EEEE, d 'de' MMMM 'de' yyyy",
+    semesterLabel: 'Semestre',
+    profileHeader: 'PERFIL ACADÊMICO DO ESTUDANTE (UNIPEDIA):',
+    schoolLabel: 'Faculdade/Curso',
+    activeYearsLabel: 'Anos ativos',
+    currentYearLabel: 'Ano atual',
+    mastersLabel: (n) => `${n}º ano Mestrado`,
+    yearLabel: (n) => `${n}º ano`,
+    entryLabel: 'Ingresso',
+    semesterOrdinal: (n) => `${n}º semestre`,
+    ectsLabel: (done, total, pct) => `- Créditos: ${done}/${total} (${pct}% concluído)`,
+    challengesLabel: '- Dificuldades declaradas de ritmo/estudo:',
+    extraLabel: (desc) => `- Atividades extracurriculares: ${desc}`,
+    extraPerWeek: 'h/sem',
+    hardCoursesLabel: '- Disciplinas em que tem mais dificuldade:',
+    studentDifficultiesLabel: '- Dificuldades relatadas pelo aluno:',
+    completedHistoryLabel: (count) => `- Histórico de disciplinas concluídas (${count}):`,
+    coursesHeader: 'DISCIPLINAS:',
+    noCourses: '- Nenhuma disciplina cadastrada.',
+    impossibleGoal: '; meta inatingível nas avaliações restantes',
+    neededGoal: (grade) => `; precisa de ${grade} nas restantes`,
+    noGradesYet: 'sem notas ainda',
+    currentAvg: (grade, pct) => `média atual ${grade} (${pct}% avaliado)`,
+    priorityTag: ' [PRIORIDADE/DIFICULDADE]',
+    targetGrade: (ects, current, target, needed) => `(${ects} créditos): ${current}; meta ${target}${needed}.`,
+    topicsLabel: 'Conteúdo',
+    confidenceLabel: 'confiança',
+    upcomingHeader: 'PRÓXIMAS PROVAS E ENTREGAS:',
+    examModeSingle: (label, title) => `- MODO PROVA ATIVO (<10 dias): Foco intensivo em ${label} (${title}).`,
+    examModeMulti: (count, names) => `- MODO PROVA MÚLTIPLO ATIVO (<10 dias): Equilibrar ${count} avaliações urgentes (${names}).`,
+    noUpcoming: '- Nenhuma avaliação futura cadastrada.',
+    dateTimePattern: "EEEE, d 'de' MMM 'às' HH:mm",
+    dateOnlyPattern: "EEEE, d 'de' MMM",
+    shortDatePattern: 'd MMM',
+    todayWhen: (stamp) => `hoje (${stamp})`,
+    tomorrowWhen: (stamp) => `amanhã (${stamp})`,
+    inDaysWhen: (days, stamp) => `em ${days} dias (${stamp})`,
+    topicScopePrefix: 'conteúdo da prova',
+    generalCourse: 'Geral',
+    assessmentLine: (c, title, kind, when, weight, ready, scope) =>
+      `- ${c} – ${title} (${kind}) ${when}; peso ${weight}%; preparo ${ready}%${scope}.`,
+    checkInHeader: (w) => `ÚLTIMO CHECK-IN SEMANAL (${w}):`,
+    moodLabel: '- Estado do aluno:',
+    consolidatedLabel: '- O que já consolidou:',
+    missedInClassLabel: '- O que não entendeu na aula:',
+    pendingNextWeekLabel: '- Ficou para a próxima semana:',
+    studentNotesLabel: '- Anotações do aluno:',
+    logsHeader: 'DIÁRIO RECENTE (AULAS, ESTUDO DIÁRIO & MODO PROVA):',
+    logKinds: { class: 'Pós-aula', day: 'Fim do dia', week: 'Domingo', exam_prep: 'Modo Prova' },
+    logState: 'estado',
+    logTopicGiven: 'conteúdo dado',
+    logMarkedTopics: 'tópicos marcados',
+    logStudied: 'já estudou',
+    logDifficulties: 'dificuldades',
+    logNote: 'nota',
+    todayPlanHeader: 'PLANO DE HOJE:',
+    noTodaySessions: '- Nenhuma sessão planejada hoje.',
+    sessionDone: (dur) => `feita (${dur})`,
+    sessionTodo: (dur) => `pendente (${dur})`,
+    studyHeader: 'ESTUDO:',
+    weeklySummary: (done, goal) => `- Esta semana: ${done} de ${goal} planejados por semana.`,
+    streakLine: (days) => `- Sequência atual: ${plural(days, 'dia seguido', 'dias seguidos')}.`,
+    tasksHeader: 'TAREFAS PENDENTES:',
+    noTasks: '- Nenhuma tarefa pendente.',
+    duePrefix: 'prazo',
+    overdueSuffix: ' (atrasada)',
+    truncatedTag: '[…resumo truncado]',
+  },
+  es: {
+    todayDate: 'Fecha de hoy',
+    todayPattern: "EEEE, d 'de' MMMM 'de' yyyy",
+    semesterLabel: 'Cuatrimestre',
+    profileHeader: 'PERFIL ACADÉMICO DEL ESTUDIANTE (UNIPEDIA):',
+    schoolLabel: 'Universidad/Carrera',
+    activeYearsLabel: 'Cursos activos',
+    currentYearLabel: 'Curso actual',
+    mastersLabel: (n) => `${n}.º Máster`,
+    yearLabel: (n) => `${n}.º curso`,
+    entryLabel: 'Ingreso',
+    semesterOrdinal: (n) => `${n}.º cuatrimestre`,
+    ectsLabel: (done, total, pct) => `- Créditos ECTS: ${done}/${total} ECTS (${pct}% completado)`,
+    challengesLabel: '- Dificultades declaradas de ritmo/estudio:',
+    extraLabel: (desc) => `- Actividades extracurriculares: ${desc}`,
+    extraPerWeek: 'h/sem',
+    hardCoursesLabel: '- Asignaturas con mayor dificultad:',
+    studentDifficultiesLabel: '- Dificultades indicadas por el estudiante:',
+    completedHistoryLabel: (count) => `- Historial de asignaturas aprobadas (${count}):`,
+    coursesHeader: 'ASIGNATURAS:',
+    noCourses: '- Sin asignaturas registradas.',
+    impossibleGoal: '; objetivo inalcanzable en las evaluaciones restantes',
+    neededGoal: (grade) => `; necesita ${grade} en las restantes`,
+    noGradesYet: 'sin notas aún',
+    currentAvg: (grade, pct) => `media actual ${grade} (${pct}% evaluado)`,
+    priorityTag: ' [PRIORIDAD/DIFICULTAD]',
+    targetGrade: (ects, current, target, needed) => `(${ects} ECTS): ${current}; objetivo ${target}${needed}.`,
+    topicsLabel: 'Temario',
+    confidenceLabel: 'confianza',
+    upcomingHeader: 'PRÓXIMOS EXÁMENES Y ENTREGAS:',
+    examModeSingle: (label, title) => `- MODO EXAMEN ACTIVO (<10 días): Enfoque intensivo en ${label} (${title}).`,
+    examModeMulti: (count, names) => `- MODO EXAMEN MÚLTIPLE ACTIVO (<10 días): Equilibrar ${count} evaluaciones urgentes (${names}).`,
+    noUpcoming: '- Ninguna evaluación futura registrada.',
+    dateTimePattern: "EEEE, d 'de' MMM 'a las' HH:mm",
+    dateOnlyPattern: "EEEE, d 'de' MMM",
+    shortDatePattern: 'd MMM',
+    todayWhen: (stamp) => `hoy (${stamp})`,
+    tomorrowWhen: (stamp) => `mañana (${stamp})`,
+    inDaysWhen: (days, stamp) => `en ${days} días (${stamp})`,
+    topicScopePrefix: 'temario incluido',
+    generalCourse: 'General',
+    assessmentLine: (c, title, kind, when, weight, ready, scope) =>
+      `- ${c} – ${title} (${kind}) ${when}; peso ${weight}%; preparación ${ready}%${scope}.`,
+    checkInHeader: (w) => `ÚLTIMO CHECK-IN SEMANAL (${w}):`,
+    moodLabel: '- Estado del estudiante:',
+    consolidatedLabel: '- Lo que ya consolidó:',
+    missedInClassLabel: '- Lo que no entendió en clase:',
+    pendingNextWeekLabel: '- Pendiente para la próxima semana:',
+    studentNotesLabel: '- Notas del estudiante:',
+    logsHeader: 'DIARIO RECIENTE (CLASES, ESTUDIO DIARIO & MODO EXAMEN):',
+    logKinds: { class: 'Post-clase', day: 'Fin del día', week: 'Domingo', exam_prep: 'Modo Examen' },
+    logState: 'estado',
+    logTopicGiven: 'tema dado',
+    logMarkedTopics: 'temas marcados',
+    logStudied: 'ya estudió',
+    logDifficulties: 'dificultades',
+    logNote: 'nota',
+    todayPlanHeader: 'PLAN DE HOY:',
+    noTodaySessions: '- Sin sesiones planificadas hoy.',
+    sessionDone: (dur) => `hecha (${dur})`,
+    sessionTodo: (dur) => `pendiente (${dur})`,
+    studyHeader: 'ESTUDIO:',
+    weeklySummary: (done, goal) => `- Esta semana: ${done} de ${goal} planificados por semana.`,
+    streakLine: (days) => `- Racha actual: ${plural(days, 'día seguido', 'días seguidos')}.`,
+    tasksHeader: 'TAREAS PENDIENTES:',
+    noTasks: '- Ninguna tarea pendiente.',
+    duePrefix: 'fecha límite',
+    overdueSuffix: ' (atrasada)',
+    truncatedTag: '[…resumen truncado]',
+  },
+  en: {
+    todayDate: "Today's date",
+    todayPattern: 'EEEE, d MMMM yyyy',
+    semesterLabel: 'Semester',
+    profileHeader: 'STUDENT ACADEMIC PROFILE (UNIPEDIA):',
+    schoolLabel: 'School/Degree',
+    activeYearsLabel: 'Active years',
+    currentYearLabel: 'Current year',
+    mastersLabel: (n) => `Year ${n} Master's`,
+    yearLabel: (n) => `Year ${n}`,
+    entryLabel: 'Entry year',
+    semesterOrdinal: (n) => `Semester ${n}`,
+    ectsLabel: (done, total, pct) => `- Credits: ${done}/${total} ECTS (${pct}% completed)`,
+    challengesLabel: '- Declared study pace/learning challenges:',
+    extraLabel: (desc) => `- Extracurricular activities: ${desc}`,
+    extraPerWeek: 'h/wk',
+    hardCoursesLabel: '- Courses flagged as hardest:',
+    studentDifficultiesLabel: '- Student-reported difficulties:',
+    completedHistoryLabel: (count) => `- Completed courses (${count}):`,
+    coursesHeader: 'COURSES:',
+    noCourses: '- No courses registered.',
+    impossibleGoal: '; target unreachable on remaining assessments',
+    neededGoal: (grade) => `; needs ${grade} on remaining assessments`,
+    noGradesYet: 'no grades yet',
+    currentAvg: (grade, pct) => `current average ${grade} (${pct}% graded)`,
+    priorityTag: ' [PRIORITY/DIFFICULT]',
+    targetGrade: (ects, current, target, needed) => `(${ects} ECTS): ${current}; target ${target}${needed}.`,
+    topicsLabel: 'Topics',
+    confidenceLabel: 'confidence',
+    upcomingHeader: 'UPCOMING ASSESSMENTS:',
+    examModeSingle: (label, title) => `- EXAM MODE ACTIVE (<10 days): Intensive focus on ${label} (${title}).`,
+    examModeMulti: (count, names) => `- MULTI-EXAM MODE ACTIVE (<10 days): Balance ${count} urgent assessments (${names}).`,
+    noUpcoming: '- No upcoming assessments registered.',
+    dateTimePattern: 'EEEE, MMM d, HH:mm',
+    dateOnlyPattern: 'EEEE, MMM d',
+    shortDatePattern: 'MMM d',
+    todayWhen: (stamp) => `today (${stamp})`,
+    tomorrowWhen: (stamp) => `tomorrow (${stamp})`,
+    inDaysWhen: (days, stamp) => `in ${days} days (${stamp})`,
+    topicScopePrefix: 'topics covered',
+    generalCourse: 'General',
+    assessmentLine: (c, title, kind, when, weight, ready, scope) =>
+      `- ${c} – ${title} (${kind}) ${when}; weight ${weight}%; readiness ${ready}%${scope}.`,
+    checkInHeader: (w) => `LATEST WEEKLY CHECK-IN (${w}):`,
+    moodLabel: '- Student mood:',
+    consolidatedLabel: '- Already consolidated:',
+    missedInClassLabel: '- Unclear from class:',
+    pendingNextWeekLabel: '- Carried over to next week:',
+    studentNotesLabel: '- Student notes:',
+    logsHeader: 'RECENT STUDY LOGS (CLASSES, DAILY STUDY & EXAM MODE):',
+    logKinds: { class: 'After-class', day: 'End of day', week: 'Sunday', exam_prep: 'Exam Mode' },
+    logState: 'mood',
+    logTopicGiven: 'covered topic',
+    logMarkedTopics: 'tagged topics',
+    logStudied: 'studied',
+    logDifficulties: 'difficulties',
+    logNote: 'note',
+    todayPlanHeader: "TODAY'S PLAN:",
+    noTodaySessions: '- No sessions planned today.',
+    sessionDone: (dur) => `done (${dur})`,
+    sessionTodo: (dur) => `planned (${dur})`,
+    studyHeader: 'STUDY:',
+    weeklySummary: (done, goal) => `- This week: ${done} of ${goal} weekly goal.`,
+    streakLine: (days) => `- Current streak: ${plural(days, 'day in a row', 'days in a row')}.`,
+    tasksHeader: 'PENDING TASKS:',
+    noTasks: '- No pending tasks.',
+    duePrefix: 'due',
+    overdueSuffix: ' (overdue)',
+    truncatedTag: '[…summary truncated]',
+  },
+};
+
 /** Resumo em texto simples do estado da app, enviado ao modelo. */
 export function buildStudyContext(state: AppState): string {
   const { courses, assessments, sessions, tasks, settings, academicProfile, weeklyCheckIns, studyLogs } = state;
+  const lang = normalizeAppLanguage(settings.language);
+  const copy = CONTEXT_COPY[lang];
+  const dateLocale = resolveDateFnsLocale(lang);
+  const scale = settings.gradingScale ?? 'pt20';
   const today = todayStr();
   const lines: string[] = [];
 
-  lines.push(`Data de hoje: ${format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: pt })}`);
-  lines.push(`Semestre: ${settings.semesterName}`);
+  lines.push(`${copy.todayDate}: ${format(new Date(), copy.todayPattern, { locale: dateLocale })}`);
+  lines.push(`${copy.semesterLabel}: ${settings.semesterName}`);
 
   if (academicProfile) {
-    lines.push('', 'PERFIL ACADÉMICO DO ESTUDANTE (UNIPEDIA):');
+    lines.push('', copy.profileHeader);
     const schoolLabel = [academicProfile.universityName, academicProfile.degreeName]
       .filter(Boolean)
       .join(' — ');
     if (schoolLabel) {
-      lines.push(`- Faculdade/Curso: ${schoolLabel}`);
+      lines.push(`- ${copy.schoolLabel}: ${schoolLabel}`);
     }
     const yearDesc =
       academicProfile.activeYears && academicProfile.activeYears.length > 1
-        ? `Anos ativos: ${academicProfile.activeYears.map((y) => (y > 3 ? `${y - 3}.º Mestrado` : `${y}.º ano`)).join(', ')}`
+        ? `${copy.activeYearsLabel}: ${academicProfile.activeYears.map((y) => (y > 3 ? copy.mastersLabel(y - 3) : copy.yearLabel(y))).join(', ')}`
         : academicProfile.currentAcademicYear > 3
-          ? `Ano atual: ${academicProfile.currentAcademicYear - 3}.º ano Mestrado`
+          ? `${copy.currentYearLabel}: ${copy.mastersLabel(academicProfile.currentAcademicYear - 3)}`
           : typeof academicProfile.currentAcademicYear === 'number'
-            ? `Ano atual: ${academicProfile.currentAcademicYear}.º ano`
+            ? `${copy.currentYearLabel}: ${copy.yearLabel(academicProfile.currentAcademicYear)}`
             : '';
-    const entryPart = academicProfile.entryYear ? `Ingresso: ${academicProfile.entryYear}` : '';
-    const semPart = academicProfile.currentSemester ? `${academicProfile.currentSemester}.º semestre` : '';
+    const entryPart = academicProfile.entryYear ? `${copy.entryLabel}: ${academicProfile.entryYear}` : '';
+    const semPart = academicProfile.currentSemester ? copy.semesterOrdinal(academicProfile.currentSemester) : '';
     const termSummary = [entryPart, [yearDesc, semPart].filter(Boolean).join(', ')].filter(Boolean).join(' · ');
     if (termSummary) {
       lines.push(`- ${termSummary}`);
@@ -252,16 +637,16 @@ export function buildStudyContext(state: AppState): string {
     if (typeof academicProfile.targetTotalEcts === 'number' && academicProfile.targetTotalEcts > 0) {
       const doneEcts = academicProfile.completedEcts ?? 0;
       const pct = Math.min(100, Math.round((doneEcts / academicProfile.targetTotalEcts) * 100));
-      lines.push(`- Créditos ECTS: ${doneEcts}/${academicProfile.targetTotalEcts} ECTS (${pct}% concluído)`);
+      lines.push(copy.ectsLabel(doneEcts, academicProfile.targetTotalEcts, pct));
     }
     if (academicProfile.learningChallenges && academicProfile.learningChallenges.length > 0) {
-      lines.push(`- Dificuldades declaradas de ritmo/estudo: ${academicProfile.learningChallenges.join(', ')}`);
+      lines.push(`${copy.challengesLabel} ${academicProfile.learningChallenges.join(', ')}`);
     }
     if (academicProfile.extraActivities && academicProfile.extraActivities.length > 0) {
       const extraDesc = academicProfile.extraActivities
-        .map((a) => `${a.label} (~${a.hoursPerWeek}h/sem)`)
+        .map((a) => `${a.label} (~${a.hoursPerWeek}${copy.extraPerWeek})`)
         .join(', ');
-      lines.push(`- Atividades extra-curriculares: ${extraDesc}`);
+      lines.push(copy.extraLabel(extraDesc));
     }
     const difficultIds = academicProfile.difficultCourseIds ?? [];
     const completedList = academicProfile.completedCourses ?? [];
@@ -275,55 +660,75 @@ export function buildStudyContext(state: AppState): string {
         )
         .filter((v): v is string => Boolean(v));
       if (hardNames.length > 0) {
-        lines.push(`- Cadeiras onde tem mais dificuldade: ${hardNames.join(', ')}`);
+        lines.push(`${copy.hardCoursesLabel} ${hardNames.join(', ')}`);
       }
     }
     if (academicProfile.difficultTopicsNotes?.trim()) {
-      lines.push(`- Dificuldades declaradas pelo aluno: ${academicProfile.difficultTopicsNotes.trim()}`);
+      lines.push(`${copy.studentDifficultiesLabel} ${academicProfile.difficultTopicsNotes.trim()}`);
     }
     const approved = completedList.filter((c) => c.status === 'aprovada');
     if (approved.length > 0) {
       const preview = approved
         .slice(0, 12)
-        .map((c) => `${c.code}${typeof c.grade === 'number' ? ` (${c.grade}v)` : ''}`)
+        .map((c) => `${c.code}${typeof c.grade === 'number' ? ` (${fmtGrade(c.grade, scale, lang)})` : ''}`)
         .join(', ');
-      lines.push(`- Histórico de cadeiras já concluídas (${approved.length}): ${preview}`);
+      lines.push(`${copy.completedHistoryLabel(approved.length)} ${preview}`);
     }
   }
 
-  lines.push('', 'CADEIRAS:');
-  if (courses.length === 0) lines.push('- Sem cadeiras registadas.');
+  lines.push('', copy.coursesHeader);
+  if (courses.length === 0) lines.push(copy.noCourses);
   for (const c of courses) {
     const g = gradeSummary(c, assessments);
     const needed = g.needed === null
       ? ''
-      : g.needed > 20 ? '; objetivo inatingível nas restantes avaliações' : `; precisa de ${fmtGrade(g.needed)} nas restantes`;
+      : g.needed > 20
+        ? copy.impossibleGoal
+        : copy.neededGoal(fmtGrade(g.needed, scale, lang));
     const current = g.current === null
-      ? 'sem notas ainda'
-      : `média atual ${fmtGrade(g.current)} (${Math.round(g.gradedWeight)}% avaliado)`;
-    const hardTag = academicProfile?.difficultCourseIds?.includes(c.id) ? ' [PRIORIDADE/DIFICULDADE]' : '';
-    lines.push(`- ${c.name} (${c.ects} ECTS)${hardTag}: ${current}; objetivo ${fmtGrade(c.targetGrade)}${needed}.`);
+      ? copy.noGradesYet
+      : copy.currentAvg(fmtGrade(g.current, scale, lang), Math.round(g.gradedWeight));
+    const hardTag = academicProfile?.difficultCourseIds?.includes(c.id) ? copy.priorityTag : '';
+    const goalWord = lang === 'en' ? 'target' : lang === 'pt-BR' ? 'meta' : 'objetivo';
+    lines.push(
+      `- ${c.name} (${c.ects} ECTS)${hardTag}: ${current}; ${goalWord} ${fmtGrade(c.targetGrade, scale, lang)}${needed}.`,
+    );
     if (c.topics.length > 0) {
-      const topics = c.topics.map((t) => `${t.title} [${statusLabel[t.status].toLowerCase()}, confiança ${t.confidence}/5]`);
-      lines.push(`  Matéria: ${topics.join('; ')}.`);
+      const topics = c.topics.map((t) => {
+        const st = tr(`common:labels.status.${t.status}`, {}, lang).toLowerCase();
+        return `${t.title} [${st}, ${copy.confidenceLabel} ${t.confidence}/5]`;
+      });
+      lines.push(`  ${copy.topicsLabel}: ${topics.join('; ')}.`);
     }
   }
 
-  lines.push('', 'PRÓXIMAS AVALIAÇÕES:');
+  lines.push('', copy.upcomingHeader);
   const upcoming = upcomingAssessments(assessments).slice(0, 8);
   const urgentSoon = upcoming.filter((a) => daysUntil(a.date) <= 10);
   if (urgentSoon.length === 1) {
     const c = courses.find((x) => x.id === urgentSoon[0].courseId);
-    lines.push(`- MODO TESTE ATIVO (<10 dias): Foco intensivo em ${c?.shortName ?? urgentSoon[0].title} (${urgentSoon[0].title}).`);
+    lines.push(copy.examModeSingle(c?.shortName ?? urgentSoon[0].title, urgentSoon[0].title));
   } else if (urgentSoon.length >= 2) {
     const names = urgentSoon.map((a) => courses.find((c) => c.id === a.courseId)?.shortName ?? a.title);
-    lines.push(`- MODO TESTE MÚLTIPLO ATIVO (<10 dias): Equilibrar ${urgentSoon.length} avaliações urgentes (${names.join(' vs ')}).`);
+    lines.push(copy.examModeMulti(urgentSoon.length, names.join(' vs ')));
   }
-  if (upcoming.length === 0) lines.push('- Nenhuma avaliação futura registada.');
+  if (upcoming.length === 0) lines.push(copy.noUpcoming);
   for (const a of upcoming) {
     const course = courses.find((c) => c.id === a.courseId);
     const days = daysUntil(a.date);
-    const when = days === 0 ? 'hoje' : days === 1 ? 'amanhã' : `em ${days} dias (${format(parseISO(a.date), 'd MMM', { locale: pt })})`;
+    const parsedDate = parseISO(a.date);
+    const hasTime = a.date.includes('T');
+    const dateStamp = format(
+      parsedDate,
+      hasTime ? copy.dateTimePattern : copy.dateOnlyPattern,
+      { locale: dateLocale },
+    );
+    const when =
+      days === 0
+        ? copy.todayWhen(dateStamp)
+        : days === 1
+          ? copy.tomorrowWhen(dateStamp)
+          : copy.inDaysWhen(days, dateStamp);
     const ready = Math.round(readiness(a, course) * 100);
     const coveredTitles =
       course && a.topicIds.length > 0
@@ -333,37 +738,42 @@ export function buildStudyContext(state: AppState): string {
         : [];
     const scopeInfo =
       coveredTitles.length > 0
-        ? `; matéria que sai: ${coveredTitles.join(', ')}`
+        ? `; ${copy.topicScopePrefix}: ${coveredTitles.join(', ')}`
         : '';
-    lines.push(`- ${course?.shortName ?? 'Geral'} – ${a.title} (${a.kind}) ${when}; peso ${a.weight}%; preparação ${ready}%${scopeInfo}.`);
+    const kindName = lang === 'pt-PT' ? a.kind : tr(`common:labels.kind.${a.kind}`, {}, lang).toLowerCase();
+    lines.push(
+      copy.assessmentLine(
+        course?.shortName ?? copy.generalCourse,
+        a.title,
+        kindName,
+        when,
+        a.weight,
+        ready,
+        scopeInfo,
+      ),
+    );
   }
 
   if (weeklyCheckIns && weeklyCheckIns.length > 0) {
     const latest = weeklyCheckIns[0];
-    lines.push('', `ÚLTIMO CHECK-IN SEMANAL (${latest.weekOf}):`);
-    lines.push(`- Estado do aluno: ${latest.mood}`);
+    lines.push('', copy.checkInHeader(latest.weekOf));
+    lines.push(`${copy.moodLabel} ${latest.mood}`);
     if (latest.understoodTopics.length > 0) {
-      lines.push(`- O que já consolidou: ${latest.understoodTopics.join(', ')}`);
+      lines.push(`${copy.consolidatedLabel} ${latest.understoodTopics.join(', ')}`);
     }
     if (latest.classDifficulties.length > 0) {
-      lines.push(`- O que não entendeu na aula: ${latest.classDifficulties.join(', ')}`);
+      lines.push(`${copy.missedInClassLabel} ${latest.classDifficulties.join(', ')}`);
     }
     if (latest.pendingNextWeek.length > 0) {
-      lines.push(`- Ficou para a próxima semana: ${latest.pendingNextWeek.join(', ')}`);
+      lines.push(`${copy.pendingNextWeekLabel} ${latest.pendingNextWeek.join(', ')}`);
     }
     if (latest.notes.trim()) {
-      lines.push(`- Notas do aluno: ${latest.notes.trim()}`);
+      lines.push(`${copy.studentNotesLabel} ${latest.notes.trim()}`);
     }
   }
 
   if (studyLogs && studyLogs.length > 0) {
-    const kindTag = {
-      class: 'Pós-aula',
-      day: 'Fim do dia',
-      week: 'Domingo',
-      exam_prep: 'Modo Teste',
-    } as const;
-    lines.push('', 'DIÁRIO RECENTE (AULAS, ESTUDO DIÁRIO & MODO TESTE):');
+    lines.push('', copy.logsHeader);
     for (const log of studyLogs.slice(0, 8)) {
       const course = log.courseId ? courses.find((c) => c.id === log.courseId) : undefined;
       const resolvedTopics =
@@ -371,50 +781,52 @@ export function buildStudyContext(state: AppState): string {
           ? course.topics.filter((t) => log.topicIds!.includes(t.id)).map((t) => t.title)
           : [];
       const parts = [
-        `[${kindTag[log.kind]} · ${log.date}${course ? ` · ${course.shortName}` : ''}]`,
-        `estado=${log.feeling}${log.rating ? ` (${log.rating}/5)` : ''}`,
+        `[${copy.logKinds[log.kind]} · ${log.date}${course ? ` · ${course.shortName}` : ''}]`,
+        `${copy.logState}=${log.feeling}${log.rating ? ` (${log.rating}/5)` : ''}`,
       ];
-      if (log.topicTitle) parts.push(`matéria dada="${log.topicTitle}"`);
-      if (resolvedTopics.length > 0) parts.push(`tópicos marcados=[${resolvedTopics.join(', ')}]`);
-      if (log.studiedSummary) parts.push(`já estudou="${log.studiedSummary}"`);
-      if (log.difficulties) parts.push(`dificuldades="${log.difficulties}"`);
-      if (log.notes) parts.push(`nota="${log.notes}"`);
+      if (log.topicTitle) parts.push(`${copy.logTopicGiven}="${log.topicTitle}"`);
+      if (resolvedTopics.length > 0) parts.push(`${copy.logMarkedTopics}=[${resolvedTopics.join(', ')}]`);
+      if (log.studiedSummary) parts.push(`${copy.logStudied}="${log.studiedSummary}"`);
+      if (log.difficulties) parts.push(`${copy.logDifficulties}="${log.difficulties}"`);
+      if (log.notes) parts.push(`${copy.logNote}="${log.notes}"`);
       lines.push(`- ${parts.join(' · ')}`);
     }
   }
 
-  lines.push('', 'PLANO DE HOJE:');
+  lines.push('', copy.todayPlanHeader);
   const todays = sessions.filter((s) => s.date === today);
-  if (todays.length === 0) lines.push('- Sem sessões planeadas hoje.');
+  if (todays.length === 0) lines.push(copy.noTodaySessions);
   for (const s of todays) {
     const course = courses.find((c) => c.id === s.courseId);
     const topic = course?.topics.find((t) => t.id === s.topicId)?.title;
-    const label = `${course?.shortName ?? 'Geral'}${topic ? ` – ${topic}` : ''}`;
-    const status = s.done ? `feita (${fmtMinutes(s.actualMinutes ?? s.minutes)})` : `por fazer (${fmtMinutes(s.minutes)})`;
+    const label = `${course?.shortName ?? copy.generalCourse}${topic ? ` – ${topic}` : ''}`;
+    const status = s.done
+      ? copy.sessionDone(fmtMinutes(s.actualMinutes ?? s.minutes))
+      : copy.sessionTodo(fmtMinutes(s.minutes));
     lines.push(`- ${label}: ${status}.`);
   }
 
   const weeklyGoal = settings.dailyStudyMinutes * settings.studyDays.length;
-  lines.push('', 'ESTUDO:');
-  lines.push(`- Esta semana: ${fmtMinutes(minutesThisWeek(sessions))} de ${fmtMinutes(weeklyGoal)} planeados por semana.`);
-  lines.push(`- Sequência atual: ${plural(studyStreak(sessions), 'dia seguido', 'dias seguidos')}.`);
+  lines.push('', copy.studyHeader);
+  lines.push(copy.weeklySummary(fmtMinutes(minutesThisWeek(sessions)), fmtMinutes(weeklyGoal)));
+  lines.push(copy.streakLine(studyStreak(sessions)));
 
-  lines.push('', 'TAREFAS PENDENTES:');
+  lines.push('', copy.tasksHeader);
   const pending = tasks
     .filter((t) => !t.done)
     .sort((a, b) => (a.due ?? '9999').localeCompare(b.due ?? '9999'))
     .slice(0, 8);
-  if (pending.length === 0) lines.push('- Nenhuma tarefa pendente.');
+  if (pending.length === 0) lines.push(copy.noTasks);
   for (const t of pending) {
     const course = courses.find((c) => c.id === t.courseId);
     const due = t.due
-      ? `, prazo ${format(parseISO(t.due), 'd MMM', { locale: pt })}${t.due < today ? ' (atrasada)' : ''}`
+      ? `, ${copy.duePrefix} ${format(parseISO(t.due), copy.shortDatePattern, { locale: dateLocale })}${t.due < today ? copy.overdueSuffix : ''}`
       : '';
     lines.push(`- ${t.title}${course ? ` (${course.shortName})` : ''}${due}.`);
   }
 
   const text = lines.join('\n');
-  return text.length > MAX_CONTEXT_CHARS ? `${text.slice(0, MAX_CONTEXT_CHARS - 20)}\n[…resumo truncado]` : text;
+  return text.length > MAX_CONTEXT_CHARS ? `${text.slice(0, MAX_CONTEXT_CHARS - 20)}\n${copy.truncatedTag}` : text;
 }
 
 export interface DocumentContextOptions {
@@ -425,17 +837,71 @@ export interface DocumentContextOptions {
   maxFiles?: number;
 }
 
+const CATEGORY_LABELS_BY_LANG: Record<AppLanguage, Record<string, string>> = {
+  'pt-PT': {
+    teste_antigo: 'Teste antigo',
+    exame_antigo: 'Exame antigo',
+    ficha: 'Ficha de exercícios',
+    slide_oficial: 'Slides',
+    sebenta: 'Sebenta',
+    relatorio: 'Relatório',
+    outro: 'Material',
+  },
+  'pt-BR': {
+    teste_antigo: 'Prova antiga',
+    exame_antigo: 'Exame antigo',
+    ficha: 'Lista de exercícios',
+    slide_oficial: 'Slides',
+    sebenta: 'Apostila',
+    relatorio: 'Relatório',
+    outro: 'Material',
+  },
+  es: {
+    teste_antigo: 'Parcial anterior',
+    exame_antigo: 'Examen anterior',
+    ficha: 'Hoja de ejercicios',
+    slide_oficial: 'Diapositivas',
+    sebenta: 'Apuntes',
+    relatorio: 'Informe',
+    outro: 'Material',
+  },
+  en: {
+    teste_antigo: 'Past test',
+    exame_antigo: 'Past exam',
+    ficha: 'Problem set',
+    slide_oficial: 'Slides',
+    sebenta: 'Course notes',
+    relatorio: 'Lab report',
+    outro: 'Material',
+  },
+};
+
+function cleanMaterialTitleForPrompt(title: string): string {
+  return title
+    .replace(/\s*\[(slide_oficial|teste_antigo|exame_antigo|ficha|sebenta|relatorio|outro)\]/gi, '')
+    .trim();
+}
+
 /** Resumo dos documentos/materiais associados e excertos extraídos para personalizar o ensino do Uni. */
 export function buildDocumentContext(
   materials: Material[],
   options?: DocumentContextOptions,
 ): string {
+  const lang = getActiveAppLanguage();
+  const catLabels = CATEGORY_LABELS_BY_LANG[lang];
+  const withSolLabel =
+    lang === 'en' ? 'with solutions' : lang === 'es' ? 'con solución' : 'com resolução';
+  const withSolShort =
+    lang === 'en' ? 'w/ solutions' : lang === 'es' ? 'c/ solución' : 'c/ resolução';
+  const pinnedLabel = lang === 'en' ? 'pinned' : lang === 'es' ? 'fijado' : 'fixado';
   const sections: string[] = [];
 
   if (options?.resolvedExcerpts && options.resolvedExcerpts.length > 0) {
     sections.push('CONTEÚDO REAL EXTRAÍDO DOS DOCUMENTOS E APONTAMENTOS:');
     for (const ex of options.resolvedExcerpts) {
-      sections.push(`### [Fonte: ${ex.title}] (${ex.provider.toUpperCase()})\n${ex.content.slice(0, 8000)}`);
+      sections.push(
+        `### [Fonte: ${cleanMaterialTitleForPrompt(ex.title)}] (${ex.provider.toUpperCase()})\n${ex.content.slice(0, 8000)}`,
+      );
     }
   }
 
@@ -449,15 +915,17 @@ export function buildDocumentContext(
   if (materials && materials.length > 0) {
     sections.push('DOCUMENTOS E REFERÊNCIAS SELECIONADOS NESTA CONVERSA:');
     for (const m of materials) {
+      const catLabel = m.category ? (catLabels[m.category] ?? m.category) : '';
       const flags = [
         m.provider.toUpperCase(),
-        m.category,
-        m.hasSolution ? 'com resolução' : '',
-        m.pinned ? 'fixado' : '',
+        catLabel,
+        m.hasSolution ? withSolLabel : '',
+        m.pinned ? pinnedLabel : '',
       ]
         .filter(Boolean)
         .join(' · ');
-      sections.push(`- [${flags}] ${m.title}${m.url ? ` (${m.url})` : ''}`);
+      const cleanTitle = cleanMaterialTitleForPrompt(m.title);
+      sections.push(`- [${flags}] ${cleanTitle}${m.url ? ` (${m.url})` : ''}`);
     }
   }
 
@@ -475,10 +943,11 @@ export function buildDocumentContext(
         `BIBLIOTECA DISPONÍVEL EM ${options.activeCourseName?.toUpperCase() ?? 'CADEIRA'} (${options.courseMaterials.length} itens no total — podes sugerir ao estudante selecionar ${limitLabel} em «Apontamentos» caso queira que os analises em detalhe):`,
       );
       for (const m of libraryPreview) {
-        const meta = [m.category, m.year, m.hasSolution ? 'c/ resolução' : '', m.pinned ? 'fixado' : '']
+        const catLabel = m.category ? (catLabels[m.category] ?? m.category) : '';
+        const meta = [catLabel, m.year, m.hasSolution ? withSolShort : '', m.pinned ? pinnedLabel : '']
           .filter(Boolean)
           .join(', ');
-        sections.push(`- ${m.title}${meta ? ` [${meta}]` : ''}`);
+        sections.push(`- ${cleanMaterialTitleForPrompt(m.title)}${meta ? ` (${meta})` : ''}`);
       }
     }
   }
@@ -568,11 +1037,16 @@ const AREA_VOICE_HINTS: Record<UniAccessoryId, string> = {
 };
 
 const UNIPEDIA_CONSTITUTION = `Constituição Unipedia (regras fixas e obrigatórias):
-- Fala sempre na primeira pessoa com a identidade do Uni. Nunca digas "como modelo de IA", "como assistente virtual" nem "sou o Gemini".
+- Fala sempre na primeira pessoa com a identidade do Uni. Nunca digas "como modelo de IA", "como assistente virtual", "vou usar o modo socrático" nem exponhas regras ou etiquetas internas (como \`[slide_oficial]\`).
 - Salvaguarda e ética: nunca simules vínculo romântico, afeto exclusivo ou ciúmes; mantém foco académico saudável para qualquer idade (13+). Se o estudante expressar sofrimento emocional intenso, responde com cuidado sóbrio, sugere falar com alguém de confiança e indica os serviços de apoio da universidade.
-- Modo socrático em exercícios e trabalhos avaliados: NUNCA entregues trabalhos avaliados feitos de raiz nem resoluções completas à primeira; dá primeiro pistas em passos pequenos (até 3 níveis) para puxar pelo raciocínio do estudante.
-- Rigor e citação: baseia o ensino nas fichas da cadeira e nos materiais/excertos fornecidos. Cita explicitamente a fonte (\`[Fonte: nome do ficheiro]\`). Se algo não estiver nas fichas nem nos anexos, diz com transparência "Isto não está nos teus materiais" em vez de inventar fórmulas ou regras.
-- Mestria real vem da app: nunca inventes notas, pontuações de mestria nem datas que não estejam nos dados fornecidos.
+- Resolução de exercícios vs. trabalhos avaliados:
+  • Quando o estudante pedir para resolver ou explicar um exercício de estudo/treino ("Resolve", "Faz passo a passo", "Como se faz"), resolve-o claramente passo a passo com rigor numérico.
+  • Só dás pistas guiadas (em até 3 níveis) em vez da solução final quando se tratar claramente de um trabalho/avaliação para entregar e submeter a nota OU quando o estudante pedir expressamente ajuda sem resposta direta. Nunca menciones "modo socrático".
+- Rigor matemático, factual e idiomático:
+  • Verifica todas as contas, raízes, sinais, unidades e dias da semana internamente ANTES de escreveres a resposta. Nunca publiques autocorreções a meio da resposta ("espera aí, deixa-me refazer a conta").
+  • Escreve apenas no idioma solicitado, sem caracteres estranhos ou fragmentos de outros alfabetos.
+  • Nunca inventes datas, notas ou pontuações: usa exatamente os dias da semana e datas indicados no contexto.
+- Rigor e citação: baseia o ensino nas fichas e nos materiais/anexos fornecidos. Cita com página/slide quando visível no material (\`[Fonte: nome do ficheiro, p. X]\` ou \`Slide Y\`), mantendo o nome limpo sem etiquetas internas. Se algo não estiver nos anexos, diz com transparência "Isto não está nos teus materiais".
 - Usa Markdown limpo e LaTeX padrão (\`$...$\` ou \`$$...$$\` numa linha própria) quando houver matemática/fórmulas.
 - Em quizzes: faz UMA pergunta de cada vez e espera pela resposta antes de corrigir.
 - Se a conversa sair do estudo, brinca brevemente e redireciona para a cadeira ou plano.`;
@@ -681,9 +1155,10 @@ CAMADA 4 — CONTEXTO DO MOMENTO:
 - SINCRONIZAÇÃO COM O CADERNO (Calendário, Cadeiras e Plano): sempre que o estudante enviar uma imagem/print ou texto com datas de testes, exames, entregas de projetos ou aulas semanais do horário (ou pedir para guardar/atualizar no resto da app), explica claramente o que encontraste e no FINAL da tua resposta inclui exatamente um bloco técnico (que a interface transforma num cartão de 1 toque):
 <uni-sync>{"hasSaturdayColumn":false,"slots":[{"courseName":"Nome real da cadeira","courseCode":"SIGLA","dayHeader":"2ª|3ª|4ª|5ª|6ª|Sáb","type":"T|TP|P|OT","weekday":1,"start":"09:00","end":"11:00","room":"Sala opcional"}],"assessments":[{"courseName":"Nome real da cadeira","courseCode":"SIGLA opcional","title":"1.º Teste","date":"2026-11-25T14:00:00","kind":"teste|exame|trabalho|projeto|quiz","location":"Sala opcional"}]}</uni-sync>
 (Regra Portugal + colunas sobrepostas: "2ª"=1, "3ª"=2, "4ª"=3, "5ª"=4, "6ª"=5 — "6ª" é Sexta-feira, NUNCA 6! Se não houver aulas nem avaliações para guardar na app, NÃO incluas <uni-sync>.)
-- FERRAMENTAS DO UNI (lista fechada — só emites quando fizer sentido claro no pedido):
+- FERRAMENTAS DO UNI (lista fechada — só emites quando fizer sentido claro no pedido; NUNCA prometas alterar o plano ou calendário em texto sem emitir a ferramenta respetiva):
   • Se o estudante acabou de responder corretamente ou com esforço a um quiz/recall de um tópico, podes registar em silêncio: \`<uni-tool>{"name":"registar_recall","args":{"topicTitle":"Tópico","score":3}}</uni-tool>\` (score: 1=rever já, 2=com esforço, 3=dominei).
   • Para propor ações que escrevem na app (pedem sempre confirmação visual ao estudante antes de guardar), usa:
+    - \`<uni-tool>{"name":"focar_plano","args":{"courseId":"SIGLA","exclusive":true,"reason":"Foco total até ao teste"}}</uni-tool>\` (quando o estudante pedir para concentrar/priorizar/mudar o plano de estudo numa cadeira, ex. "quero focar 100% em TEP até sexta")
     - \`<uni-tool>{"name":"criar_sessao","args":{"topicTitle":"Tópico","minutes":35,"date":"yyyy-MM-dd","notes":"Foco sugerido"}}</uni-tool>\`
     - \`<uni-tool>{"name":"criar_flashcards","args":{"topicTitle":"Tópico","cards":[{"front":"Pergunta","back":"Resposta curta"}]}}</uni-tool>\`
     - \`<uni-tool>{"name":"marcar_duvida","args":{"topicTitle":"Tópico","note":"Dúvida objetiva para levar ao professor"}}</uni-tool>\`
@@ -715,7 +1190,7 @@ export async function generateNotebookBrief(args: {
 
   const hasAttachments = Boolean(args.attachments && args.attachments.length > 0);
   if (!formattedSources && !hasAttachments) {
-    throw new Error('Adiciona texto, apontamentos ou um PDF/foto ao teu Caderno antes de gerar.');
+    throw new Error(tr('common:errors.notebookEmptySources'));
   }
 
   const goalPrompt =
@@ -739,7 +1214,10 @@ Regras estritas:
     : `${goalPrompt}\n\nAnalisa os ficheiros anexados como fontes principais do caderno.`;
 
   const contents = buildContentsWithAttachments([{ role: 'user', text: userPrompt }], args.attachments);
-  const generationConfig: GenerationConfig = { temperature: 0.45 };
+  const generationConfig: GenerationConfig = {
+    temperature: 0.45,
+    thinkingConfig: resolveChatThinkingConfig(model),
+  };
 
   const text = await withQuotaAndFallback('notebook', customKey, () =>
     customKey
@@ -747,7 +1225,7 @@ Regras estritas:
       : runNativeGenerate({ model, contents, system, generationConfig }),
   );
 
-  if (!text) throw new Error('Não foi possível gerar o caderno agora. Tenta novamente.');
+  if (!text) throw new Error(tr('common:errors.notebookGenFail'));
   return text;
 }
 
@@ -808,6 +1286,8 @@ Devolve APENAS JSON válido no formato:
     temperature: 0.4,
     maxOutputTokens: 900,
     responseMimeType: 'application/json',
+    responseSchema: PRACTICE_SET_SCHEMA,
+    thinkingConfig: THINKING_FAST,
   };
 
   const rawText = await withQuotaAndFallback('notebook', customKey, () =>
@@ -831,7 +1311,7 @@ Devolve APENAS JSON válido no formato:
     .slice(0, count);
 
   if (clean.length === 0) {
-    throw new Error('Não foi possível gerar cartões de prática agora.');
+    throw new Error(tr('common:errors.practiceCardsFail'));
   }
   return clean;
 }
@@ -842,14 +1322,17 @@ export async function generateRecallChallenge(
   courseName?: string,
 ): Promise<RecallChallenge> {
   const { customKey, model } = resolveGeminiConfig();
+  const lang = getActiveAppLanguage();
   const prompt = `Cria 1 pergunta curta de recordação ativa (active recall) sobre "${topicTitle}"${courseName ? ` (${courseName})` : ''}.
-${outputLanguageInstruction()}
+${outputLanguageInstruction(lang)}
 Devolve APENAS JSON válido no formato: {"question": "pergunta objetiva em 1-2 frases para testar compreensão sem consultar apontamentos", "hint": "pista curta ou critério de resposta correta em 1 frase"}`;
   const contents: Content[] = [{ role: 'user', parts: [{ type: 'text', text: prompt }] }];
   const generationConfig: GenerationConfig = {
     temperature: 0.4,
     maxOutputTokens: 320,
     responseMimeType: 'application/json',
+    responseSchema: RECALL_CHALLENGE_SCHEMA,
+    thinkingConfig: THINKING_FAST,
   };
 
   const rawText = await withQuotaAndFallback('chat', customKey, () =>
@@ -860,13 +1343,25 @@ Devolve APENAS JSON válido no formato: {"question": "pergunta objetiva em 1-2 f
 
   const match = /\{[\s\S]*\}/.exec(rawText || '{}');
   const parsed = JSON.parse(match ? match[0] : rawText || '{}') as Partial<RecallChallenge>;
+  const fallbackQ =
+    lang === 'en'
+      ? `In your own words, explain the core idea or mechanism behind “${topicTitle}”.`
+      : lang === 'es'
+        ? `Explica con tus palabras la idea o el mecanismo central de «${topicTitle}».`
+        : lang === 'pt-BR'
+          ? `Explique com suas palavras o mecanismo ou ideia central de «${topicTitle}».`
+          : `Explica por palavras tuas o mecanismo ou ideia central de «${topicTitle}».`;
+  const fallbackHint =
+    lang === 'en'
+      ? 'Check whether you can give one concrete example or explain why it works.'
+      : lang === 'es'
+        ? 'Comprueba si puedes dar un ejemplo concreto o justificar por qué ocurre.'
+        : lang === 'pt-BR'
+          ? 'Veja se consegue dar 1 exemplo concreto ou justificar por que acontece.'
+          : 'Verifica se consegues dar 1 exemplo concreto ou justificar porquê acontece.';
   return {
-    question:
-      parsed.question?.trim() ||
-      `Explica por palavras tuas o mecanismo ou ideia central de «${topicTitle}».`,
-    hint:
-      parsed.hint?.trim() ||
-      'Verifica se consegues dar 1 exemplo concreto ou justificar porquê acontece.',
+    question: parsed.question?.trim() || fallbackQ,
+    hint: parsed.hint?.trim() || fallbackHint,
   };
 }
 
@@ -935,9 +1430,7 @@ No FINAL da tua resposta, inclui exatamente um bloco técnico invisível ao util
       : undefined,
   );
   return {
-    reply:
-      visibleReply ||
-      'Percebi tudo! Alinhei esse resumo e o estado no teu plano — confirma abaixo quando estiver bom.',
+    reply: visibleReply || tr('common:errors.checkInFallbackReply'),
     understanding,
   };
 }
@@ -963,7 +1456,7 @@ export async function extractTopicSheetFromSources(args: {
 
   const hasAttachments = Boolean(args.attachments && args.attachments.length > 0);
   if (!formattedSources && !hasAttachments) {
-    throw new Error('Seleciona pelo menos um material com conteúdo ou anexa um ficheiro antes de gerar a ficha.');
+    throw new Error(tr('common:errors.sheetEmptySources'));
   }
 
   const prompt = `Cria uma ficha de estudo permanente e citável sobre "${args.topicTitle}"${args.courseName ? ` (${args.courseName})` : ''}.
@@ -982,6 +1475,8 @@ Devolve APENAS JSON válido:
     temperature: 0.35,
     maxOutputTokens: 1600,
     responseMimeType: 'application/json',
+    responseSchema: TOPIC_SHEET_SCHEMA,
+    thinkingConfig: THINKING_BALANCED,
   };
 
   const rawText = await withQuotaAndFallback('notebook', customKey, () =>
@@ -994,7 +1489,7 @@ Devolve APENAS JSON válido:
   const parsed = JSON.parse(match ? match[0] : rawText || '{}') as Partial<ExtractedTopicSheetResult>;
   const summary = parsed.summary?.trim() ?? '';
   if (!summary) {
-    throw new Error('Não foi possível extrair uma ficha estruturada agora. Tenta novamente.');
+    throw new Error(tr('common:errors.sheetExtractFail'));
   }
   return {
     title: parsed.title?.trim().slice(0, 80) || args.topicTitle,
@@ -1079,6 +1574,8 @@ Devolve APENAS JSON válido:
     temperature: 0.45,
     maxOutputTokens: 320,
     responseMimeType: 'application/json',
+    responseSchema: UNI_RECALL_PROMPT_SCHEMA,
+    thinkingConfig: THINKING_FAST,
   };
 
   const rawText = await withQuotaAndFallback('recall', customKey, () =>
@@ -1201,6 +1698,8 @@ Devolve APENAS JSON válido:
     temperature: 0.35,
     maxOutputTokens: 450,
     responseMimeType: 'application/json',
+    responseSchema: UNI_RECALL_EVAL_SCHEMA,
+    thinkingConfig: THINKING_FAST,
   };
 
   const rawText = await withQuotaAndFallback('recall', customKey, () =>
@@ -1297,6 +1796,8 @@ Devolve APENAS JSON válido:
     temperature: 0.45,
     maxOutputTokens: 700,
     responseMimeType: 'application/json',
+    responseSchema: UNI_EXPEDITION_SCHEMA,
+    thinkingConfig: THINKING_FAST,
   };
 
   const rawText = await withQuotaAndFallback('recall', customKey, () =>
@@ -1397,6 +1898,8 @@ Devolve APENAS JSON válido:
     temperature: 0.25,
     maxOutputTokens: 220,
     responseMimeType: 'application/json',
+    responseSchema: NOTEBOOK_MEMORY_DELTA_SCHEMA,
+    thinkingConfig: THINKING_FAST,
   };
 
   // Tarefa interna: não desconta da quota de recall que o estudante vê.

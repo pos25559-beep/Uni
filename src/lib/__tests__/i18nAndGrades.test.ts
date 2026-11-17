@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import i18n, { I18N_NAMESPACES, initAppI18n, resources, SUPPORTED_LANGUAGES } from '../../i18n';
+import { tr } from '../../i18n/tr';
+import { fmtDec, fmtHours, periodRange, plannedByWeek, studyByBucket } from '../../components/progress/data';
+import { buildStudyContext } from '../../integrations/gemini';
+import { buildDemoPayload } from '../demoSeed';
 import {
   defaultGradingScaleForLanguage,
   formatGradeByScale,
@@ -12,29 +16,39 @@ import {
 import { defaultScaleForUniversity, getUniversitiesByCountry } from '../portugalCurriculum';
 import { formatSessionDisplay } from '../selectors';
 import { getLocalizedAccessories, getLocalizedPersonas, suggestFormForCourse } from '../uniAccessories';
+import { computeUniCompanionState, getUniCollectibleStates, getUniPetStates } from '../uniCollectibles';
 import { useStore } from '../../store/useStore';
 
-function flattenKeys(obj: Record<string, unknown>, prefix = ''): string[] {
-  const keys: string[] = [];
+function flattenEntries(obj: Record<string, unknown>, prefix = ''): Array<[string, string]> {
+  const entries: Array<[string, string]> = [];
   for (const [k, v] of Object.entries(obj)) {
     const path = prefix ? `${prefix}.${k}` : k;
     if (v && typeof v === 'object' && !Array.isArray(v)) {
-      keys.push(...flattenKeys(v as Record<string, unknown>, path));
+      entries.push(...flattenEntries(v as Record<string, unknown>, path));
     } else {
-      keys.push(path);
+      entries.push([path, String(v ?? '')]);
     }
   }
-  return keys.sort();
+  return entries.sort((a, b) => a[0].localeCompare(b[0]));
 }
 
 describe('i18n parity, regional vocabulary, curriculum packs, and grading scales', () => {
-  it('maintains 100% key parity across pt-PT, pt-BR, es, and en in all namespaces', () => {
+  it('maintains 100% key parity and non-empty translations across pt-PT, pt-BR, es, and en in all namespaces', () => {
+    const OPTIONAL_EMPTY_KEYS = new Set([
+      'settings:geminiGuide.compareBodyPrefix',
+      'legal:common.translationNote',
+    ]);
     expect(SUPPORTED_LANGUAGES).toEqual(['pt-PT', 'pt-BR', 'es', 'en']);
     for (const ns of I18N_NAMESPACES) {
-      const baseKeys = flattenKeys(resources['pt-PT'][ns] as unknown as Record<string, unknown>);
+      const baseEntries = flattenEntries(resources['pt-PT'][ns] as unknown as Record<string, unknown>);
+      const baseKeys = baseEntries.map(([k]) => k);
       for (const lang of SUPPORTED_LANGUAGES) {
-        const langKeys = flattenKeys(resources[lang][ns] as unknown as Record<string, unknown>);
-        expect(langKeys, `Key mismatch in namespace "${ns}" for "${lang}"`).toEqual(baseKeys);
+        const langEntries = flattenEntries(resources[lang][ns] as unknown as Record<string, unknown>);
+        expect(langEntries.map(([k]) => k), `Key mismatch in namespace "${ns}" for "${lang}"`).toEqual(baseKeys);
+        const emptyKeys = langEntries
+          .filter(([k, v]) => !OPTIONAL_EMPTY_KEYS.has(`${ns}:${k}`) && v.trim().length === 0)
+          .map(([k]) => k);
+        expect(emptyKeys, `Empty translation in "${ns}" for "${lang}"`).toEqual([]);
       }
     }
   });
@@ -129,6 +143,129 @@ describe('i18n parity, regional vocabulary, curriculum packs, and grading scales
     expect(formatSessionDisplay(sampleSession, topic, 'pt-BR').title).toBe('Refazer provas antigas · Plasticidade aplicada');
     expect(formatSessionDisplay(sampleSession, topic, 'es').title).toBe('Hacer exámenes anteriores · Plasticidade aplicada');
     expect(formatSessionDisplay(sampleSession, topic, 'en').title).toBe('Redo past tests · Plasticidade aplicada');
+
+    const spacedSession = { ...sampleSession, notes: 'Revisão espaçada' };
+    expect(formatSessionDisplay(spacedSession, topic, 'en')).toEqual({
+      title: 'Plasticidade aplicada',
+      badge: 'Spaced review',
+      isPersonalized: false,
+    });
+    expect(formatSessionDisplay({ ...sampleSession, notes: 'Revisão total para teste' }, topic, 'es').badge).toBe(
+      'Repaso completo para examen',
+    );
     useStore.getState().updateSettings({ language: 'pt-PT' });
+  });
+
+  it('resolves plurals, new service errors, and collectibles cleanly in all 4 languages', () => {
+    const newErrorKeys = [
+      'attUnsupported',
+      'attTooLarge',
+      'attReadFail',
+      'aiEmptyReply',
+      'aiConsentRequired',
+      'notebookEmptySources',
+      'notebookGenFail',
+      'practiceCardsFail',
+      'checkInFallbackReply',
+      'sheetEmptySources',
+      'sheetExtractFail',
+      'nativeAiTimeout',
+      'nativeAiQuota',
+      'nativeAiUnavailable',
+      'nativeAiGeneric',
+      'restHttpError',
+      'restBlocked',
+      'restEmpty',
+      'verifyKeyEmpty',
+      'verifyKeyListErr',
+      'verifyKeyProbeErr',
+      'googleAuthCancelled',
+      'reauthPasswordRequired',
+      'reauthRequired',
+      'cloudSignInToShare',
+      'cloudSignInToSync',
+    ] as const;
+
+    for (const lang of SUPPORTED_LANGUAGES) {
+      expect(tr('common:googleSvc.calSynced', { count: 1 }, lang)).not.toContain('calSynced');
+      expect(tr('common:googleSvc.calSynced', { count: 3 }, lang)).toContain('3');
+      for (const errKey of newErrorKeys) {
+        const msg = tr(
+          `common:errors.${errKey}`,
+          { name: 'doc.pdf', seconds: 25, status: 500, reason: 'SAFETY' },
+          lang,
+        );
+        expect(msg, `Missing/raw key ${errKey} in ${lang}`).not.toBe(`common:errors.${errKey}`);
+        expect(msg.trim().length).toBeGreaterThan(0);
+      }
+
+      const skins = getUniCollectibleStates(
+        { completedSessions: 0, totalRecalls: 0, streakDays: 0, checkInsCount: 0, mastered21dCount: 0 },
+        lang,
+      );
+      const pets = getUniPetStates(
+        { completedSessions: 0, totalRecalls: 0, streakDays: 0, checkInsCount: 0, mastered21dCount: 0 },
+        lang,
+      );
+      const companion = computeUniCompanionState({
+        sessions: [],
+        tasks: [],
+        weeklyCheckIns: [],
+        today: '2026-11-17',
+        lang,
+      });
+      expect(skins.find((s) => s.skin.id === 'classic')?.skin.name.length).toBeGreaterThan(0);
+      expect(pets.find((p) => p.pet.id === 'cat')?.pet.species.length).toBeGreaterThan(0);
+      expect(companion.stage.id).toBe('semente');
+      expect(companion.stage.label.length).toBeGreaterThan(0);
+    }
+    expect(getUniCollectibleStates({ completedSessions: 0, totalRecalls: 0, streakDays: 0, checkInsCount: 0, mastered21dCount: 0 }, 'en')[0]?.skin.badgeText).toBe('Starter');
+  });
+
+  it('formats progress chart numbers, dates, demo seeds, and Gemini study context in each language', () => {
+    expect(fmtHours(90, 'en')).toBe('1.5 h');
+    expect(fmtHours(90, 'pt-PT')).toBe('1,5 h');
+    expect(fmtHours(90, 'es')).toBe('1,5 h');
+    expect(fmtDec(3.5, 'en')).toBe('3.5');
+    expect(fmtDec(3.5, 'pt-BR')).toBe('3,5');
+
+    const now = new Date('2026-11-17T12:00:00Z');
+    const range = periodRange('7d', { semesterStart: '2026-09-14', semesterEnd: '2027-01-31' }, now);
+    const demoEn = buildDemoPayload('en');
+    const demoEs = buildDemoPayload('es');
+    expect(demoEn.userName).toBe('Guest');
+    expect(demoEn.courses[0]?.name).toBe('Calculus I');
+    expect(demoEs.userName).toBe('Invitado');
+    expect(demoEs.courses[1]?.name).toBe('Física General');
+
+    const bucketEn = studyByBucket(demoEn.sessions, demoEn.courses, range, 'en');
+    const weekEn = plannedByWeek(demoEn.sessions, range, 'en');
+    expect(bucketEn.rows.length).toBe(7);
+    expect(weekEn.length).toBeGreaterThan(0);
+
+    const baseSettings = useStore.getState().settings;
+    const enCtx = buildStudyContext({
+      ...useStore.getState(),
+      courses: demoEn.courses,
+      assessments: demoEn.assessments,
+      sessions: demoEn.sessions,
+      tasks: demoEn.tasks,
+      settings: { ...baseSettings, language: 'en', semesterName: demoEn.semesterName },
+    });
+    expect(enCtx).toContain('COURSES:');
+    expect(enCtx).toContain('UPCOMING ASSESSMENTS:');
+    expect(enCtx).toContain('topics covered:');
+
+    const esCtx = buildStudyContext({
+      ...useStore.getState(),
+      courses: demoEs.courses,
+      assessments: demoEs.assessments,
+      sessions: demoEs.sessions,
+      tasks: demoEs.tasks,
+      settings: { ...baseSettings, language: 'es', semesterName: demoEs.semesterName },
+    });
+    expect(esCtx).toContain('ASIGNATURAS:');
+    expect(esCtx).toContain('PRÓXIMOS EXÁMENES Y ENTREGAS:');
+    expect(esCtx).toContain('temario incluido:');
   });
 });

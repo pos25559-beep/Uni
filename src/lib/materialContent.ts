@@ -22,7 +22,7 @@ export const DEFAULT_KEY_CONTEXT_TOKEN_BUDGET = 240_000;
 export const MIN_KEY_CONTEXT_TOKEN_BUDGET = 20_000;
 export const MAX_KEY_CONTEXT_TOKEN_BUDGET = 900_000;
 const CONTEXT_BUDGET_STORAGE_KEY = 'uni-gemini-context-budget-v1';
-const TOKEN_COUNT_MODEL = 'gemini-3.8-flash';
+const TOKEN_COUNT_MODEL = 'gemini-4-hydrogen';
 /** Estimativa quando o countTokens falha: ~258 tokens por página, ~60 KB por página de PDF. */
 const ESTIMATED_TOKENS_PER_PAGE = 258;
 const ESTIMATED_BYTES_PER_PAGE = 60_000;

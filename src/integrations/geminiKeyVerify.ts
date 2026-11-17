@@ -1,4 +1,5 @@
 import { friendlyCustomKeyError } from './gemini';
+import { tr } from '../i18n/tr';
 
 const MODELS_URL = 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=50';
 const MODEL_GEN_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
@@ -16,14 +17,14 @@ export async function verifyGeminiApiKey(
 ): Promise<GeminiKeyTestResult> {
   const key = rawKey.trim();
   if (!key) {
-    throw new Error('Cola primeiro a tua chave começada por «AIza…» vinda do Google AI Studio.');
+    throw new Error(tr('common:errors.verifyKeyEmpty'));
   }
   // A chave segue sempre no cabeçalho, nunca no URL.
   const res = await fetch(MODELS_URL, { headers: { 'x-goog-api-key': key } });
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
     throw friendlyCustomKeyError(
-      new Error(body?.error?.message ?? `Erro ${res.status} ao contactar a API Gemini.`),
+      new Error(body?.error?.message ?? tr('common:errors.verifyKeyListErr', { status: res.status })),
     );
   }
   const data = (await res.json()) as { models?: { name?: string }[] };
@@ -50,7 +51,7 @@ export async function verifyGeminiApiKey(
   if (!probeRes.ok) {
     const probeBody = (await probeRes.json().catch(() => null)) as { error?: { message?: string } } | null;
     throw friendlyCustomKeyError(
-      new Error(probeBody?.error?.message ?? `Erro ${probeRes.status} ao validar envio na API Gemini.`),
+      new Error(probeBody?.error?.message ?? tr('common:errors.verifyKeyProbeErr', { status: probeRes.status })),
     );
   }
 

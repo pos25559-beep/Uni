@@ -2,7 +2,27 @@
 import { addDays, eachDayOfInterval, format, parseISO } from 'date-fns';
 import { kindLabel } from '../../lib/colors';
 import type { AppState } from '../../store/useStore';
-import type { Source } from '../../types';
+import type { Assessment, Source } from '../../types';
+
+export function formatAssessmentCalendarTitle(kind: Assessment['kind'], title: string): string {
+  const kLabel = kindLabel[kind] ?? kind;
+  const trimmed = title.trim();
+  if (!trimmed) return kLabel;
+  const normKind = kLabel.trim().toLowerCase();
+  const normRaw = kind.trim().toLowerCase();
+  const normTitle = trimmed.toLowerCase();
+  if (
+    normTitle === normKind ||
+    normTitle === normRaw ||
+    normTitle.startsWith(`${normKind} `) ||
+    normTitle.startsWith(`${normKind}-`) ||
+    normTitle.startsWith(`${normKind}:`) ||
+    normTitle.startsWith(`${normKind}—`)
+  ) {
+    return trimmed;
+  }
+  return `${kLabel} — ${trimmed}`;
+}
 
 export type CalKind = 'aula' | 'avaliacao' | 'estudo' | 'evento' | 'tarefa';
 
@@ -89,7 +109,7 @@ export function buildCalendarItems(state: CalState, rangeStart: Date, rangeEnd: 
       id: a.id,
       refId: a.id,
       kind: 'avaliacao',
-      title: `${kindLabel[a.kind]} — ${a.title}`,
+      title: formatAssessmentCalendarTitle(a.kind, a.title),
       date: d,
       start: timeOf(a.date),
       courseId: a.courseId,

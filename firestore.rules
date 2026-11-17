@@ -669,7 +669,7 @@ service cloud.firestore {
     function isValidSession(data, userId) {
       return data.keys().hasOnly([
           'id', 'courseId', 'topicId', 'assessmentId', 'date', 'start',
-          'minutes', 'done', 'actualMinutes', 'notes', 'generated',
+          'minutes', 'done', 'actualMinutes', 'notes', 'reason', 'generated',
           'focusDistractions', 'focusAwaySeconds', 'focusShieldUsed',
           'practiceHits', 'practiceTotal',
           'userId', 'createdAt', 'updatedAt'
@@ -686,6 +686,7 @@ service cloud.firestore {
         isValidOptionalString(data, 'start', 4, 10) &&
         isValidOptionalNumber(data, 'actualMinutes', 0, 1440) &&
         isValidOptionalString(data, 'notes', 0, 2000) &&
+        (!('reason' in data) || (data.reason is map && data.reason.size() <= 5)) &&
         isValidOptionalNumber(data, 'focusDistractions', 0, 500) &&
         isValidOptionalNumber(data, 'focusAwaySeconds', 0, 86400) &&
         isValidOptionalBool(data, 'focusShieldUsed') &&
@@ -801,8 +802,9 @@ service cloud.firestore {
           'onboardingCompleted', 'universityId', 'universityName', 'degreeId',
           'degreeName', 'entryYear', 'currentAcademicYear', 'academicCycle',
           'activeYears', 'currentSemester', 'difficultCourseIds',
-          'difficultTopicsNotes', 'completedCourses', 'userId', 'createdAt',
-          'updatedAt'
+          'difficultTopicsNotes', 'targetTotalEcts', 'completedEcts',
+          'learningChallenges', 'extraActivities', 'completedCourses',
+          'userId', 'createdAt', 'updatedAt'
         ]) &&
         data.keys().hasAll([
           'onboardingCompleted', 'universityId', 'universityName', 'degreeId',
@@ -822,6 +824,10 @@ service cloud.firestore {
         data.difficultCourseIds is list && data.difficultCourseIds.size() <= 50 &&
         data.completedCourses is list && data.completedCourses.size() <= 200 &&
         isValidOptionalString(data, 'difficultTopicsNotes', 0, 4000) &&
+        isValidOptionalNumber(data, 'targetTotalEcts', 0, 600) &&
+        isValidOptionalNumber(data, 'completedEcts', 0, 600) &&
+        (!('learningChallenges' in data) || (data.learningChallenges is list && data.learningChallenges.size() <= 30)) &&
+        (!('extraActivities' in data) || (data.extraActivities is list && data.extraActivities.size() <= 20)) &&
         (!('userId' in data) || data.userId == userId) &&
         isValidOptionalDateOrTimestamp(data, 'createdAt') &&
         isValidOptionalDateOrTimestamp(data, 'updatedAt');
@@ -939,7 +945,7 @@ service cloud.firestore {
     // Validates Uni agent document (/users/{userId}/uniAgents/{courseId})
     function isValidUniAgent(data, userId, courseId) {
       return data.keys().hasOnly([
-          'courseId', 'name', 'formId', 'personaId', 'language',
+          'courseId', 'name', 'formId', 'skinId', 'petId', 'personaId', 'language',
           'memoryEnabled', 'stage', 'mastery', 'milestones', 'items',
           'notebook', 'expedition', 'diploma', 'createdAt', 'updatedAt', 'userId'
         ]) &&
@@ -950,6 +956,8 @@ service cloud.firestore {
         data.courseId is string && data.courseId.size() >= 1 && data.courseId.size() <= 100 && data.courseId == courseId &&
         data.name is string && data.name.size() >= 1 && data.name.size() <= 60 &&
         data.formId is string && data.formId in ['nuvem', 'gota', 'estrela', 'cristal', 'folha'] &&
+        isValidOptionalString(data, 'skinId', 1, 40) &&
+        (!('petId' in data) || (data.petId is string && data.petId in ['none', 'cat', 'owl', 'fox', 'turtle', 'rabbit'])) &&
         data.personaId is string && data.personaId in ['amigo', 'exigente', 'calmo', 'curioso', 'treinador'] &&
         data.language is string && data.language.size() >= 2 && data.language.size() <= 15 &&
         data.memoryEnabled is bool &&

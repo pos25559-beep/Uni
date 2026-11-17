@@ -47,7 +47,7 @@ function renderMathNodes(raw: string, keyPrefix: string, displayMode = false): R
 
 // Ordem importa: código, matemática inline ($...$ / \(...\)), ligações, negrito, itálico.
 const INLINE =
-  /(`[^`\n]+`)|(\\\([^)\n]+\\\))|(\$(?!\s)(?!\d+(?:[.,]\d+)?(?:\s|$))([^$\n]+?)(?<!\s)\$)|(\[[^\]\n]+\]\([^)\s]+\))|(\*\*[^*\n]+\*\*)|(\*[^*\n]+\*)/g;
+  /(`[^`\n]+`)|(\\\([^)\n]+\\\))|(\$(?!\s)(?!\d+(?:[.,]\d+)?(?:\s+(?![=+\-*/^_\\<>×÷≈≤≥±(])|$))([^$\n]+?)(?<!\s)\$(?!\d))|(\[[^\]\n]+\]\([^)\s]+\))|(\*\*[^*\n]+\*\*)|(\*[^*\n]+\*)/g;
 
 const isSafeUrl = (url: string) => /^https?:\/\//i.test(url);
 

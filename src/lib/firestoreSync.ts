@@ -25,6 +25,7 @@ import {
   notifyUniAgentsChanged,
   registerUniAgentCloudHandlers,
 } from './uniAgents';
+import { tr } from '../i18n/tr';
 import type {
   AcademicProfile,
   Collections,
@@ -78,6 +79,15 @@ const SETTINGS_KEYS: Array<keyof Settings> = [
   'themePalette',
   'appTone',
   'hasSeenWelcome',
+  'guestMode',
+  'uniSkinAutoRotate',
+  'hubSetupFlow',
+  'hubSetupCompleted',
+  'hubSetupDismissed',
+  'sharedHubDriveUrls',
+  'seenTabGuides',
+  'notifications',
+  'plannerPrefs',
 ];
 
 const OPTIONAL_EMAIL_OR_URL_KEYS = new Set<string>([
@@ -158,6 +168,22 @@ function sanitizeAcademicProfile(profile: AcademicProfile): Record<string, unkno
     ...(profile.difficultTopicsNotes?.trim()
       ? { difficultTopicsNotes: profile.difficultTopicsNotes.trim().slice(0, 4000) }
       : {}),
+    ...(typeof profile.targetTotalEcts === 'number' && Number.isFinite(profile.targetTotalEcts)
+      ? { targetTotalEcts: Math.max(0, Math.min(600, Math.round(profile.targetTotalEcts))) }
+      : {}),
+    ...(typeof profile.completedEcts === 'number' && Number.isFinite(profile.completedEcts)
+      ? { completedEcts: Math.max(0, Math.min(600, Math.round(profile.completedEcts))) }
+      : {}),
+    ...(Array.isArray(profile.learningChallenges)
+      ? {
+          learningChallenges: profile.learningChallenges
+            .map((x) => String(x).slice(0, 60))
+            .slice(0, 30),
+        }
+      : {}),
+    ...(Array.isArray(profile.extraActivities)
+      ? { extraActivities: profile.extraActivities.slice(0, 20) }
+      : {}),
     completedCourses: (profile.completedCourses ?? []).slice(0, 100),
   });
 }
@@ -219,6 +245,8 @@ function sanitizeUniAgent(agent: UniAgentRecord): Record<string, unknown> {
     courseId: String(agent.courseId).slice(0, 100),
     name: String(agent.name || 'Uni').trim().slice(0, 60) || 'Uni',
     formId: agent.formId,
+    ...(typeof agent.skinId === 'string' && agent.skinId ? { skinId: agent.skinId.slice(0, 40) } : {}),
+    ...(typeof agent.petId === 'string' && agent.petId ? { petId: agent.petId.slice(0, 40) } : {}),
     personaId: agent.personaId,
     language: String(agent.language || 'pt-PT').slice(0, 15),
     memoryEnabled: Boolean(agent.memoryEnabled),
@@ -708,7 +736,7 @@ export async function deleteCurrentAccountAndCloudData(): Promise<void> {
   const user = auth.currentUser;
 
   if (user && sessionNeedsRecentLogin()) {
-    const err = new Error('Reautenticação necessária antes de apagar a conta.');
+    const err = new Error(tr('common:errors.reauthRequired'));
     (err as Error & { code?: string }).code = 'auth/requires-recent-login';
     throw err;
   }
@@ -794,7 +822,7 @@ export async function publishSharedCurriculum(
   payload: Omit<SharedCurriculumDoc, 'createdBy' | 'createdAt'>,
 ): Promise<void> {
   const user = auth.currentUser;
-  if (!user) throw new Error('Inicia sessão para partilhar o plano curricular na nuvem.');
+  if (!user) throw new Error(tr('common:errors.cloudSignInToShare'));
   const docId = payload.id.replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 90);
   await setDoc(
     doc(db, 'curricula', docId),
@@ -813,7 +841,7 @@ export async function publishSharedCurriculum(
  */
 export async function migrateLocalDataToCloud(): Promise<void> {
   const user = auth.currentUser;
-  if (!user) throw new Error('Precisas de ter sessão iniciada para sincronizar.');
+  if (!user) throw new Error(tr('common:errors.cloudSignInToSync'));
   const state = useStore.getState();
   const batch = writeBatch(db);
 

@@ -104,6 +104,12 @@ export function AssessmentRow({
   const days = daysUntil(assessment.date);
   const tone = days <= 3 ? 'danger' : days <= 7 ? 'warn' : 'neutral';
   const bar = course ? courseColors[course.color].dot : 'bg-accent';
+  const kindText = t(`courses:kinds.${assessment.kind}`);
+  const normTitle = assessment.title.trim().toLowerCase();
+  const isRedundantKind =
+    !normTitle ||
+    normTitle === kindText.trim().toLowerCase() ||
+    normTitle === assessment.kind.trim().toLowerCase();
   return (
     <li>
       <Link
@@ -112,9 +118,9 @@ export function AssessmentRow({
       >
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone={tone}>{capitalize(dayWord(days, appLang))}</Badge>
-          <span className="text-xs text-muted">{t(`courses:kinds.${assessment.kind}`)}</span>
+          {!isRedundantKind && <span className="text-xs text-muted">{kindText}</span>}
         </div>
-        <p className="mt-1.5 truncate text-sm font-medium">{assessment.title}</p>
+        <p className="mt-1.5 truncate text-sm font-medium">{assessment.title.trim() || kindText}</p>
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
           <CourseChip course={course} />
           <span className="tabular">{fmtDateTime(assessment.date, appLang)}</span>

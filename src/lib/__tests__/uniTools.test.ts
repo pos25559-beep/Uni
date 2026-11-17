@@ -60,7 +60,7 @@ beforeEach(() => {
 });
 
 describe('uniTools', () => {
-  it('declares all 6 closed-list Uni tools with explicit confirmation rules', () => {
+  it('declares all 7 closed-list Uni tools with explicit confirmation rules', () => {
     const names = UNI_TOOL_DECLARATIONS.map((d) => d.name);
     expect(names).toEqual([
       'ler_plano',
@@ -69,6 +69,7 @@ describe('uniTools', () => {
       'criar_sessao',
       'criar_flashcards',
       'marcar_duvida',
+      'focar_plano',
     ]);
     expect(requiresStudentConfirmation('ler_plano')).toBe(false);
     expect(requiresStudentConfirmation('ler_ficha')).toBe(false);
@@ -76,6 +77,7 @@ describe('uniTools', () => {
     expect(requiresStudentConfirmation('criar_sessao')).toBe(true);
     expect(requiresStudentConfirmation('criar_flashcards')).toBe(true);
     expect(requiresStudentConfirmation('marcar_duvida')).toBe(true);
+    expect(requiresStudentConfirmation('focar_plano')).toBe(true);
   });
 
   it('executes ler_plano, ler_ficha, and registar_recall immediately without confirmation', async () => {
@@ -161,5 +163,47 @@ describe('uniTools', () => {
     expect(extracted.displayText).toBe('Posso marcar uma revisão extra amanhã.');
     expect(extracted.calls).toHaveLength(1);
     expect(extracted.calls[0]?.name).toBe('criar_sessao');
+  });
+
+  it('builds and commits focar_plano proposal, updating plannerPrefs and regenerating future sessions', async () => {
+    const prevSettings = useStore.getState().settings;
+    useStore.setState({
+      settings: {
+        ...prevSettings,
+        plannerPrefs: {
+          horizonDays: 14,
+          preferredPeriod: 'auto',
+          blockMinutes: 50,
+          strategy: 'balanced',
+          boostCourseIds: [],
+          pausedCourseIds: ['c-calc'],
+          exclusiveTestFocus: false,
+        },
+      },
+    });
+
+    const proposal = buildUniToolProposal(
+      {
+        name: 'focar_plano',
+        args: { courseId: 'C1D', exclusive: true, reason: 'Foco total até ao teste' },
+      },
+      { activeCourse: SAMPLE_COURSE, today: '2026-11-16' },
+    );
+
+    expect(proposal).not.toBeNull();
+    expect(proposal?.toolName).toBe('focar_plano');
+    expect(proposal?.courseId).toBe('c-calc');
+    expect(proposal?.planFocus?.exclusive).toBe(true);
+
+    // Não altera settings antes de confirmar
+    expect(useStore.getState().settings.plannerPrefs?.exclusiveTestFocus).toBe(false);
+    expect(useStore.getState().settings.plannerPrefs?.pausedCourseIds).toEqual(['c-calc']);
+
+    await commitUniToolProposal(proposal!);
+
+    const updatedPrefs = useStore.getState().settings.plannerPrefs;
+    expect(updatedPrefs?.exclusiveTestFocus).toBe(true);
+    expect(updatedPrefs?.boostCourseIds).toContain('c-calc');
+    expect(updatedPrefs?.pausedCourseIds).not.toContain('c-calc');
   });
 });

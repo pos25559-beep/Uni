@@ -441,6 +441,8 @@
     "cardsSaved": "{{count}} flashcard(s) guardado(s) en «{{topic}}».",
     "doubtTask": "Duda ({{topic}}): {{note}}",
     "doubtSaved": "Duda guardada para llevar a clase ({{topic}}).",
+    "needCourseFocus": "Selecciona una asignatura para enfocar el plan.",
+    "planFocusApplied": "Plan enfocado en «{{course}}» y sesiones futuras actualizadas.",
     "invalidProposal": "Propuesta no válida o incompleta."
   }
 }

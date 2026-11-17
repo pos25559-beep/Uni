@@ -2,6 +2,7 @@
 import { ArrowLeft, ChevronRight } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { courseColors } from '../lib/colors';
 import { hapticTap } from '../lib/nativeBridge';
@@ -61,6 +62,7 @@ export function SubpageHeader({
   onBack?: () => void;
   action?: ReactNode;
 }) {
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const handleBack = () => {
     void hapticTap();
@@ -81,7 +83,7 @@ export function SubpageHeader({
         <button
           type="button"
           onClick={handleBack}
-          aria-label="Voltar atrás"
+          aria-label={t('actions.back')}
           className="flex size-11 shrink-0 items-center justify-center rounded-full border border-line bg-surface text-fg shadow-card transition hover:bg-surface-2 active:scale-95"
         >
           <ArrowLeft size={18} aria-hidden="true" />
@@ -166,7 +168,8 @@ export function Badge({
 
 /** Etiqueta colorida de uma cadeira. */
 export function CourseChip({ course, className }: { course?: Course; className?: string }) {
-  if (!course) return <Badge className={className}>Geral</Badge>;
+  const { t } = useTranslation('common');
+  if (!course) return <Badge className={className}>{t('ui.general')}</Badge>;
   return (
     <span
       className={cx(
@@ -186,19 +189,20 @@ export function Progress({
   value,
   color = 'bg-accent',
   className,
-  label = 'Progresso',
+  label,
 }: {
   value: number;
   color?: string;
   className?: string;
   label?: string;
 }) {
+  const { t } = useTranslation('common');
   const pct = Math.round(Math.min(1, Math.max(0, value)) * 100);
   return (
     <div
       className={cx('h-2 w-full overflow-hidden rounded-full bg-surface-2', className)}
       role="progressbar"
-      aria-label={label}
+      aria-label={label ?? t('ui.progress')}
       aria-valuenow={pct}
       aria-valuemin={0}
       aria-valuemax={100}
@@ -219,7 +223,7 @@ export function Ring({
   size = 64,
   stroke = 6,
   color = 'var(--accent)',
-  label = 'Progresso',
+  label,
   children,
 }: {
   value: number;
@@ -229,6 +233,7 @@ export function Ring({
   label?: string;
   children?: ReactNode;
 }) {
+  const { t } = useTranslation('common');
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const v = Math.min(1, Math.max(0, value));
@@ -236,7 +241,7 @@ export function Ring({
   return (
     <div
       role="progressbar"
-      aria-label={label}
+      aria-label={label ?? t('ui.progress')}
       aria-valuenow={pct}
       aria-valuemin={0}
       aria-valuemax={100}

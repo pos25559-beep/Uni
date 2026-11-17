@@ -1,4 +1,4 @@
-import { CalendarPlus, Check, HelpCircle, Layers, X } from 'lucide-react';
+import { CalendarPlus, Check, HelpCircle, Layers, Target, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { UniToolProposal } from '../../lib/uniTools';
 import { cx } from '../../lib/uiHelpers';
@@ -39,11 +39,25 @@ export default function UniToolProposalCard({
               count: proposal.flashcards?.length ?? 0,
             })}`,
           }
-        : {
-            icon: HelpCircle,
-            title: t('tools.markDoubt'),
-            detail: `${t('tools.doubtLabel', { topic: proposal.topicTitle })} — ${proposal.doubt?.note ?? ''}`,
-          };
+        : proposal.toolName === 'focar_plano'
+          ? {
+              icon: Target,
+              title: t('tools.focusPlan'),
+              detail: proposal.planFocus?.exclusive
+                ? t('tools.focusExclusiveDetail', {
+                    course: proposal.courseLabel,
+                    reason: proposal.planFocus.reason,
+                  })
+                : t('tools.focusBoostDetail', {
+                    course: proposal.courseLabel,
+                    reason: proposal.planFocus?.reason ?? '',
+                  }),
+            }
+          : {
+              icon: HelpCircle,
+              title: t('tools.markDoubt'),
+              detail: `${t('tools.doubtLabel', { topic: proposal.topicTitle })} — ${proposal.doubt?.note ?? ''}`,
+            };
 
   const Icon = meta.icon;
 

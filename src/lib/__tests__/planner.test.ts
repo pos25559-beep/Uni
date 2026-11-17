@@ -423,4 +423,209 @@ describe('planner.rescheduleOverdueSessions', () => {
     });
     expect(nudge?.kind).not.toBe('sunday');
   });
+
+  it('nunca agenda blocos de uma avaliação depois da hora do exame no próprio dia nem mantém o foco vencido nos dias seguintes', () => {
+    const assessments: Assessment[] = [
+      {
+        id: 'a1',
+        courseId: 'c1',
+        kind: 'teste',
+        title: '1.º Teste',
+        date: '2026-11-20T09:00:00',
+        weight: 50,
+        topicIds: ['t1', 't2'],
+        source: 'local',
+      },
+    ];
+    const sessions = generatePlan({
+      courses: [baseCourse],
+      assessments,
+      classes: [],
+      events: [],
+      settings: { ...baseSettings, dailyStudyMinutes: 300 },
+      preferredPeriod: 'morning',
+      from: '2026-11-19',
+      days: 5,
+      studyLogs: [
+        {
+          id: 'log-focus',
+          kind: 'exam_prep',
+          date: '2026-11-18',
+          createdAt: '2026-11-18T19:00:00.000Z',
+          courseId: 'c1',
+          assessmentId: 'a1',
+          feeling: 'estavel',
+          studyFocus: 'Revisão total para teste',
+          topicIds: ['t1', 't2'],
+        },
+      ],
+    });
+
+    const examDayPostTest = sessions.filter((s) => {
+      if (s.date !== '2026-11-20' || s.courseId !== 'c1' || !s.start) return false;
+      const [h, m] = s.start.split(':').map(Number);
+      return h * 60 + m + s.minutes > 9 * 60;
+    });
+    expect(examDayPostTest).toEqual([]);
+
+    const postExamWithStaleNote = sessions.filter(
+      (s) => s.date > '2026-11-20' && s.courseId === 'c1' && s.notes === 'Revisão total para teste',
+    );
+    expect(postExamWithStaleNote).toEqual([]);
+  });
+
+  it('distribui sessões por múltiplos tópicos da cadeira antes do teste em vez de repetir só 1 ou 2', () => {
+    const sixTopicCourse: Course = {
+      ...baseCourse,
+      topics: [
+        { id: 't1', title: 'Von Mises', status: 'todo', confidence: 2 },
+        { id: 't2', title: 'Teoria da Plasticidade', status: 'learning', confidence: 2 },
+        { id: 't3', title: 'Limite Superior', status: 'todo', confidence: 2 },
+        { id: 't4', title: 'Fatia Elementar', status: 'todo', confidence: 2 },
+        { id: 't5', title: 'Energia Uniforme', status: 'todo', confidence: 3 },
+        { id: 't6', title: 'Tresca e Mohr', status: 'todo', confidence: 3 },
+      ],
+    };
+    const assessments: Assessment[] = [
+      {
+        id: 'a1',
+        courseId: 'c1',
+        kind: 'teste',
+        title: '1.º Teste',
+        date: '2026-11-20T09:00:00',
+        weight: 50,
+        topicIds: ['t1', 't2', 't3', 't4', 't5', 't6'],
+        source: 'local',
+      },
+    ];
+    const sessions = generatePlan({
+      courses: [sixTopicCourse],
+      assessments,
+      classes: [],
+      events: [],
+      settings: { ...baseSettings, dailyStudyMinutes: 300 },
+      from: '2026-11-16',
+      days: 4,
+    });
+
+    const distinctTopics = new Set(sessions.filter((s) => s.courseId === 'c1').map((s) => s.topicId));
+    expect(distinctTopics.size).toBeGreaterThanOrEqual(4);
+  });
+
+  it('em multi_test garante sessões também para a 2.ª cadeira urgente mesmo quando a 1.ª tem muitas horas por cobrir', () => {
+    const tepCourse: Course = {
+      ...baseCourse,
+      topics: [
+        { id: 't1', title: 'Plasticidade', status: 'todo', confidence: 1 },
+        { id: 't2', title: 'Von Mises', status: 'todo', confidence: 1 },
+        { id: 't3', title: 'Tresca', status: 'todo', confidence: 1 },
+        { id: 't4', title: 'Fatia', status: 'todo', confidence: 1 },
+      ],
+    };
+    const faCourse: Course = {
+      id: 'c2',
+      code: 'FA',
+      name: 'Fabrico Aditivo',
+      shortName: 'Fab. Aditivo',
+      ects: 6,
+      color: 'sky',
+      targetGrade: 14,
+      topics: [{ id: 'fa1', title: 'Processos PBF', status: 'done', confidence: 4 }],
+    };
+    const assessments: Assessment[] = [
+      {
+        id: 'a1',
+        courseId: 'c1',
+        kind: 'teste',
+        title: '1.º Teste TEP',
+        date: '2026-11-20T09:00:00',
+        weight: 40,
+        topicIds: ['t1', 't2', 't3', 't4'],
+        source: 'local',
+      },
+      {
+        id: 'a2',
+        courseId: 'c2',
+        kind: 'teste',
+        title: '1.º Teste FA',
+        date: '2026-11-23T14:00:00',
+        weight: 30,
+        topicIds: [],
+        source: 'local',
+      },
+    ];
+    const sessions = generatePlan({
+      courses: [tepCourse, faCourse],
+      assessments,
+      classes: [],
+      events: [],
+      settings: { ...baseSettings, dailyStudyMinutes: 240 },
+      from: '2026-11-16',
+      days: 7,
+    });
+
+    expect(sessions.some((s) => s.courseId === 'c1')).toBe(true);
+    expect(sessions.some((s) => s.courseId === 'c2')).toBe(true);
+  });
+
+  it('permite atingir metas de 5h com blocos adaptativos de 35 min e agenda revisão no fim de semana antes de teste na segunda', () => {
+    const lowConfCourse: Course = {
+      ...baseCourse,
+      topics: [
+        { id: 't1', title: 'Tópico 1', status: 'todo', confidence: 1 },
+        { id: 't2', title: 'Tópico 2', status: 'todo', confidence: 1 },
+        { id: 't3', title: 'Tópico 3', status: 'todo', confidence: 1 },
+        { id: 't4', title: 'Tópico 4', status: 'todo', confidence: 1 },
+        { id: 't5', title: 'Tópico 5', status: 'todo', confidence: 1 },
+        { id: 't6', title: 'Tópico 6', status: 'todo', confidence: 1 },
+      ],
+    };
+    const assessments: Assessment[] = [
+      {
+        id: 'a1',
+        courseId: 'c1',
+        kind: 'teste',
+        title: 'Teste de Segunda',
+        date: '2026-11-23T09:00:00', // segunda-feira
+        weight: 50,
+        topicIds: ['t1', 't2', 't3', 't4', 't5', 't6'],
+        source: 'local',
+      },
+    ];
+    const sessions = generatePlan({
+      courses: [lowConfCourse],
+      assessments,
+      classes: [],
+      events: [],
+      settings: {
+        ...baseSettings,
+        dailyStudyMinutes: 300,
+        studyDays: [1, 2, 3, 4, 5], // fins de semana desativados fora de véspera de exame
+      },
+      from: '2026-11-20', // sexta-feira
+      days: 4, // sexta, sábado, domingo, segunda
+    });
+
+    const fridayMinutes = sessions
+      .filter((s) => s.date === '2026-11-20')
+      .reduce((sum, s) => sum + s.minutes, 0);
+    expect(fridayMinutes).toBeGreaterThanOrEqual(240);
+
+    // Sábado (2026-11-21) e Domingo (2026-11-22) estão a 2 e 1 dias do teste de segunda: devem ter revisão urgente.
+    expect(sessions.some((s) => s.date === '2026-11-21' && s.courseId === 'c1')).toBe(true);
+    expect(sessions.some((s) => s.date === '2026-11-22' && s.courseId === 'c1')).toBe(true);
+
+    // Sem exame iminente, um fim de semana fora de studyDays continua vazio.
+    const quietWeekend = generatePlan({
+      courses: [lowConfCourse],
+      assessments: [],
+      classes: [],
+      events: [],
+      settings: { ...baseSettings, dailyStudyMinutes: 300, studyDays: [1, 2, 3, 4, 5] },
+      from: '2026-11-21',
+      days: 2,
+    });
+    expect(quietWeekend).toEqual([]);
+  });
 });
+

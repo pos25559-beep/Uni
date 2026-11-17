@@ -1,0 +1,58 @@
+name: Deploy Firebase Hosting & Rules
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: firebase-production-deploy
+  cancel-in-progress: true
+
+jobs:
+  verify_and_deploy:
+    name: Verify & Deploy to Firebase (campus-erp-84964)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify 4-locale i18n parity
+        run: npm run i18n:report
+
+      - name: Typecheck, Lint, UI Guard, Tests & Build
+        run: npm run check
+
+      - name: Deploy Hosting & Firestore Rules
+        if: env.HAS_FIREBASE_SA == 'true'
+        env:
+          HAS_FIREBASE_SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CAMPUS_ERP_84964 != '' }}
+          FIREBASE_SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CAMPUS_ERP_84964 }}
+        run: |
+          SA_FILE="${RUNNER_TEMP}/firebase-sa.json"
+          printf '%s' "$FIREBASE_SA_JSON" > "$SA_FILE"
+          export GOOGLE_APPLICATION_CREDENTIALS="$SA_FILE"
+          npx --yes firebase-tools deploy \
+            --only hosting,firestore:rules \
+            --project campus-erp-84964 \
+            --non-interactive
+
+      - name: Skip deploy warning when secret is missing
+        if: secrets.FIREBASE_SERVICE_ACCOUNT_CAMPUS_ERP_84964 == ''
+        run: |
+          echo "::warning::FIREBASE_SERVICE_ACCOUNT_CAMPUS_ERP_84964 secret is not configured. Build and tests passed, deploy skipped."
+
+      - name: Clean temporary credentials
+        if: always()
+        run: rm -f "${RUNNER_TEMP}/firebase-sa.json"

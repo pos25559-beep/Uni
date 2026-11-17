@@ -2223,7 +2223,7 @@ test('buildStudyContext inclui materia que sai do teste e secao DIARIO RECENTE',
     tasks: [],
     materials: [],
     events: [],
-    settings: defaultSettings,
+    settings: { ...defaultSettings, language: 'pt-PT' },
     studyLogs: [
       {
         id: 'sl1',

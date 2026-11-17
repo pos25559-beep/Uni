@@ -22,7 +22,7 @@ interface Props {
 export function StudyByDayChart({ courses, sessions, settings, range }: Props) {
   const { t, i18n } = useTranslation('progress');
   const { rows, series } = useMemo(
-    () => studyByBucket(sessions, courses, range),
+    () => studyByBucket(sessions, courses, range, i18n.language),
     [sessions, courses, range, i18n.language],
   );
   const active = useMemo(
@@ -54,7 +54,7 @@ export function StudyByDayChart({ courses, sessions, settings, range }: Props) {
           <BarChart data={rows} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
             <CartesianGrid {...gridProps} />
             <XAxis dataKey="label" {...axisProps} interval="preserveStartEnd" minTickGap={8} />
-            <YAxis {...axisProps} width={44} tickFormatter={(v: number) => fmtHours(v)} />
+            <YAxis {...axisProps} width={44} tickFormatter={(v: number) => fmtHours(v, i18n.language)} />
             <Tooltip cursor={cursorFill} content={(p) => <ChartTooltip {...p} format={fmtMinutes} />} />
             {barGoal > 0 && (
               <ReferenceLine

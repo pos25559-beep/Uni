@@ -441,6 +441,8 @@
     "cardsSaved": "{{count}} flashcard(s) saved in «{{topic}}».",
     "doubtTask": "Question ({{topic}}): {{note}}",
     "doubtSaved": "Question saved to bring to class ({{topic}}).",
+    "needCourseFocus": "Select a course to focus the plan on.",
+    "planFocusApplied": "Plan focused on “{{course}}” and upcoming sessions updated.",
     "invalidProposal": "Invalid or incomplete proposal."
   }
 }

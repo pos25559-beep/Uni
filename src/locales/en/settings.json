@@ -368,7 +368,7 @@
     "showKey": "Show key",
     "modelFieldLabel": "Uni model (default: Gemini 4 Hydrogen)",
     "presetRecommended": "Gemini 4 Hydrogen (Recommended)",
-    "presetBackup": "Gemini 3.5 Flash-Lite (Fallback)",
+    "presetBackup": "Gemini 3.1 Flash-Lite (Fallback)",
     "testing": "Testing…",
     "testKey": "Test personal key",
     "getKey": "Get key",
