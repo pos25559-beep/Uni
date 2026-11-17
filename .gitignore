@@ -30,7 +30,6 @@ public/assets/aistudio/
 
 # Firebase Android (fica só local)
 android/app/google-services.json
-
 .env
 .env.*
 !.env.example

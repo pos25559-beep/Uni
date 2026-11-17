@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { Markdown } from '../../components/assistant/Markdown';
 import { formatAssessmentCalendarTitle } from '../../components/calendar/items';
 import {
+  CHAT_ATTACHMENT_FALLBACK_TIMEOUT_MS,
+  CHAT_ATTACHMENT_PRIMARY_TIMEOUT_MS,
   DEFAULT_MODEL,
   FALLBACK_MODELS,
   LEGACY_REMOVED_MODELS,
@@ -91,6 +93,47 @@ describe('Markdown LaTeX e proteção de preços', () => {
     const priceHtml = renderToStaticMarkup(createElement(Markdown, { text: 'Custa $20 no total. Entre $20 e $30.' }));
     expect(priceHtml).not.toContain('class="katex"');
     expect(priceHtml).toContain('$20');
+  });
+
+  it('não deixa cifrões ($$ ou $) visíveis em blocos após texto, decimais com vírgula ou negrito', () => {
+    const tightBlock = renderToStaticMarkup(
+      createElement(Markdown, {
+        text: [
+          'Fazendo a multiplicação em cruz:',
+          '$$\\frac{0,2623}{2\\sigma_x - \\sigma_y} = \\frac{0,0953}{2\\sigma_y - \\sigma_x}$$',
+          '$$0,2623 \\cdot (2\\sigma_y - \\sigma_x) = 0,0953 \\cdot (2\\sigma_x - \\sigma_y)$$',
+        ].join('\n'),
+      }),
+    );
+    expect(tightBlock).toContain('class="katex"');
+    expect(tightBlock).not.toContain('$');
+
+    const boldMath = renderToStaticMarkup(
+      createElement(Markdown, { text: '1. **Resolve para a relação entre $\\sigma_x$ e $\\sigma_y$:**' }),
+    );
+    expect(boldMath).toContain('<strong');
+    expect(boldMath).toContain('class="katex"');
+    expect(boldMath).not.toContain('$');
+
+    const listBlockMath = renderToStaticMarkup(
+      createElement(Markdown, { text: '- Fórmula principal: $$\\sigma_x \\approx 1,3688 \\cdot \\sigma_y$$' }),
+    );
+    expect(listBlockMath).toContain('class="katex"');
+    expect(listBlockMath).not.toContain('$');
+
+    const trailingPunctBlock = renderToStaticMarkup(
+      createElement(Markdown, {
+        text: ['$$\\sigma_x = 1,3688 \\cdot \\sigma_y$$.', 'Alínea b) seguinte.'].join('\n'),
+      }),
+    );
+    expect(trailingPunctBlock).toContain('class="katex"');
+    expect(trailingPunctBlock).toContain('Alínea b) seguinte.');
+    expect(trailingPunctBlock).not.toContain('$');
+  });
+
+  it('mantém janelas de timeout alargadas para chats com anexos', () => {
+    expect(CHAT_ATTACHMENT_PRIMARY_TIMEOUT_MS).toBeGreaterThanOrEqual(45_000);
+    expect(CHAT_ATTACHMENT_FALLBACK_TIMEOUT_MS).toBeGreaterThanOrEqual(60_000);
   });
 });
 

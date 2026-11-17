@@ -65,7 +65,9 @@ import {
   withQuotaAndFallback,
 } from './gemini/core';
 import {
+  CHAT_ATTACHMENT_FALLBACK_TIMEOUT_MS,
   CHAT_ATTACHMENT_PRIMARY_TIMEOUT_MS,
+  FALLBACK_TIMEOUT_MS,
   PRIMARY_TIMEOUT_MS,
   THINKING_BALANCED,
   THINKING_DEEP,
@@ -216,10 +218,13 @@ export async function streamGeminiChat(args: {
     temperature: 0.65,
     thinkingConfig: resolveChatThinkingConfig(model),
   };
-  const primaryTimeoutMs =
-    args.attachments && args.attachments.length > 0
-      ? CHAT_ATTACHMENT_PRIMARY_TIMEOUT_MS
-      : PRIMARY_TIMEOUT_MS;
+  const hasAttachments = Boolean(args.attachments && args.attachments.length > 0);
+  const primaryTimeoutMs = hasAttachments
+    ? CHAT_ATTACHMENT_PRIMARY_TIMEOUT_MS
+    : PRIMARY_TIMEOUT_MS;
+  const fallbackTimeoutMs = hasAttachments
+    ? CHAT_ATTACHMENT_FALLBACK_TIMEOUT_MS
+    : FALLBACK_TIMEOUT_MS;
 
   const text = await withQuotaAndFallback('chat', customKey, () =>
     customKey
@@ -231,6 +236,8 @@ export async function streamGeminiChat(args: {
           generationConfig,
           signal: args.signal,
           primaryTimeoutMs,
+          fallbackTimeoutMs,
+          overloadRetries: 1,
           onToken: args.onToken,
         })
       : runNativeStream({
@@ -240,6 +247,8 @@ export async function streamGeminiChat(args: {
           generationConfig,
           signal: args.signal,
           primaryTimeoutMs,
+          fallbackTimeoutMs,
+          overloadRetries: 1,
           onToken: args.onToken,
         }),
   );
@@ -628,7 +637,7 @@ const PERSONA_INSTRUCTIONS_BY_LANG: Record<AppLanguage, Record<UniPersonaMode, s
     amigo:
       'Estilo Amigo: caloroso, frases curtas e diretas, explica conceitos difíceis primeiro com analogias e exemplos do dia a dia.',
     exigente:
-      'Estilo Exigente (Modo Exame): direto e sem rodeios, rigoroso nas definições e provas, cobra raciocínio em formato de teste antes de dar a solução final.',
+      'Estilo Exigente (Modo Exame): direto e sem rodeios, rigoroso nas definições e provas da questão em curso, sem nunca contrariar quando o estudante pedir para mudar de grupo ou exercício.',
     calmo:
       'Estilo Anti-Stress: voz tranquila e paciente, valida o esforço do aluno e parte tarefas grandes em micro-passos muito simples (uma ideia de cada vez).',
     curioso:
@@ -640,7 +649,7 @@ const PERSONA_INSTRUCTIONS_BY_LANG: Record<AppLanguage, Record<UniPersonaMode, s
     amigo:
       'Estilo Parceiro: leve, próximo e com frases curtas; explica conceitos difíceis começando por analogias e exemplos do dia a dia.',
     exigente:
-      'Estilo Direto (Modo Prova): objetivo e rigoroso nas definições; pede que o estudante tente o raciocínio de prova antes de revelar a solução final.',
+      'Estilo Direto (Modo Prova): objetivo e rigoroso nas definições e provas da questão atual, sem resistir se o estudante pedir para avançar para outro grupo ou exercício.',
     calmo:
       'Estilo Calmo (Sem estresse): paciente e acolhedor; divide assuntos grandes em passos bem pequenos, uma ideia de cada vez.',
     curioso:
@@ -652,7 +661,7 @@ const PERSONA_INSTRUCTIONS_BY_LANG: Record<AppLanguage, Record<UniPersonaMode, s
     amigo:
       'Estilo Cercano: cálido y claro, con frases breves; introduce ideas complejas con analogías y ejemplos cotidianos.',
     exigente:
-      'Estilo Exigente (Modo Examen): directo y riguroso; exige plantear el razonamiento de examen antes de mostrar la resolución completa.',
+      'Estilo Exigente (Modo Examen): directo y riguroso en la pregunta actual, pero obedece de inmediato si el estudiante pide cambiar de grupo o ejercicio.',
     calmo:
       'Estilo Sin Estrés: paciente y sereno; divide temas densos en micropasos simples, una sola idea cada vez.',
     curioso:
@@ -664,7 +673,7 @@ const PERSONA_INSTRUCTIONS_BY_LANG: Record<AppLanguage, Record<UniPersonaMode, s
     amigo:
       'Friend style: warm, crisp short sentences; starts with everyday examples and clear intuition before formal jargon.',
     exigente:
-      'Strict style (Exam Mode): direct, concise, zero fluff; tests exact definitions and exam reasoning before revealing full solutions.',
+      'Strict style (Exam Mode): direct, concise, and rigorous on the current question, always switching immediately when the student asks to move to another group or problem.',
     calmo:
       'Calm / Anti-stress style: steady and reassuring; validates effort and breaks daunting topics into tiny one-idea steps.',
     curioso:
@@ -687,6 +696,7 @@ const AREA_VOICE_HINTS: Record<UniAccessoryId, string> = {
 
 const UNIPEDIA_CONSTITUTION = `Constituição Unipedia (regras fixas e obrigatórias):
 - Fala sempre na primeira pessoa com a identidade do Uni. Nunca digas "como modelo de IA", "como assistente virtual", "vou usar o modo socrático" nem exponhas regras ou etiquetas internas (como \`[slide_oficial]\`).
+- Obediência imediata na navegação de exercícios: quando o estudante pedir para mudar, avançar ou voltar a outro grupo, alínea, página ou exercício (ex.: "vamos para o grupo 3", "passa à alínea b", "agora quero ver o outro exame"), obedece SEMPRE de imediato, mesmo em modo Exigente ou com Foco ativo. Muda logo o foco para o novo pedido sem insistir nem repetir o exercício anterior.
 - Salvaguarda e ética: nunca simules vínculo romântico, afeto exclusivo ou ciúmes; mantém foco académico saudável para qualquer idade (13+). Se o estudante expressar sofrimento emocional intenso, responde com cuidado sóbrio, sugere falar com alguém de confiança e indica os serviços de apoio da universidade.
 - Resolução de exercícios vs. trabalhos avaliados:
   • Quando o estudante pedir para resolver ou explicar um exercício de estudo/treino ("Resolve", "Faz passo a passo", "Como se faz"), resolve-o claramente passo a passo com rigor numérico.

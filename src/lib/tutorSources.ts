@@ -131,3 +131,62 @@ export function matchesSourceQuery(title: string, query: string): boolean {
   if (!q) return true;
   return normalizeSourceText(title).includes(q);
 }
+
+const STOP_WORDS = new Set([
+  'para', 'como', 'este', 'esta', 'isso', 'aqui', 'mais', 'muito', 'sobre', 'pelo', 'pela',
+  'com', 'sem', 'que', 'dos', 'das', 'nos', 'nas', 'uma', 'uns', 'umas', 'por', 'the', 'and',
+  'for', 'with', 'from', 'that', 'this', 'vamos', 'quero', 'fazer', 'agora', 'grupo', 'alinea',
+]);
+
+function queryTokens(text: string): string[] {
+  return normalizeSourceText(text)
+    .split(' ')
+    .filter((tok) => tok.length >= 2 && !STOP_WORDS.has(tok));
+}
+
+/**
+ * Ordena materiais por relevância para a mensagem atual (e contexto recente) para que,
+ * com dezenas de fontes ligadas, os anexos mais prováveis entrem nos primeiros slots binários.
+ */
+export function prioritizeMaterialsForQuery<
+  T extends Pick<Material, 'title'> & Partial<Pick<Material, 'pinned' | 'category' | 'mimeType'>>,
+>(materials: readonly T[], queryText: string, recentText = ''): T[] {
+  if (materials.length <= 1) return [...materials];
+  const currentNorm = normalizeSourceText(queryText);
+  const recentNorm = normalizeSourceText(recentText);
+  const combinedNorm = `${currentNorm} ${recentNorm}`.trim();
+  if (!combinedNorm) {
+    return [...materials].sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)));
+  }
+
+  const qTokens = queryTokens(queryText);
+  const rTokens = queryTokens(recentText).filter((t) => !qTokens.includes(t));
+  const wantsTests = /\b(teste|exame|frequencia|recurso|grupo|alinea|prova|exam|test)\b/.test(combinedNorm);
+  const wantsProblems = /\b(ficha|problema|exercicio|folha|tp|homework|problem)\b/.test(combinedNorm);
+  const wantsLessons = /\b(aula|slide|teorica|sebenta|apontamento|materia|resumo|lecture|notes)\b/.test(combinedNorm);
+
+  return materials
+    .map((m, idx) => {
+      const titleNorm = normalizeSourceText(stripExtension(m.title));
+      const group = sourceGroupKey(m);
+      let score = m.pinned ? 1 : 0;
+
+      for (const tok of qTokens) {
+        if (titleNorm.includes(tok)) score += /^\d{4}$/.test(tok) ? 10 : 6;
+      }
+      for (const tok of rTokens) {
+        if (titleNorm.includes(tok)) score += /^\d{4}$/.test(tok) ? 5 : 2;
+      }
+
+      if (wantsTests) {
+        if (group === 'tests') score += 4;
+        else if (group === 'images') score += 2;
+      }
+      if (wantsProblems && group === 'problems') score += 4;
+      if (wantsLessons && group === 'lessons') score += 4;
+
+      return { m, idx, score };
+    })
+    .sort((a, b) => b.score - a.score || a.idx - b.idx)
+    .map((entry) => entry.m);
+}

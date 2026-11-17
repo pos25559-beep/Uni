@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { citedSources, groupSources, matchesSourceQuery } from '../tutorSources';
+import {
+  citedSources,
+  groupSources,
+  matchesSourceQuery,
+  prioritizeMaterialsForQuery,
+} from '../tutorSources';
 
 const TITLES = [
   'Aula T05 Aspetos Fenomenológicos de Plasticidade Pt+Ing',
@@ -63,5 +68,24 @@ describe('matchesSourceQuery', () => {
     expect(matchesSourceQuery('Aula T08 Método', 'metodo')).toBe(true);
     expect(matchesSourceQuery('Aula T08 Método', 'exame')).toBe(false);
     expect(matchesSourceQuery('Qualquer', '  ')).toBe(true);
+  });
+});
+
+describe('prioritizeMaterialsForQuery', () => {
+  const mats = TITLES.map((title) => ({ title }));
+
+  it('coloca o teste/ano mencionado na conversa no topo mesmo quando o pedido diz apenas "grupo 3 deste teste"', () => {
+    const ranked = prioritizeMaterialsForQuery(
+      mats,
+      'vamos para o grupo 3 deste teste',
+      'Estamos a resolver o 1º Teste TMIII 2009 2010',
+    );
+    expect(ranked[0]?.title).toBe('1º Teste TMIII 2009 2010 (1)');
+    expect(ranked.slice(0, 4).every((m) => groupSources([m])[0].key === 'tests')).toBe(true);
+  });
+
+  it('prioriza aulas e apontamentos quando a pergunta pede matéria teórica', () => {
+    const ranked = prioritizeMaterialsForQuery(mats, 'explica a aula T08 do limite superior');
+    expect(ranked[0]?.title).toBe('Aula T08 Método do Limite Superior');
   });
 });

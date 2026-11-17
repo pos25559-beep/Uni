@@ -350,12 +350,16 @@ export async function callDirectRestStream(args: {
   generationConfig?: GenerationConfig;
   signal?: AbortSignal;
   primaryTimeoutMs?: number;
+  fallbackTimeoutMs?: number;
+  overloadRetries?: number;
   onToken: (accumulatedText: string) => void;
 }): Promise<string> {
   try {
     return await runModelChain({
       primaryModel: args.model,
       primaryTimeoutMs: args.primaryTimeoutMs,
+      fallbackTimeoutMs: args.fallbackTimeoutMs,
+      overloadRetries: args.overloadRetries,
       outerSignal: args.signal,
       attempt: async (targetModel, ctx) => {
         const safeConfig = sanitizeGenerationConfigForModel(targetModel, args.generationConfig);
@@ -497,6 +501,8 @@ export async function runNativeStream(args: {
   generationConfig?: GenerationConfig;
   signal?: AbortSignal;
   primaryTimeoutMs?: number;
+  fallbackTimeoutMs?: number;
+  overloadRetries?: number;
   onToken: (accumulatedText: string) => void;
 }): Promise<string> {
   const [ai, { getGenerativeModel }] = await Promise.all([getNativeAI(), import('firebase/ai')]);
@@ -504,6 +510,8 @@ export async function runNativeStream(args: {
     return await runModelChain({
       primaryModel: args.model,
       primaryTimeoutMs: args.primaryTimeoutMs,
+      fallbackTimeoutMs: args.fallbackTimeoutMs,
+      overloadRetries: args.overloadRetries,
       outerSignal: args.signal,
       attempt: async (targetModel, ctx) => {
         const safeConfig = sanitizeGenerationConfigForModel(targetModel, args.generationConfig);
@@ -514,7 +522,10 @@ export async function runNativeStream(args: {
         });
         const streamRes = await gm.generateContentStream(
           { contents: args.contents },
-          { signal: ctx.signal, timeout: FALLBACK_TIMEOUT_MS },
+          {
+            signal: ctx.signal,
+            timeout: Math.max(FALLBACK_TIMEOUT_MS, args.primaryTimeoutMs ?? 0, args.fallbackTimeoutMs ?? 0),
+          },
         );
         let accumulated = '';
         for await (const chunk of streamRes.stream) {

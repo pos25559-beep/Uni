@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { formatInlineLatexToText } from '../../lib/latexText';
 
 const FENCE = /^\s*```/;
+const BLOCK_MATH_START = /^\s*(\$\$|\\\[)/;
 const HEADING = /^(#{1,3})\s+(.*)$/;
 const UL_ITEM = /^\s*[-*]\s+(.*)$/;
 const OL_ITEM = /^\s*\d+[.)]\s+(.*)$/;
@@ -30,8 +31,8 @@ function renderMathNodes(raw: string, keyPrefix: string, displayMode = false): R
         key={keyPrefix}
         className={
           displayMode
-            ? 'block text-center text-fg [&_.katex-display]:my-0'
-            : 'inline-block align-baseline text-fg [&_.katex]:text-[0.98em]'
+            ? 'block text-center text-fg [&_.katex-display]:my-0 [&_.katex]:text-[1.15em]'
+            : 'inline-block align-baseline text-fg [&_.katex]:text-[1.08em]'
         }
         dangerouslySetInnerHTML={{ __html: html }}
       />
@@ -45,18 +46,21 @@ function renderMathNodes(raw: string, keyPrefix: string, displayMode = false): R
   );
 }
 
-// Ordem importa: código, matemática inline ($...$ / \(...\)), ligações, negrito, itálico.
+// Ordem importa: código, matemática em bloco inline ($$...$$ / \[...\]), matemática inline ($...$ / \(...\)), ligações, negrito, itálico.
 const INLINE =
-  /(`[^`\n]+`)|(\\\([^)\n]+\\\))|(\$(?!\s)(?!\d+(?:[.,]\d+)?(?:\s+(?![=+\-*/^_\\<>×÷≈≤≥±(])|$))([^$\n]+?)(?<!\s)\$(?!\d))|(\[[^\]\n]+\]\([^)\s]+\))|(\*\*[^*\n]+\*\*)|(\*[^*\n]+\*)/g;
+  /(`[^`\n]+`)|(\$\$[^$\n]+?\$\$)|(\\\[[^\]\n]+?\\\])|(\\\([^)\n]+\\\))|(\$(?!\s)(?!\d+(?:[.,]\d+)?(?:\s+(?![=+\-*/^_\\<>×÷≈≤≥±(])|$))([^$\n]+?)(?<!\s)\$(?!\d))|(\[[^\]\n]+\]\([^)\s]+\))|(\*\*[^*\n]+\*\*)|(\*[^*\n]+\*)/g;
 
 const isSafeUrl = (url: string) => /^https?:\/\//i.test(url);
 
-function renderInline(text: string, keyPrefix: string): ReactNode[] {
+const DISPLAY_MATH_BOX =
+  'my-1.5 overflow-x-auto rounded-xl border border-line/80 bg-surface-2/75 px-4 py-3 text-center text-base sm:text-[1.08rem]';
+
+function renderInline(text: string, keyPrefix: string, depth = 0): ReactNode[] {
   const out: ReactNode[] = [];
   let last = 0;
   let n = 0;
-  INLINE.lastIndex = 0;
-  for (const m of text.matchAll(INLINE)) {
+  const matches = Array.from(text.matchAll(INLINE));
+  for (const m of matches) {
     const start = m.index ?? 0;
     if (start > last) out.push(text.slice(last, start));
     const token = m[0];
@@ -66,6 +70,12 @@ function renderInline(text: string, keyPrefix: string): ReactNode[] {
         <code key={key} className="rounded-md bg-surface-2 px-1.5 py-0.5 font-mono text-[0.85em]">
           {token.slice(1, -1)}
         </code>,
+      );
+    } else if (token.startsWith('$$') || token.startsWith('\\[')) {
+      out.push(
+        <span key={key} className={`block ${DISPLAY_MATH_BOX}`}>
+          {renderMathNodes(token.slice(2, -2), key, true)}
+        </span>,
       );
     } else if (token.startsWith('\\(')) {
       out.push(<span key={key}>{renderMathNodes(token.slice(2, -2), key)}</span>);
@@ -81,9 +91,19 @@ function renderInline(text: string, keyPrefix: string): ReactNode[] {
           : label,
       );
     } else if (token.startsWith('**')) {
-      out.push(<strong key={key} className="font-semibold">{token.slice(2, -2)}</strong>);
+      const inner = token.slice(2, -2);
+      out.push(
+        <strong key={key} className="font-semibold">
+          {depth < 4 ? renderInline(inner, `${key}-b`, depth + 1) : inner}
+        </strong>,
+      );
     } else {
-      out.push(<em key={key}>{token.slice(1, -1)}</em>);
+      const inner = token.slice(1, -1);
+      out.push(
+        <em key={key}>
+          {depth < 4 ? renderInline(inner, `${key}-i`, depth + 1) : inner}
+        </em>,
+      );
     }
     last = start + token.length;
   }
@@ -118,15 +138,21 @@ export function Markdown({ text }: { text: string }) {
     if (trimmedLine.startsWith('$$') || trimmedLine.startsWith('\\[')) {
       const endDelim = trimmedLine.startsWith('$$') ? '$$' : '\\]';
       const innerFirst = trimmedLine.slice(2);
-      if (innerFirst.endsWith(endDelim) && innerFirst.length >= 2) {
-        blocks.push(
-          <div
-            key={key}
-            className="overflow-x-auto rounded-xl border border-line/70 bg-surface-2/65 px-3.5 py-2.5 text-center text-base"
-          >
-            {renderMathNodes(innerFirst.slice(0, -2), key, true)}
-          </div>,
-        );
+      const sameLineClose = innerFirst.indexOf(endDelim);
+      if (sameLineClose !== -1) {
+        const expr = innerFirst.slice(0, sameLineClose);
+        const trailing = innerFirst.slice(sameLineClose + endDelim.length).trim();
+        if (!trailing || /^[.,;:!?)]+$/.test(trailing)) {
+          blocks.push(
+            <div key={key} className={DISPLAY_MATH_BOX}>
+              {renderMathNodes(expr, key, true)}
+            </div>,
+          );
+          i++;
+          continue;
+        }
+        // Linha contém texto adicional ou outra equação depois do bloco (ex.: $$a$$ e $$b$$).
+        blocks.push(<p key={key}>{renderInline(line, key)}</p>);
         i++;
         continue;
       }
@@ -141,10 +167,7 @@ export function Markdown({ text }: { text: string }) {
         i++;
       }
       blocks.push(
-        <div
-          key={key}
-          className="overflow-x-auto rounded-xl border border-line/70 bg-surface-2/65 px-3.5 py-2.5 text-center text-base"
-        >
+        <div key={key} className={DISPLAY_MATH_BOX}>
           {renderMathNodes(mathLines.join('\n'), key, true)}
         </div>,
       );
@@ -186,11 +209,12 @@ export function Markdown({ text }: { text: string }) {
       continue;
     }
 
-    // Parágrafo: junta linhas consecutivas até um bloco novo.
+    // Parágrafo: junta linhas consecutivas até um bloco novo (incluindo matemática em bloco $$ / \[).
     const para: string[] = [];
     while (
       i < lines.length && lines[i].trim() !== '' && !FENCE.test(lines[i]) &&
-      !HEADING.test(lines[i]) && !UL_ITEM.test(lines[i]) && !OL_ITEM.test(lines[i])
+      !BLOCK_MATH_START.test(lines[i]) && !HEADING.test(lines[i]) &&
+      !UL_ITEM.test(lines[i]) && !OL_ITEM.test(lines[i])
     ) {
       para.push(lines[i]);
       i++;

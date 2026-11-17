@@ -25,8 +25,18 @@ jobs:
           node-version: 24
           cache: npm
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
       - name: Install dependencies
-        run: npm ci
+        run: |
+          if [ -f bun.lock ] || [ -f bun.lockb ]; then
+            bun install --frozen-lockfile || bun install --no-save
+          elif [ -f package-lock.json ]; then
+            npm ci || bun install --no-save
+          else
+            bun install --no-save
+          fi
 
       - name: Verify 4-locale i18n parity
         run: npm run i18n:report
@@ -39,8 +49,8 @@ jobs:
           FIREBASE_SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CAMPUS_ERP_84964 }}
         run: |
           if [ -z "${FIREBASE_SA_JSON:-}" ]; then
-            echo "::warning::FIREBASE_SERVICE_ACCOUNT_CAMPUS_ERP_84964 secret is not configured. Build and tests passed, deploy skipped."
-            exit 0
+            echo "::error::O secret FIREBASE_SERVICE_ACCOUNT_CAMPUS_ERP_84964 não está configurado nas definições do repositório GitHub. Configure-o para o deploy no Firebase acontecer."
+            exit 1
           fi
           SA_FILE="${RUNNER_TEMP}/firebase-sa.json"
           printf '%s' "$FIREBASE_SA_JSON" > "$SA_FILE"

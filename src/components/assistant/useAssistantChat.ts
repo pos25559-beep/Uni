@@ -24,6 +24,7 @@ import {
   type Conversation,
 } from '../../lib/geminiConversations';
 import { getAiMaterialLimit, resolveMaterialsForAI } from '../../lib/materialContent';
+import { prioritizeMaterialsForQuery } from '../../lib/tutorSources';
 import { collectKnownCourseCandidates, getDegreeCurriculum } from '../../lib/portugalCurriculum';
 import {
   resolveExtractedScheduleBundle,
@@ -175,7 +176,6 @@ export function useAssistantChat({
   );
   const autoPinnedIdsRef = useRef<string[]>([]);
   const restoredConvIdRef = useRef<string | null>(null);
-  const sentBinarySignatureByConvRef = useRef<Record<string, string>>({});
   const [driveAuthNeeded, setDriveAuthNeeded] = useState(false);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -507,10 +507,22 @@ export function useAssistantChat({
         const firstUser = recent.findIndex((m) => m.role === 'user');
         const payload = firstUser > 0 ? recent.slice(firstUser) : recent;
 
+        const lastUserText = [...list].reverse().find((m) => m.role === 'user')?.text ?? '';
+        const recentTurnsText = payload
+          .slice(-4)
+          .map((m) => m.text)
+          .join(' ');
+        const prioritizedMaterials = prioritizeMaterialsForQuery(
+          attachedMaterials,
+          lastUserText,
+          recentTurnsText,
+        );
+        const chatBinaryCap = hasCustomKey ? Math.min(maxAiFiles, 8) : maxAiFiles;
+
         const resolvedMaterials =
-          attachedMaterials.length > 0
-            ? await resolveMaterialsForAI(attachedMaterials, {
-                maxFiles: maxAiFiles,
+          prioritizedMaterials.length > 0
+            ? await resolveMaterialsForAI(prioritizedMaterials, {
+                maxFiles: chatBinaryCap,
                 signal: controller.signal,
               })
             : {
@@ -522,34 +534,16 @@ export function useAssistantChat({
               };
         setDriveAuthNeeded(resolvedMaterials.needsDriveAuth);
 
-        const materialSignature = attachedMaterials
-          .map((m) => `${m.id}:${m.modifiedAt ?? ''}`)
-          .sort()
-          .join('|');
-        const alreadySentThisBundleInConv =
-          materialSignature.length > 0 &&
-          payload.some((m) => m.role === 'model') &&
-          sentBinarySignatureByConvRef.current[targetConvId] === materialSignature;
-
-        const binaryAttachmentsFromMaterials = alreadySentThisBundleInConv
-          ? resolvedMaterials.attachments.filter((a) => Boolean(a.fileUri))
-          : resolvedMaterials.attachments;
-
-        if (materialSignature.length > 0) {
-          sentBinarySignatureByConvRef.current[targetConvId] = materialSignature;
-        }
-
         const mergedAttachments: ChatAttachment[] = [
-          ...binaryAttachmentsFromMaterials,
+          ...resolvedMaterials.attachments,
           ...(attachments ?? []),
-        ].slice(0, hasCustomKey ? maxAiFiles + 2 : 4);
+        ].slice(0, hasCustomKey ? chatBinaryCap + 2 : 4);
 
         const studyContext = buildStudyContext(useStore.getState());
         const activeCourseName = activeCourse?.shortName || activeCourse?.name;
-        const lastUserText = [...list].reverse().find((m) => m.role === 'user')?.text ?? '';
         const courseSheets = activeCourse ? await listTopicSheetsByCourse(activeCourse.id) : [];
         const retrievedSheets = retrieveRelevantSheets(lastUserText, courseSheets, undefined, 4);
-        const docContext = buildDocumentContext(attachedMaterials, {
+        const docContext = buildDocumentContext(prioritizedMaterials, {
           activeCourseName,
           courseMaterials: availableMaterials,
           resolvedExcerpts: resolvedMaterials.textExcerpts,

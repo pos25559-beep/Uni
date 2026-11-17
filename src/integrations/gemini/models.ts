@@ -7,11 +7,12 @@ import { HttpStatusError, ModelTimeoutError } from '../../lib/geminiErrors';
 export const DEFAULT_MODEL = 'gemini-4-hydrogen';
 export const FALLBACK_MODELS = ['gemini-3.1-flash-lite'] as const;
 export const LEGACY_REMOVED_MODELS = new Set(['gemini-3.8-flash', 'gemini-3.5-flash-lite']);
-export const PRIMARY_TIMEOUT_MS = 10_000;
-export const CHAT_ATTACHMENT_PRIMARY_TIMEOUT_MS = 18_000;
-export const OCR_PRIMARY_TIMEOUT_MS = 8_000;
-export const FALLBACK_TIMEOUT_MS = 25_000;
-export const STREAM_IDLE_TIMEOUT_MS = 25_000;
+export const PRIMARY_TIMEOUT_MS = 25_000;
+export const CHAT_ATTACHMENT_PRIMARY_TIMEOUT_MS = 60_000;
+export const CHAT_ATTACHMENT_FALLBACK_TIMEOUT_MS = 90_000;
+export const OCR_PRIMARY_TIMEOUT_MS = 12_000;
+export const FALLBACK_TIMEOUT_MS = 75_000;
+export const STREAM_IDLE_TIMEOUT_MS = 45_000;
 export const MODEL_COOLDOWN_MS = 120_000;
 
 /** Perfis de raciocínio interno (ThinkingLevel) aplicados a modelos Gemini 4. */
