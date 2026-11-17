@@ -6,6 +6,7 @@ import { getAcademicGoogleAccessToken, getAcademicGoogleEmail } from '../lib/fir
 import { googleFetch } from './googleAuth';
 import type { Course } from '../types';
 import { matchCourseByText } from '../lib/courseAliases';
+import { tr } from '../i18n/tr';
 
 export interface AcademicEmail {
   id: string;
@@ -251,7 +252,7 @@ export async function fetchAcademicEmailsDetailed(
         emails: [],
         hasPermission: false,
         error: 'insufficient_scopes',
-        errorMessage: 'A sessão Google ativa não tem permissão para ler o Gmail. Concede a permissão para carregar os emails.',
+        errorMessage: tr('common:googleSvc.gmailNoScope'),
       };
     }
 
@@ -302,7 +303,7 @@ export function parseEmlToAcademicEmail(rawText: string, courses: Course[], idSe
     .replace(/<[^>]+>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  const snippet = plainBody.slice(0, 260) || '(Mensagem sem pré-visualização de texto)';
+  const snippet = plainBody.slice(0, 260) || tr('common:googleSvc.gmailNoPreview');
   const courseId = detectCourseFromEmail(subject, snippet, from, courses);
 
   return {

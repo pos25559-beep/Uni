@@ -342,7 +342,7 @@ export default function UniShelfSection({
                     <span className="line-clamp-1 text-xs opacity-75">
                       {unlocked
                         ? equipped
-                          ? `✓ ${appLang === 'en' ? 'Active' : appLang === 'es' ? 'Activo' : 'Ativo'}`
+                          ? `✓ ${t('uni:collectibles.active')}`
                           : progressLabel
                         : pet.unlockHint}
                     </span>

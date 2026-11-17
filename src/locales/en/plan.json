@@ -57,6 +57,22 @@
     "nextReview": "Next review: {{date}} (+{{days}}d)",
     "stageUp": "Natural evolution! {{name}} reached {{stage}}.",
     "notebookSaved": "Saved to {{name}}'s Notebook.",
+    "recallFallbackHint": "Include the core definition plus one example or condition where it applies.",
+    "recallGenErr": "Couldn't generate a personalised question right now.",
+    "recallEvalErr": "Couldn't evaluate your answer right now. You can switch to the Flashcard Deck.",
+    "sheetsCount_one": "{{count}} sheet",
+    "sheetsCount_other": "{{count}} sheets",
+    "preparingTopic": "Preparing recall question for “{{topic}}”…",
+    "hintPrefix": "Hint: {{hint}}",
+    "fallbackToDeck": "Switch to Flashcard Deck",
+    "recall": {
+      "score1Label": "Review soon",
+      "score1Hint": "Missed key points — returns tomorrow (1d)",
+      "score2Label": "With effort",
+      "score2Hint": "Remembered part — consolidate soon",
+      "score3Label": "Mastered",
+      "score3Hint": "Explained without notes — advance SRS cycle"
+    },
     "ui": {
       "level1": "Very weak",
       "level2": "Weak",
@@ -86,7 +102,10 @@
       "modeAria": "Post-session practice mode",
       "adjust": "Adjust confidence ({{n}}/5)",
       "confidence": "Confidence",
-      "close": "Close"
+      "close": "Close",
+      "returnBanner": "Welcome back · exit #{{count}} ({{away}}). Your progress is still intact.",
+      "exitCount_one": "{{count}} exit",
+      "exitCount_other": "{{count}} exits"
     },
     "shield": {
       "sound": {
@@ -160,7 +179,16 @@
     "practiceReview": "Practice & review (SRS)",
     "practiceHint": "Quick micro-session with your materials",
     "weeklyCheckin": "Weekly check-in with Tutor",
-    "weeklyCheckinHint": "Adjust the plan to this week's pace"
+    "weeklyCheckinHint": "Adjust the plan to this week's pace",
+    "noStudyDays": "no study days",
+    "focusInProgress": "Focus block in progress"
+  },
+  "dayCol": {
+    "addAria": "Add session on {{date}}",
+    "ofBudget": "of {{time}}",
+    "studied": "{{time}} studied",
+    "noSessions": "No sessions",
+    "offDay": "Day off"
   },
   "cal": {
     "view": {
@@ -171,6 +199,7 @@
     "movedOne": "1 class moved from Saturday to Friday.",
     "movedMany": "{{count}} classes moved from Saturday to Friday.",
     "exported": "Calendar exported (.ics) for Google/Apple/Outlook!",
+    "shareTitle": "Timetable {{name}} · Unipedia",
     "shareText": "Import our class's courses, timetable and assessments into Unipedia:",
     "linkCopiedClass": "Class link copied! No personal data or grades.",
     "importedSummary": "Imported: {{c}} course(s), {{k}} class(es), {{a}} assessment(s).",
@@ -216,7 +245,37 @@
       "eventoPlural": "Events",
       "tarefa": "Task",
       "tarefaPlural": "Tasks"
-    }
+    },
+    "source": {
+      "local": "Local",
+      "clip": "Portal",
+      "google": "Google",
+      "outlook": "Outlook"
+    },
+    "dueLabel": "Due",
+    "allDay": "All day",
+    "legend": "Color = course · thick border = assessment · dashed = task",
+    "agendaEmpty": "Nothing scheduled in the next 30 days",
+    "agendaEmptyHint": "Classes, assessments, study sessions, events and dated tasks appear here.",
+    "editClassAria": "Edit class {{title}}",
+    "editClassHint": "Change class day or time",
+    "deleteClassAria": "Delete class {{title}}",
+    "dayEmpty": "Nothing on this day",
+    "dayEmptyHint": "Select another day or create an event or assessment.",
+    "deleteEvent": "Delete event",
+    "deleteConfirmMsg": "Delete \"{{title}}\"? This can't be undone.",
+    "deleteConfirmBtn": "Delete",
+    "uncheckSession": "Unmark session",
+    "checkSession": "Mark session as done",
+    "checkTitle": "Mark as done",
+    "openCourseAria": "Open course",
+    "openShort": "Open",
+    "dayItemsAria_one": "{{date}}, {{count}} item",
+    "dayItemsAria_other": "{{date}}, {{count}} items",
+    "itemCount_one": "{{count}} item",
+    "itemCount_other": "{{count}} items",
+    "weekEmptyDay": "No classes or events scheduled on this day.",
+    "clickToEdit": "Click to change day/time"
   },
   "session": {
     "past": "passed",
@@ -260,7 +319,10 @@
       "morning": "Morning",
       "afternoon": "Afternoon",
       "evening": "Evening",
-      "autoSub": "5pm+ weekdays / 10am+ weekends"
+      "autoSub": "5pm+ weekdays / 10am+ weekends",
+      "morningSub": "08:30+",
+      "afternoonSub": "14:00+",
+      "eveningSub": "17:30+"
     },
     "title": "Study Plan Studio",
     "keepDone": "Completed and manual sessions stay untouched.",

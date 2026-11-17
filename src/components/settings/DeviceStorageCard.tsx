@@ -1,11 +1,13 @@
 import { HardDrive, Trash2, Upload } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useStore } from '../../store/useStore';
 import { formatBytes } from '../../lib/fileStorage';
 import { Badge, Button, Modal } from '../ui';
 import DeviceImportModal from '../materials/DeviceImportModal';
 
 export default function DeviceStorageCard() {
+  const { t } = useTranslation('settings');
   const materials = useStore((s) => s.materials);
   const courses = useStore((s) => s.courses);
   const isMinimal = useStore((s) => (s.settings.appTone ?? 'vibrante') === 'serio');
@@ -61,32 +63,32 @@ export default function DeviceStorageCard() {
             </div>
             <div>
               <h3 className="font-display text-sm font-bold text-fg">
-                Armazenamento no Disco / HD do Dispositivo
+                {t('deviceStorage.title')}
               </h3>
               <p className="text-xs text-muted">
-                Ficheiros guardados localmente no dispositivo, disponíveis offline e no visualizador do site.
+                {t('deviceStorage.desc')}
               </p>
             </div>
           </div>
 
-          <Badge tone="accent">Ativo</Badge>
+          <Badge tone="accent">{t('deviceStorage.activeBadge')}</Badge>
         </div>
 
         <div className="rounded-2xl border border-line/80 bg-surface-2/45 p-4 space-y-3 text-xs">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <p className="font-semibold text-fg text-sm tabular">
-                {localMaterials.length} {localMaterials.length === 1 ? 'ficheiro guardado' : 'ficheiros guardados'}
+                {t('deviceStorage.fileCount', { count: localMaterials.length })}
               </p>
               <p className="text-muted text-xs tabular">
-                Espaço total utilizado: {formatBytes(totalBytes)}
+                {t('deviceStorage.totalSpace', { size: formatBytes(totalBytes) })}
               </p>
             </div>
 
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="primary" onClick={() => setImportOpen(true)}>
                 <Upload size={13} />
-                Importar do Computador (HD)
+                {t('deviceStorage.importBtn')}
               </Button>
 
               {localMaterials.length > 0 && (
@@ -97,14 +99,17 @@ export default function DeviceStorageCard() {
                   className="text-danger hover:text-danger"
                 >
                   <Trash2 size={13} />
-                  Limpar
+                  {t('deviceStorage.clearBtn')}
                 </Button>
               )}
             </div>
           </div>
 
           <p className="text-muted leading-relaxed">
-            Podes varrer pastas inteiras do teu disco com testes, sebentas e ficheiros descarregados do portal académico. <strong>Dica:</strong> divide os documentos em subpastas com o nome/sigla da cadeira (ex.: <span className="font-mono">{exampleFolders}</span>) para a varredura associar tudo lá dentro mesmo sem a sigla no nome do ficheiro.
+            {t('deviceStorage.tipBefore')}{' '}
+            <strong>{t('deviceStorage.tipStrong')}</strong>{' '}
+            {t('deviceStorage.tipMiddle')} <span className="font-mono">{exampleFolders}</span>
+            {t('deviceStorage.tipAfter')}
           </p>
         </div>
       </section>
@@ -114,18 +119,18 @@ export default function DeviceStorageCard() {
       <Modal
         open={confirmClear}
         onClose={() => setConfirmClear(false)}
-        title="Remover ficheiros locais?"
+        title={t('deviceStorage.confirmTitle')}
         footer={
           <>
-            <Button onClick={() => setConfirmClear(false)}>Cancelar</Button>
+            <Button onClick={() => setConfirmClear(false)}>{t('deviceStorage.cancel')}</Button>
             <Button variant="danger" onClick={handleClearAll}>
-              Remover Ficheiros
+              {t('deviceStorage.confirmRemove')}
             </Button>
           </>
         }
       >
         <p className="text-xs text-muted">
-          Esta ação remove os {localMaterials.length} ficheiros guardados no armazenamento local do navegador. Os materiais do Google Drive não serão afetados.
+          {t('deviceStorage.confirmBody', { count: localMaterials.length })}
         </p>
       </Modal>
     </>

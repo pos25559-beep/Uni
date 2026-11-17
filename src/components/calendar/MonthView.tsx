@@ -1,5 +1,6 @@
 // Grelha mensal (6 semanas, Seg–Dom). Em ecrãs pequenos mostra apenas pontos coloridos.
 import { format, isSameMonth } from 'date-fns';
+import { useTranslation } from 'react-i18next';
 import { appDateLocale as pt } from '../../lib/dateLocale';
 import { weekdayShort } from '../../lib/colors';
 import type { Course } from '../../types';
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export default function MonthView({ days, anchor, byDay, courseById, selected, today, onSelect }: Props) {
+  const { t } = useTranslation('plan');
   return (
     <div className="w-full min-w-0 overflow-hidden">
       <div className="mb-1.5 grid grid-cols-7 text-center text-xs font-medium uppercase tracking-wide text-muted">
@@ -42,7 +44,7 @@ export default function MonthView({ days, anchor, byDay, courseById, selected, t
               type="button"
               onClick={() => onSelect(ds)}
               aria-pressed={isSel}
-              aria-label={`${format(day, 'd MMMM', { locale: pt })}, ${list.length} itens`}
+              aria-label={t('cal.dayItemsAria', { date: format(day, 'd MMMM', { locale: pt }), count: list.length })}
               className={cx(
                 'flex min-h-14 min-w-0 flex-col gap-1 p-1 text-left transition hover:bg-surface-2 sm:min-h-28 sm:p-1.5',
                 isSel ? 'bg-accent-soft ring-2 ring-inset ring-accent/70' : inMonth ? 'bg-surface' : 'bg-surface-2/65',

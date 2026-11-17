@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Badge, Button, Field, Input, Modal, Select } from '../ui';
 import { newId, useStore } from '../../store/useStore';
 import { providerLabel } from '../../lib/colors';
 import { detectProvider, parseWebUrl } from './meta';
 
 export default function AddLinkModal({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation('courses');
   const courses = useStore((s) => s.courses);
   const upsert = useStore((s) => s.upsert);
   const [url, setUrl] = useState('');
@@ -16,17 +18,17 @@ export default function AddLinkModal({ onClose }: { onClose: () => void }) {
   const trimmed = url.trim();
   const parsed = trimmed ? parseWebUrl(trimmed) : null;
   const provider = parsed ? detectProvider(trimmed) : null;
-  const urlError = trimmed && !parsed ? 'Indica um URL válido (http ou https).' : null;
+  const urlError = trimmed && !parsed ? t('materialsModals.addLink.invalidUrl') : null;
   const canSave = !!parsed && title.trim().length > 0;
 
   const save = (e: FormEvent) => {
     e.preventDefault();
     if (!parsed || !provider) {
-      setError('Indica um URL válido (http ou https).');
+      setError(t('materialsModals.addLink.invalidUrl'));
       return;
     }
     if (!title.trim()) {
-      setError('Indica um título.');
+      setError(t('materialsModals.addLink.missingTitle'));
       return;
     }
     upsert('materials', {
@@ -44,16 +46,16 @@ export default function AddLinkModal({ onClose }: { onClose: () => void }) {
     <Modal
       open
       onClose={onClose}
-      title="Adicionar link"
+      title={t('materialsModals.addLink.title')}
       footer={(
         <>
-          <Button onClick={onClose}>Cancelar</Button>
-          <Button variant="primary" type="submit" form="add-link-form" disabled={!canSave}>Guardar</Button>
+          <Button onClick={onClose}>{t('materialsModals.addLink.cancel')}</Button>
+          <Button variant="primary" type="submit" form="add-link-form" disabled={!canSave}>{t('materialsModals.addLink.save')}</Button>
         </>
       )}
     >
       <form id="add-link-form" onSubmit={save} className="space-y-4">
-        <Field label="URL" hint={urlError ? <span className="text-danger">{urlError}</span> : 'Cola o link do ficheiro, pasta, caderno externo ou portal da tua escola/faculdade.'}>
+        <Field label={t('materialsModals.addLink.urlLabel')} hint={urlError ? <span className="text-danger">{urlError}</span> : t('materialsModals.addLink.urlHint')}>
           <div className="flex items-center gap-2">
             <Input
               type="url"
@@ -68,15 +70,15 @@ export default function AddLinkModal({ onClose }: { onClose: () => void }) {
         </Field>
         {provider && (
           <div className="flex items-center gap-2 text-xs text-muted">
-            Fornecedor detetado: <Badge tone="accent">{providerLabel[provider]}</Badge>
+            {t('materialsModals.addLink.detectedProvider')} <Badge tone="accent">{providerLabel[provider]}</Badge>
           </div>
         )}
-        <Field label="Título">
-          <Input placeholder="Ex.: Apontamentos — Semana 3" value={title} onChange={(e) => { setTitle(e.target.value); setError(null); }} />
+        <Field label={t('materialsModals.addLink.titleLabel')}>
+          <Input placeholder={t('materialsModals.addLink.titlePlaceholder')} value={title} onChange={(e) => { setTitle(e.target.value); setError(null); }} />
         </Field>
-        <Field label="Cadeira">
+        <Field label={t('materialsModals.addLink.courseLabel')}>
           <Select value={courseId} onChange={(e) => setCourseId(e.target.value)}>
-            <option value="">Sem cadeira</option>
+            <option value="">{t('materialsModals.addLink.noCourse')}</option>
             {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </Select>
         </Field>

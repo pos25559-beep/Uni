@@ -5,6 +5,7 @@
   "newCourse": "Nova disciplina",
   "importCurriculum": "Importar disciplinas",
   "courseNotFound": "Esta disciplina não existe",
+  "courseNotFoundHint": "Ela pode ter sido apagada ou o link está incorreto.",
   "backToCourses": "Voltar às disciplinas",
   "subtitleFallback": "Detalhes da disciplina",
   "unitOne": "disciplina",
@@ -117,7 +118,10 @@
     "futureBody": "{{title}} está marcada para daqui a {{n}} dia(s). Ao salvar a nota {{grade}}, esta avaliação passa a contar como concluída no plano.",
     "cancel": "Cancelar",
     "yes": "Sim, já fiz",
-    "gradeAria": "Nota (0 a {{max}})"
+    "gradeAria": "Nota (0 a {{max}})",
+    "topicsCount_one": "{{count}} tópico",
+    "topicsCount_other": "{{count}} tópicos",
+    "gradeLabel": "Nota"
   },
   "topics": {
     "atRisk": "Em risco · {{n}}%",
@@ -136,7 +140,8 @@
     "studied": "Estudei hoje",
     "delete": "Apagar o tópico \"{{title}}\"?",
     "newAria": "Novo tópico",
-    "newPh": "Novo tópico… (Enter para adicionar)"
+    "newPh": "Novo tópico… (Enter para adicionar)",
+    "add": "Adicionar"
   },
   "rulesModal": {
     "title": "Atualizar regras da disciplina — {{name}}",
@@ -205,9 +210,16 @@
     "unpin": "Desafixar",
     "pin": "Fixar",
     "open": "Abrir",
-    "removeConfirm": "Remover “{{title}}” do repositório?"
+    "removeConfirm": "Remover “{{title}}” do repositório?",
+    "prevYears": "Anos anteriores",
+    "solved": "Resolvido",
+    "withSolution": "Com resolução",
+    "closeNotice": "Fechar aviso",
+    "materialFallback": "Material"
   },
   "emails": {
+    "cardTitle": "Avisos Gmail da Disciplina",
+    "cardHint": "Mensagens de professores e atualizações ligadas a {{course}}",
     "taskTitle": "Aviso Gmail: {{subject}}",
     "title": "Avisos e e-mail acadêmico",
     "count_one": "{{count}} mensagem",
@@ -276,7 +288,8 @@
     "linksTo": "Vincula a {{name}}",
     "creates": "Cria disciplina",
     "assess": "Avaliações detectadas ({{n}})",
-    "courses": "Disciplinas detectadas ({{n}})"
+    "courses": "Disciplinas detectadas ({{n}})",
+    "selectAria": "Selecionar {{name}}"
   },
   "device": {
     "cat": {
@@ -367,6 +380,9 @@
     "expandAll": "Expandir tudo",
     "showMore": "Mostrar mais {{n}} ({{total}} no total)",
     "showFirst": "Mostrar só os primeiros 6",
+    "count_one": "{{count}} material",
+    "count_other": "{{count}} materiais",
+    "pinnedTitle": "Fixados",
     "notebooks": "Cadernos externos",
     "notebooksEmpty": "ainda sem links salvos. Use o Caderno do Uni no Tutor ou cole um link aqui.",
     "saveLink": "Salvar link",
@@ -386,6 +402,7 @@
   },
   "cloud": {
     "root": "Raiz",
+    "loading": "Carregando…",
     "tab": {
       "folders": "Meu Drive",
       "shared": "Compartilhados comigo",
@@ -421,5 +438,185 @@
     "path": "Caminho",
     "course": "Disciplina dos arquivos",
     "noCourse": "Sem disciplina"
+  },
+  "materialsModals": {
+    "notebooks": {
+      "savedMaterial": "Material salvo",
+      "courseNotebook": "Caderno de {{name}}",
+      "title": "Cadernos externos",
+      "info": "Você pode salvar links diretos para cadernos de estudo externos opcionais. Cole a URL em «Adicionar link», no Hub inicial ou no formulário da disciplina.",
+      "emptyTitle": "Ainda sem cadernos externos",
+      "emptyHint": "Salve a URL de um caderno externo opcional se quiser abri-lo daqui com um clique."
+    },
+    "row": {
+      "fileNotFound": "Arquivo não encontrado no armazenamento local.",
+      "modified": "Modificado {{time}}",
+      "courseAria": "Disciplina de {{title}}",
+      "noCourse": "Sem disciplina",
+      "unpin": "Desafixar",
+      "pin": "Fixar",
+      "remove": "Remover",
+      "removeTitle": "Remover material",
+      "removeConfirm": "Remover \"{{title}}\" da biblioteca? O arquivo não poderá ser recuperado."
+    },
+    "addLink": {
+      "invalidUrl": "Informe uma URL válida (http ou https).",
+      "missingTitle": "Informe um título.",
+      "title": "Adicionar link",
+      "cancel": "Cancelar",
+      "save": "Salvar",
+      "urlLabel": "URL",
+      "urlHint": "Cole o link do arquivo, pasta, caderno externo ou portal da sua faculdade.",
+      "detectedProvider": "Origem detectada:",
+      "titleLabel": "Título",
+      "titlePlaceholder": "Ex.: Anotações — Semana 3",
+      "courseLabel": "Disciplina",
+      "noCourse": "Sem disciplina"
+    },
+    "upload": {
+      "missingFile": "Selecione um arquivo (PDF, slides etc.).",
+      "missingTitle": "Informe um título para o material.",
+      "saveError": "Erro ao salvar arquivo.",
+      "title": "Enviar arquivo (PDF, Slides, Lista)",
+      "dropTitle": "Arraste um PDF ou apresentação para cá",
+      "dropHint": "ou clique para escolher do seu computador",
+      "titleLabel": "Título",
+      "titlePlaceholder": "Ex.: Slides Aula 4 - Mecânica dos Fluidos",
+      "courseLabel": "Disciplina",
+      "noCourse": "Sem disciplina (Geral)",
+      "cancel": "Cancelar",
+      "saving": "Salvando…",
+      "submit": "Adicionar arquivo"
+    },
+    "viewer": {
+      "defaultBadge": "Arquivo",
+      "embeddedFolder": "• Pasta Incorporada",
+      "openNewTab": "Abrir em nova aba",
+      "closeAria": "Fechar visualizador",
+      "loading": "Carregando documento...",
+      "gdriveFolderTitle": "Pasta do Google Drive",
+      "gdriveFolderBody": "Esta pasta contém provas e anotações compartilhadas. Por políticas de segurança do Google, pastas completas abrem de forma direta e segura no Google Drive com sua conta.",
+      "openGdriveFolder": "Abrir pasta no Google Drive",
+      "sharepointFolderTitle": "Pasta do OneDrive / SharePoint institucional",
+      "sharepointFolderBody": "Esta pasta pertence a um repositório institucional de provas e exercícios. Devido às políticas de segurança da Microsoft, abre diretamente com seu login acadêmico.",
+      "openSharepointFolder": "Abrir repositório no SharePoint",
+      "externalBody": "Este material está disponível diretamente através do link oficial.",
+      "openMaterial": "Abrir material"
+    }
+  },
+  "assessForm": {
+    "errTitle": "Informe o título da avaliação.",
+    "errDate": "Informe a data.",
+    "errWeight": "O peso deve estar entre 0 e 100%.",
+    "editTitle": "Editar avaliação",
+    "newTitle": "Nova avaliação",
+    "kind": "Tipo",
+    "weight": "Peso (%)",
+    "titleLabel": "Título *",
+    "titlePh": "Prova 1",
+    "dateTime": "Data e hora *",
+    "dateTimeAria": "Data e hora da avaliação",
+    "location": "Local",
+    "locationPh": "Sala 304",
+    "notes": "Observações",
+    "topicsLegend": "Tópicos cobertos",
+    "noTopicsHint": "Ainda não há tópicos. Adicione-os na aba Matéria."
+  },
+  "classModal": {
+    "types": {
+      "T": "Teórica (T)",
+      "TP": "Teórico-prática (TP)",
+      "P": "Prática (P)",
+      "OT": "Monitoria / Tutoria (OT)"
+    },
+    "errTimes": "Informe a hora de início e de fim.",
+    "errOrder": "A hora de fim precisa ser depois do início.",
+    "editTitle": "Editar aula",
+    "newTitle": "Nova aula",
+    "kind": "Tipo",
+    "weekday": "Dia da semana",
+    "start": "Início",
+    "startAria": "Hora de início",
+    "end": "Fim",
+    "endAria": "Hora de fim",
+    "room": "Sala",
+    "roomPh": "B2.04"
+  },
+  "courseModal": {
+    "errName": "Informe o nome da disciplina.",
+    "errShort": "Informe um nome curto.",
+    "errInvalid": "Valor inválido.",
+    "editTitle": "Editar disciplina",
+    "newTitle": "Nova disciplina",
+    "deleteConfirm": "Apagar \"{{name}}\"? Também serão apagadas as avaliações, aulas, sessões, tarefas e materiais desta disciplina. Esta ação não pode ser desfeita.",
+    "name": "Nome *",
+    "namePh": "Algoritmos e Estruturas de Dados",
+    "shortName": "Sigla *",
+    "shortNamePh": "AED",
+    "code": "Código",
+    "codePh": "M3112",
+    "ects": "Créditos",
+    "teacher": "Professor",
+    "teacherPh": "Prof. Nome",
+    "target": "Meta (0–{{max}})",
+    "color": "Cor",
+    "colorAria": "Cor da disciplina",
+    "links": "Links",
+    "notebook": "Caderno externo (URL privada opcional)",
+    "notebookPh": "Opcional — ou use o Caderno do Uni interno",
+    "drive": "Pasta no Google Drive",
+    "portal": "Portal da disciplina"
+  },
+  "schedule": {
+    "newClass": "Nova aula",
+    "emptyTitle": "Sem aulas no horário",
+    "emptyHint": "Adicione as aulas teóricas, práticas e monitorias para vê-las no calendário semanal.",
+    "noRoom": "Sem sala",
+    "editAria": "Editar aula",
+    "deleteConfirm": "Apagar esta aula do horário?"
+  },
+  "tasks": {
+    "priority": {
+      "1": "Alta",
+      "2": "Média",
+      "3": "Baixa"
+    },
+    "newAria": "Nova tarefa",
+    "newPh": "Nova tarefa…",
+    "dueAria": "Data de entrega",
+    "duePh": "Data de entrega",
+    "add": "Adicionar",
+    "emptyTitle": "Sem tarefas",
+    "emptyHint": "Registre trabalhos e tarefas desta disciplina com data de entrega para não se esquecer.",
+    "completeAria": "Concluir {{title}}",
+    "deleteConfirm": "Apagar a tarefa \"{{title}}\"?"
+  },
+  "courseMaterials": {
+    "errTitle": "Informe um título.",
+    "errLink": "Informe um link válido.",
+    "fileNotFound": "Arquivo não encontrado no armazenamento local.",
+    "titleAria": "Título do material",
+    "titlePh": "Título",
+    "urlAria": "Link do material",
+    "addLink": "Adicionar link",
+    "uploadBtn": "Enviar PDF / Slides",
+    "emptyTitle": "Sem materiais",
+    "emptyHint": "Envie os PDFs, slides das aulas e listas ou adicione links desta disciplina.",
+    "uploadShort": "Enviar arquivo",
+    "modifiedAt": "Alterado {{date}}",
+    "unpin": "Desafixar",
+    "pin": "Fixar",
+    "removeConfirm": "Remover o material \"{{title}}\" da lista?"
+  },
+  "practiceModal": {
+    "title": "Revisão ativa & retenção (SRS)",
+    "progress": "Tópico {{current}} de {{total}} · matéria prioritária",
+    "emptyTitle": "Tudo revisado por hoje",
+    "emptyHint": "Seus tópicos estão dentro da janela de retenção. Você pode iniciar qualquer bloco no Plano ou abrir uma disciplina para praticar.",
+    "back": "Voltar",
+    "gotoTopic": "Ir para tópico {{n}}",
+    "close": "Fechar",
+    "nextTopic": "Próximo tópico",
+    "finish": "Concluir revisão"
   }
 }

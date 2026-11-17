@@ -793,7 +793,7 @@ function UniCheckInModalInner({
                 aria-selected={active}
                 onClick={() => handleKindChange(item.id)}
                 className={cx(
-                  'inline-flex min-h-[36px] shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition',
+                  'inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition',
                   active
                     ? 'border-[#141312] bg-ink-cta text-ink-cta-fg dark:border-white/20'
                     : 'border-line bg-bg text-muted hover:text-fg',
@@ -818,7 +818,7 @@ function UniCheckInModalInner({
                   type="button"
                   onClick={() => handleCourseSelect(c.id)}
                   className={cx(
-                    'min-h-[34px] shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition',
+                    'min-h-11 shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition',
                     selected
                       ? 'border-accent bg-accent-soft font-semibold text-accent-ink'
                       : 'border-line bg-surface-2/60 text-muted hover:text-fg',
@@ -843,7 +843,7 @@ function UniCheckInModalInner({
                   type="button"
                   onClick={() => handleAssessmentSelect(a.id)}
                   className={cx(
-                    'min-h-[34px] shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition',
+                    'min-h-11 shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition',
                     selected
                       ? 'border-accent bg-accent-soft font-semibold text-accent-ink'
                       : 'border-line bg-surface-2/60 text-muted hover:text-fg',
@@ -874,7 +874,7 @@ function UniCheckInModalInner({
             <button
               type="button"
               onClick={handleStartFresh}
-              className="inline-flex min-h-[30px] shrink-0 items-center gap-1 rounded-full border border-line bg-bg px-2.5 py-1 text-xs font-semibold text-fg transition hover:border-accent"
+              className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full border border-line bg-bg px-3 py-1 text-xs font-semibold text-fg transition hover:border-accent"
             >
               <RotateCcw size={12} /> {conversationSource === 'saved' ? t('checkin.newConv') : t('checkin.clear')}
             </button>
@@ -941,7 +941,7 @@ function UniCheckInModalInner({
             {(understanding.newTopicsToAdd.length > 0 || understanding.matchedTopicIds.length > 0) &&
               effectiveCourse && (
                 <p className="mt-1 line-clamp-1 text-muted">
-                  Tópicos:{' '}
+                  {t('checkin.topicsPrefix')}{' '}
                   {[
                     ...effectiveCourse.topics
                       .filter((t) => understanding.matchedTopicIds.includes(t.id))
@@ -990,7 +990,7 @@ function UniCheckInModalInner({
                     inputRef.current?.focus();
                   }
                 }}
-                className="min-h-[34px] rounded-full border border-line/85 bg-bg px-3 py-1 text-xs font-medium text-fg transition hover:border-accent hover:bg-accent-soft/45"
+                className="min-h-11 rounded-full border border-line/85 bg-bg px-3 py-1 text-xs font-medium text-fg transition hover:border-accent hover:bg-accent-soft/45"
               >
                 {chip.label}
               </button>
@@ -1030,7 +1030,7 @@ function UniCheckInModalInner({
             type="submit"
             disabled={!inputText.trim() || sending}
             aria-label={t('checkin.sendAria')}
-            className="grid size-10 shrink-0 place-items-center rounded-full bg-ink-cta text-ink-cta-fg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-35"
+            className="grid size-11 shrink-0 place-items-center rounded-full bg-ink-cta text-ink-cta-fg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-35"
           >
             <ArrowUp size={18} strokeWidth={2.2} />
           </button>

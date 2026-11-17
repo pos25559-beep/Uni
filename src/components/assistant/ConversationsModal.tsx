@@ -119,7 +119,7 @@ export default function ConversationsModal({
                         setCustomSubject('');
                       }}
                       className={cx(
-                        'min-h-[38px] rounded-full border px-3 text-xs font-semibold transition',
+                        'min-h-11 rounded-full border px-3 text-xs font-semibold transition',
                         active
                           ? 'border-accent bg-ink-cta text-ink-cta-fg'
                           : 'border-line bg-surface text-fg hover:border-accent/50',
@@ -148,7 +148,7 @@ export default function ConversationsModal({
                     type="button"
                     onClick={() => setNewCourseId('')}
                     className={cx(
-                      'min-h-[38px] rounded-full border px-3 text-xs font-semibold transition',
+                      'min-h-11 rounded-full border px-3 text-xs font-semibold transition',
                       newCourseId === ''
                         ? 'border-accent bg-accent-soft text-accent'
                         : 'border-line bg-surface text-muted hover:text-fg',
@@ -162,7 +162,7 @@ export default function ConversationsModal({
                       type="button"
                       onClick={() => setNewCourseId(c.id)}
                       className={cx(
-                        'min-h-[38px] rounded-full border px-3 text-xs font-semibold transition',
+                        'min-h-11 rounded-full border px-3 text-xs font-semibold transition',
                         newCourseId === c.id
                           ? 'border-accent bg-accent-soft text-accent'
                           : 'border-line bg-surface text-muted hover:text-fg',
@@ -253,7 +253,7 @@ export default function ConversationsModal({
                               onSelectConversation(conv);
                               onClose();
                             }}
-                            className="min-w-0 flex-1 text-left"
+                            className="min-h-11 min-w-0 flex-1 text-left"
                           >
                             <div className="flex items-center gap-2">
                               <span className="truncate text-sm font-semibold text-fg">

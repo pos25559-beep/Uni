@@ -1,6 +1,7 @@
 import { CalendarDays, CheckSquare, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { newId, useStore } from '../../store/useStore';
 import type { Course, Task } from '../../types';
 import { Badge, Button, DateField, EmptyState, Input } from '../ui';
@@ -12,10 +13,10 @@ interface Props {
   course: Course;
 }
 
-const priorityLabel: Record<Task['priority'], string> = { 1: 'Alta', 2: 'Média', 3: 'Baixa' };
 const priorityTone: Record<Task['priority'], 'danger' | 'warn' | 'neutral'> = { 1: 'danger', 2: 'warn', 3: 'neutral' };
 
 export default function TasksTab({ course }: Props) {
+  const { t: tc, i18n } = useTranslation('courses');
   const allTasks = useStore((s) => s.tasks);
   const upsert = useStore((s) => s.upsert);
   const patch = useStore((s) => s.patch);
@@ -51,42 +52,44 @@ export default function TasksTab({ course }: Props) {
   return (
     <div className="space-y-4">
       <form onSubmit={add} className="flex flex-col gap-2 sm:flex-row" noValidate>
-        <Input aria-label="Nova tarefa" placeholder="Nova tarefa…" value={title} onChange={(e) => setTitle(e.target.value)} className="flex-1" />
-        <DateField aria-label="Data de entrega" clearable placeholder="Data de entrega" value={due} onChange={setDue} className="sm:w-44" />
+        <Input aria-label={tc('tasks.newAria')} placeholder={tc('tasks.newPh')} value={title} onChange={(e) => setTitle(e.target.value)} className="flex-1" />
+        <DateField aria-label={tc('tasks.dueAria')} clearable placeholder={tc('tasks.duePh')} value={due} onChange={setDue} className="sm:w-44" />
         <Button type="submit" variant="primary" disabled={!title.trim()}>
-          <Plus size={16} /> Adicionar
+          <Plus size={16} /> {tc('tasks.add')}
         </Button>
       </form>
 
       {tasks.length === 0 ? (
         <EmptyState
           icon={<CheckSquare size={28} />}
-          title="Sem tarefas"
-          hint="Regista trabalhos e tarefas desta cadeira com data de entrega para não te esqueceres."
+          title={tc('tasks.emptyTitle')}
+          hint={tc('tasks.emptyHint')}
         />
       ) : (
         <ul className="space-y-2">
-          {tasks.map((t) => (
-            <li key={t.id} className="flex items-center gap-3 rounded-xl border border-line bg-surface p-3">
-              <input
-                type="checkbox"
-                aria-label={`Concluir ${t.title}`}
-                checked={t.done}
-                onChange={() => patch('tasks', t.id, { done: !t.done })}
-                className="size-4 shrink-0 accent-[var(--accent)]"
-              />
+          {tasks.map((task) => (
+            <li key={task.id} className="flex items-center gap-2 rounded-xl border border-line bg-surface px-2 py-2 sm:px-3">
+              <label className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-lg hover:bg-surface-2">
+                <input
+                  type="checkbox"
+                  aria-label={tc('tasks.completeAria', { title: task.title })}
+                  checked={task.done}
+                  onChange={() => patch('tasks', task.id, { done: !task.done })}
+                  className="size-4 accent-[var(--accent)]"
+                />
+              </label>
               <div className="min-w-0 flex-1">
-                <p className={cx('truncate text-sm font-medium', t.done && 'text-muted line-through')}>{t.title}</p>
+                <p className={cx('truncate text-sm font-medium', task.done && 'text-muted line-through')}>{task.title}</p>
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
-                  {t.due && (
+                  {task.due && (
                     <span className="inline-flex items-center gap-1 tabular">
-                      <CalendarDays size={12} /> {fmtShortDate(t.due)} · {dueLabel(t.due)}
+                      <CalendarDays size={12} /> {fmtShortDate(task.due, i18n.language)} · {dueLabel(task.due, i18n.language)}
                     </span>
                   )}
                 </div>
               </div>
-              <Badge tone={priorityTone[t.priority]}>{priorityLabel[t.priority]}</Badge>
-              <DeleteButton message={`Apagar a tarefa "${t.title}"?`} onConfirm={() => remove('tasks', t.id)} />
+              <Badge tone={priorityTone[task.priority]}>{tc(`tasks.priority.${task.priority}`)}</Badge>
+              <DeleteButton message={tc('tasks.deleteConfirm', { title: task.title })} onConfirm={() => remove('tasks', task.id)} />
             </li>
           ))}
         </ul>

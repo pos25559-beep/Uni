@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { tr } from '../i18n/tr';
 import { googleService, type AcademicEmail, type AutoScanProgress } from '../services/googleService';
 import { useStore } from '../store/useStore';
 
@@ -168,7 +169,7 @@ export function useDriveAutoScan() {
     abortRef.current = controller;
     setScanning(true);
     setFeedback(null);
-    setProgress({ foldersScanned: 0, filesFound: 0, stage: 'A ligar ao Drive…' });
+    setProgress({ foldersScanned: 0, filesFound: 0, stage: tr('common:googleSvc.connectingDrive') });
     try {
       const res = await googleService.scanDriveForCourses(courses, true, {
         extraFolderUrls: sharedHubDriveUrls ?? [],
@@ -179,27 +180,32 @@ export function useDriveAutoScan() {
       if (res.cancelled) {
         setFeedback(
           res.added > 0
-            ? `Varredura interrompida: ${res.added} materiais já encontrados foram guardados.`
-            : 'Varredura cancelada.',
+            ? tr('common:googleSvc.scanCancelledSaved', { added: res.added })
+            : tr('common:googleSvc.scanCancelled'),
         );
       } else if (res.timedOut) {
         setFeedback(
           res.added > 0
-            ? `Varredura parcial (tempo limite no telemóvel): ${res.added} materiais adicionados (${res.foldersScanned} pastas). Toca novamente para continuar.`
-            : `Tempo limite atingido ao varrer (${res.foldersScanned} pastas analisadas). Associa o link da pasta da cadeira para ir direto.`,
+            ? tr('common:googleSvc.scanTimeoutAdded', { added: res.added, folders: res.foldersScanned })
+            : tr('common:googleSvc.scanTimeoutEmpty', { folders: res.foldersScanned }),
         );
       } else if (res.added > 0) {
-        setFeedback(`Varredura concluída: ${res.added} novos materiais adicionados (${res.foldersScanned} pastas analisadas)!`);
+        setFeedback(tr('common:googleSvc.scanDoneAdded', { added: res.added, folders: res.foldersScanned }));
       } else {
-        setFeedback(`Varredura concluída (${res.foldersScanned} pastas, ${res.totalFound} ficheiros analisados): as pastas do Drive já estavam sincronizadas.`);
+        setFeedback(
+          tr('common:googleSvc.scanDoneSynced', {
+            folders: res.foldersScanned,
+            total: res.totalFound,
+          }),
+        );
       }
       setTimeout(() => setFeedback(null), 7000);
     } catch (err: unknown) {
       const code = typeof err === 'object' && err && 'code' in err ? String((err as { code: unknown }).code) : '';
       if (code === 'auth/popup-blocked') {
-        setFeedback('O navegador bloqueou a janela da Google. Permite pop-ups ou inicia sessão Google em Definições.');
+        setFeedback(tr('common:googleSvc.popupBlocked'));
       } else if (code !== 'auth/popup-closed-by-user') {
-        const msg = err instanceof Error ? err.message : 'Erro ao aceder ao Google Drive.';
+        const msg = err instanceof Error ? err.message : tr('common:googleSvc.driveAccessErr');
         setFeedback(msg);
       }
     } finally {
@@ -263,17 +269,17 @@ export function useGoogleAccounts() {
         lastSync: new Date().toISOString(),
         error: undefined,
       });
-      setMessage(`Sessão pessoal iniciada com sucesso (${user.email}). A verificar pastas do Drive...`);
+      setMessage(tr('common:googleSvc.personalLoginBusy', { email: user.email ?? '' }));
       const res = await googleService.scanDriveForCourses(courses, false).catch(() => null);
       if (res && res.added > 0) {
-        setMessage(`Sessão pessoal ativa (${user.email}). ${res.added} novos materiais foram organizados no repositório.`);
+        setMessage(tr('common:googleSvc.personalActiveAdded', { email: user.email ?? '', added: res.added }));
       } else {
-        setMessage(`Sessão pessoal ativa (${user.email}). Google Drive e Nuvem sincronizados.`);
+        setMessage(tr('common:googleSvc.personalActiveSynced', { email: user.email ?? '' }));
       }
     } catch (err: unknown) {
       const code = typeof err === 'object' && err && 'code' in err ? String((err as { code: unknown }).code) : '';
       if (code !== 'auth/popup-closed-by-user') {
-        setMessage(err instanceof Error ? err.message : 'Erro ao iniciar sessão com a conta pessoal Google.');
+        setMessage(err instanceof Error ? err.message : tr('common:googleSvc.personalLoginErr'));
       }
     } finally {
       setPersonalBusy(false);
@@ -290,11 +296,11 @@ export function useGoogleAccounts() {
         lastSync: new Date().toISOString(),
         error: undefined,
       });
-      setMessage(`Conta pessoal alterada para: ${user.email}`);
+      setMessage(tr('common:googleSvc.personalSwitched', { email: user.email ?? '' }));
     } catch (err: unknown) {
       const code = typeof err === 'object' && err && 'code' in err ? String((err as { code: unknown }).code) : '';
       if (code !== 'auth/popup-closed-by-user') {
-        setMessage(err instanceof Error ? err.message : 'Erro ao trocar de conta.');
+        setMessage(err instanceof Error ? err.message : tr('common:googleSvc.switchErr'));
       }
     } finally {
       setPersonalBusy(false);
@@ -306,7 +312,7 @@ export function useGoogleAccounts() {
     try {
       await googleService.disconnectPersonalAccount();
       setIntegration('google', { connected: isAcademicConnected, error: undefined });
-      setMessage('Sessão pessoal da Google terminada.');
+      setMessage(tr('common:googleSvc.personalLoggedOut'));
     } finally {
       setPersonalBusy(false);
     }
@@ -319,12 +325,12 @@ export function useGoogleAccounts() {
       const extraUrls = useStore.getState().settings.sharedHubDriveUrls ?? [];
       const res = await googleService.scanDriveForCourses(courses, true, extraUrls);
       if (res.added > 0) {
-        setMessage(`Varredura concluída: ${res.added} novos materiais académicos adicionados às tuas cadeiras!`);
+        setMessage(tr('common:googleSvc.scanSettingsAdded', { added: res.added }));
       } else {
-        setMessage('Varredura concluída: todas as pastas do Google Drive associadas já se encontram sincronizadas.');
+        setMessage(tr('common:googleSvc.scanSettingsSynced'));
       }
     } catch (err: unknown) {
-      setMessage(err instanceof Error ? err.message : 'Erro ao varrer o Google Drive.');
+      setMessage(err instanceof Error ? err.message : tr('common:googleSvc.driveScanErr'));
     } finally {
       setScanningDrive(false);
     }
@@ -333,9 +339,9 @@ export function useGoogleAccounts() {
   const cleanJunk = useCallback(() => {
     const removed = cleanupMismatchedMaterials();
     if (removed > 0) {
-      setMessage(`${removed} ficheiros pessoais ou não académicos foram removidos do repositório.`);
+      setMessage(tr('common:googleSvc.junkRemoved', { removed }));
     } else {
-      setMessage('O repositório já se encontra livre de ficheiros irrelevantes ou duplicados.');
+      setMessage(tr('common:googleSvc.junkClean'));
     }
   }, [cleanupMismatchedMaterials]);
 
@@ -352,11 +358,11 @@ export function useGoogleAccounts() {
       if (res.email) {
         updateSettings({ academicEmail: res.email });
       }
-      setMessage(`Conta académica ligada com sucesso: ${res.email}`);
+      setMessage(tr('common:googleSvc.academicConnected', { email: res.email }));
     } catch (err: unknown) {
       const code = typeof err === 'object' && err && 'code' in err ? String((err as { code: unknown }).code) : '';
       if (code !== 'auth/popup-closed-by-user') {
-        setMessage(err instanceof Error ? err.message : 'Erro ao autenticar a conta académica da faculdade.');
+        setMessage(err instanceof Error ? err.message : tr('common:googleSvc.academicErr'));
       }
     } finally {
       setAcademicBusy(false);
@@ -367,7 +373,7 @@ export function useGoogleAccounts() {
     googleService.disconnectAcademicAccount();
     setLiveAcademicEmail(null);
     updateSettings({ academicEmail: '' });
-    setMessage('Conta académica da faculdade desligada.');
+    setMessage(tr('common:googleSvc.academicDisconnected'));
   }, [updateSettings]);
 
   const syncCalendar = useCallback(async () => {
@@ -378,11 +384,11 @@ export function useGoogleAccounts() {
         await googleService.connectPersonalAccount(false);
       }
       const n = await googleService.syncCalendar();
-      setMessage(`${n} ${n === 1 ? 'evento importado' : 'eventos importados'} da agenda.`);
+      setMessage(tr('common:googleSvc.calSynced', { count: n }));
     } catch (err: unknown) {
       const code = typeof err === 'object' && err && 'code' in err ? String((err as { code: unknown }).code) : '';
       if (code !== 'auth/popup-closed-by-user') {
-        setMessage(err instanceof Error ? err.message : 'Erro ao sincronizar a Google Agenda.');
+        setMessage(err instanceof Error ? err.message : tr('common:googleSvc.calSyncErr'));
       }
     } finally {
       setPersonalBusy(false);

@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { appDateLocale as pt, longDatePattern } from '../../lib/dateLocale';
 import { Clock, MapPin } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { weekdayLong, weekdayShort } from '../../lib/colors';
 import type { Course } from '../../types';
 import { CourseChip } from '../ui';
@@ -58,6 +59,7 @@ interface Props {
 }
 
 export default function WeekView({ days, byDay, courseById, today, selected, onSelect, onEditClass }: Props) {
+  const { t } = useTranslation('plan');
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60_000);
@@ -133,7 +135,7 @@ export default function WeekView({ days, byDay, courseById, today, selected, onS
               · {format(activeMobileDate, longDatePattern(false), { locale: pt })}
             </span>
             <span className="font-mono tabular">
-              {mobileDayItems.length} {mobileDayItems.length === 1 ? 'item' : 'itens'}
+              {t('cal.itemCount', { count: mobileDayItems.length })}
             </span>
           </div>
         )}
@@ -161,7 +163,7 @@ export default function WeekView({ days, byDay, courseById, today, selected, onS
 
         {mobileTimed.length === 0 && mobileAllDay.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-line bg-surface-2/30 px-4 py-8 text-center text-xs text-muted">
-            Sem aulas ou eventos marcados neste dia.
+            {t('cal.weekEmptyDay')}
           </div>
         ) : (
           <div className="space-y-2">
@@ -244,7 +246,7 @@ export default function WeekView({ days, byDay, courseById, today, selected, onS
                   type="button"
                   onClick={() => onSelect(ds)}
                   aria-pressed={selected === ds}
-                  className={cx('flex flex-col items-center gap-0.5 py-2 transition hover:bg-surface-2', selected === ds && 'bg-accent-soft')}
+                  className={cx('flex min-h-11 flex-col items-center gap-0.5 py-2 transition hover:bg-surface-2', selected === ds && 'bg-accent-soft')}
                 >
                   <span className="text-xs font-medium uppercase tracking-wide text-muted">{weekdayShort[d.getDay()]}</span>
                   <span
@@ -262,7 +264,7 @@ export default function WeekView({ days, byDay, courseById, today, selected, onS
 
           {/* Faixa de dias inteiros / fora do horário */}
           <div className="grid border-b border-line" style={{ gridTemplateColumns: COLS }}>
-            <div className="py-2 pr-2 text-right text-xs text-muted">Dia todo</div>
+            <div className="py-2 pr-2 text-right text-xs text-muted">{t('cal.allDay')}</div>
             {days.map((d) => {
               const ds = format(d, 'yyyy-MM-dd');
               const strip = (byDay.get(ds) ?? []).filter((it) => place(it) === null);
@@ -342,7 +344,7 @@ export default function WeekView({ days, byDay, courseById, today, selected, onS
                         key={item.id}
                         type="button"
                         onClick={() => onEditClass?.(item)}
-                        title={`${timeLabel(item)} · ${item.title} (Clica para alterar dia/hora)`}
+                        title={`${timeLabel(item)} · ${item.title} (${t('cal.clickToEdit')})`}
                         className={cls}
                         style={style}
                       >

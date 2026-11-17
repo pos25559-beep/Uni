@@ -373,7 +373,7 @@ export default function UniNotebookDrawer({
                     type="button"
                     onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== idx))}
                     aria-label={t('notebook.remove', { name: att.name })}
-                    className="grid size-9 place-items-center rounded-full text-muted hover:bg-surface hover:text-fg"
+                    className="grid size-11 place-items-center rounded-full text-muted hover:bg-surface hover:text-fg"
                   >
                     <X size={13} />
                   </button>

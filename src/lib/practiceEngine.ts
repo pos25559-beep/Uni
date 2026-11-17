@@ -1,3 +1,4 @@
+import { tr } from '../i18n/tr';
 import {
   generateMaterialPracticeSet,
   type ChatAttachment,
@@ -273,7 +274,7 @@ export async function preparePracticeDeckForTopic(args: {
       generatedCount: 0,
       usedMaterialTitles,
       needsDriveAuth,
-      error: err instanceof Error ? err.message : 'Não foi possível gerar cartões agora.',
+      error: err instanceof Error ? err.message : tr('common:errors.practiceGenFail'),
     };
   }
 }

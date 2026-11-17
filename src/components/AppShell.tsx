@@ -331,7 +331,7 @@ export default function AppShell() {
           </div>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-1" aria-label="Navegação principal">
+        <nav className="flex flex-1 flex-col gap-1" aria-label={t('nav.mainAria')}>
           {desktopNav.map(({ to, key, icon: Icon, end, tour }) => (
             <NavLink
               key={to}
@@ -340,7 +340,7 @@ export default function AppShell() {
               data-tour={tour}
               className={({ isActive }) =>
                 cx(
-                  'relative flex items-center gap-3 rounded-full px-3.5 py-2.5 text-sm font-semibold transition',
+                  'relative flex min-h-11 items-center gap-3 rounded-full px-3.5 py-2 text-sm font-semibold transition',
                   isActive ? 'bg-ink-cta text-ink-cta-fg' : 'text-muted hover:bg-surface-2 hover:text-fg',
                 )
               }
@@ -407,7 +407,7 @@ export default function AppShell() {
       {!isBypassRoute && (
         <div className="pointer-events-none fixed inset-x-0 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 flex justify-center px-3 md:hidden">
         <nav
-          aria-label="Barra de navegação"
+          aria-label={t('nav.barAria')}
           className="pointer-events-auto grid w-full max-w-md grid-cols-5 items-center gap-1 rounded-3xl bg-[#141312] p-1.5 text-[#FAF8F2] shadow-dock dark:border dark:border-white/10 dark:bg-[#23201B]"
         >
           {mobilePrimaryNav.map(({ to, key, icon: Icon, end, tour, center }) => (
@@ -452,7 +452,7 @@ export default function AppShell() {
             type="button"
             data-tour="nav-more"
             aria-expanded={moreOpen}
-            aria-label="Mais opções e definições"
+            aria-label={t('nav.moreAria')}
             onClick={() => {
               void hapticTap();
               setMoreOpen((v) => !v);
@@ -477,10 +477,10 @@ export default function AppShell() {
       {/* Folha móvel "Mais" */}
       <AnimatePresence>
         {moreOpen && (
-          <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="Menu adicional">
+          <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label={t('moreSheet.menuAria')}>
             <motion.button
               type="button"
-              aria-label="Fechar menu"
+              aria-label={t('moreSheet.closeMenuAria')}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}

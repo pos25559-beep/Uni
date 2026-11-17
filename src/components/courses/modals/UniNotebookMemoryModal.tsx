@@ -5,11 +5,7 @@ import type { UniAgentRecord } from '../../../lib/localDb';
 import { cx, showToast } from '../../../lib/uiHelpers';
 import { Button, Input, Modal, Switch } from '../../ui';
 
-const LEARNING_STYLES: Array<{ id: 'exemplos' | 'teoria' | 'exercicios'; label: string }> = [
-  { id: 'exemplos', label: 'Exemplos primeiro' },
-  { id: 'teoria', label: 'Teoria e intuição' },
-  { id: 'exercicios', label: 'Exercícios práticos' },
-];
+const LEARNING_STYLES = ['exemplos', 'teoria', 'exercicios'] as const;
 
 export function UniNotebookMemoryModal({
   open,
@@ -96,19 +92,19 @@ export function UniNotebookMemoryModal({
         <div>
           <p className="mb-1.5 text-xs font-semibold text-muted">{t('memory.pref')}</p>
           <div className="flex flex-wrap gap-1.5">
-            {LEARNING_STYLES.map((st) => (
+            {LEARNING_STYLES.map((styleId) => (
               <button
-                key={st.id}
+                key={styleId}
                 type="button"
-                onClick={() => void patchNotebook({ learningStyle: st.id })}
+                onClick={() => void patchNotebook({ learningStyle: styleId })}
                 className={cx(
                   'min-h-11 rounded-full border px-3 text-xs font-semibold transition',
-                  agent.notebook.learningStyle === st.id
+                  agent.notebook.learningStyle === styleId
                     ? 'border-accent bg-accent-soft text-accent-ink'
                     : 'border-line bg-surface-2 text-muted hover:text-fg',
                 )}
               >
-                {t(`memory.style.${st.id}`)}
+                {t(`memory.style.${styleId}`)}
               </button>
             ))}
           </div>
@@ -132,7 +128,7 @@ export function UniNotebookMemoryModal({
                         goals: agent.notebook.goals.filter((_, i) => i !== idx),
                       })
                     }
-                    className="grid size-9 place-items-center rounded-full text-muted hover:bg-coral-soft hover:text-coral"
+                    className="grid size-11 -mr-1.5 place-items-center rounded-full text-muted hover:bg-coral-soft hover:text-coral"
                   >
                     <X size={13} />
                   </button>
@@ -249,7 +245,7 @@ export function UniNotebookMemoryModal({
                         strengths: agent.notebook.strengths.filter((_, i) => i !== idx),
                       })
                     }
-                    className="grid size-9 place-items-center rounded-full text-muted hover:bg-coral-soft hover:text-coral"
+                    className="grid size-11 -mr-1.5 place-items-center rounded-full text-muted hover:bg-coral-soft hover:text-coral"
                   >
                     <X size={13} />
                   </button>

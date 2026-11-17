@@ -1,3 +1,4 @@
+import { tr } from '../i18n/tr';
 import { flattenMarkdownMathForText } from './latexText';
 
 /** Converte markdown/texto para caracteres seguros no font Standard Helvetica (WinAnsi). */
@@ -145,7 +146,9 @@ export async function buildNotebookPdfBytes(input: {
   // Numeração de páginas no rodapé
   const pages = doc.getPages();
   pages.forEach((p, idx) => {
-    p.drawText(`Unipedia · Página ${idx + 1} de ${pages.length}`, {
+    p.drawText(
+      sanitizePdfWinAnsi(tr('assistant:notebook.pdfPage', { current: idx + 1, total: pages.length })),
+      {
       x: marginX,
       y: 28,
       size: 8.5,

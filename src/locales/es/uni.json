@@ -50,7 +50,13 @@
     "issueDiploma": "Emitir diploma",
     "diplomaIssued": "Diploma emitido",
     "bridgeBtn": "Puente de estudio",
-    "mentorNextBtn": "Enseñar siguiente asignatura"
+    "mentorNextBtn": "Enseñar siguiente asignatura",
+    "updatedToast": "{{name}} actualizado.",
+    "adoptedToast": "¡{{name}} adoptado para {{course}}!",
+    "removedToast": "{{name}} quitado de esta asignatura.",
+    "expeditionFail": "Error al preparar la expedición.",
+    "customizeAria": "Personalizar {{name}}",
+    "customize": "Personalizar"
   },
   "adoptModal": {
     "editTitle": "Personalizar {{name}} ({{course}})",
@@ -100,7 +106,8 @@
     "importPlaceholder": "Ej.: Nota 4/5 en Límites. Fallé asíntotas oblicuas y signos al infinito.",
     "importBtn": "Actualizar repaso y cuaderno",
     "importedSuccess": "¡Repaso espaciado y cuaderno actualizados!",
-    "missingText": "Pega primero el resultado del cuestionario o los puntos débiles."
+    "missingText": "Pega primero el resultado del cuestionario o los puntos débiles.",
+    "copyFail": "No se pudo copiar al portapapeles."
   },
   "shelf": {
     "eyebrow": "Estantería de Unis",
@@ -162,9 +169,72 @@
     "deleteSheet": "Eliminar ficha {{title}}",
     "close": "Cerrar",
     "quizErr": "Error al importar el quiz",
-    "mentorErr": "Error al enseñar la siguiente asignatura"
+    "mentorErr": "Error al enseñar la siguiente asignatura",
+    "needDriveAuth": "Autoriza Google Drive en la pestaña Materiales para leer PDFs de la carpeta.",
+    "notesPrefix": "Notas · {{topic}}",
+    "courseNotesPrefix": "Apuntes · {{course}}",
+    "sheetSaved": "Ficha guardada localmente para el Tutor y el Enfoque.",
+    "openInTutor": "Abrir en el Tutor",
+    "sheetCopied": "¡Ficha copiada!"
   },
   "collectibles": {
+    "modalTitle": "Nido y Vitrina de Uni",
+    "countsSummary": "{{skins}}/{{skinsTotal}} colores · {{pets}}/{{petsTotal}} mascotas",
+    "close": "Cerrar",
+    "hugAria": "Acariciar a Uni",
+    "totalMinutes": "{{time}} totales",
+    "energyToday": "Energía hoy:",
+    "nextLevel": "Siguiente nivel ({{label}}): {{time}}",
+    "hugLoved": "¡Le encantó! +3 ⚡",
+    "hugGiven": "Mimo dado",
+    "hugAction": "Acariciar ({{count}}/{{max}})",
+    "discoveryToday": "Hallazgo de hoy: {{note}}",
+    "adventurePrompt": "Completa sesiones, tareas o acaricia a Uni para llenar la energía del día.",
+    "tabs": {
+      "skins": "Colores ({{count}})",
+      "pets": "Micropets ({{count}})",
+      "discreet": "Discreto en pantalla"
+    },
+    "surpriseTitle": "Color sorpresa en pantalla",
+    "surpriseHint": "Alterna el color de los compañeros discretos entre los colores que ya has desbloqueado.",
+    "surpriseOn": "Activo",
+    "surpriseOff": "Color fijo",
+    "unlocked": "Desbloqueado",
+    "equipped": "Equipado",
+    "equipSkin": "Equipar este color",
+    "petsIntro": "Los Micropets caminan junto a tu Uni en el Nido y por las esquinas de la pantalla.",
+    "storePet": "Guardar mascota",
+    "followingYou": "Acompañándote",
+    "adoptPet": "Adoptar a {{name}}",
+    "active": "Activo",
+    "discreetInfo": "Los Unis discretos pasean por distintos rincones y márgenes (izquierda, derecha y bordes) tanto en ordenador como en móvil, escondiéndose al escribir o hacer scroll.",
+    "screenCountTitle": "Cantidad en pantalla",
+    "screenCountHint": "En el modo «Hasta 2», un amigo de otro color viene a asomarse contigo.",
+    "modes": {
+      "all": "Hasta 2",
+      "solo": "Solo 1",
+      "off": "Desactivado"
+    },
+    "overlay": {
+      "hugBoost": "¡Mimo! +3 energía ⚡",
+      "hereWithYou": "¡Aquí contigo!",
+      "hugShort": "¡Mimo!",
+      "tapAria": "Acariciar al Uni discreto"
+    },
+    "skinLocked": {
+      "butter": "{{count}}/3 sesiones o 1 check-in",
+      "crimson": "{{count}}/3 recalls o días",
+      "sage": "{{count}}/5 recalls activos",
+      "terracotta": "{{count}}/6 sesiones",
+      "espresso": "{{count}}/150 min",
+      "ink": "{{count}}/7 días o nivel SRS 21d"
+    },
+    "petLocked": {
+      "owl": "{{count}}/2 sesiones o recalls",
+      "fox": "{{count}}/3 días seguidos",
+      "turtle": "{{count}}/5 sesiones",
+      "rabbit": "{{count}}/8 sesiones"
+    },
     "skins": {
       "classic": {
         "name": "Uni Salvia Clásico",
@@ -271,6 +341,39 @@
         "unlockHint": "Completa 8 sesiones o 1 tema en nivel 21d"
       }
     },
+    "growthStages": {
+      "semente": "Semilla",
+      "explorador": "Explorador",
+      "estudioso": "Estudioso",
+      "sabio": "Sabio del Campus"
+    },
+    "discoveries": {
+      "0": "¡Encontró una mesa al sol junto a la biblioteca con enchufe libre!",
+      "1": "Observó una familia de gorriones en el jardín entre clases.",
+      "2": "Guardó un subrayador amarillo nuevo para tu próxima ficha.",
+      "3": "Descubrió un atajo silencioso hacia los apuntes de la semana.",
+      "4": "Anotó tres fórmulas difíciles en un post-it bien ordenado.",
+      "5": "Celebró tu ritmo con una taza imaginaria de té de menta.",
+      "d0": "¡Ha encontrado una mesa al sol cerca de la biblioteca con enchufe libre!",
+      "d1": "Ha observado una familia de gorriones en el jardín entre clases.",
+      "d2": "Ha guardado un marcador amarillo nuevo para tu próxima ficha.",
+      "d3": "Ha descubierto un atajo silencioso hacia los apuntes de la semana.",
+      "d4": "Ha anotado tres fórmulas difíciles en un post-it bien ordenado.",
+      "d5": "Ha celebrado tu ritmo con una taza imaginaria de té de menta."
+    },
+    "quietNotes": {
+      "adventureDone": "Energía del día llena — ¡buen ritmo!",
+      "oneLightBlock": "1 bloque ligero hoy ya basta.",
+      "pendingBlocks": "{{count}} bloques esperándote, sin prisa.",
+      "streakGoodPace": "{{days}} días seguidos… buen ritmo.",
+      "notebookUpToDate": "Cuaderno al día.",
+      "courses": "Haz captura o pega el programa si falta algo.",
+      "plan": "Los bloques se ajustan a tu ritmo.",
+      "progress": "Cada recall despierta un Uni o mascota nueva.",
+      "assistant": "Puedes adjuntar apuntes por asignatura.",
+      "materials": "Organiza por carpetas en cada asignatura.",
+      "fallback": "Aquí contigo en este rincón."
+    },
     "progress": {
       "unlocked": "Desbloqueado",
       "sessionsOrCheckin": "{{current}}/{{target}} sesiones o 1 check-in",
@@ -287,14 +390,6 @@
       "explorador": "Explorador",
       "estudioso": "Estudioso",
       "sabio": "Sabio del Campus"
-    },
-    "discoveries": {
-      "d0": "¡Ha encontrado una mesa al sol cerca de la biblioteca con enchufe libre!",
-      "d1": "Ha observado una familia de gorriones en el jardín entre clases.",
-      "d2": "Ha guardado un marcador amarillo nuevo para tu próxima ficha.",
-      "d3": "Ha descubierto un atajo silencioso hacia los apuntes de la semana.",
-      "d4": "Ha anotado tres fórmulas difíciles en un post-it bien ordenado.",
-      "d5": "Ha celebrado tu ritmo con una taza imaginaria de té de menta."
     }
   },
   "collectiblesModal": {

@@ -523,7 +523,7 @@ export default function SmartScheduleImportModal({
               setError(null);
             }}
             className={cx(
-              'flex items-center justify-center gap-2 rounded-2xl border px-3 py-2.5 text-xs font-semibold transition',
+              'flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-3 py-2.5 text-xs font-semibold transition',
               mode === 'photo'
                 ? 'border-accent bg-accent-soft text-accent'
                 : 'border-line bg-surface-2 text-muted hover:text-fg',
@@ -538,7 +538,7 @@ export default function SmartScheduleImportModal({
               setError(null);
             }}
             className={cx(
-              'flex items-center justify-center gap-2 rounded-2xl border px-3 py-2.5 text-xs font-semibold transition',
+              'flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-3 py-2.5 text-xs font-semibold transition',
               mode === 'gcal'
                 ? 'border-accent bg-accent-soft text-accent'
                 : 'border-line bg-surface-2 text-muted hover:text-fg',
@@ -587,7 +587,7 @@ export default function SmartScheduleImportModal({
                 ? t('smartImport.bodyAssess')
                 : t('smartImport.body')}
             </p>
-            <label className="inline-flex min-h-[42px] cursor-pointer items-center gap-2 rounded-full bg-ink-cta px-4 py-2 text-xs font-semibold text-ink-cta-fg shadow-card transition hover:opacity-90">
+            <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full bg-ink-cta px-4 py-2 text-xs font-semibold text-ink-cta-fg shadow-card transition hover:opacity-90">
               {busy ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
               {busy ? t('smartImport.reading') : t('smartImport.choose')}
               <input
@@ -693,7 +693,7 @@ export default function SmartScheduleImportModal({
                         <input
                           type="checkbox"
                           checked={s.selected}
-                          aria-label={`Selecionar ${displayName}`}
+                          aria-label={t('smartImport.selectAria', { name: displayName })}
                           onClick={(e) => e.stopPropagation()}
                           onChange={(e) =>
                             setSlots((prev) =>

@@ -51,7 +51,7 @@ export default function CourseRepositoryTab({
   assessments,
   onUploadFile,
 }: Props) {
-  const { t } = useTranslation('courses');
+  const { t, i18n } = useTranslation('courses');
   const materials = useStore((s) => s.materials);
   const upsert = useStore((s) => s.upsert);
   const patch = useStore((s) => s.patch);
@@ -233,7 +233,7 @@ export default function CourseRepositoryTab({
                       category: 'outro',
                     })
                   }
-                  className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-accent/40 bg-accent-soft px-3 text-xs font-semibold text-accent hover:border-accent hover:bg-accent/15 transition"
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-accent/40 bg-accent-soft px-3.5 py-2 text-xs font-semibold text-accent hover:border-accent hover:bg-accent/15 transition"
                 >
                   <HardDrive size={13} />
                   {t('repo.exploreDrive')}
@@ -244,7 +244,7 @@ export default function CourseRepositoryTab({
                   href={course.sharedDriveUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-line bg-surface-2 px-3 text-xs font-medium text-fg hover:border-muted/50 transition"
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-line bg-surface-2 px-3.5 py-2 text-xs font-medium text-fg hover:border-muted/50 transition"
                 >
                   <HardDrive size={13} className="text-muted" />
                   {t('repo.openGoogle')}
@@ -254,7 +254,7 @@ export default function CourseRepositoryTab({
               <button
                 type="button"
                 onClick={() => setShowDeviceImport(true)}
-                className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-line bg-surface-2 px-3 text-xs font-medium text-fg hover:border-accent hover:text-accent transition"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-line bg-surface-2 px-3.5 py-2 text-xs font-medium text-fg hover:border-accent hover:text-accent transition"
               >
                 <HardDrive size={13} className="text-muted" />
                 {t('repo.importDevice')}
@@ -277,10 +277,10 @@ export default function CourseRepositoryTab({
                     <div className="min-w-0">
                       <p className="truncate font-medium text-fg">{item.title}</p>
                       <div className="flex items-center gap-1.5 text-muted">
-                        <span>{item.year ?? 'Anos Anteriores'}</span>
+                        <span>{item.year ?? t('repo.prevYears')}</span>
                         {item.hasSolution && (
                           <span className="flex items-center gap-0.5 text-ok">
-                            <CheckCircle size={10} /> Resolvido
+                            <CheckCircle size={12} /> {t('repo.solved')}
                           </span>
                         )}
                       </div>
@@ -354,7 +354,8 @@ export default function CourseRepositoryTab({
           <button
             type="button"
             onClick={clearFeedback}
-            className="text-muted hover:text-fg text-xs font-semibold"
+            aria-label={t('repo.closeNotice')}
+            className="grid size-11 shrink-0 place-items-center rounded-xl text-xs font-semibold text-muted hover:bg-surface hover:text-fg"
           >
             ✕
           </button>
@@ -412,7 +413,7 @@ export default function CourseRepositoryTab({
               type="button"
               onClick={() => setFilter(cat)}
               className={cx(
-                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition',
+                'inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-medium transition',
                 active
                   ? 'border-accent bg-accent-soft text-accent'
                   : 'border-line bg-surface text-muted hover:text-fg',
@@ -477,19 +478,19 @@ export default function CourseRepositoryTab({
                   </button>
 
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
-                    <Badge>{providerLabel[item.provider] ?? 'Material'}</Badge>
+                    <Badge>{providerLabel[item.provider] ?? t('repo.materialFallback')}</Badge>
                     {item.fileName && <span className="text-fg/75 font-mono">{item.fileName}</span>}
                     {item.fileSize && <span>({formatBytes(item.fileSize)})</span>}
                     {item.year && <span className="font-mono">{item.year}</span>}
                     {item.epoch && <Badge tone="accent">{item.epoch}</Badge>}
                     {item.hasSolution && (
                       <span className="inline-flex items-center gap-1 text-ok">
-                        <CheckCircle size={11} /> Com Solução
+                        <CheckCircle size={12} /> {t('repo.withSolution')}
                       </span>
                     )}
                     {item.modifiedAt && (
                       <span className="text-muted/70 tabular">
-                        • {fmtShortDate(item.modifiedAt)}
+                        • {fmtShortDate(item.modifiedAt, i18n.language)}
                       </span>
                     )}
                   </div>
@@ -509,7 +510,7 @@ export default function CourseRepositoryTab({
                 <button
                   type="button"
                   onClick={() => handleOpenFile(item)}
-                  className="rounded-xl border border-line bg-surface-2 px-3 py-1.5 text-xs font-medium text-fg hover:border-muted/50"
+                  className="min-h-11 rounded-xl border border-line bg-surface-2 px-3.5 py-2 text-xs font-medium text-fg hover:border-muted/50"
                 >
                   {t('repo.open')}
                 </button>

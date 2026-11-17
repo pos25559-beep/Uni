@@ -85,7 +85,7 @@ export default function CourseDetail() {
       <EmptyState
         icon={<GraduationCap size={28} />}
         title={t('courseNotFound')}
-        hint="Pode ter sido apagada ou o link está incorreto."
+        hint={t('courseNotFoundHint')}
         action={
           <Link to="/cadeiras" className="text-sm font-medium text-accent hover:underline">
             {t('backToCourses')}
@@ -255,10 +255,10 @@ export default function CourseDetail() {
                   </span>
                   <div>
                     <h2 className="text-sm font-semibold text-fg sm:text-base">
-                      Avisos Gmail da Cadeira
+                      {t('emails.cardTitle')}
                     </h2>
                     <p className="text-xs text-muted">
-                      Mensagens de docentes e atualizações ligadas a {course.shortName}
+                      {t('emails.cardHint', { course: course.shortName })}
                     </p>
                   </div>
                 </div>

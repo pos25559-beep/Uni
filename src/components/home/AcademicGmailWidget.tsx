@@ -1,5 +1,6 @@
 import { CheckCircle2, ExternalLink, GraduationCap, KeyRound, Mail, RefreshCw, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Button, Modal } from '../ui';
 import { cx } from '../../lib/uiHelpers';
@@ -8,12 +9,14 @@ import { parseEmlToAcademicEmail } from '../../integrations/gmail';
 import type { AcademicEmail } from '../../services/googleService';
 import { newId, useStore } from '../../store/useStore';
 import { format, parseISO } from 'date-fns';
-import { appDateLocale as pt } from '../../lib/dateLocale';
+import { appDateLocale as pt, longDateTimePattern } from '../../lib/dateLocale';
 
 export default function AcademicGmailWidget({ hideWhenEmpty = false }: { hideWhenEmpty?: boolean } = {}) {
+  const { t } = useTranslation(['today', 'common']);
   const courses = useStore((s) => s.courses);
   const personalEmail = useStore((s) => s.settings.personalEmail);
   const savedAcademicEmail = useStore((s) => s.settings.academicEmail);
+  const isMinimal = useStore((s) => (s.settings.appTone ?? 'vibrante') === 'serio');
   const updateSettings = useStore((s) => s.updateSettings);
   const upsert = useStore((s) => s.upsert);
   const {
@@ -39,10 +42,6 @@ export default function AcademicGmailWidget({ hideWhenEmpty = false }: { hideWhe
     return null;
   }
 
-  if (hideWhenEmpty && combinedEmails.length === 0) {
-    return null;
-  }
-
   const handleImportEml = async (file: File | undefined) => {
     if (!file) return;
     try {
@@ -60,7 +59,7 @@ export default function AcademicGmailWidget({ hideWhenEmpty = false }: { hideWhe
     upsert('tasks', {
       id: newId(),
       courseId: selectedEmail.courseId,
-      title: `Aviso: ${selectedEmail.subject.slice(0, 60)}`,
+      title: t('today:mail.taskPrefix', { subject: selectedEmail.subject.slice(0, 60) }),
       due: format(new Date(), 'yyyy-MM-dd'),
       done: false,
       priority: 2,
@@ -72,7 +71,14 @@ export default function AcademicGmailWidget({ hideWhenEmpty = false }: { hideWhe
   return (
     <>
       {/* Cartão Postal Académico em pastel céu suave */}
-      <section className="relative overflow-hidden rounded-[26px] border border-[#141312]/8 bg-[#E9F3FE] p-5 text-[#141312] shadow-card dark:border-white/10 dark:bg-surface-2 dark:text-[#FAF6EC]">
+      <section
+        className={cx(
+          'relative overflow-hidden border p-5 shadow-card',
+          isMinimal
+            ? 'rounded-2xl border-line bg-surface text-fg'
+            : 'rounded-[26px] border-[#141312]/8 bg-[#E9F3FE] text-[#141312] dark:border-white/10 dark:bg-surface-2 dark:text-[#FAF6EC]',
+        )}
+      >
         <input
           ref={emlInputRef}
           type="file"
@@ -82,19 +88,23 @@ export default function AcademicGmailWidget({ hideWhenEmpty = false }: { hideWhe
         />
 
         {/* Selo postal decorativo no canto */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-2 -right-2 size-16 rotate-6 rounded-2xl border-2 border-dashed border-[#E04F33]/35 bg-[#FAF8F2]/60 dark:border-coral/30 dark:bg-white/5"
-        />
+        {!isMinimal && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -top-2 -right-2 size-16 rotate-6 rounded-2xl border-2 border-dashed border-[#E04F33]/35 bg-[#FAF8F2]/60 dark:border-coral/30 dark:bg-white/5"
+          />
+        )}
 
         <div className="relative z-10 flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-0">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/75 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider text-accent-ink dark:bg-black/25 dark:text-accent">
               <Mail size={11} />
-              Caixa Postal
+              {t('today:mail.badge')}
             </span>
             <h2 className="mt-1.5 font-display text-base font-bold leading-snug">
-              {connected && academicEmail ? `Correio (${academicEmail})` : 'Correio Académico'}
+              {connected && academicEmail
+                ? t('today:mail.titleConnected', { email: academicEmail })
+                : t('today:mail.title')}
             </h2>
           </div>
 
@@ -108,7 +118,7 @@ export default function AcademicGmailWidget({ hideWhenEmpty = false }: { hideWhe
                 className="bg-white/80 dark:bg-surface"
               >
                 <RefreshCw size={12} className={cx(loading && 'animate-spin')} />
-                Sincronizar
+                {t('today:mail.sync')}
               </Button>
             )}
           </div>
@@ -124,7 +134,7 @@ export default function AcademicGmailWidget({ hideWhenEmpty = false }: { hideWhe
                     <button
                       type="button"
                       onClick={() => setSelectedEmail(em)}
-                      className="group block w-full rounded-[18px] bg-white/80 px-3.5 py-2.5 text-left transition hover:bg-white dark:bg-black/25 dark:hover:bg-black/35"
+                      className="group block min-h-11 w-full rounded-[18px] bg-white/80 px-3.5 py-2.5 text-left transition hover:bg-white dark:bg-black/25 dark:hover:bg-black/35"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex min-w-0 items-center gap-1.5">
@@ -155,10 +165,10 @@ export default function AcademicGmailWidget({ hideWhenEmpty = false }: { hideWhe
             </ul>
           ) : !connected ? (
             <div className="space-y-3 text-xs">
-              <p className="opacity-85 leading-relaxed">
+              <p className="leading-relaxed opacity-85">
                 {personalEmail
-                  ? `A tua conta pessoal (${personalEmail}) fica só para Drive e Agenda. Liga abaixo o teu email institucional da faculdade ou importa um aviso `
-                  : 'Liga o teu email institucional da faculdade para ver avisos dos docentes num só cartão ou importa já um ficheiro '}
+                  ? t('today:mail.personalHint', { email: personalEmail })
+                  : t('today:mail.connectHint')}
                 <code className="rounded bg-white/70 px-1 py-0.5 font-mono text-xs dark:bg-black/25">.eml</code>.
               </p>
               <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
@@ -166,8 +176,8 @@ export default function AcademicGmailWidget({ hideWhenEmpty = false }: { hideWhe
                   type="email"
                   value={emailInput}
                   onChange={(e) => setEmailInput(e.target.value)}
-                  placeholder="ex: nome@universidade.pt"
-                  aria-label="Email institucional"
+                  placeholder={t('today:mail.emailPlaceholder')}
+                  aria-label={t('today:mail.emailAria')}
                   className="min-h-11 w-full rounded-xl border border-black/15 bg-white/85 px-3 py-1.5 text-xs text-[#141312] placeholder:text-black/45 focus:border-accent focus:outline-none sm:min-w-[190px] sm:flex-1 dark:border-white/15 dark:bg-black/30 dark:text-[#FAF6EC] dark:placeholder:text-white/40"
                 />
                 <div className="flex flex-wrap gap-2">
@@ -181,7 +191,7 @@ export default function AcademicGmailWidget({ hideWhenEmpty = false }: { hideWhe
                     }}
                   >
                     <Mail size={13} />
-                    Ligar Email Académico
+                    {t('today:mail.connectBtn')}
                   </Button>
                   <Button
                     size="sm"
@@ -190,34 +200,34 @@ export default function AcademicGmailWidget({ hideWhenEmpty = false }: { hideWhe
                     className="bg-white/85 text-[#141312] dark:bg-surface dark:text-fg"
                   >
                     <Upload size={13} />
-                    Importar (.eml)
+                    {t('today:mail.importEml')}
                   </Button>
                 </div>
               </div>
             </div>
           ) : needsPermission ? (
             <div className="space-y-2.5 text-xs">
-              <p className="opacity-80">A tua sessão Google precisa de autorização para ler o correio académico.</p>
+              <p className="opacity-80">{t('today:mail.needsPermission')}</p>
               <Button size="sm" variant="primary" onClick={() => handleConnect(true)}>
                 <KeyRound size={13} />
-                Autorizar leitura
+                {t('today:mail.authorizeBtn')}
               </Button>
             </div>
           ) : loading ? (
-            <p className="py-2 text-xs opacity-75">A consultar o teu correio académico...</p>
+            <p className="py-2 text-xs opacity-75">{t('today:mail.loading')}</p>
           ) : (
             <div className="space-y-2.5 text-xs">
               <p className="opacity-80">
                 {!hasLiveToken && academicEmail
-                  ? `Conta ${academicEmail} guardada. Clica em «Sincronizar» para carregar novos avisos do Gmail.`
-                  : 'Nenhum aviso recente encontrado na tua caixa.'}
+                  ? t('today:mail.cachedHint', { email: academicEmail })
+                  : t('today:mail.emptyInbox')}
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="secondary" onClick={() => void loadEmails(true)} className="bg-white/80 dark:bg-surface">
-                  <RefreshCw size={12} /> {!hasLiveToken ? 'Sincronizar Gmail' : 'Verificar de novo'}
+                  <RefreshCw size={12} /> {!hasLiveToken ? t('today:mail.syncGmail') : t('today:mail.checkAgain')}
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => emlInputRef.current?.click()}>
-                  <Upload size={12} /> Importar .eml
+                  <Upload size={12} /> {t('today:mail.importEmlPlain')}
                 </Button>
               </div>
             </div>
@@ -235,25 +245,25 @@ export default function AcademicGmailWidget({ hideWhenEmpty = false }: { hideWhe
               <div>
                 {taskAdded && (
                   <span className="flex items-center gap-1 text-xs text-ok">
-                    <CheckCircle2 size={13} /> Tarefa criada!
+                    <CheckCircle2 size={13} /> {t('today:mail.taskCreated')}
                   </span>
                 )}
               </div>
               <div className="flex items-center gap-2">
                 <Button variant="secondary" onClick={handleCreateTask}>
-                  <CheckCircle2 size={14} /> Criar Tarefa
+                  <CheckCircle2 size={14} /> {t('today:mail.createTask')}
                 </Button>
-                <Button onClick={() => setSelectedEmail(null)}>Fechar</Button>
+                <Button onClick={() => setSelectedEmail(null)}>{t('common:actions.close')}</Button>
               </div>
             </div>
           }
         >
           <div className="space-y-4 text-xs">
             <div className="border-b border-line pb-2 text-muted">
-              <p><span className="font-semibold text-fg">De:</span> {selectedEmail.from}</p>
+              <p><span className="font-semibold text-fg">{t('today:mail.fromLabel')}</span> {selectedEmail.from}</p>
               <p className="mt-1">
-                <span className="font-semibold text-fg">Data:</span>{' '}
-                {format(parseISO(selectedEmail.date), "EEEE, d 'de' MMMM 'às' HH:mm", { locale: pt })}
+                <span className="font-semibold text-fg">{t('today:mail.dateLabel')}</span>{' '}
+                {format(parseISO(selectedEmail.date), longDateTimePattern(true), { locale: pt })}
               </p>
             </div>
 
@@ -263,12 +273,12 @@ export default function AcademicGmailWidget({ hideWhenEmpty = false }: { hideWhe
 
             {selectedEmail.courseId && (
               <div className="flex items-center justify-between rounded-xl border border-line bg-surface p-3">
-                <span className="text-muted">Cadeira associada:</span>
+                <span className="text-muted">{t('today:mail.linkedCourse')}</span>
                 <Link
                   to={`/cadeiras/${selectedEmail.courseId}`}
-                  className="flex items-center gap-1 font-semibold text-accent hover:underline"
+                  className="inline-flex min-h-11 items-center gap-1 font-semibold text-accent hover:underline"
                 >
-                  Abrir cadeira
+                  {t('today:mail.openCourse')}
                   <ExternalLink size={12} />
                 </Link>
               </div>

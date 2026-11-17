@@ -18,10 +18,11 @@ interface Props {
 }
 
 export default function AssessmentsTab({ course }: Props) {
-  const { t } = useTranslation('courses');
+  const { t, i18n } = useTranslation('courses');
   const allAssessments = useStore((s) => s.assessments);
   const gradingScale = useStore((s) => s.settings.gradingScale) ?? 'pt20';
-  const appLang = useStore((s) => s.settings.language) ?? 'pt-PT';
+  const storeLang = useStore((s) => s.settings.language);
+  const appLang = (i18n.language || storeLang || 'pt-PT') as AppLanguage;
   const patch = useStore((s) => s.patch);
   const remove = useStore((s) => s.remove);
   const [form, setForm] = useState<Assessment | 'new' | null>(null);
@@ -86,7 +87,7 @@ export default function AssessmentsTab({ course }: Props) {
                   <span className="truncate text-sm font-medium">{a.title}</span>
                 </div>
                 <p className="mt-1 text-xs text-muted tabular">
-                  {fmtAssessmentDate(a.date)} · {dueLabel(a.date)} · {a.weight}% · {a.topicIds.length} tópicos
+                  {fmtAssessmentDate(a.date, appLang)} · {dueLabel(a.date, appLang)} · {a.weight}% · {t('assess.topicsCount', { count: a.topicIds.length })}
                   {a.location ? ` · ${a.location}` : ''}
                 </p>
               </div>
@@ -137,7 +138,7 @@ export default function AssessmentsTab({ course }: Props) {
         {pendingFutureGrade && (
           <div className="space-y-4 text-sm">
             <p className="text-muted leading-relaxed">
-              {t('assess.futureBody', { title: pendingFutureGrade.assessment.title, n: pendingFutureGrade.daysLeft, grade: fmtGrade(pendingFutureGrade.grade) })}
+              {t('assess.futureBody', { title: pendingFutureGrade.assessment.title, n: pendingFutureGrade.daysLeft, grade: fmtGrade(pendingFutureGrade.grade, gradingScale, appLang) })}
             </p>
             <div className="flex flex-wrap justify-end gap-2">
               <Button variant="ghost" onClick={() => setPendingFutureGrade(null)}>
@@ -194,7 +195,7 @@ function GradeInput({
   return (
     <div className="flex flex-col items-end gap-1">
       <label className="flex items-center gap-2 text-xs text-muted">
-        <span className="hidden sm:inline">Nota</span>
+        <span className="hidden sm:inline">{tr('courses:assess.gradeLabel')}</span>
         <Input
           type="text"
           inputMode="decimal"
@@ -206,7 +207,7 @@ function GradeInput({
             setText(e.target.value);
             if (error) setError(null);
           }}
-          className="min-h-[44px] w-20 text-right tabular sm:min-h-[36px]"
+          className="min-h-11 w-20 text-right tabular"
           onBlur={commit}
           onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
             if (e.nativeEvent.isComposing || e.keyCode === 229) return;

@@ -173,6 +173,8 @@ export function UniBuddy({
   };
   const bodyPath = FORM_BODY_PATHS[form] ?? FORM_BODY_PATHS.nuvem;
 
+  const hasKeyframeScale = !isSleeping && (mood === 'celebrate' || mood === 'speaking');
+
   const svg = (
     <motion.svg
       width={size}
@@ -187,7 +189,9 @@ export function UniBuddy({
         ...floatAnimate,
       }}
       transition={{
-        scale: { type: 'spring', stiffness: 360, damping: 20 },
+        scale: hasKeyframeScale
+          ? { repeat: Infinity, duration: mood === 'celebrate' ? 1.8 : 1.1, ease: 'easeInOut' }
+          : { type: 'spring', stiffness: 360, damping: 20 },
         opacity: { duration: 0.25 },
         y: { repeat: Infinity, duration: mood === 'celebrate' ? 1.8 : 3.4, ease: 'easeInOut' },
         rotate: { repeat: Infinity, duration: mood === 'celebrate' ? 1.8 : 4.2, ease: 'easeInOut' },

@@ -1,8 +1,10 @@
 import { Download, ExternalLink, FileText, FileUp, Pin, PinOff, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { providerLabel } from '../../lib/colors';
 import { getFileUrl, formatBytes } from '../../lib/fileStorage';
+import { showToast } from '../../lib/uiHelpers';
 import { newId, useStore } from '../../store/useStore';
 import type { Course, Material } from '../../types';
 import { Badge, Button, EmptyState, Input } from '../ui';
@@ -15,6 +17,7 @@ interface Props {
 }
 
 export default function MaterialsTab({ course }: Props) {
+  const { t, i18n } = useTranslation('courses');
   const allMaterials = useStore((s) => s.materials);
   const upsert = useStore((s) => s.upsert);
   const patch = useStore((s) => s.patch);
@@ -32,9 +35,9 @@ export default function MaterialsTab({ course }: Props) {
 
   const add = (e: FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return setError('Indique um título.');
+    if (!title.trim()) return setError(t('courseMaterials.errTitle'));
     const link = normalizeUrl(url);
-    if (!link) return setError('Indique um link válido.');
+    if (!link) return setError(t('courseMaterials.errLink'));
     setError(null);
     const item: Material = { id: newId(), courseId: course.id, title: title.trim(), url: link, provider: 'link' };
     upsert('materials', item);
@@ -52,7 +55,7 @@ export default function MaterialsTab({ course }: Props) {
       if (blobUrl) {
         window.open(blobUrl, '_blank');
       } else {
-        alert('Ficheiro não encontrado no armazenamento local.');
+        showToast(t('courseMaterials.fileNotFound'), 'danger');
       }
     } else {
       window.open(m.url, '_blank');
@@ -63,14 +66,14 @@ export default function MaterialsTab({ course }: Props) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <form onSubmit={add} className="flex flex-1 flex-col gap-2 sm:flex-row" noValidate>
-          <Input aria-label="Título do material" placeholder="Título" value={title} onChange={(e) => setTitle(e.target.value)} className="sm:max-w-56" />
-          <Input aria-label="Link do material" placeholder="https://…" value={url} onChange={(e) => setUrl(e.target.value)} className="flex-1" />
+          <Input aria-label={t('courseMaterials.titleAria')} placeholder={t('courseMaterials.titlePh')} value={title} onChange={(e) => setTitle(e.target.value)} className="sm:max-w-56" />
+          <Input aria-label={t('courseMaterials.urlAria')} placeholder="https://…" value={url} onChange={(e) => setUrl(e.target.value)} className="flex-1" />
           <Button type="submit" variant="secondary">
-            <Plus size={16} /> Adicionar link
+            <Plus size={16} /> {t('courseMaterials.addLink')}
           </Button>
         </form>
         <Button variant="primary" onClick={() => setUploadOpen(true)}>
-          <FileUp size={16} /> Carregar PDF / Slides
+          <FileUp size={16} /> {t('courseMaterials.uploadBtn')}
         </Button>
       </div>
       {error && <p className="text-sm text-danger">{error}</p>}
@@ -78,11 +81,11 @@ export default function MaterialsTab({ course }: Props) {
       {materials.length === 0 ? (
         <EmptyState
           icon={<FileText size={28} />}
-          title="Sem materiais"
-          hint="Carrega os PDFs, slides das aulas e fichas ou adiciona links desta cadeira."
+          title={t('courseMaterials.emptyTitle')}
+          hint={t('courseMaterials.emptyHint')}
           action={
             <Button variant="primary" onClick={() => setUploadOpen(true)}>
-              <FileUp size={16} /> Carregar ficheiro
+              <FileUp size={16} /> {t('courseMaterials.uploadShort')}
             </Button>
           }
         />
@@ -95,7 +98,7 @@ export default function MaterialsTab({ course }: Props) {
                 <button
                   type="button"
                   onClick={() => handleOpenFile(m)}
-                  className="group inline-flex max-w-full items-center gap-1.5 truncate text-left text-sm font-medium hover:text-accent"
+                  className="group inline-flex min-h-11 max-w-full items-center gap-1.5 truncate text-left text-sm font-medium hover:text-accent"
                 >
                   <span className="truncate">{m.title}</span>
                   {m.provider === 'upload' ? (
@@ -104,23 +107,23 @@ export default function MaterialsTab({ course }: Props) {
                     <ExternalLink size={12} className="shrink-0 text-muted opacity-0 transition group-hover:opacity-100" />
                   )}
                 </button>
-                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
+                <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted">
                   <Badge>{providerLabel[m.provider]}</Badge>
                   {m.fileName && <span className="text-fg/80">{m.fileName}</span>}
                   {m.fileSize && <span>({formatBytes(m.fileSize)})</span>}
-                  {m.modifiedAt && <span className="tabular">Alterado {fmtShortDate(m.modifiedAt)}</span>}
+                  {m.modifiedAt && <span className="tabular">{t('courseMaterials.modifiedAt', { date: fmtShortDate(m.modifiedAt, i18n.language) })}</span>}
                 </div>
               </div>
               <Button
                 size="sm"
                 variant="ghost"
-                aria-label={m.pinned ? 'Desafixar' : 'Fixar'}
-                title={m.pinned ? 'Desafixar' : 'Fixar'}
+                aria-label={m.pinned ? t('courseMaterials.unpin') : t('courseMaterials.pin')}
+                title={m.pinned ? t('courseMaterials.unpin') : t('courseMaterials.pin')}
                 onClick={() => patch('materials', m.id, { pinned: !m.pinned })}
               >
                 {m.pinned ? <PinOff size={14} /> : <Pin size={14} />}
               </Button>
-              <DeleteButton message={`Remover o material "${m.title}" da lista?`} onConfirm={() => remove('materials', m.id)} />
+              <DeleteButton message={t('courseMaterials.removeConfirm', { title: m.title })} onConfirm={() => remove('materials', m.id)} />
             </li>
           ))}
         </ul>

@@ -1,5 +1,6 @@
 import { ArrowRight, BookCheck, Sparkles } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { courseColors } from '../../lib/colors';
 import { todayStr } from '../../lib/selectors';
 import { getDueReviewQueue, type DueReviewItem } from '../../lib/spacedRepetition';
@@ -22,6 +23,7 @@ export default function ActiveReviewModal({
   courseId,
   initialTopicId,
 }: ActiveReviewModalProps) {
+  const { t } = useTranslation('courses');
   const courses = useStore((s) => s.courses);
   const today = todayStr();
 
@@ -88,22 +90,22 @@ export default function ActiveReviewModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="Revisão ativa & retenção (SRS)"
+      title={t('practiceModal.title')}
       maxWidthClass="max-w-xl"
     >
       {sessionRefs.length > 0 && (
         <p className="mb-3 text-xs text-muted">
-          Tópico {Math.min(idx + 1, sessionRefs.length)} de {sessionRefs.length} · matéria prioritária
+          {t('practiceModal.progress', { current: Math.min(idx + 1, sessionRefs.length), total: sessionRefs.length })}
         </p>
       )}
       {!currentCourse || !currentTopic ? (
         <EmptyState
           icon={<BookCheck size={28} />}
-          title="Tudo revisto por hoje"
-          hint="Os teus tópicos estão dentro da janela de retenção. Podes iniciar qualquer bloco no Plano ou abrir uma cadeira para praticar."
+          title={t('practiceModal.emptyTitle')}
+          hint={t('practiceModal.emptyHint')}
           action={
             <Button variant="primary" onClick={onClose}>
-              Voltar
+              {t('practiceModal.back')}
             </Button>
           }
         />
@@ -121,7 +123,7 @@ export default function ActiveReviewModal({
             </span>
 
             {sessionRefs.length > 1 && (
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center">
                 {sessionRefs.map((ref, i) => (
                   <button
                     key={ref.topicId}
@@ -130,12 +132,16 @@ export default function ActiveReviewModal({
                       setIdx(i);
                       setJustCompletedCurrent(false);
                     }}
-                    aria-label={`Ir para tópico ${i + 1}`}
-                    className={cx(
-                      'h-2.5 rounded-full transition-all',
-                      i === idx ? 'w-6 bg-accent' : 'w-2.5 bg-line hover:bg-muted',
-                    )}
-                  />
+                    aria-label={t('practiceModal.gotoTopic', { n: i + 1 })}
+                    className="grid min-h-11 min-w-11 place-items-center rounded-full hover:bg-surface-2"
+                  >
+                    <span
+                      className={cx(
+                        'block h-2.5 rounded-full transition-all',
+                        i === idx ? 'w-6 bg-accent' : 'w-2.5 bg-line hover:bg-muted',
+                      )}
+                    />
+                  </button>
                 ))}
               </div>
             )}
@@ -150,7 +156,7 @@ export default function ActiveReviewModal({
 
           <div className="flex items-center justify-between gap-2 pt-1">
             <Button variant="ghost" size="sm" onClick={onClose}>
-              Fechar
+              {t('practiceModal.close')}
             </Button>
             {hasNext ? (
               <Button
@@ -161,11 +167,11 @@ export default function ActiveReviewModal({
                   setJustCompletedCurrent(false);
                 }}
               >
-                Próximo tópico <ArrowRight size={14} />
+                {t('practiceModal.nextTopic')} <ArrowRight size={14} />
               </Button>
             ) : justCompletedCurrent ? (
               <Button variant="primary" size="sm" onClick={onClose}>
-                <Sparkles size={14} /> Concluir revisão
+                <Sparkles size={14} /> {t('practiceModal.finish')}
               </Button>
             ) : null}
           </div>

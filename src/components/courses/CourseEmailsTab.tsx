@@ -115,7 +115,7 @@ export default function CourseEmailsTab({ course }: Props) {
                 type="button"
                 onClick={() => setShowAllFaculty((v) => !v)}
                 className={cx(
-                  'rounded-xl border px-3 py-1.5 text-xs font-medium transition',
+                  'min-h-11 rounded-xl border px-3.5 py-2 text-xs font-medium transition',
                   showAllFaculty
                     ? 'border-accent bg-accent-soft text-accent'
                     : 'border-line bg-surface-2 text-muted hover:text-fg',

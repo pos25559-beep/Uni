@@ -14,6 +14,7 @@ import {
 import { useStore } from '../store/useStore';
 import type { AppLanguage, Course } from '../types';
 import { buildStudyContext, SYSTEM_PROMPT } from './gemini';
+import { tr } from '../i18n/tr';
 
 export const LIVE_VOICE_MODEL = 'gemini-3.8-live';
 const LIVE_VOICE_CANDIDATE_MODELS = [
@@ -162,11 +163,11 @@ export async function startUniLiveVoiceSession(
   const trimmedKey = args.apiKey.trim();
   const guard = canStartLiveVoiceSession(Boolean(trimmedKey));
   if (!guard.allowed) {
-    throw new Error(guard.reason ?? 'Chave Gemini própria necessária.');
+    throw new Error(guard.reason ?? tr('common:errors.voiceNeedKey'));
   }
 
   if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
-    throw new Error('O microfone não está disponível neste dispositivo/browser.');
+    throw new Error(tr('common:errors.voiceNoMic'));
   }
 
   args.onStatusChange('connecting');
@@ -449,7 +450,7 @@ export async function startUniLiveVoiceSession(
             onerror: (err: ErrorEvent) => {
               if (closed || !connected) return;
               args.onStatusChange('error');
-              args.onError(err?.message || 'Erro na ligação de voz em tempo real.');
+              args.onError(err?.message || tr('common:errors.voiceConnErr'));
               cleanup();
             },
             onclose: () => {
@@ -471,7 +472,7 @@ export async function startUniLiveVoiceSession(
     if (!connected || !session) {
       throw lastConnectErr instanceof Error
         ? lastConnectErr
-        : new Error('Não foi possível estabelecer a sessão Live Audio.');
+        : new Error(tr('common:errors.voiceSessionErr'));
     }
 
     sourceNode = audioCtx.createMediaStreamSource(stream);
@@ -531,7 +532,7 @@ export async function startUniLiveVoiceSession(
   } catch (err) {
     cleanup();
     args.onStatusChange('error');
-    const message = err instanceof Error ? err.message : 'Não foi possível iniciar o modo Voz Live.';
+    const message = err instanceof Error ? err.message : tr('common:errors.voiceStartErr');
     args.onError(message);
     throw err;
   }

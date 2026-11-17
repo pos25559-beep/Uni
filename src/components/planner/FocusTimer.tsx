@@ -272,9 +272,9 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
   // Título do separador com o tempo restante, restaurado ao sair.
   useEffect(() => {
     const original = originalTitle.current;
-    if (running) document.title = `${formatClock(remainingMs)} · Foco`;
+    if (running) document.title = `${formatClock(remainingMs)} · ${t('common:actions.focus')}`;
     else document.title = original;
-  }, [running, remainingMs]);
+  }, [running, remainingMs, t]);
 
   useEffect(() => {
     const original = originalTitle.current;
@@ -596,10 +596,10 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
               {course.shortName}
             </span>
           )}
-          <span className="tabular">{session.minutes} min planeados</span>
+          <span className="tabular">{t('plan:focus.planned', { minutes: session.minutes })}</span>
         </div>
         <h2 className="mt-3 text-lg font-semibold tracking-tight">
-          {formatSessionDisplay(session, topic).title}
+          {formatSessionDisplay(session, topic, appLang).title}
         </h2>
 
         {phase === 'idle' && uniAgent && course && (
@@ -641,7 +641,10 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
             className="mt-3 flex w-full items-center justify-between gap-2 rounded-xl border border-line bg-surface px-3 py-2 text-left text-xs text-fg shadow-[var(--shadow-card)]"
           >
             <span>
-              Bem-vindo de volta · <strong>{returnBanner.count}ª saída</strong> ({formatAwayDuration(returnBanner.deltaSeconds)}). O teu progresso continua intacto.
+              {t('plan:focus.ui.returnBanner', {
+                count: returnBanner.count,
+                away: formatAwayDuration(returnBanner.deltaSeconds),
+              })}
             </span>
             <button
               type="button"
@@ -721,7 +724,7 @@ export default function FocusTimer({ session, course, topic, onClose }: FocusTim
                 </div>
                 <p className="mt-3 text-xs text-muted tabular">
                   {t('plan:focus.ui.nOf', { a: elapsedMin, b: Math.round(budgetMs / 60_000) })}
-                  {distractionCount > 0 && ` · ${distractionCount} ${distractionCount === 1 ? 'saída' : 'saídas'}`}
+                  {distractionCount > 0 && ` · ${t('plan:focus.ui.exitCount', { count: distractionCount })}`}
                 </p>
 
                 <FocusShieldPanel

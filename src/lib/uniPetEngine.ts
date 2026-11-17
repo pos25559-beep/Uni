@@ -1,3 +1,4 @@
+import { tr } from '../i18n/tr';
 import type { AppTone, UniLiveCompanionsMode } from '../types';
 import { getUniCollectibleStates, type CollectibleTelemetry, type UniSkinId } from './uniCollectibles';
 
@@ -144,20 +145,22 @@ export function pickQuietRouteNote(args: {
   streakDays: number;
   adventureDone?: boolean;
 }): string {
-  if (args.adventureDone) return 'Energia do dia cheia — ótimo ritmo!';
+  if (args.adventureDone) return tr('uni:collectibles.quietNotes.adventureDone');
   const path = args.pathname || '/';
   if (path === '/' || path === '') {
     if (args.pendingTodayCount > 0) {
       return args.pendingTodayCount === 1
-        ? '1 bloco leve hoje já chega.'
-        : `${args.pendingTodayCount} blocos à tua espera, sem pressa.`;
+        ? tr('uni:collectibles.quietNotes.oneLightBlock')
+        : tr('uni:collectibles.quietNotes.pendingBlocks', { count: args.pendingTodayCount });
     }
-    return args.streakDays >= 2 ? `${args.streakDays} dias seguidos… bom ritmo.` : 'Caderno em dia.';
+    return args.streakDays >= 2
+      ? tr('uni:collectibles.quietNotes.streakGoodPace', { days: args.streakDays })
+      : tr('uni:collectibles.quietNotes.notebookUpToDate');
   }
-  if (path.startsWith('/cadeiras')) return 'Tira print ou cola o plano se faltar algo.';
-  if (path.startsWith('/plano')) return 'Blocos ajustam-se ao teu ritmo.';
-  if (path.startsWith('/progresso')) return 'Cada recall acorda um Uni ou pet novo.';
-  if (path.startsWith('/assistente')) return 'Podes anexar a sebenta por cadeira.';
-  if (path.startsWith('/materiais')) return 'Organiza por pastas nas cadeiras.';
-  return 'Aqui contigo neste canto.';
+  if (path.startsWith('/cadeiras')) return tr('uni:collectibles.quietNotes.courses');
+  if (path.startsWith('/plano')) return tr('uni:collectibles.quietNotes.plan');
+  if (path.startsWith('/progresso')) return tr('uni:collectibles.quietNotes.progress');
+  if (path.startsWith('/assistente')) return tr('uni:collectibles.quietNotes.assistant');
+  if (path.startsWith('/materiais')) return tr('uni:collectibles.quietNotes.materials');
+  return tr('uni:collectibles.quietNotes.fallback');
 }

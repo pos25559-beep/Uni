@@ -61,8 +61,8 @@ export default function GeminiCard() {
   return (
     <IntegrationCard
       icon={<Sparkles size={18} />}
-      title="Uni & Gemini"
-      description="Tutor nativo com Firebase AI Logic — pronto a usar sem chave API."
+      title={t('gemini.title')}
+      description={t('gemini.desc')}
       status={effectiveStatus}
     >
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-surface-2 px-3 py-2.5 text-xs">
@@ -113,8 +113,8 @@ export default function GeminiCard() {
         </span>
       </label>
 
-      <details className="group rounded-xl border border-line bg-surface-2/60 p-3">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-fg">
+      <details className="group rounded-xl border border-line bg-surface-2/60 px-3 py-1">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-fg">
           <span>{t('gemini.advanced')}</span>
           <ChevronDown size={15} className="text-muted transition group-open:rotate-180" />
         </summary>
@@ -158,10 +158,10 @@ export default function GeminiCard() {
           <Field label={t('gemini.modelLabel')}>
             <div className="mb-2 flex flex-wrap gap-1.5">
               {[
-                { id: 'gemini-4-hydrogen', label: 'Gemini 4 Hydrogen (Recomendado)' },
+                { id: 'gemini-4-hydrogen', label: t('gemini.presetRecommended') },
                 { id: 'gemini-4-argon', label: 'Gemini 4 Argon' },
                 { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash' },
-                { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash-Lite (Suplente)' },
+                { id: 'gemini-3.5-flash-lite', label: t('gemini.presetBackup') },
               ].map((preset) => {
                 const active = (model || 'gemini-4-hydrogen') === preset.id;
                 return (
@@ -199,9 +199,9 @@ export default function GeminiCard() {
               href="https://aistudio.google.com/apikey"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 text-xs font-medium text-accent underline-offset-2 hover:underline"
+              className="inline-flex min-h-11 items-center gap-1 px-2 text-xs font-medium text-accent-ink underline-offset-2 hover:underline"
             >
-              Obter chave <ExternalLink size={12} />
+              {t('gemini.getKey')} <ExternalLink size={12} />
             </a>
           </div>
 
@@ -226,9 +226,9 @@ export default function GeminiCard() {
                         type="button"
                         onClick={() => updateSettings({ geminiModel: name })}
                         className={cx(
-                          'rounded-full border px-2.5 py-1 text-xs transition',
+                          'min-h-11 rounded-full border px-3 py-1.5 text-xs transition',
                           name === model
-                            ? 'border-accent bg-accent-soft text-accent'
+                            ? 'border-accent bg-accent-soft text-accent-ink'
                             : 'border-line bg-surface-2 text-muted hover:text-fg',
                         )}
                       >

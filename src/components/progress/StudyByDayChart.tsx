@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
   Bar, BarChart, CartesianGrid, Legend, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis,
@@ -19,7 +20,11 @@ interface Props {
 
 /** "Quanto estudei por dia?" — minutos concluídos por cadeira, empilhados. */
 export function StudyByDayChart({ courses, sessions, settings, range }: Props) {
-  const { rows, series } = useMemo(() => studyByBucket(sessions, courses, range), [sessions, courses, range]);
+  const { t, i18n } = useTranslation('progress');
+  const { rows, series } = useMemo(
+    () => studyByBucket(sessions, courses, range),
+    [sessions, courses, range, i18n.language],
+  );
   const active = useMemo(
     () => series.filter((s) => rows.some((r) => Number(r[s.key]) > 0)),
     [series, rows],
@@ -31,16 +36,17 @@ export function StudyByDayChart({ courses, sessions, settings, range }: Props) {
 
   return (
     <ChartCard
-      title="Quanto estudei por dia?"
+      title={t('charts.studyByDay.title')}
       isEmpty={total === 0}
-      emptyTitle="Ainda sem sessões concluídas neste período"
-      emptyHint="Marca sessões como concluídas no plano de estudo para veres aqui quanto estudaste."
-      emptyAction={<Link to="/plano" className="text-sm font-medium text-accent">Abrir o plano de estudo</Link>}
+      emptyTitle={t('charts.studyByDay.emptyTitle')}
+      emptyHint={t('charts.studyByDay.emptyHint')}
+      emptyAction={<Link to="/plano" className="text-sm font-medium text-accent">{t('charts.studyByDay.emptyAction')}</Link>}
       takeaway={
-        <>
-          Estudaste <span className="tabular">{fmtMinutes(total)}</span>
-          {pctGoal !== null && <> — <span className="tabular">{pctGoal}%</span> da meta</>}
-        </>
+        <span className="tabular">
+          {pctGoal !== null
+            ? t('charts.studyByDay.takeawayWithGoal', { time: fmtMinutes(total), pct: pctGoal })
+            : t('charts.studyByDay.takeaway', { time: fmtMinutes(total) })}
+        </span>
       }
     >
       <div className="h-64">
@@ -55,7 +61,7 @@ export function StudyByDayChart({ courses, sessions, settings, range }: Props) {
                 y={barGoal}
                 stroke="var(--muted)"
                 strokeDasharray="4 4"
-                label={{ value: `Meta ${fmtMinutes(barGoal)}`, position: 'insideTopRight', fill: 'var(--muted)', fontSize: 11 }}
+                label={{ value: t('charts.studyByDay.goalLine', { time: fmtMinutes(barGoal) }), position: 'insideTopRight', fill: 'var(--muted)', fontSize: 12 }}
               />
             )}
             {active.map((s) => (

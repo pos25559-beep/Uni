@@ -1,5 +1,6 @@
 // Camada de Serviço Unificada para APIs e Autenticação Google (Pessoal & Académica).
 // Isola os componentes UI de detalhes de tokens, cache e chamadas HTTP diretas.
+import { tr } from '../i18n/tr';
 
 import {
   auth,
@@ -129,7 +130,7 @@ export const googleService = {
     if (ensureAuth && !this.isDriveConnected() && !getAcademicGoogleAccessToken()) {
       await this.connectPersonalAccount(false, auth.currentUser?.email ?? undefined);
       if (!this.isDriveConnected() && !getAcademicGoogleAccessToken()) {
-        throw new Error('A Google não devolveu permissão de leitura do Drive. Aceita o acesso ao Google Drive na janela de autenticação.');
+        throw new Error(tr('common:googleSvc.driveReadDenied'));
       }
     }
     return scanAndAutoLinkGoogleDrive(courses, extraOrOpts);

@@ -1,5 +1,6 @@
 import { Download, ExternalLink, Pin, PinOff, Trash2 } from 'lucide-react';
 import { createElement, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Badge, Button, Select } from '../ui';
 import { cx, showToast } from '../../lib/uiHelpers';
 import { ConfirmModal } from '../courses/ConfirmModal';
@@ -15,6 +16,7 @@ export default function MaterialRow({ material: m, courses, course, onView }: {
   course: Course | undefined;
   onView?: (m: Material) => void;
 }) {
+  const { t } = useTranslation('courses');
   const patch = useStore((s) => s.patch);
   const remove = useStore((s) => s.remove);
 
@@ -35,7 +37,7 @@ export default function MaterialRow({ material: m, courses, course, onView }: {
     if (m.provider === 'upload') {
       const blobUrl = await getFileUrl(m.id);
       if (blobUrl) window.open(blobUrl, '_blank');
-      else showToast('Ficheiro não encontrado no armazenamento local.', 'danger');
+      else showToast(t('materialsModals.row.fileNotFound'), 'danger');
     } else if (href) {
       window.open(href, '_blank');
     }
@@ -62,7 +64,7 @@ export default function MaterialRow({ material: m, courses, course, onView }: {
         <button
           type="button"
           onClick={handleOpen}
-          className="group flex min-w-0 items-center gap-1.5 text-left text-sm font-medium text-fg hover:text-accent"
+          className="group flex min-h-11 min-w-0 items-center gap-1.5 text-left text-sm font-medium text-fg hover:text-accent"
         >
           <span className="truncate">{m.title}</span>
           {m.provider === 'upload' ? (
@@ -76,17 +78,17 @@ export default function MaterialRow({ material: m, courses, course, onView }: {
           <Badge>{providerLabel[m.provider]}</Badge>
           {m.fileName && <span className="text-fg/80">{m.fileName}</span>}
           {m.fileSize && <span>({formatBytes(m.fileSize)})</span>}
-          {modified && <span>Modificado {modified}</span>}
+          {modified && <span>{t('materialsModals.row.modified', { time: modified })}</span>}
         </div>
 
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <div className="w-44 max-w-full">
             <Select
-              aria-label={`Cadeira de ${m.title}`}
+              aria-label={t('materialsModals.row.courseAria', { title: m.title })}
               value={m.courseId ?? ''}
               onChange={(e) => patch('materials', m.id, { courseId: e.target.value || undefined })}
             >
-              <option value="">Sem cadeira</option>
+              <option value="">{t('materialsModals.row.noCourse')}</option>
               {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </Select>
           </div>
@@ -97,20 +99,20 @@ export default function MaterialRow({ material: m, courses, course, onView }: {
             aria-pressed={!!m.pinned}
           >
             {m.pinned ? <PinOff size={14} /> : <Pin size={14} />}
-            {m.pinned ? 'Desafixar' : 'Fixar'}
+            {m.pinned ? t('materialsModals.row.unpin') : t('materialsModals.row.pin')}
           </Button>
           <Button size="sm" variant="danger" onClick={() => setConfirming(true)}>
             <Trash2 size={14} />
-            Remover
+            {t('materialsModals.row.remove')}
           </Button>
         </div>
       </div>
 
       {confirming && (
         <ConfirmModal
-          title="Remover material"
-          message={`Remover "${m.title}" da biblioteca? O ficheiro não poderá ser recuperado.`}
-          confirmLabel="Remover"
+          title={t('materialsModals.row.removeTitle')}
+          message={t('materialsModals.row.removeConfirm', { title: m.title })}
+          confirmLabel={t('materialsModals.row.remove')}
           onConfirm={handleRemove}
           onClose={() => setConfirming(false)}
         />

@@ -29,7 +29,10 @@ export const KIND_META: Record<CalKind, { label: string; plural: string; icon: L
 export const KIND_ORDER: CalKind[] = ['aula', 'avaliacao', 'estudo', 'evento', 'tarefa'];
 
 export const SOURCE_LABEL: Record<Source, string> = {
-  local: 'Local', clip: 'Portal', google: 'Google', outlook: 'Outlook',
+  get local() { return tr('plan:cal.source.local'); },
+  get clip() { return tr('plan:cal.source.clip'); },
+  get google() { return tr('plan:cal.source.google'); },
+  get outlook() { return tr('plan:cal.source.outlook'); },
 };
 
 /** Classes visuais de um item: cor da cadeira; avaliações com borda forte; tarefas tracejadas. */
@@ -50,8 +53,8 @@ export function timeLabel(item: CalItem): string {
   if (item.start && item.end) return `${item.start}–${item.end}`;
   if (item.start) return item.start;
   if (item.kind === 'estudo' && item.minutes) return `${item.minutes} min`;
-  if (item.kind === 'tarefa') return 'Prazo';
-  return 'Dia todo';
+  if (item.kind === 'tarefa') return tr('plan:cal.dueLabel');
+  return tr('plan:cal.allDay');
 }
 
 export const isImported = (item: CalItem) => item.source !== undefined && item.source !== 'local';

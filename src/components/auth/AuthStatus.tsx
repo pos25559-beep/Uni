@@ -1,5 +1,6 @@
 import { Cloud, ChevronRight, LogOut, RefreshCw, ShieldCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { auth, logoutFirebase, onAuthStateChanged, type User } from '../../lib/firebase';
 import { migrateLocalDataToCloud } from '../../lib/firestoreSync';
@@ -11,6 +12,7 @@ import { showToast } from '../../lib/uiHelpers';
  * direciona para o ecrã dedicado `/entrar` sem esmagar inputs no telemóvel.
  */
 export default function AuthStatus() {
+  const { t } = useTranslation('common');
   const [user, setUser] = useState<User | null>(() => auth.currentUser);
   const [syncing, setSyncing] = useState(false);
   const updateSettings = useStore((s) => s.updateSettings);
@@ -22,16 +24,16 @@ export default function AuthStatus() {
   const handleLogout = async () => {
     await logoutFirebase();
     updateSettings({ guestMode: false, userName: '' });
-    showToast('Sessão terminada.', 'neutral');
+    showToast(t('auth.toast.signedOut'), 'neutral');
   };
 
   const handleManualSync = async () => {
     setSyncing(true);
     try {
       await migrateLocalDataToCloud();
-      showToast('Dados sincronizados com a nuvem!');
+      showToast(t('authStatus.syncedOk'));
     } catch {
-      showToast('Erro ao sincronizar agora. Tenta mais tarde.', 'danger');
+      showToast(t('authStatus.syncError'), 'danger');
     } finally {
       setSyncing(false);
     }
@@ -48,8 +50,8 @@ export default function AuthStatus() {
             <Cloud size={17} aria-hidden="true" />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-xs font-bold text-fg">Entrar ou criar conta</p>
-            <p className="truncate text-xs text-muted">Guarda e sincroniza o teu caderno</p>
+            <p className="truncate text-xs font-bold text-fg">{t('authStatus.signInOrCreate')}</p>
+            <p className="truncate text-xs text-muted">{t('authStatus.saveAndSync')}</p>
           </div>
         </div>
         <ChevronRight size={16} className="shrink-0 text-muted" aria-hidden="true" />
@@ -60,7 +62,7 @@ export default function AuthStatus() {
   return (
     <div className="mb-3 rounded-[18px] border border-line bg-bg p-3">
       <div className="flex items-center justify-between gap-2">
-        <Link to="/entrar?manage=1" className="flex min-w-0 flex-1 items-center gap-2.5">
+        <Link to="/entrar?manage=1" className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5">
           {user.photoURL ? (
             <img src={user.photoURL} alt="" className="size-8 shrink-0 rounded-full object-cover" />
           ) : (
@@ -69,10 +71,12 @@ export default function AuthStatus() {
             </div>
           )}
           <div className="min-w-0 leading-tight">
-            <p className="truncate text-xs font-bold text-fg">{user.displayName || 'Utilizador'}</p>
+            <p className="truncate text-xs font-bold text-fg">
+              {user.displayName || t('authStatus.userFallback')}
+            </p>
             <p className="flex items-center gap-1 text-xs text-muted">
               <ShieldCheck size={12} className="shrink-0 text-ok" />
-              <span className="truncate">Cloud ativa</span>
+              <span className="truncate">{t('authStatus.cloudActive')}</span>
             </p>
           </div>
         </Link>
@@ -82,15 +86,15 @@ export default function AuthStatus() {
             type="button"
             onClick={() => void handleManualSync()}
             disabled={syncing}
-            aria-label="Sincronizar agora"
-            className="flex size-10 items-center justify-center rounded-full text-muted transition hover:bg-surface-2 hover:text-fg"
+            aria-label={t('authStatus.syncNowAria')}
+            className="flex size-11 items-center justify-center rounded-full text-muted transition hover:bg-surface-2 hover:text-fg"
           >
             <RefreshCw size={15} className={syncing ? 'animate-spin' : ''} />
           </button>
           <button
             type="button"
             onClick={() => void handleLogout()}
-            aria-label="Terminar sessão"
+            aria-label={t('authStatus.signOutAria')}
             className="flex size-11 items-center justify-center rounded-full text-muted transition hover:bg-coral-soft hover:text-coral-ink"
           >
             <LogOut size={15} />

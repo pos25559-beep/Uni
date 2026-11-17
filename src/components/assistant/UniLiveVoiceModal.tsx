@@ -159,7 +159,7 @@ export default function UniLiveVoiceModal({
       );
       showToast(res.summary, 'ok');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Erro ao guardar ação.', 'danger');
+      showToast(err instanceof Error ? err.message : t('assistant:tools.saveErr'), 'danger');
     } finally {
       setBusyProposalId(null);
     }

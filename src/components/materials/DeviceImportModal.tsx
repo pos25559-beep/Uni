@@ -484,7 +484,7 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
                   size="sm"
                   variant="ghost"
                   onClick={() => toggleAll(true)}
-                  className="text-xs h-7 px-2"
+                  className="min-h-11 px-3 text-xs"
                 >
                   {t('device.selectAll')}
                 </Button>
@@ -492,7 +492,7 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
                   size="sm"
                   variant="ghost"
                   onClick={() => toggleAll(false)}
-                  className="text-xs h-7 px-2"
+                  className="min-h-11 px-3 text-xs"
                 >
                   {t('device.unselect')}
                 </Button>
@@ -505,7 +505,7 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
                     placeholder={t('device.filterPh')}
                     value={filterQuery}
                     onChange={(e) => setFilterQuery(e.target.value)}
-                    className="pl-7 text-xs h-7"
+                    className="min-h-11 pl-7 text-xs"
                   />
                 </div>
               </div>
@@ -554,7 +554,7 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
                       aria-label={t('device.courseAria')}
                       value={it.courseId ?? ''}
                       onChange={(e) => updateItemCourse(it.id, e.target.value)}
-                      className="h-8 min-w-[120px] flex-1 text-xs sm:w-36 sm:flex-none"
+                      className="min-w-[120px] flex-1 text-xs sm:w-36 sm:flex-none"
                     >
                       <option value="">{t('device.noCourse')}</option>
                       {courses.map((c) => (
@@ -570,7 +570,7 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
                       onChange={(e) =>
                         updateItemCategory(it.id, e.target.value as MaterialCategory)
                       }
-                      className="h-8 min-w-[110px] flex-1 text-xs sm:w-32 sm:flex-none"
+                      className="min-w-[110px] flex-1 text-xs sm:w-32 sm:flex-none"
                     >
                       {categoryOptions.map((opt) => (
                         <option key={opt.value} value={opt.value}>
@@ -582,10 +582,11 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
                     <button
                       type="button"
                       onClick={() => removeItem(it.id)}
-                      className="grid size-8 shrink-0 place-items-center rounded-lg text-muted hover:text-danger"
+                      className="grid size-11 shrink-0 place-items-center rounded-lg text-muted hover:text-danger"
+                      aria-label={t('device.removeFromList')}
                       title={t('device.removeFromList')}
                     >
-                      <X size={14} />
+                      <X size={16} />
                     </button>
                   </div>
                 </div>

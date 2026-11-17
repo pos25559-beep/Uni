@@ -1,3 +1,4 @@
+import { tr } from '../i18n/tr';
 import type { AppState } from '../store/useStore';
 import { putUniAgent, type UniAgentRecord } from './localDb';
 import { notifyUniAgentsChanged } from './uniAgents';
@@ -51,12 +52,12 @@ export function buildBackupPayload(s: AppState, uniAgents: UniAgentRecord[] = []
 export function applyBackupJson(rawText: string, st: AppState): number {
   const parsed: unknown = JSON.parse(rawText);
   if (!isRecord(parsed) || !isRecord(parsed.collections)) {
-    throw new Error('Ficheiro inválido: falta o objeto «collections».');
+    throw new Error(tr('common:errors.backupInvalidCols'));
   }
   const cols = parsed.collections;
   const known = ['courses', 'assessments', 'classes', 'sessions', 'tasks', 'materials', 'events'];
   if (!known.some((k) => Array.isArray(cols[k]))) {
-    throw new Error('Ficheiro inválido: não encontrei nenhuma coleção conhecida.');
+    throw new Error(tr('common:errors.backupNoKnownCol'));
   }
 
   const courses = pickItems<Course>(cols.courses);

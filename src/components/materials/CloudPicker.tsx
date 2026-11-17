@@ -195,7 +195,7 @@ export default function CloudPicker({ source, onClose }: { source: CloudSource; 
     if (loading) {
       return (
         <div className="flex items-center justify-center gap-2 px-4 py-10 text-sm text-muted">
-          <LoaderCircle size={16} className="animate-spin" /> A carregar…
+          <LoaderCircle size={16} className="animate-spin" /> {tp('cloud.loading')}
         </div>
       );
     }
@@ -280,7 +280,7 @@ export default function CloudPicker({ source, onClose }: { source: CloudSource; 
                 aria-selected={tab === t.id}
                 onClick={() => setTab(t.id)}
                 className={cx(
-                  'flex-1 rounded-lg px-3 py-1.5 text-xs font-medium transition',
+                  'min-h-11 flex-1 rounded-lg px-3 py-2 text-xs font-medium transition',
                   tab === t.id ? 'bg-surface text-fg shadow-sm' : 'text-muted hover:text-fg',
                 )}
               >
@@ -310,9 +310,9 @@ export default function CloudPicker({ source, onClose }: { source: CloudSource; 
                     type="button"
                     onClick={() => goTo(i)}
                     disabled={i === stack.length - 1}
-                    className="rounded-md px-1.5 py-0.5 hover:bg-surface-2 hover:text-fg disabled:font-medium disabled:text-fg disabled:hover:bg-transparent"
+                    className="min-h-11 rounded-md px-2 py-1 hover:bg-surface-2 hover:text-fg disabled:font-medium disabled:text-fg disabled:hover:bg-transparent"
                   >
-                    {s.name}
+                    {i === 0 ? tp('cloud.root') : s.name}
                   </button>
                 </span>
               ))}

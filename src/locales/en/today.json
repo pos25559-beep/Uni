@@ -130,5 +130,47 @@
     "sessionsLeft": "{{count}} sessions left to hit today's goal. Let's go!",
     "noSessions": "No sessions planned today — add your courses or chat with me in Tutor!"
   },
-  "sessionFallback": "Free study"
+  "sessionFallback": "Free study",
+  "nudgeAria": "Uni reminder",
+  "highlights": {
+    "ariaLabel": "Daily highlights",
+    "title": "Today's highlights",
+    "streakDays": "{{count}}d streak",
+    "startToday": "Start today",
+    "focused": "Focused",
+    "thisWeek": "this week",
+    "rhythm": "Rhythm",
+    "streak": "streak",
+    "sessions": "Sessions",
+    "completed": "completed",
+    "tasks": "Tasks",
+    "pending": "pending"
+  },
+  "mail": {
+    "taskPrefix": "Notice: {{subject}}",
+    "badge": "Inbox",
+    "titleConnected": "Mail ({{email}})",
+    "title": "Academic Mail",
+    "sync": "Sync",
+    "personalHint": "Your personal account ({{email}}) is kept only for Drive and Calendar. Connect your institutional email below or import a notice ",
+    "connectHint": "Connect your university email to see lecturer notices in one card, or import a ",
+    "emailPlaceholder": "e.g. name@university.edu",
+    "emailAria": "Institutional email",
+    "connectBtn": "Connect Academic Email",
+    "importEml": "Import (.eml)",
+    "importEmlPlain": "Import .eml",
+    "needsPermission": "Your Google session needs permission to read your academic inbox.",
+    "authorizeBtn": "Grant access",
+    "loading": "Checking your academic inbox...",
+    "cachedHint": "Account {{email}} saved. Click «Sync» to fetch new notices from Gmail.",
+    "emptyInbox": "No recent notices found in your inbox.",
+    "syncGmail": "Sync Gmail",
+    "checkAgain": "Check again",
+    "taskCreated": "Task created!",
+    "createTask": "Create Task",
+    "fromLabel": "From:",
+    "dateLabel": "Date:",
+    "linkedCourse": "Linked course:",
+    "openCourse": "Open course"
+  }
 }

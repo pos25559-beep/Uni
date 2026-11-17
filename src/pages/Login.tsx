@@ -446,7 +446,7 @@ export default function LoginPage() {
                     type="button"
                     onClick={() => setShowUniBubble(false)}
                     aria-label={t('auth.hero.closeBubble')}
-                    className="flex size-7 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-fg"
+                    className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-fg"
                   >
                     <X size={13} />
                   </button>
@@ -700,7 +700,7 @@ export default function LoginPage() {
                     setInfo(null);
                     void hapticTap();
                   }}
-                  className="min-h-[36px] rounded-xl px-2 text-xs font-semibold text-accent hover:underline"
+                  className="min-h-11 rounded-xl px-3 text-xs font-semibold text-accent hover:underline"
                 >
                   {authMethod === 'password' ? t('auth.footer.magicLink') : t('auth.form.usePassword')}
                 </button>

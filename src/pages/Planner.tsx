@@ -46,9 +46,9 @@ import type { PlannerPreferences, StudySession } from '../types';
 
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
-function studyDaysLabel(days: number[]): string {
+function studyDaysLabel(days: number[], emptyLabel: string): string {
   const ordered = DAY_ORDER.filter((d) => days.includes(d));
-  if (ordered.length === 0) return 'sem dias de estudo';
+  if (ordered.length === 0) return emptyLabel;
   const pos = ordered.map((d) => DAY_ORDER.indexOf(d));
   const contiguous = pos.every((p, i) => i === 0 || p === pos[i - 1] + 1);
   if (ordered.length > 2 && contiguous) {
@@ -335,7 +335,7 @@ export default function Planner() {
         eyebrow={t('plannerEyebrow')}
         title={t('plannerTitle')}
         accentTitle={t('plannerAccent')}
-        subtitle={`${fmtMinutes(settings.dailyStudyMinutes)} · ${studyDaysLabel(settings.studyDays)}${plannerPrefs ? ` · ${plannerPrefs.blockMinutes}m (${plannerPrefs.horizonDays}d)` : ''}`}
+        subtitle={`${fmtMinutes(settings.dailyStudyMinutes)} · ${studyDaysLabel(settings.studyDays, t('ui.noStudyDays'))}${plannerPrefs ? ` · ${plannerPrefs.blockMinutes}m (${plannerPrefs.horizonDays}d)` : ''}`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <TabGuideHelpButton tabKey="plano" />
@@ -435,11 +435,11 @@ export default function Planner() {
       {recoverableFocus && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-accent/35 bg-accent-soft px-4 py-3 text-fg shadow-[var(--shadow-card)]">
           <div className="min-w-0 flex-1 text-xs leading-relaxed">
-            <p className="font-bold text-accent-ink">Bloco de foco em curso</p>
+            <p className="font-bold text-accent-ink">{t('ui.focusInProgress')}</p>
             <p className="mt-0.5 truncate text-fg">
               {recoverableFocus.course ? `${recoverableFocus.course.shortName} · ` : ''}
-              {formatSessionDisplay(recoverableFocus.session, recoverableFocus.topic).title} (
-              {recoverableFocus.elapsedMinutes} de {recoverableFocus.plannedMinutes} min)
+              {formatSessionDisplay(recoverableFocus.session, recoverableFocus.topic, i18n.language).title} (
+              {t('focus.ui.nOf', { a: recoverableFocus.elapsedMinutes, b: recoverableFocus.plannedMinutes })})
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -484,7 +484,7 @@ export default function Planner() {
                   <Plus size={16} /> {t('ui.newSession')}
                 </Button>
                 <Button variant="primary" onClick={onGenerate}>
-                  <Sparkles size={16} /> Gerar plano
+                  <Sparkles size={16} /> {t('generatePlan')}
                 </Button>
               </div>
             )
@@ -520,7 +520,7 @@ export default function Planner() {
                           </span>
                         </div>
                         <p className="mt-1 truncate text-sm font-medium">
-                          {formatSessionDisplay(s, topic).title}
+                          {formatSessionDisplay(s, topic, i18n.language).title}
                         </p>
                         <p className="text-xs tabular text-muted">{s.minutes} min</p>
                       </div>
@@ -651,7 +651,7 @@ export default function Planner() {
               tone="butter"
               label={t('ui.dailyGoal')}
               value={fmtMinutes(settings.dailyStudyMinutes)}
-              hint={studyDaysLabel(settings.studyDays)}
+              hint={studyDaysLabel(settings.studyDays, t('ui.noStudyDays'))}
             />
             <BentoMetricTile
               tone={overdue.length > 0 ? 'peach' : 'sky'}

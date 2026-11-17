@@ -1,6 +1,7 @@
 import { FileText, Image as ImageIcon, Paperclip, ArrowUp, Square, X } from 'lucide-react';
 import { useId, useLayoutEffect, useRef, useState } from 'react';
 import type { ChangeEvent, KeyboardEvent, ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { fileToChatAttachment, type ChatAttachment } from '../../integrations/gemini';
 import { cx, showToast } from '../../lib/uiHelpers';
 
@@ -30,8 +31,10 @@ export function Composer({
   leadingSlot,
   topSlot,
   hidePaperclipOnMobile = false,
-  placeholder = 'Pergunta ao Uni…',
+  placeholder,
 }: Props) {
+  const { t } = useTranslation('assistant');
+  const resolvedPlaceholder = placeholder ?? t('placeholder');
   const [text, setText] = useState('');
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const fileInputId = useId();
@@ -66,7 +69,7 @@ export function Composer({
 
     const room = Math.max(0, MAX_ATTACHMENTS - attachments.length);
     if (room === 0) {
-      showToast(`Podes anexar até ${MAX_ATTACHMENTS} fotos ou PDFs por mensagem.`, 'neutral');
+      showToast(t('composer.maxAttachments', { count: MAX_ATTACHMENTS }), 'neutral');
       return;
     }
 
@@ -75,7 +78,7 @@ export function Composer({
       try {
         next.push(await fileToChatAttachment(file));
       } catch (err) {
-        showToast(err instanceof Error ? err.message : 'Ficheiro inválido', 'danger');
+        showToast(err instanceof Error ? err.message : t('composer.invalidFile'), 'danger');
       }
     }
     if (next.length > 0) {
@@ -89,8 +92,7 @@ export function Composer({
 
   const submit = () => {
     if (!canSend) return;
-    const payloadText =
-      trimmed || 'Analisa os ficheiros anexados e resume os pontos mais importantes para o meu estudo.';
+    const payloadText = trimmed || t('composer.analyzeAttachments');
     const payloadAtts = attachments.length > 0 ? attachments : undefined;
     onSend(payloadText, payloadAtts);
     setText('');
@@ -113,7 +115,7 @@ export function Composer({
           {attachments.map((att) => (
             <span
               key={att.id}
-              className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-2.5 py-1 text-xs font-medium text-fg"
+              className="inline-flex min-h-11 items-center gap-1 rounded-full bg-surface-2 pl-3 pr-0.5 text-xs font-medium text-fg"
             >
               {att.mimeType.startsWith('image/') ? (
                 <ImageIcon size={12} className="text-accent" />
@@ -124,10 +126,10 @@ export function Composer({
               <button
                 type="button"
                 onClick={() => removeAttachment(att.id)}
-                aria-label={`Remover ${att.name}`}
-                className="rounded-full p-0.5 text-muted hover:text-danger"
+                aria-label={t('composer.removeAttachment', { name: att.name })}
+                className="grid size-11 place-items-center rounded-full text-muted hover:text-danger"
               >
-                <X size={12} />
+                <X size={13} />
               </button>
             </span>
           ))}
@@ -149,10 +151,10 @@ export function Composer({
           type="button"
           disabled={disabled || loading}
           onClick={() => fileRef.current?.click()}
-          aria-label="Anexar foto ou PDF de apontamentos"
-          title="Anexar foto ou PDF"
+          aria-label={t('composer.attachAria')}
+          title={t('composer.attachTitle')}
           className={cx(
-            'place-items-center rounded-full text-muted transition hover:bg-surface-2 hover:text-fg disabled:cursor-not-allowed disabled:opacity-40 size-10 shrink-0 sm:size-11',
+            'place-items-center rounded-full text-muted transition hover:bg-surface-2 hover:text-fg disabled:cursor-not-allowed disabled:opacity-40 size-11 shrink-0',
             hidePaperclipOnMobile ? 'hidden md:grid' : 'grid',
           )}
         >
@@ -166,29 +168,29 @@ export function Composer({
           disabled={disabled}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKeyDown}
-          placeholder={placeholder}
-          aria-label="Mensagem para o assistente"
-          style={{ minHeight: 40 }}
-          className="max-h-40 min-w-0 flex-1 resize-none bg-transparent px-1.5 py-2 text-sm text-fg placeholder:text-muted/75 focus:outline-none disabled:cursor-not-allowed"
+          placeholder={resolvedPlaceholder}
+          aria-label={t('composer.inputAria')}
+          style={{ minHeight: 44 }}
+          className="max-h-40 min-w-0 flex-1 resize-none bg-transparent px-1.5 py-2.5 text-sm text-fg placeholder:text-muted/75 focus:outline-none disabled:cursor-not-allowed"
         />
 
         {loading ? (
           <button
             type="button"
             onClick={onStop}
-            aria-label="Parar"
-            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-line bg-surface-2 px-3.5 text-sm font-medium text-fg hover:border-muted/50"
+            aria-label={t('composer.stop')}
+            className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-line bg-surface-2 px-3.5 text-sm font-medium text-fg hover:border-muted/50"
           >
             <Square size={13} className="fill-current" />
-            Parar
+            {t('composer.stop')}
           </button>
         ) : (
           <button
             type="button"
             onClick={submit}
             disabled={!canSend}
-            aria-label="Enviar mensagem"
-            className="grid size-10 shrink-0 place-items-center rounded-full bg-ink-cta text-ink-cta-fg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-35"
+            aria-label={t('composer.sendAria')}
+            className="grid size-11 shrink-0 place-items-center rounded-full bg-ink-cta text-ink-cta-fg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-35"
           >
             <ArrowUp size={18} strokeWidth={2.2} />
           </button>

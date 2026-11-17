@@ -77,7 +77,7 @@ export default function DataCard() {
       <div className="grid gap-5 md:grid-cols-2">
         <div className="space-y-3">
           <div>
-            <h3 className="text-sm font-semibold text-fg">Backup e dados de exemplo</h3>
+            <h3 className="text-sm font-semibold text-fg">{t('data.backupGroupTitle')}</h3>
             <p className="mt-0.5 text-xs text-muted">
               {t('data.intro')}
             </p>
@@ -110,7 +110,7 @@ export default function DataCard() {
 
         <div className="space-y-3">
           <div>
-            <h3 className="text-sm font-semibold text-fg">Limpeza local &amp; documentos legais</h3>
+            <h3 className="text-sm font-semibold text-fg">{t('data.cleanupGroupTitle')}</h3>
             <p className="mt-0.5 text-xs text-muted">
               {t('data.clearInfo')}
             </p>

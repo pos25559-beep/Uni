@@ -50,7 +50,13 @@
     "issueDiploma": "Issue diploma",
     "diplomaIssued": "Diploma issued",
     "bridgeBtn": "Study bridge",
-    "mentorNextBtn": "Teach next course"
+    "mentorNextBtn": "Teach next course",
+    "updatedToast": "{{name}} updated.",
+    "adoptedToast": "{{name}} adopted for {{course}}!",
+    "removedToast": "{{name}} removed from this course.",
+    "expeditionFail": "Could not prepare expedition.",
+    "customizeAria": "Customize {{name}}",
+    "customize": "Customize"
   },
   "adoptModal": {
     "editTitle": "Customize {{name}} ({{course}})",
@@ -100,7 +106,8 @@
     "importPlaceholder": "e.g. Score 4/5 on Limits. Missed oblique asymptotes and infinity signs.",
     "importBtn": "Update review & notebook",
     "importedSuccess": "Spaced repetition and notebook updated!",
-    "missingText": "Paste a quiz result or weak spots first."
+    "missingText": "Paste a quiz result or weak spots first.",
+    "copyFail": "Could not copy to clipboard."
   },
   "shelf": {
     "eyebrow": "Uni Shelf",
@@ -162,9 +169,72 @@
     "deleteSheet": "Delete sheet {{title}}",
     "close": "Close",
     "quizErr": "Couldn't import the quiz",
-    "mentorErr": "Couldn't teach the next course"
+    "mentorErr": "Couldn't teach the next course",
+    "needDriveAuth": "Authorise Google Drive in the Materials tab to read PDFs from your folder.",
+    "notesPrefix": "Notes · {{topic}}",
+    "courseNotesPrefix": "Notes · {{course}}",
+    "sheetSaved": "Sheet saved locally for Tutor and Focus.",
+    "openInTutor": "Open in Tutor",
+    "sheetCopied": "Sheet copied!"
   },
   "collectibles": {
+    "modalTitle": "Uni Nest & Showcase",
+    "countsSummary": "{{skins}}/{{skinsTotal}} colors · {{pets}}/{{petsTotal}} pets",
+    "close": "Close",
+    "hugAria": "Pet Uni",
+    "totalMinutes": "{{time}} total",
+    "energyToday": "Today's energy:",
+    "nextLevel": "Next stage ({{label}}): {{time}}",
+    "hugLoved": "Loved it! +3 ⚡",
+    "hugGiven": "Petted today",
+    "hugAction": "Pet Uni ({{count}}/{{max}})",
+    "discoveryToday": "Today's find: {{note}}",
+    "adventurePrompt": "Complete study sessions, tasks, or pet Uni to fill today's energy bar.",
+    "tabs": {
+      "skins": "Colors ({{count}})",
+      "pets": "Micropets ({{count}})",
+      "discreet": "On-screen buddy"
+    },
+    "surpriseTitle": "Rotating screen color",
+    "surpriseHint": "Cycles your roaming companion through the colors you have unlocked.",
+    "surpriseOn": "On",
+    "surpriseOff": "Fixed color",
+    "unlocked": "Unlocked",
+    "equipped": "Equipped",
+    "equipSkin": "Equip color",
+    "petsIntro": "Micropets stroll beside your Uni in the Nest and around screen corners.",
+    "storePet": "Rest pet",
+    "followingYou": "Following you",
+    "adoptPet": "Adopt {{name}}",
+    "active": "Active",
+    "discreetInfo": "Discreet Unis stroll along screen corners and edges on both desktop and mobile, tucking away automatically when you type or scroll.",
+    "screenCountTitle": "Companions on screen",
+    "screenCountHint": "In \"Up to 2\" mode, a second differently-colored buddy drops by to say hi.",
+    "modes": {
+      "all": "Up to 2",
+      "solo": "Just 1",
+      "off": "Off"
+    },
+    "overlay": {
+      "hugBoost": "Scritches! +3 energy ⚡",
+      "hereWithYou": "Right here with you!",
+      "hugShort": "Pat!",
+      "tapAria": "Pet roaming Uni"
+    },
+    "skinLocked": {
+      "butter": "{{count}}/3 sessions or 1 check-in",
+      "crimson": "{{count}}/3 recalls or days",
+      "sage": "{{count}}/5 active recalls",
+      "terracotta": "{{count}}/6 sessions",
+      "espresso": "{{count}}/150 min",
+      "ink": "{{count}}/7 days or SRS 21d level"
+    },
+    "petLocked": {
+      "owl": "{{count}}/2 sessions or recalls",
+      "fox": "{{count}}/3-day streak",
+      "turtle": "{{count}}/5 sessions",
+      "rabbit": "{{count}}/8 sessions"
+    },
     "skins": {
       "classic": {
         "name": "Classic Sage Uni",
@@ -271,6 +341,39 @@
         "unlockHint": "Complete 8 sessions or reach 1 topic at level 21d"
       }
     },
+    "growthStages": {
+      "semente": "Seedling",
+      "explorador": "Explorer",
+      "estudioso": "Scholar",
+      "sabio": "Campus Sage"
+    },
+    "discoveries": {
+      "0": "Found a sunny table near the library with a free power outlet!",
+      "1": "Watched a family of sparrows in the courtyard between lectures.",
+      "2": "Saved a fresh yellow highlighter for your next study sheet.",
+      "3": "Found a quiet shortcut for organizing this week's lecture notes.",
+      "4": "Jotted down three tricky formulas on a neat sticky note.",
+      "5": "Celebrated your study rhythm with an imaginary mug of mint tea.",
+      "d0": "Found a sunny table near the library with a free power outlet!",
+      "d1": "Watched a family of sparrows in the garden between classes.",
+      "d2": "Saved a new yellow highlighter for your next study sheet.",
+      "d3": "Discovered a quiet shortcut to this week's notes.",
+      "d4": "Jotted down three tricky formulas on a neatly arranged sticky note.",
+      "d5": "Celebrated your rhythm with an imaginary cup of mint tea."
+    },
+    "quietNotes": {
+      "adventureDone": "Daily energy full — great pace!",
+      "oneLightBlock": "1 light block today is plenty.",
+      "pendingBlocks": "{{count}} blocks waiting for you, no rush.",
+      "streakGoodPace": "{{days}} days in a row… steady pace.",
+      "notebookUpToDate": "Notebook up to date.",
+      "courses": "Snap or paste your syllabus if anything is missing.",
+      "plan": "Study blocks adapt to your rhythm.",
+      "progress": "Every recall wakes up a new Uni or pet.",
+      "assistant": "You can attach your lecture notes per course.",
+      "materials": "Sort handouts by folder inside each course.",
+      "fallback": "Right here in this corner with you."
+    },
     "progress": {
       "unlocked": "Unlocked",
       "sessionsOrCheckin": "{{current}}/{{target}} sessions or 1 check-in",
@@ -287,14 +390,6 @@
       "explorador": "Explorer",
       "estudioso": "Scholar",
       "sabio": "Campus Sage"
-    },
-    "discoveries": {
-      "d0": "Found a sunny table near the library with a free power outlet!",
-      "d1": "Watched a family of sparrows in the garden between classes.",
-      "d2": "Saved a new yellow highlighter for your next study sheet.",
-      "d3": "Discovered a quiet shortcut to this week's notes.",
-      "d4": "Jotted down three tricky formulas on a neatly arranged sticky note.",
-      "d5": "Celebrated your rhythm with an imaginary cup of mint tea."
     }
   },
   "collectiblesModal": {

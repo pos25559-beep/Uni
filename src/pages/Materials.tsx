@@ -23,10 +23,10 @@ type ProviderFilter = MaterialProvider | 'all';
 const providerFilters: ProviderFilter[] = ['all', 'upload', 'gdrive', 'notebooklm', 'clip', 'link'];
 
 const EMPTY_URLS: string[] = [];
-const byTitle = (a: Material, b: Material) => a.title.localeCompare(b.title, 'pt');
+const byTitle = (a: Material, b: Material, lang: string) => a.title.localeCompare(b.title, lang);
 
 export default function Materials() {
-  const { t } = useTranslation(['courses', 'common']);
+  const { t, i18n } = useTranslation(['courses', 'common']);
   const materials = useStore((s) => s.materials);
   const courses = useStore((s) => s.courses);
   const sharedHubDriveUrls = useStore((s) => s.settings.sharedHubDriveUrls ?? EMPTY_URLS);
@@ -111,7 +111,10 @@ export default function Materials() {
     [scoped, providerFilter],
   );
 
-  const pinned = useMemo(() => visible.filter((m) => m.pinned).sort(byTitle), [visible]);
+  const pinned = useMemo(
+    () => visible.filter((m) => m.pinned).sort((a, b) => byTitle(a, b, i18n.language)),
+    [visible, i18n.language],
+  );
 
   const groups = useMemo(() => {
     const map = new Map<string, Material[]>();
@@ -126,9 +129,9 @@ export default function Materials() {
       .map((k) => ({
         key: k,
         course: courseById.get(k),
-        items: (map.get(k) ?? []).sort(byTitle),
+        items: (map.get(k) ?? []).sort((a, b) => byTitle(a, b, i18n.language)),
       }));
-  }, [visible, courses, courseById]);
+  }, [visible, courses, courseById, i18n.language]);
 
   const hasSearchQuery = query.trim() !== '' || courseFilter !== 'all';
   const filtersActive = hasSearchQuery || providerFilter !== 'all';
@@ -210,7 +213,7 @@ export default function Materials() {
         eyebrow={t('courses:materialsSection.eyebrow')}
         title={t('courses:materialsSection.title')}
         accentTitle={t('courses:materialsSection.accentTitle')}
-        subtitle={`${materials.length} ${materials.length === 1 ? 'material' : 'materiais'}`}
+        subtitle={t('courses:materialsPage.count', { count: materials.length })}
         actions={
           <div className="flex items-center gap-2">
             <TabGuideHelpButton tabKey="materiais" />
@@ -346,7 +349,7 @@ export default function Materials() {
                             })
                           }
                           aria-label={t('courses:materialsPage.removeRoot')}
-                          className="grid size-10 place-items-center rounded-full text-muted hover:text-danger"
+                          className="grid size-11 place-items-center rounded-full text-muted hover:text-danger"
                         >
                           <X size={14} />
                         </button>
@@ -462,7 +465,7 @@ export default function Materials() {
                         for (const g of groups) next[g.key] = targetOpen;
                         setGroupOpenOverrides(next);
                       }}
-                      className="min-h-[36px] font-semibold text-accent-ink hover:underline dark:text-accent"
+                      className="min-h-11 px-2 font-semibold text-accent-ink hover:underline dark:text-accent"
                     >
                       {allGroupsExpanded ? t('courses:materialsPage.collapseAll') : t('courses:materialsPage.expandAll')}
                     </button>
@@ -481,10 +484,10 @@ export default function Materials() {
                 >
                   <header className="flex items-center justify-between gap-3 border-b border-line/70 bg-pastel-butter/45 px-4 py-2.5 dark:bg-surface-2">
                     <h2 className="flex items-center gap-2 font-display text-sm font-bold text-fg">
-                      <Pin size={14} className="text-accent-ink dark:text-accent" /> Fixados
+                      <Pin size={14} className="text-accent-ink dark:text-accent" /> {t('courses:materialsPage.pinnedTitle')}
                     </h2>
                     <span className="font-mono text-xs tabular text-muted">
-                      {pinned.length} {pinned.length === 1 ? 'material' : 'materiais'}
+                      {t('courses:materialsPage.count', { count: pinned.length })}
                     </span>
                   </header>
                   {renderRows(pinned)}
@@ -537,7 +540,7 @@ export default function Materials() {
                         )}
                       </div>
                       <span className="shrink-0 font-mono text-xs tabular text-muted">
-                        {g.items.length} {g.items.length === 1 ? 'material' : 'materiais'}
+                        {t('courses:materialsPage.count', { count: g.items.length })}
                       </span>
                     </button>
 
@@ -554,7 +557,7 @@ export default function Materials() {
                                   [g.key]: !showAllRows,
                                 }))
                               }
-                              className="min-h-[40px] rounded-full px-4 text-xs font-semibold text-accent-ink transition hover:bg-accent-soft/50 dark:text-accent"
+                              className="min-h-11 rounded-full px-4 text-xs font-semibold text-accent-ink transition hover:bg-accent-soft/50 dark:text-accent"
                             >
                               {hiddenCount > 0
                                 ? t('courses:materialsPage.showMore', { n: hiddenCount, total: g.items.length })

@@ -57,6 +57,22 @@
     "nextReview": "Próxima revisão: {{date}} (+{{days}}d)",
     "stageUp": "Evolução natural! {{name}} passou para {{stage}}.",
     "notebookSaved": "Nota registada no Caderno de {{name}}.",
+    "recallFallbackHint": "Inclui a definição principal e um exemplo ou condição onde se aplica.",
+    "recallGenErr": "Não foi possível gerar pergunta personalizada agora.",
+    "recallEvalErr": "Não foi possível avaliar a resposta agora. Podes usar o Baralho de Cartões.",
+    "sheetsCount_one": "{{count}} ficha",
+    "sheetsCount_other": "{{count}} fichas",
+    "preparingTopic": "A preparar pergunta de recall para «{{topic}}»…",
+    "hintPrefix": "Pista: {{hint}}",
+    "fallbackToDeck": "Trocar para Baralho de Cartões",
+    "recall": {
+      "score1Label": "Rever já",
+      "score1Hint": "Falhei pontos-chave — volta amanhã (1d)",
+      "score2Label": "Com esforço",
+      "score2Hint": "Lembrei parte — consolida em breve",
+      "score3Label": "Dominei",
+      "score3Hint": "Expliquei sem cábula — avança no ciclo SRS"
+    },
     "ui": {
       "level1": "Muito fraca",
       "level2": "Fraca",
@@ -86,7 +102,10 @@
       "modeAria": "Modo de prática pós-sessão",
       "adjust": "Ajustar confiança ({{n}}/5)",
       "confidence": "Confiança",
-      "close": "Fechar"
+      "close": "Fechar",
+      "returnBanner": "Bem-vindo de volta · {{count}}ª saída ({{away}}). O teu progresso continua intacto.",
+      "exitCount_one": "{{count}} saída",
+      "exitCount_other": "{{count}} saídas"
     },
     "shield": {
       "sound": {
@@ -160,7 +179,16 @@
     "practiceReview": "Prática & Revisão (SRS)",
     "practiceHint": "Micro-sessão rápida com os teus materiais",
     "weeklyCheckin": "Check-in semanal com Tutor",
-    "weeklyCheckinHint": "Ajusta o plano ao teu ritmo desta semana"
+    "weeklyCheckinHint": "Ajusta o plano ao teu ritmo desta semana",
+    "noStudyDays": "sem dias de estudo",
+    "focusInProgress": "Bloco de foco em curso"
+  },
+  "dayCol": {
+    "addAria": "Adicionar sessão a {{date}}",
+    "ofBudget": "de {{time}}",
+    "studied": "{{time}} estudados",
+    "noSessions": "Sem sessões",
+    "offDay": "Dia sem estudo"
   },
   "cal": {
     "view": {
@@ -171,6 +199,7 @@
     "movedOne": "1 aula movida de Sábado para Sexta-feira (6ª).",
     "movedMany": "{{count}} aulas movidas de Sábado para Sexta-feira (6ª).",
     "exported": "Calendário exportado (.ics) para Google/Apple/Outlook!",
+    "shareTitle": "Horário {{name}} · Unipedia",
     "shareText": "Importa as cadeiras, aulas e avaliações da nossa turma no Unipedia:",
     "linkCopiedClass": "Link da turma copiado! Sem dados pessoais nem notas.",
     "importedSummary": "Importado: {{c}} cadeira(s), {{k}} aula(s), {{a}} avaliação(ões).",
@@ -216,7 +245,37 @@
       "eventoPlural": "Eventos",
       "tarefa": "Tarefa",
       "tarefaPlural": "Tarefas"
-    }
+    },
+    "source": {
+      "local": "Local",
+      "clip": "Portal",
+      "google": "Google",
+      "outlook": "Outlook"
+    },
+    "dueLabel": "Prazo",
+    "allDay": "Dia todo",
+    "legend": "Cor = cadeira · borda forte = avaliação · tracejado = tarefa",
+    "agendaEmpty": "Nada agendado nos próximos 30 dias",
+    "agendaEmptyHint": "Aulas, avaliações, sessões de estudo, eventos e tarefas com data aparecem aqui.",
+    "editClassAria": "Editar aula {{title}}",
+    "editClassHint": "Alterar dia ou hora da aula",
+    "deleteClassAria": "Apagar aula {{title}}",
+    "dayEmpty": "Nada neste dia",
+    "dayEmptyHint": "Seleciona outro dia ou cria um evento ou avaliação.",
+    "deleteEvent": "Apagar evento",
+    "deleteConfirmMsg": "Apagar \"{{title}}\"? Esta ação não se pode desfazer.",
+    "deleteConfirmBtn": "Apagar",
+    "uncheckSession": "Desmarcar sessão",
+    "checkSession": "Marcar sessão como concluída",
+    "checkTitle": "Marcar como concluída",
+    "openCourseAria": "Abrir cadeira",
+    "openShort": "Abrir",
+    "dayItemsAria_one": "{{date}}, {{count}} item",
+    "dayItemsAria_other": "{{date}}, {{count}} itens",
+    "itemCount_one": "{{count}} item",
+    "itemCount_other": "{{count}} itens",
+    "weekEmptyDay": "Sem aulas ou eventos marcados neste dia.",
+    "clickToEdit": "Clica para alterar dia/hora"
   },
   "session": {
     "past": "passou",
@@ -260,7 +319,10 @@
       "morning": "Manhã",
       "afternoon": "Tarde",
       "evening": "Noite",
-      "autoSub": "17h+ útil / 10h+ fds"
+      "autoSub": "17h+ útil / 10h+ fds",
+      "morningSub": "08:30+",
+      "afternoonSub": "14:00+",
+      "eveningSub": "17:30+"
     },
     "title": "Estúdio do Plano de Estudo",
     "keepDone": "Sessões concluídas e manuais mantêm-se intactas.",

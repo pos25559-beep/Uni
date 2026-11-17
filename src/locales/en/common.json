@@ -12,7 +12,10 @@
     "tutor": "Tutor",
     "settings": "Settings",
     "more": "More",
-    "skipToContent": "Skip to content"
+    "skipToContent": "Skip to content",
+    "mainAria": "Main navigation",
+    "barAria": "Navigation bar",
+    "moreAria": "More options and settings"
   },
   "actions": {
     "save": "Save",
@@ -24,7 +27,9 @@
     "focus": "Focus",
     "add": "Add",
     "open": "Open",
-    "back": "Back"
+    "back": "Back",
+    "see": "View",
+    "confirmTitle": "Confirm action"
   },
   "languages": {
     "pt-PT": "Português (PT)",
@@ -44,7 +49,54 @@
     "calendarHint": "Exams & class schedule",
     "progressHint": "Uni shelf & analytics",
     "materialsHint": "Notes, PDFs & folders",
-    "settingsHint": "Account, language, AI & data"
+    "settingsHint": "Account, language, AI & data",
+    "menuAria": "Additional menu",
+    "closeMenuAria": "Close menu"
+  },
+  "ui": {
+    "general": "General",
+    "progress": "Progress",
+    "actionsTitle": "Actions",
+    "closeOptions": "Close options",
+    "selectOption": "Select option",
+    "selectDots": "Select…",
+    "chooseOption": "Choose option",
+    "weekdaysAria": "Days of the week",
+    "dateTime": {
+      "closePicker": "Close picker",
+      "quickGrid": "Quick grid",
+      "exactTime": "Exact time",
+      "manualHint": "Enter as HH:MM (e.g. 08:20)",
+      "manualError": "Invalid format. Use HH:MM between 00:00 and 23:59.",
+      "applyTime": "Apply time",
+      "hour": "Hour",
+      "minutes": "Minutes",
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "plus7Days": "+7 days",
+      "clear": "Clear",
+      "prevMonth": "Previous month",
+      "nextMonth": "Next month",
+      "selectTimeAria": "Select time ({{val}})",
+      "empty": "empty",
+      "chooseTime": "Choose time",
+      "chooseDate": "Choose date",
+      "selectDateAria": "Select date ({{val}})",
+      "chooseDateTime": "Choose date and time",
+      "selectDateTimeAria": "Select date and time ({{val}})",
+      "dayTab": "Day: {{day}}",
+      "timeTab": "Time: {{time}}"
+    }
+  },
+  "authStatus": {
+    "syncedOk": "Data synced to the cloud!",
+    "syncError": "Couldn't sync right now. Try again later.",
+    "signInOrCreate": "Sign in or create account",
+    "saveAndSync": "Save and sync your notebook",
+    "userFallback": "User",
+    "cloudActive": "Cloud active",
+    "syncNowAria": "Sync now",
+    "signOutAria": "Sign out"
   },
   "brand": {
     "uniTutor": "Uni Tutor",
@@ -195,6 +247,41 @@
     "nucleo": "Student society",
     "musica": "Volunteering / Music"
   },
+  "palettes": {
+    "caderno": {
+      "name": "Living Notebook",
+      "tagline": "Warm cream paper, forest green and coral marker"
+    },
+    "ardosia": {
+      "name": "Minimal Slate",
+      "tagline": "Understated editorial focus in graphite"
+    },
+    "botanico": {
+      "name": "Botanical Green",
+      "tagline": "Calm organic tone for long, low-glare study sessions"
+    },
+    "terracota": {
+      "name": "Linen & Terracotta",
+      "tagline": "Warm and inviting with clay and amber notes"
+    },
+    "oceano": {
+      "name": "Academic Ocean",
+      "tagline": "Classic focus in crisp white and navy blue"
+    },
+    "cafe": {
+      "name": "Coffee & Cream",
+      "tagline": "Cosy library warmth in sepia and caramel"
+    },
+    "menta": {
+      "name": "Botanical Mint",
+      "tagline": "Light freshness of recycled paper and soft teal"
+    }
+  },
+  "ectsTargets": {
+    "120": "120 ECTS · Master's (2 years)",
+    "180": "180 ECTS · Bachelor's (3 years)",
+    "300": "300 ECTS · Integrated Master's (5 years)"
+  },
   "labels": {
     "kind": {
       "exame": "Exam",
@@ -234,6 +321,16 @@
       "4": "Thursday",
       "5": "Friday",
       "6": "Saturday"
+    },
+    "courseColor": {
+      "emerald": "Notebook Mint",
+      "amber": "Butter",
+      "sky": "Sky Blue",
+      "orange": "Coral Peach",
+      "lime": "Olive Sage",
+      "rose": "Paper Rose",
+      "cyan": "Clear Aqua",
+      "violet": "Olive"
     }
   },
   "notif": {
@@ -371,7 +468,103 @@
       "openReviews": "Open reviews"
     },
     "course": "Course",
-    "nextClass": "Next class"
+    "nextClass": "Next class",
+    "classFallback": "Class"
+  },
+  "errors": {
+    "backupInvalidCols": "Invalid file: missing the “collections” object.",
+    "backupNoKnownCol": "Invalid file: no known collection found.",
+    "imgTooLarge": "Image “{{name}}” exceeds 15 MB. Try a lighter file.",
+    "imgTimeout": "Reading “{{name}}” timed out.",
+    "imgReadFail": "Could not read “{{name}}”.",
+    "imgAborted": "Reading “{{name}}” was cancelled.",
+    "matBase64Fail": "Failed to convert file to base64.",
+    "matFilesNoUri": "Missing fileUri in Gemini Files API response.",
+    "matFilesProcessFail": "PDF processing failed in Gemini Files API.",
+    "matDirectBudget": "Direct upload budget reached — add your personal Gemini key or select fewer files.",
+    "matLocalNotFound": "Local file not found on this device.",
+    "matTextEmpty": "Text file is empty.",
+    "matUnsupported": "Format not directly readable (supports PDF, image or text).",
+    "matMax25": "Exceeds 25 MB per file.",
+    "matMax75": "Exceeds 7.5 MB (supports up to 25 MB with a personal Gemini key).",
+    "matDriveBadId": "Invalid Google Drive file or folder link/ID.",
+    "matDriveExpired": "Google Drive session expired.",
+    "matDocExportFail": "Could not export this Google Doc.",
+    "matDocNoText": "Document contains no extractable text.",
+    "matDriveUnsupported": "File type not readable by Tutor (use PDF, Doc or image).",
+    "matDriveHttp": "Error downloading from Drive ({{status}}).",
+    "matFileOver25": "File exceeds 25 MB.",
+    "matFileOver75": "File exceeds 7.5 MB.",
+    "matLimitDocs": "Limit of {{max}} documents read per question reached.",
+    "matTokenBudget": "Context budget reached (~{{k}}k tokens per question).",
+    "matDirectSizeLimit": "Direct upload size budget reached.",
+    "matLocalUnavailable": "Unavailable locally.",
+    "matDriveNeedsAuth": "Requires an active Google Drive session to read its contents.",
+    "matDriveFail": "Could not read from Google Drive.",
+    "matExternalLink": "External reference only (link).",
+    "bridgePasteQuiz": "Paste the quiz result or missed points first.",
+    "bridgeNeedMaster": "Only a Master-stage Uni (stage 5/5) can mentor the next course.",
+    "bridgeDiffCourse": "Choose a different course to receive the methodology.",
+    "bridgeStrength": "Quiz ({{pct}}%) on {{topic}}",
+    "practiceGenFail": "Could not generate flashcards right now.",
+    "visionBadJson": "Uni received an unexpected non-JSON response. Try a sharper image.",
+    "visionDefaultTitle": "Assessment",
+    "geminiTimeout": "The model took too long to respond with your personal key. Please try again.",
+    "geminiTimeoutShort": "Timed out after {{seconds}}s waiting for {{model}}.",
+    "geminiBilling": "Your Gemini key belongs to a Google AI Studio project with depleted prepaid credits (no active billing). Create a new key on a free-tier project at ai.studio/projects or switch temporarily to Native Uni.",
+    "geminiInvalid": "Your personal Gemini key appears invalid. Check in “Manage key” that you copied the full key starting with AIza…",
+    "geminiQuota": "Your Gemini key hit Google AI Studio's per-minute or daily limit. Wait a moment or use Native Uni.",
+    "geminiDenied": "This Gemini key lacks permission to use the Gemini API in the selected ai.studio/projects project.",
+    "geminiGeneric": "Error contacting the Gemini API.",
+    "voiceNeedKey": "Personal Gemini key required.",
+    "voiceNoMic": "Microphone is unavailable on this device or browser.",
+    "voiceConnErr": "Real-time voice connection error.",
+    "voiceSessionErr": "Could not establish the Live Audio session.",
+    "voiceStartErr": "Could not start Live Voice mode.",
+    "notifChannelName": "Uni Reminders",
+    "notifChannelDesc": "Daily streak, spaced reviews, exams and classes"
+  },
+  "googleSvc": {
+    "connectingDrive": "Connecting to Drive…",
+    "scanCancelledSaved": "Scan stopped: {{added}} materials already found were saved.",
+    "scanCancelled": "Scan cancelled.",
+    "scanTimeoutAdded": "Partial scan (mobile timeout): {{added}} materials added ({{folders}} folders). Tap again to continue.",
+    "scanTimeoutEmpty": "Timed out while scanning ({{folders}} folders checked). Link your course folder directly to jump straight there.",
+    "scanDoneAdded": "Scan complete: {{added}} new materials added ({{folders}} folders scanned)!",
+    "scanDoneSynced": "Scan complete ({{folders}} folders, {{total}} files checked): your Drive folders are already in sync.",
+    "popupBlocked": "Your browser blocked the Google window. Allow pop-ups or sign in with Google in Settings.",
+    "driveAccessErr": "Error accessing Google Drive.",
+    "personalLoginBusy": "Personal session started ({{email}}). Checking Drive folders...",
+    "personalActiveAdded": "Personal session active ({{email}}). {{added}} new materials were organised in your repository.",
+    "personalActiveSynced": "Personal session active ({{email}}). Google Drive and Cloud are in sync.",
+    "personalLoginErr": "Failed to sign in with your personal Google account.",
+    "personalSwitched": "Personal account switched to: {{email}}",
+    "switchErr": "Error switching account.",
+    "personalLoggedOut": "Personal Google session signed out.",
+    "scanSettingsAdded": "Scan complete: {{added}} new academic materials added to your courses!",
+    "scanSettingsSynced": "Scan complete: all linked Google Drive folders are already in sync.",
+    "driveScanErr": "Error scanning Google Drive.",
+    "junkRemoved": "{{removed}} personal or non-academic files were removed from the repository.",
+    "junkClean": "Your repository is already free of irrelevant or duplicate files.",
+    "academicConnected": "Academic account connected: {{email}}",
+    "academicErr": "Failed to authenticate the university email account.",
+    "academicDisconnected": "Academic account disconnected.",
+    "calSynced_one": "{{count}} event imported from calendar.",
+    "calSynced_other": "{{count}} events imported from calendar.",
+    "calSyncErr": "Error syncing Google Calendar.",
+    "driveReadDenied": "Google didn't return Drive read permission. Allow Google Drive access in the sign-in window.",
+    "driveFolderStage": "Linked folder",
+    "myDriveStage": "My Drive",
+    "sharedWithMeStage": "Shared with me",
+    "driveInvalidFolder": "Invalid Google Drive folder link or ID.",
+    "driveAuthPrompt": "Authorise Google Drive access in the sign-in window (or set a Client ID in Settings).",
+    "driveTimeout": "Connecting to Google Drive took too long on mobile. Try again.",
+    "driveExpired": "Your Google Drive session expired or needs re-authorisation. Click “Authorise Google Drive”.",
+    "googleScriptErr": "Could not load Google sign-in.",
+    "gmailNoScope": "The active Google session lacks Gmail read permission. Grant access to load emails.",
+    "gmailNoPreview": "(Message has no text preview)",
+    "gcalNoTitle": "(untitled)",
+    "onedriveNoClientId": "Microsoft Client ID is missing. Configure it in Settings."
   },
   "aiConsent": {
     "title": "Turn on Uni with AI",

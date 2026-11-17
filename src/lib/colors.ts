@@ -26,7 +26,7 @@ export const courseColors: Record<
     tint: 'bg-[#BCEEE0]/75 border-[#8ED9C4] dark:bg-[#17312B]/80 dark:border-[#2A594D]',
     block: 'bg-[#BCEEE0] text-[#141312] dark:bg-[#19352E] dark:text-[#FAF6EC]',
     hex: '#157F58',
-    label: 'Menta Caderno',
+    get label() { return tr('common:labels.courseColor.emerald'); },
   },
   amber: {
     dot: 'bg-[#D97706] dark:bg-[#FBBF24]',
@@ -36,7 +36,7 @@ export const courseColors: Record<
     tint: 'bg-[#FCE99F]/75 border-[#EBD16B] dark:bg-[#352D14]/80 dark:border-[#5C4D1E]',
     block: 'bg-[#FCE99F] text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]',
     hex: '#D97706',
-    label: 'Manteiga',
+    get label() { return tr('common:labels.courseColor.amber'); },
   },
   sky: {
     dot: 'bg-[#1D6FD6] dark:bg-[#60A5FA]',
@@ -46,7 +46,7 @@ export const courseColors: Record<
     tint: 'bg-[#C4E0FD]/75 border-[#93C4F9] dark:bg-[#192A3D]/80 dark:border-[#2C4766]',
     block: 'bg-[#C4E0FD] text-[#141312] dark:bg-[#1A2C40] dark:text-[#FAF6EC]',
     hex: '#1D6FD6',
-    label: 'Azul Céu',
+    get label() { return tr('common:labels.courseColor.sky'); },
   },
   orange: {
     dot: 'bg-[#E04F33] dark:bg-[#FF7A59]',
@@ -56,7 +56,7 @@ export const courseColors: Record<
     tint: 'bg-[#FAD6BA]/75 border-[#EBB791] dark:bg-[#382317]/80 dark:border-[#5E3824]',
     block: 'bg-[#FAD6BA] text-[#141312] dark:bg-[#382317] dark:text-[#FAF6EC]',
     hex: '#E04F33',
-    label: 'Pêssego Coral',
+    get label() { return tr('common:labels.courseColor.orange'); },
   },
   lime: {
     dot: 'bg-[#5B7E26] dark:bg-[#A3E635]',
@@ -66,7 +66,7 @@ export const courseColors: Record<
     tint: 'bg-[#C9DC9F]/75 border-[#A5BF70] dark:bg-[#212E19]/80 dark:border-[#3A522B]',
     block: 'bg-[#C9DC9F] text-[#141312] dark:bg-[#23311B] dark:text-[#FAF6EC]',
     hex: '#5B7E26',
-    label: 'Salva Oliva',
+    get label() { return tr('common:labels.courseColor.lime'); },
   },
   rose: {
     dot: 'bg-[#D64550] dark:bg-[#FB7185]',
@@ -76,7 +76,7 @@ export const courseColors: Record<
     tint: 'bg-[#F9C5BE]/75 border-[#E89D93] dark:bg-[#381E21]/80 dark:border-[#613036]',
     block: 'bg-[#F9C5BE] text-[#141312] dark:bg-[#3A1E22] dark:text-[#FAF6EC]',
     hex: '#D64550',
-    label: 'Rosa Papel',
+    get label() { return tr('common:labels.courseColor.rose'); },
   },
   cyan: {
     dot: 'bg-[#0E7490] dark:bg-[#22D3EE]',
@@ -86,7 +86,7 @@ export const courseColors: Record<
     tint: 'bg-[#BAE6EC]/75 border-[#87CDD8] dark:bg-[#142D35]/80 dark:border-[#24515E]',
     block: 'bg-[#BAE6EC] text-[#141312] dark:bg-[#142D35] dark:text-[#FAF6EC]',
     hex: '#0E7490',
-    label: 'Água Clara',
+    get label() { return tr('common:labels.courseColor.cyan'); },
   },
   // Chave legada mantida apenas para compatibilidade com cursos guardados anteriormente
   violet: {
@@ -97,7 +97,7 @@ export const courseColors: Record<
     tint: 'bg-[#C9DC9F]/75 border-[#A5BF70] dark:bg-[#212E19]/80 dark:border-[#3A522B]',
     block: 'bg-[#C9DC9F] text-[#141312] dark:bg-[#23311B] dark:text-[#FAF6EC]',
     hex: '#5B7E26',
-    label: 'Oliva',
+    get label() { return tr('common:labels.courseColor.violet'); },
   },
 };
 

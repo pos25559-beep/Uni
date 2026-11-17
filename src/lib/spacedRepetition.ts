@@ -1,4 +1,5 @@
 import { addDays, differenceInCalendarDays, format } from 'date-fns';
+import { tr } from '../i18n/tr';
 import type { Course, Topic, TopicRecallSample } from '../types';
 
 export const SRS_INTERVALS = [1, 3, 7, 21] as const;
@@ -6,9 +7,18 @@ export const SRS_INTERVALS = [1, 3, 7, 21] as const;
 export type RecallScore = 1 | 2 | 3;
 
 export const RECALL_LABELS: Record<RecallScore, { label: string; hint: string }> = {
-  1: { label: 'Rever já', hint: 'Falhei pontos-chave — volta amanhã (1d)' },
-  2: { label: 'Com esforço', hint: 'Lembrei parte — consolida em breve' },
-  3: { label: 'Dominei', hint: 'Expliquei sem cábula — avança no ciclo SRS' },
+  1: {
+    get label() { return tr('plan:focus.recall.score1Label'); },
+    get hint() { return tr('plan:focus.recall.score1Hint'); },
+  },
+  2: {
+    get label() { return tr('plan:focus.recall.score2Label'); },
+    get hint() { return tr('plan:focus.recall.score2Hint'); },
+  },
+  3: {
+    get label() { return tr('plan:focus.recall.score3Label'); },
+    get hint() { return tr('plan:focus.recall.score3Hint'); },
+  },
 };
 
 const parseDay = (s: string) => {

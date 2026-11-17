@@ -3,6 +3,7 @@ import { format, parseISO } from 'date-fns';
 import { appDateLocale as pt, longDatePattern } from '../../lib/dateLocale';
 import { MapPin, Pencil, Trash2 } from 'lucide-react';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Course } from '../../types';
 import { Badge, CourseChip, EmptyState } from '../ui';
 import { cx } from '../../lib/uiHelpers';
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export default function AgendaView({ items, courseById, today, onEditClass, onDeleteClass }: Props) {
+  const { t } = useTranslation('plan');
   const groups = useMemo(() => {
     const out: { date: string; list: CalItem[] }[] = [];
     for (const it of items) {
@@ -32,8 +34,8 @@ export default function AgendaView({ items, courseById, today, onEditClass, onDe
   if (groups.length === 0) {
     return (
       <EmptyState
-        title="Nada agendado nos próximos 30 dias"
-        hint="Aulas, avaliações, sessões de estudo, eventos e tarefas com data aparecem aqui."
+        title={t('cal.agendaEmpty')}
+        hint={t('cal.agendaEmptyHint')}
       />
     );
   }
@@ -44,7 +46,7 @@ export default function AgendaView({ items, courseById, today, onEditClass, onDe
         <section key={date} className="rise">
           <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold">
             {capitalizeFirst(format(parseISO(date), longDatePattern(), { locale: pt }))}
-            {date === today && <Badge tone="accent">Hoje</Badge>}
+            {date === today && <Badge tone="accent">{t('calendar.today')}</Badge>}
           </h3>
           <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
             {list.map((it) => {
@@ -77,22 +79,22 @@ export default function AgendaView({ items, courseById, today, onEditClass, onDe
                         <button
                           type="button"
                           onClick={() => onEditClass(it)}
-                          aria-label={`Editar aula ${it.title}`}
-                          title="Alterar dia ou hora da aula"
-                          className="grid size-8 place-items-center rounded-lg text-muted transition hover:bg-surface-2 hover:text-fg"
+                          aria-label={t('cal.editClassAria', { title: it.title })}
+                          title={t('cal.editClassHint')}
+                          className="grid size-11 place-items-center rounded-lg text-muted transition hover:bg-surface-2 hover:text-fg"
                         >
-                          <Pencil size={14} />
+                          <Pencil size={15} />
                         </button>
                       )}
                       {onDeleteClass && (
                         <button
                           type="button"
                           onClick={() => onDeleteClass(it)}
-                          aria-label={`Apagar aula ${it.title}`}
-                          title="Apagar aula"
-                          className="grid size-8 place-items-center rounded-lg text-muted transition hover:bg-danger/12 hover:text-danger"
+                          aria-label={t('cal.deleteClassAria', { title: it.title })}
+                          title={t('cal.deleteClass')}
+                          className="grid size-11 place-items-center rounded-lg text-muted transition hover:bg-danger/12 hover:text-danger"
                         >
-                          <Trash2 size={14} />
+                          <Trash2 size={15} />
                         </button>
                       )}
                     </div>

@@ -397,7 +397,7 @@ export default function ClipImportModal({ onClose }: { onClose: () => void }) {
                 aria-pressed={tab === value}
                 onClick={() => { setTab(value); setError(null); }}
                 className={cx(
-                  'h-8 flex-1 rounded-lg text-xs font-medium transition',
+                  'min-h-11 flex-1 rounded-lg px-2 text-xs font-medium transition',
                   tab === value ? 'bg-accent text-accent-fg' : 'text-muted hover:text-fg',
                 )}
               >
@@ -428,7 +428,7 @@ export default function ClipImportModal({ onClose }: { onClose: () => void }) {
               <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
                 <span>{t('importSchedule.orHtml')}</span>
                 <label className={cx(
-                  'inline-flex h-8 cursor-pointer items-center gap-2 rounded-xl border border-line bg-surface-2 px-3 font-medium text-fg hover:border-muted/50',
+                  'inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-line bg-surface-2 px-3.5 font-medium text-fg hover:border-muted/50',
                   reading && 'pointer-events-none opacity-60',
                 )}>
                   <Upload size={14} />

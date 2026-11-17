@@ -29,6 +29,33 @@
     "unisAccent": "that grows with you",
     "unisDesc": "Pick the shape, name, and teaching style of each Uni. Evolves from Egg to Master strictly through verified mastery."
   },
+  "s1": {
+    "badge": "Step 3 · Personal style",
+    "titleBefore": "Hi! How would you like your ",
+    "titleAccent": "notebook",
+    "titleAfter": " to greet you?",
+    "intro": "Choose your name, notebook colours and Uni's style. You can change everything later.",
+    "nameLabel": "Your first name (or nickname)",
+    "namePh": "E.g. Clara or Alex",
+    "paletteSection": "Theme & palette",
+    "themes": {
+      "system": "System",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "tones": {
+      "vibrante": {
+        "label": "Expressive",
+        "hint": "Warm pastels, tactile motion and an active Uni"
+      },
+      "serio": {
+        "label": "Serious & Minimal",
+        "hint": "Neutral surfaces, calm focus and zero distractions"
+      }
+    },
+    "uniVoiceTitle": "Uni's style and voice",
+    "autoAccessory": "Auto by subject"
+  },
   "s2": {
     "title": "Your degree and semester",
     "badge": "Path",
@@ -106,7 +133,14 @@
     "courseNamePh": "E.g. Calculus I",
     "year": "Year",
     "addToList": "Add to list",
-    "updateActive": "Update the active courses in my study space with this list ({{count}})"
+    "updateActive": "Update the active courses in my study space with this list ({{count}})",
+    "activeCount": "{{count}} active",
+    "doneCount": "{{count}} completed",
+    "avgLabel": "Average {{avg}}",
+    "moreSlots": "+ {{count}} more class(es) in timetable",
+    "pastePh": "E.g. Linear Algebra (6 ECTS)\nCalculus I (6 ECTS)",
+    "removeAria": "Remove {{name}}",
+    "yearOption": "Yr {{n}}"
   },
   "s4": {
     "day": {
@@ -180,6 +214,14 @@
       "ai": "The shared Uni uses Gemini's free quota: Google may use what you send to improve its products. Don't send personal data. AI features require you to be 18.",
       "terms": "{{app}} is a free study tool for university students. AI features require you to be 18; other features follow your country's minimum age.",
       "open": "Open full page"
+    },
+    "ocrError": "Couldn't analyse that screenshot right now.",
+    "fallback": {
+      "otherUni": "Other Institution",
+      "ptUni": "University",
+      "customPlan": "Custom Plan",
+      "academicPath": "Academic Path",
+      "student": "Student"
     }
   },
   "hub": {
@@ -309,5 +351,33 @@
     "demoTopic": "Limits before the test",
     "demoStatus": "Plan + Recall up to date",
     "accessoryAria": "Change Uni's accessory"
+  },
+  "hubInvite": {
+    "closeAria": "Close Uni's invitation",
+    "titleBefore": "Hey! Shall we finish your First steps so you can ",
+    "titleAccent": "start studying",
+    "titleAfter": "?",
+    "body": "Bring together your timetable, exam dates, shared Drives, and notes here so I can organize your pace today.",
+    "primaryCta": "Complete first steps",
+    "secondaryCta": "Explore a bit more"
+  },
+  "modal": {
+    "title": "Set up degree and pace",
+    "aria": "Unipedia initial setup"
+  },
+  "tour": {
+    "welcomeTitle": "Welcome to Unipedia",
+    "welcomeDesc": "This is your Today view: it brings together your study streak, exam alerts and today's classes at a glance.",
+    "progressTitle": "Real-time progress",
+    "progressDesc": "Track exam readiness, weekly study hours, GPA progress and scheduled sessions.",
+    "coursesTitle": "Courses & Subjects",
+    "coursesDesc": "Manage topics, confidence (1–5), target grades and direct links for your degree.",
+    "planTitle": "14-day Plan & Focus",
+    "planDesc": "Blocks automatically prioritised around upcoming exams, with an integrated focus timer.",
+    "tutorTitle": "Uni · Your AI Tutor",
+    "tutorDesc": "Ask questions grounded in your courses and notes whenever you need help.",
+    "next": "Next",
+    "prev": "Back",
+    "done": "Start studying"
   }
 }

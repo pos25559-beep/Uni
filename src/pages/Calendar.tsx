@@ -35,11 +35,7 @@ import type { ClassSlot, Course } from '../types';
 
 type View = 'mes' | 'semana' | 'agenda';
 
-const VIEWS: { key: View; label: string }[] = [
-  { key: 'mes', label: 'Mês' },
-  { key: 'semana', label: 'Semana' },
-  { key: 'agenda', label: 'Agenda' },
-];
+const VIEW_KEYS: View[] = ['mes', 'semana', 'agenda'];
 
 const ALL_ON: Record<CalKind, boolean> = { aula: true, avaliacao: true, estudo: true, evento: true, tarefa: true };
 
@@ -183,7 +179,7 @@ export default function Calendar() {
     try {
       if (navigator.share) {
         await navigator.share({
-          title: `Horário ${payload.semesterName} · Unipedia`,
+          title: t('cal.shareTitle', { name: payload.semesterName }),
           text: t('cal.shareText'),
           url,
         });
@@ -300,7 +296,7 @@ export default function Calendar() {
           layoutId="calendar-view-tabs"
           value={view}
           onChange={(v) => setView(v as View)}
-          items={VIEWS.map((v) => ({ id: v.key, label: t(`cal.view.${v.key}`) }))}
+          items={VIEW_KEYS.map((k) => ({ id: k, label: t(`cal.view.${k}`) }))}
         />
       </div>
 
@@ -325,7 +321,7 @@ export default function Calendar() {
           );
         })}
         <p className="ml-auto hidden text-xs text-muted lg:block">
-          Cor = cadeira · borda forte = avaliação · tracejado = tarefa
+          {t('cal.legend')}
         </p>
       </div>
 
@@ -396,7 +392,7 @@ export default function Calendar() {
         <ConfirmModal
           title={t('cal.deleteClass')}
           message={t('cal.deleteClassMsg', { title: deletingClass.title })}
-          confirmLabel="Apagar"
+          confirmLabel={t('cal.deleteConfirmBtn')}
           onConfirm={() => remove('classes', deletingClass.id)}
           onClose={() => setDeletingClass(null)}
         />

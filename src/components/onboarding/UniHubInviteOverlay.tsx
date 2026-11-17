@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { ArrowRight, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { hapticTap } from '../../lib/nativeBridge';
 import { resolveUniAccessory } from '../../lib/uniAccessories';
@@ -38,6 +39,7 @@ function markInviteDismissedNow(): void {
  * após explorar a app livremente no separador Hoje.
  */
 export default function UniHubInviteOverlay() {
+  const { t } = useTranslation('onboarding');
   const { pathname } = useLocation();
   const onboardingCompleted = useStore((s) => s.academicProfile.onboardingCompleted);
   const degreeName = useStore((s) => s.academicProfile.degreeName);
@@ -159,7 +161,7 @@ export default function UniHubInviteOverlay() {
               <button
                 type="button"
                 onClick={dismissInvite}
-                aria-label="Fechar convite do Uni"
+                aria-label={t('hubInvite.closeAria')}
                 className="absolute top-3 right-3 grid size-11 place-items-center rounded-full text-muted transition hover:bg-surface-2 hover:text-fg"
               >
                 <X size={17} />
@@ -169,12 +171,15 @@ export default function UniHubInviteOverlay() {
                 id="uni-hub-invite-title"
                 className="px-8 pt-1 font-display text-xl font-bold leading-snug tracking-tight sm:px-8 sm:text-2xl"
               >
-                Ei! Vamos completar os teus Primeiros passos para{' '}
-                <span className="font-serif font-medium italic text-accent-ink">começares a estudar</span>?
+                {t('hubInvite.titleBefore')}
+                <span className="font-serif font-medium italic text-accent-ink">
+                  {t('hubInvite.titleAccent')}
+                </span>
+                {t('hubInvite.titleAfter')}
               </h2>
 
               <p className="mt-2.5 text-sm leading-relaxed text-muted">
-                Junta aqui o horário, os testes, Drives partilhados e apontamentos para eu organizar o teu ritmo logo hoje.
+                {t('hubInvite.body')}
               </p>
 
               <div className="mt-6 flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
@@ -184,7 +189,7 @@ export default function UniHubInviteOverlay() {
                   onClick={acceptInvite}
                   className="w-full min-h-[48px] px-6 sm:w-auto"
                 >
-                  Completar primeiros passos <ArrowRight size={16} />
+                  {t('hubInvite.primaryCta')} <ArrowRight size={16} />
                 </Button>
                 <Button
                   size="md"
@@ -192,7 +197,7 @@ export default function UniHubInviteOverlay() {
                   onClick={dismissInvite}
                   className="w-full min-h-[44px] sm:w-auto"
                 >
-                  Explorar mais um pouco
+                  {t('hubInvite.secondaryCta')}
                 </Button>
               </div>
             </div>

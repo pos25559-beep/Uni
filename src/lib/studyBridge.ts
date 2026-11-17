@@ -1,3 +1,4 @@
+import { tr } from '../i18n/tr';
 import type { AppLanguage, Assessment, Course, GradingScale, ID, StudySession, Topic } from '../types';
 import { normalizeAppLanguage } from './grading';
 import type { TopicSheetRecord, UniAgentRecord } from './localDb';
@@ -149,7 +150,7 @@ export function parseAndImportQuizResult({
 }: ImportQuizResultInput): ImportedQuizOutcome {
   const cleaned = rawText.trim();
   if (!cleaned) {
-    throw new Error('Cola primeiro o resultado do quiz ou os pontos que falhaste.');
+    throw new Error(tr('common:errors.bridgePasteQuiz'));
   }
 
   let hits: number | undefined;
@@ -235,7 +236,7 @@ export function parseAndImportQuizResult({
       });
     } else if (score === 3) {
       nextNotebook = sanitizeNotebookDelta(nextNotebook, {
-        strength: `Quiz (${ratioPct}%) em ${updatedTopic.title}`,
+        strength: tr('common:errors.bridgeStrength', { pct: ratioPct, topic: updatedTopic.title }),
       });
     }
     const recomputed = recomputeUniAgentProgression(
@@ -281,10 +282,10 @@ export function transferMasteryToNextCourse({
   nowIso = new Date().toISOString(),
 }: TransferMasteryInput): UniAgentRecord {
   if (sourceAgent.stage < 4) {
-    throw new Error('Apenas um Uni no estágio Mestre (estágio 5/5) pode ensinar a cadeira seguinte.');
+    throw new Error(tr('common:errors.bridgeNeedMaster'));
   }
   if (sourceCourse.id === targetCourse.id) {
-    throw new Error('Escolhe uma cadeira diferente para receber a metodologia.');
+    throw new Error(tr('common:errors.bridgeDiffCourse'));
   }
 
   const baseTarget: UniAgentRecord = targetAgent ?? {

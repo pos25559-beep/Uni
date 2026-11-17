@@ -1,3 +1,4 @@
+import { tr } from '../i18n/tr';
 import { getCachedGoogleAccessToken } from './firebase';
 import { getFileBlob } from './fileStorage';
 import { getCustomGeminiKey, type ChatAttachment } from '../integrations/gemini';
@@ -274,7 +275,7 @@ function blobToBase64(blob: Blob): Promise<string> {
       const comma = res.indexOf(',');
       resolve(comma >= 0 ? res.slice(comma + 1) : res);
     };
-    reader.onerror = () => reject(new Error('Falha ao converter ficheiro para base64.'));
+    reader.onerror = () => reject(new Error(tr('common:errors.matBase64Fail')));
     reader.readAsDataURL(blob);
   });
 }
@@ -333,7 +334,7 @@ async function uploadBlobToGeminiFilesApi(
   const fileUri = json.file?.uri;
   const fileName = json.file?.name;
   if (!fileUri) {
-    throw new Error('Resposta sem fileUri da Gemini Files API.');
+    throw new Error(tr('common:errors.matFilesNoUri'));
   }
 
   // Alguns PDFs maiores ficam brevemente em PROCESSING antes de ficarem ACTIVE.
@@ -350,7 +351,7 @@ async function uploadBlobToGeminiFilesApi(
         fileState = meta.state;
         if (fileState === 'ACTIVE') break;
         if (fileState === 'FAILED') {
-          throw new Error('Processamento do PDF falhou na Gemini Files API.');
+          throw new Error(tr('common:errors.matFilesProcessFail'));
         }
       }
     }
@@ -405,7 +406,7 @@ async function resolveBinaryBlobToAttachment(
   }
 
   if (blob.size > remainingInlineBytes) {
-    throw new Error('Orçamento de envio direto atingido — adiciona a chave pessoal Gemini ou menos ficheiros.');
+    throw new Error(tr('common:errors.matDirectBudget'));
   }
 
   const dataBase64 = await blobToBase64(blob);
@@ -427,14 +428,14 @@ async function resolveUploadMaterial(
 ): Promise<CachedMaterialResolution> {
   const blob = await getFileBlob(m.id);
   if (!blob) {
-    throw new Error('Ficheiro local não encontrado neste dispositivo.');
+    throw new Error(tr('common:errors.matLocalNotFound'));
   }
   const mime = m.mimeType || blob.type;
   const filename = m.fileName || m.title;
 
   if (isTextLike(mime, filename)) {
     const text = (await blob.text()).trim().slice(0, MAX_EXCERPT_CHARS);
-    if (!text) throw new Error('Ficheiro de texto vazio.');
+    if (!text) throw new Error(tr('common:errors.matTextEmpty'));
     return {
       excerpt: {
         id: m.id,
@@ -447,14 +448,14 @@ async function resolveUploadMaterial(
 
   const binaryMime = resolveBinaryMime(mime, filename);
   if (!binaryMime) {
-    throw new Error('Formato não legível diretamente (suporta PDF, imagem ou texto).');
+    throw new Error(tr('common:errors.matUnsupported'));
   }
   const maxAllowed = customKey ? MAX_KEY_AI_MATERIAL_BYTES : MAX_FREE_AI_MATERIAL_BYTES;
   if (blob.size > maxAllowed) {
     throw new Error(
       customKey
-        ? 'Excede 25 MB por ficheiro.'
-        : 'Excede 7,5 MB (com chave pessoal Gemini suporta até 25 MB).',
+        ? tr('common:errors.matMax25')
+        : tr('common:errors.matMax75'),
     );
   }
 
@@ -479,7 +480,7 @@ async function resolveDriveMaterial(
 ): Promise<CachedMaterialResolution> {
   const fileId = extractGoogleDriveFileId(m.url, m.id);
   if (!fileId) {
-    throw new Error('Link do Google Drive sem ID de ficheiro reconhecido.');
+    throw new Error(tr('common:errors.matDriveBadId'));
   }
 
   const token = await getGoogleToken();
@@ -492,10 +493,10 @@ async function resolveDriveMaterial(
       signal,
     });
     if (!res.ok) {
-      throw new Error(res.status === 401 ? 'Sessão do Drive expirada.' : 'Não foi possível exportar este Google Doc.');
+      throw new Error(res.status === 401 ? tr('common:errors.matDriveExpired') : tr('common:errors.matDocExportFail'));
     }
     const text = (await res.text()).trim().slice(0, MAX_EXCERPT_CHARS);
-    if (!text) throw new Error('Documento sem texto extraível.');
+    if (!text) throw new Error(tr('common:errors.matDocNoText'));
     return {
       excerpt: {
         id: m.id,
@@ -510,7 +511,7 @@ async function resolveDriveMaterial(
   const binaryMime = resolveBinaryMime(m.mimeType, filename);
   const textLike = isTextLike(m.mimeType, filename);
   if (!binaryMime && !textLike) {
-    throw new Error('Tipo de ficheiro não legível pelo Tutor (usa PDF, Doc ou imagem).');
+    throw new Error(tr('common:errors.matDriveUnsupported'));
   }
 
   const mediaUrl = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`;
@@ -519,23 +520,23 @@ async function resolveDriveMaterial(
     signal,
   });
   if (!res.ok) {
-    throw new Error(res.status === 401 ? 'Sessão do Drive expirada.' : `Erro ao descarregar do Drive (${res.status}).`);
+    throw new Error(res.status === 401 ? tr('common:errors.matDriveExpired') : tr('common:errors.matDriveHttp', { status: res.status }));
   }
 
   const maxAllowed = customKey ? MAX_KEY_AI_MATERIAL_BYTES : MAX_FREE_AI_MATERIAL_BYTES;
   const contentLen = Number(res.headers.get('content-length') ?? '0');
   if (contentLen > maxAllowed) {
-    throw new Error(customKey ? 'Ficheiro com mais de 25 MB.' : 'Ficheiro com mais de 7,5 MB.');
+    throw new Error(customKey ? tr('common:errors.matFileOver25') : tr('common:errors.matFileOver75'));
   }
 
   const blob = await res.blob();
   if (blob.size > maxAllowed) {
-    throw new Error(customKey ? 'Ficheiro com mais de 25 MB.' : 'Ficheiro com mais de 7,5 MB.');
+    throw new Error(customKey ? tr('common:errors.matFileOver25') : tr('common:errors.matFileOver75'));
   }
 
   if (textLike) {
     const text = (await blob.text()).trim().slice(0, MAX_EXCERPT_CHARS);
-    if (!text) throw new Error('Ficheiro de texto vazio.');
+    if (!text) throw new Error(tr('common:errors.matTextEmpty'));
     return {
       excerpt: {
         id: m.id,
@@ -581,7 +582,7 @@ export async function resolveMaterialsForAI(
   const skipped: SkippedMaterialInfo[] = overflow.map((m) => ({
     id: m.id,
     title: m.title,
-    reason: `Limite de ${maxFiles} documentos lidos por pergunta atingido.`,
+    reason: tr('common:errors.matLimitDocs', { max: maxFiles }),
   }));
   let needsDriveAuth = false;
   let inlineBytesUsed = 0;
@@ -597,7 +598,7 @@ export async function resolveMaterialsForAI(
       skipped.push({
         id: m.id,
         title: m.title,
-        reason: `Orçamento de contexto atingido (~${Math.round(tokenBudget / 1000)}k tokens por pergunta).`,
+        reason: tr('common:errors.matTokenBudget', { k: Math.round(tokenBudget / 1000) }),
       });
       return false;
     }
@@ -622,7 +623,7 @@ export async function resolveMaterialsForAI(
           skipped.push({
             id: m.id,
             title: m.title,
-            reason: 'Orçamento de tamanho em envio direto atingido.',
+            reason: tr('common:errors.matDirectSizeLimit'),
           });
           continue;
         }
@@ -655,7 +656,7 @@ export async function resolveMaterialsForAI(
         skipped.push({
           id: m.id,
           title: m.title,
-          reason: err instanceof Error ? err.message : 'Indisponível localmente.',
+          reason: err instanceof Error ? err.message : tr('common:errors.matLocalUnavailable'),
         });
       }
       continue;
@@ -667,7 +668,7 @@ export async function resolveMaterialsForAI(
         skipped.push({
           id: m.id,
           title: m.title,
-          reason: 'Requer sessão Google Drive ativa para ler o conteúdo.',
+          reason: tr('common:errors.matDriveNeedsAuth'),
         });
         continue;
       }
@@ -688,8 +689,8 @@ export async function resolveMaterialsForAI(
         if (resolved.excerpt) textExcerpts.push(resolved.excerpt);
         readTitles.push(m.title);
       } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Não foi possível ler do Google Drive.';
-        if (msg.toLowerCase().includes('expirada') || msg.toLowerCase().includes('sessão')) {
+        const msg = err instanceof Error ? err.message : tr('common:errors.matDriveFail');
+        if (/(expir|caducad|sess[aã]o|session|sesi[oó]n)/i.test(msg)) {
           needsDriveAuth = true;
         }
         skipped.push({ id: m.id, title: m.title, reason: msg });
@@ -700,7 +701,7 @@ export async function resolveMaterialsForAI(
     skipped.push({
       id: m.id,
       title: m.title,
-      reason: 'Apenas referência externa (link).',
+      reason: tr('common:errors.matExternalLink'),
     });
   }
 

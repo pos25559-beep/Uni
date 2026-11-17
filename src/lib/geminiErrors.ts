@@ -1,6 +1,13 @@
+import { tr } from '../i18n/tr';
+
 export class ModelTimeoutError extends Error {
   constructor(model: string, timeoutMs: number) {
-    super(`Timeout após ${Math.round(timeoutMs / 1000)}s ao aguardar ${model}.`);
+    super(
+      tr('common:errors.geminiTimeoutShort', {
+        seconds: Math.round(timeoutMs / 1000),
+        model,
+      }),
+    );
     this.name = 'ModelTimeoutError';
   }
 }
@@ -26,10 +33,7 @@ export class CustomKeyError extends Error {
 export function friendlyCustomKeyError(err: unknown): Error {
   if (err instanceof CustomKeyError) return err;
   if (err instanceof ModelTimeoutError) {
-    return new CustomKeyError(
-      'other',
-      'O modelo demorou demasiado tempo a responder com a tua chave pessoal. Tenta novamente.',
-    );
+    return new CustomKeyError('other', tr('common:errors.geminiTimeout'));
   }
   const statusCode = err instanceof HttpStatusError ? err.statusCode : undefined;
   const raw = err instanceof Error ? err.message : String(err ?? '');
@@ -40,10 +44,7 @@ export function friendlyCustomKeyError(err: unknown): Error {
     lower.includes('billing#prepay') ||
     statusCode === 402
   ) {
-    return new CustomKeyError(
-      'billing',
-      'A tua chave Gemini está num projeto do Google AI Studio com créditos pré-pagos esgotados (sem faturação ativa). Cria uma nova chave num projeto gratuito (Free tier) em ai.studio/projects ou muda temporariamente para o Uni Nativo.',
-    );
+    return new CustomKeyError('billing', tr('common:errors.geminiBilling'));
   }
   if (
     lower.includes('api key not valid') ||
@@ -51,10 +52,7 @@ export function friendlyCustomKeyError(err: unknown): Error {
     lower.includes('invalid api key') ||
     statusCode === 401
   ) {
-    return new CustomKeyError(
-      'invalid',
-      'A tua chave Gemini pessoal parece inválida. Verifica em «Gerir chave» se copiaste tudo começando por AIza…',
-    );
+    return new CustomKeyError('invalid', tr('common:errors.geminiInvalid'));
   }
   if (
     lower.includes('429') ||
@@ -62,16 +60,10 @@ export function friendlyCustomKeyError(err: unknown): Error {
     lower.includes('quota exceeded') ||
     lower.includes('rate limit')
   ) {
-    return new CustomKeyError(
-      'quota',
-      'A tua chave Gemini atingiu o limite por minuto ou diário do Google AI Studio. Aguarda instantes ou usa o Uni Nativo.',
-    );
+    return new CustomKeyError('quota', tr('common:errors.geminiQuota'));
   }
   if (lower.includes('permission_denied') || statusCode === 403) {
-    return new CustomKeyError(
-      'invalid',
-      'Esta chave Gemini não tem permissão para usar a Gemini API no projeto escolhido em ai.studio/projects.',
-    );
+    return new CustomKeyError('invalid', tr('common:errors.geminiDenied'));
   }
-  return err instanceof Error ? err : new Error(raw || 'Erro ao contactar a Gemini API.');
+  return err instanceof Error ? err : new Error(raw || tr('common:errors.geminiGeneric'));
 }

@@ -10,6 +10,7 @@ import {
   parseFilenameToParsedItem,
 } from '../lib/courseAliases';
 import { useStore } from '../store/useStore';
+import { tr } from '../i18n/tr';
 
 export interface CloudFile {
   id: string;
@@ -332,7 +333,7 @@ export async function scanDriveFolderRecursively(
 ): Promise<CloudFile[]> {
   const rootFolderId = driveFolderIdFromUrl(folderIdOrUrl);
   if (!rootFolderId) {
-    throw new Error('Link ou ID da pasta do Google Drive inválido.');
+    throw new Error(tr('common:googleSvc.driveInvalidFolder'));
   }
 
   return traverseDriveFoldersBfs(
@@ -503,7 +504,7 @@ export async function scanAndAutoLinkGoogleDrive(
           if (controller.signal.aborted) return;
           try {
             foldersScanned++;
-            emitProgress(meta.initialPrefix ?? 'Pasta associada');
+            emitProgress(meta.initialPrefix ?? tr('common:googleSvc.driveFolderStage'));
             const scanned = await scanDriveFolderRecursively(folderId, {
               maxDepth: 5,
               maxFolders: 180,
@@ -524,7 +525,7 @@ export async function scanAndAutoLinkGoogleDrive(
       // 2. Pastas académicas no "Meu Drive" raiz (BFS nível a nível ANTES de "Partilhados comigo")
       if (!controller.signal.aborted) {
         try {
-          emitProgress('Meu Drive');
+          emitProgress(tr('common:googleSvc.myDriveStage'));
           const rootItems = await listDriveFolder('root', { tokenOverride, signal: controller.signal });
           const academicRoots: CloudFile[] = [];
 
@@ -598,7 +599,7 @@ export async function scanAndAutoLinkGoogleDrive(
         const sharedTimer = setTimeout(() => sharedController.abort(), 18_000);
         try {
           foldersScanned++;
-          emitProgress('Partilhados comigo');
+          emitProgress(tr('common:googleSvc.sharedWithMeStage'));
           const sharedItems = await listSharedWithMe({
             tokenOverride,
             signal: sharedController.signal,

@@ -1,5 +1,6 @@
 import { Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button, Modal } from '../ui';
 
 interface ConfirmModalProps {
@@ -11,7 +12,8 @@ interface ConfirmModalProps {
 }
 
 /** Pedido de confirmação para ações destrutivas (não usa window.confirm). */
-export function ConfirmModal({ title, message, confirmLabel = 'Apagar', onConfirm, onClose }: ConfirmModalProps) {
+export function ConfirmModal({ title, message, confirmLabel, onConfirm, onClose }: ConfirmModalProps) {
+  const { t } = useTranslation('common');
   return (
     <Modal
       open
@@ -19,9 +21,9 @@ export function ConfirmModal({ title, message, confirmLabel = 'Apagar', onConfir
       title={title}
       footer={
         <>
-          <Button onClick={onClose}>Cancelar</Button>
+          <Button onClick={onClose}>{t('actions.cancel')}</Button>
           <Button variant="danger" onClick={() => { onConfirm(); onClose(); }}>
-            {confirmLabel}
+            {confirmLabel ?? t('actions.delete')}
           </Button>
         </>
       }
@@ -41,14 +43,16 @@ interface DeleteButtonProps {
 
 /** Botão de apagar que abre primeiro o modal de confirmação. */
 export function DeleteButton({ message, onConfirm, label, confirmLabel }: DeleteButtonProps) {
+  const { t } = useTranslation('common');
   const [open, setOpen] = useState(false);
+  const ariaLabel = label ?? t('actions.delete');
   return (
     <>
       <Button
         variant={label ? 'danger' : 'ghost'}
         size="sm"
-        aria-label={label ?? 'Apagar'}
-        title={label ?? 'Apagar'}
+        aria-label={ariaLabel}
+        title={ariaLabel}
         onClick={() => setOpen(true)}
       >
         <Trash2 size={14} />
@@ -56,7 +60,7 @@ export function DeleteButton({ message, onConfirm, label, confirmLabel }: Delete
       </Button>
       {open && (
         <ConfirmModal
-          title="Confirmar ação"
+          title={t('actions.confirmTitle')}
           message={message}
           confirmLabel={confirmLabel}
           onConfirm={onConfirm}

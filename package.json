@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --port 3000 --host 0.0.0.0",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test": "vitest run src",
@@ -17,6 +17,7 @@
     "test:legacy": "npx --yes tsx --test tests/planner.test.ts"
   },
   "dependencies": {
+    "@azure/msal-browser": "^5.29.0",
     "@capacitor/android": "^8.6.2",
     "@capacitor/app": "^8.1.2",
     "@capacitor/browser": "^8.0.5",

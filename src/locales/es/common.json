@@ -12,7 +12,10 @@
     "tutor": "Tutor",
     "settings": "Ajustes",
     "more": "Más",
-    "skipToContent": "Saltar al contenido"
+    "skipToContent": "Saltar al contenido",
+    "mainAria": "Navegación principal",
+    "barAria": "Barra de navegación",
+    "moreAria": "Más opciones y ajustes"
   },
   "actions": {
     "save": "Guardar",
@@ -24,7 +27,9 @@
     "focus": "Enfocar",
     "add": "Añadir",
     "open": "Abrir",
-    "back": "Volver"
+    "back": "Volver",
+    "see": "Ver",
+    "confirmTitle": "Confirmar acción"
   },
   "languages": {
     "pt-PT": "Português (PT)",
@@ -44,7 +49,54 @@
     "calendarHint": "Fechas de exámenes y clases",
     "progressHint": "Estantería de Unis y medias",
     "materialsHint": "Apuntes, PDFs y carpetas",
-    "settingsHint": "Cuenta, idioma, IA y datos"
+    "settingsHint": "Cuenta, idioma, IA y datos",
+    "menuAria": "Menú adicional",
+    "closeMenuAria": "Cerrar menú"
+  },
+  "ui": {
+    "general": "General",
+    "progress": "Progreso",
+    "actionsTitle": "Acciones",
+    "closeOptions": "Cerrar opciones",
+    "selectOption": "Seleccionar opción",
+    "selectDots": "Seleccionar…",
+    "chooseOption": "Elegir opción",
+    "weekdaysAria": "Días de la semana",
+    "dateTime": {
+      "closePicker": "Cerrar selector",
+      "quickGrid": "Cuadrícula rápida",
+      "exactTime": "Hora exacta",
+      "manualHint": "Escribe en formato HH:MM (ej.: 08:20)",
+      "manualError": "Formato no válido. Usa HH:MM entre 00:00 y 23:59.",
+      "applyTime": "Aplicar hora",
+      "hour": "Hora",
+      "minutes": "Minutos",
+      "today": "Hoy",
+      "tomorrow": "Mañana",
+      "plus7Days": "+7 días",
+      "clear": "Limpiar",
+      "prevMonth": "Mes anterior",
+      "nextMonth": "Mes siguiente",
+      "selectTimeAria": "Seleccionar hora ({{val}})",
+      "empty": "vacío",
+      "chooseTime": "Elegir hora",
+      "chooseDate": "Elegir fecha",
+      "selectDateAria": "Seleccionar fecha ({{val}})",
+      "chooseDateTime": "Elegir fecha y hora",
+      "selectDateTimeAria": "Seleccionar fecha y hora ({{val}})",
+      "dayTab": "Día: {{day}}",
+      "timeTab": "Hora: {{time}}"
+    }
+  },
+  "authStatus": {
+    "syncedOk": "¡Datos sincronizados con la nube!",
+    "syncError": "Error al sincronizar ahora. Inténtalo más tarde.",
+    "signInOrCreate": "Entrar o crear cuenta",
+    "saveAndSync": "Guarda y sincroniza tu cuaderno",
+    "userFallback": "Usuario",
+    "cloudActive": "Nube activa",
+    "syncNowAria": "Sincronizar ahora",
+    "signOutAria": "Cerrar sesión"
   },
   "brand": {
     "uniTutor": "Uni Tutor",
@@ -195,6 +247,41 @@
     "nucleo": "Asociación estudiantil",
     "musica": "Voluntariado / Música"
   },
+  "palettes": {
+    "caderno": {
+      "name": "Cuaderno Vivo",
+      "tagline": "Papel crema, verde bosque y marcador coral"
+    },
+    "ardosia": {
+      "name": "Pizarra Minimal",
+      "tagline": "Estilo sobrio y editorial en grafito"
+    },
+    "botanico": {
+      "name": "Verde Botánico",
+      "tagline": "Tono orgánico sereno para sesiones largas sin fatiga visual"
+    },
+    "terracota": {
+      "name": "Lino y Terracota",
+      "tagline": "Cálido y acogedor con notas de arcilla y ámbar"
+    },
+    "oceano": {
+      "name": "Océano Académico",
+      "tagline": "Enfoque clásico en blanco técnico y azul marino"
+    },
+    "cafe": {
+      "name": "Café y Crema",
+      "tagline": "Calidez de biblioteca en sepia y caramelo"
+    },
+    "menta": {
+      "name": "Menta Botánica",
+      "tagline": "Frescura ligera de papel reciclado y turquesa suave"
+    }
+  },
+  "ectsTargets": {
+    "120": "120 ECTS · Máster independiente (2 años)",
+    "180": "180 ECTS · Grado (3 años)",
+    "300": "300 ECTS · Grado + Máster (5 años)"
+  },
   "labels": {
     "kind": {
       "exame": "Examen",
@@ -234,6 +321,16 @@
       "4": "Jueves",
       "5": "Viernes",
       "6": "Sábado"
+    },
+    "courseColor": {
+      "emerald": "Menta Cuaderno",
+      "amber": "Mantequilla",
+      "sky": "Azul Cielo",
+      "orange": "Melocotón Coral",
+      "lime": "Salvia Oliva",
+      "rose": "Rosa Papel",
+      "cyan": "Agua Clara",
+      "violet": "Oliva"
     }
   },
   "notif": {
@@ -371,7 +468,103 @@
       "openReviews": "Abrir repasos"
     },
     "course": "Asignatura",
-    "nextClass": "Próxima clase"
+    "nextClass": "Próxima clase",
+    "classFallback": "Clase"
+  },
+  "errors": {
+    "backupInvalidCols": "Archivo no válido: falta el objeto «collections».",
+    "backupNoKnownCol": "Archivo no válido: no se encontró ninguna colección conocida.",
+    "imgTooLarge": "La imagen \"{{name}}\" supera los 15 MB. Prueba con una versión más ligera.",
+    "imgTimeout": "La lectura del archivo \"{{name}}\" tardó demasiado.",
+    "imgReadFail": "No se pudo leer \"{{name}}\".",
+    "imgAborted": "Lectura de \"{{name}}\" interrumpida.",
+    "matBase64Fail": "No se pudo convertir el archivo a base64.",
+    "matFilesNoUri": "Respuesta sin fileUri de Gemini Files API.",
+    "matFilesProcessFail": "Falló el procesamiento del PDF en Gemini Files API.",
+    "matDirectBudget": "Límite de envío directo alcanzado — añade tu clave personal Gemini o menos archivos.",
+    "matLocalNotFound": "Archivo local no encontrado en este dispositivo.",
+    "matTextEmpty": "Archivo de texto vacío.",
+    "matUnsupported": "Formato no legible directamente (admite PDF, imagen o texto).",
+    "matMax25": "Supera los 25 MB por archivo.",
+    "matMax75": "Supera los 7,5 MB (con clave personal Gemini admite hasta 25 MB).",
+    "matDriveBadId": "Enlace o ID de archivo/carpeta de Google Drive no válido.",
+    "matDriveExpired": "Sesión de Drive caducada.",
+    "matDocExportFail": "No se pudo exportar este Google Doc.",
+    "matDocNoText": "Documento sin texto extraíble.",
+    "matDriveUnsupported": "Tipo de archivo no legible por el Tutor (usa PDF, Doc o imagen).",
+    "matDriveHttp": "Error al descargar de Drive ({{status}}).",
+    "matFileOver25": "Archivo superior a 25 MB.",
+    "matFileOver75": "Archivo superior a 7,5 MB.",
+    "matLimitDocs": "Límite de {{max}} documentos leídos por pregunta alcanzado.",
+    "matTokenBudget": "Presupuesto de contexto alcanzado (~{{k}}k tokens por pregunta).",
+    "matDirectSizeLimit": "Límite de tamaño en envío directo alcanzado.",
+    "matLocalUnavailable": "No disponible localmente.",
+    "matDriveNeedsAuth": "Requiere sesión de Google Drive activa para leer el contenido.",
+    "matDriveFail": "No se pudo leer desde Google Drive.",
+    "matExternalLink": "Solo referencia externa (enlace).",
+    "bridgePasteQuiz": "Pega primero el resultado del quiz o los puntos que fallaste.",
+    "bridgeNeedMaster": "Solo un Uni en nivel Maestro (etapa 5/5) puede enseñar a la siguiente asignatura.",
+    "bridgeDiffCourse": "Elige una asignatura diferente para recibir la metodología.",
+    "bridgeStrength": "Quiz ({{pct}}%) en {{topic}}",
+    "practiceGenFail": "No se pudieron generar tarjetas ahora.",
+    "visionBadJson": "Uni recibió una respuesta fuera del formato JSON esperado. Prueba con otra imagen más nítida.",
+    "visionDefaultTitle": "Evaluación",
+    "geminiTimeout": "El modelo tardó demasiado en responder con tu clave personal. Inténtalo de nuevo.",
+    "geminiTimeoutShort": "Tiempo agotado tras {{seconds}}s esperando a {{model}}.",
+    "geminiBilling": "Tu clave Gemini pertenece a un proyecto de Google AI Studio con créditos prepagados agotados (sin facturación activa). Crea una nueva clave en un proyecto gratuito (Free tier) en ai.studio/projects o cambia temporalmente a Uni Nativo.",
+    "geminiInvalid": "Tu clave Gemini personal parece no ser válida. Comprueba en «Gestionar clave» que la copiaste completa empezando por AIza…",
+    "geminiQuota": "Tu clave Gemini alcanzó el límite por minuto o diario de Google AI Studio. Espera un momento o usa Uni Nativo.",
+    "geminiDenied": "Esta clave Gemini no tiene permiso para usar la Gemini API en el proyecto elegido en ai.studio/projects.",
+    "geminiGeneric": "Error al contactar con la Gemini API.",
+    "voiceNeedKey": "Se requiere clave Gemini propia.",
+    "voiceNoMic": "El micrófono no está disponible en este dispositivo/navegador.",
+    "voiceConnErr": "Error en la conexión de voz en tiempo real.",
+    "voiceSessionErr": "No se pudo establecer la sesión de Live Audio.",
+    "voiceStartErr": "No se pudo iniciar el modo Voz Live.",
+    "notifChannelName": "Recordatorios de Uni",
+    "notifChannelDesc": "Racha diaria, repasos espaciados, exámenes y clases"
+  },
+  "googleSvc": {
+    "connectingDrive": "Conectando a Drive…",
+    "scanCancelledSaved": "Búsqueda interrumpida: se guardaron {{added}} materiales ya encontrados.",
+    "scanCancelled": "Búsqueda cancelada.",
+    "scanTimeoutAdded": "Búsqueda parcial (tiempo agotado en el móvil): {{added}} materiales añadidos ({{folders}} carpetas). Pulsa de nuevo para continuar.",
+    "scanTimeoutEmpty": "Tiempo agotado al buscar ({{folders}} carpetas analizadas). Asocia el enlace de la carpeta de la asignatura para ir directo.",
+    "scanDoneAdded": "Búsqueda completada: ¡{{added}} nuevos materiales añadidos ({{folders}} carpetas analizadas)!",
+    "scanDoneSynced": "Búsqueda completada ({{folders}} carpetas, {{total}} archivos analizados): las carpetas de Drive ya estaban sincronizadas.",
+    "popupBlocked": "El navegador bloqueó la ventana de Google. Permite ventanas emergentes o inicia sesión con Google en Ajustes.",
+    "driveAccessErr": "Error al acceder a Google Drive.",
+    "personalLoginBusy": "Sesión personal iniciada ({{email}}). Comprobando carpetas de Drive...",
+    "personalActiveAdded": "Sesión personal activa ({{email}}). {{added}} nuevos materiales organizados en el repositorio.",
+    "personalActiveSynced": "Sesión personal activa ({{email}}). Google Drive y Nube sincronizados.",
+    "personalLoginErr": "Error al iniciar sesión con la cuenta personal de Google.",
+    "personalSwitched": "Cuenta personal cambiada a: {{email}}",
+    "switchErr": "Error al cambiar de cuenta.",
+    "personalLoggedOut": "Sesión personal de Google cerrada.",
+    "scanSettingsAdded": "Búsqueda completada: ¡{{added}} nuevos materiales académicos añadidos a tus asignaturas!",
+    "scanSettingsSynced": "Búsqueda completada: todas las carpetas de Google Drive asociadas ya están sincronizadas.",
+    "driveScanErr": "Error al escanear Google Drive.",
+    "junkRemoved": "Se eliminaron {{removed}} archivos personales o no académicos del repositorio.",
+    "junkClean": "El repositorio ya está libre de archivos irrelevantes o duplicados.",
+    "academicConnected": "Cuenta académica conectada correctamente: {{email}}",
+    "academicErr": "Error al autenticar la cuenta académica de la universidad.",
+    "academicDisconnected": "Cuenta académica desconectada.",
+    "calSynced_one": "{{count}} evento importado del calendario.",
+    "calSynced_other": "{{count}} eventos importados del calendario.",
+    "calSyncErr": "Error al sincronizar Google Calendar.",
+    "driveReadDenied": "Google no devolvió permiso de lectura de Drive. Acepta el acceso a Google Drive en la ventana de autenticación.",
+    "driveFolderStage": "Carpeta asociada",
+    "myDriveStage": "Mi unidad",
+    "sharedWithMeStage": "Compartido conmigo",
+    "driveInvalidFolder": "Enlace o ID de carpeta de Google Drive no válido.",
+    "driveAuthPrompt": "Autoriza el acceso a Google Drive en la ventana de conexión (o configura un Client ID en Ajustes).",
+    "driveTimeout": "La conexión a Google Drive tardó demasiado en el móvil. Inténtalo de nuevo.",
+    "driveExpired": "La sesión de Google Drive ha caducado o necesita nueva autorización. Pulsa en «Autorizar Google Drive».",
+    "googleScriptErr": "No se pudo cargar el inicio de sesión de Google.",
+    "gmailNoScope": "La sesión de Google activa no tiene permiso para leer Gmail. Concede el permiso para cargar los correos.",
+    "gmailNoPreview": "(Mensaje sin vista previa de texto)",
+    "gcalNoTitle": "(sin título)",
+    "onedriveNoClientId": "Falta el Client ID de Microsoft. Configúralo en Ajustes."
   },
   "aiConsent": {
     "title": "Activar Uni con IA",

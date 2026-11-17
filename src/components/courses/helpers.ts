@@ -1,13 +1,16 @@
 import { differenceInCalendarDays, format, parseISO } from 'date-fns';
+import i18n from '../../i18n';
 import { normalizeAppLanguage, resolveDateFnsLocale } from '../../lib/grading';
 import type { AppLanguage, Assessment, ClassSlot, TopicStatus } from '../../types';
+
+const activeLang = (lang?: AppLanguage | string) => lang ?? i18n.language ?? 'pt-PT';
 
 /** Dias até/desde uma data (yyyy-MM-dd ou ISO) em relação a hoje. */
 const dayDiff = (iso: string) => differenceInCalendarDays(parseISO(iso), new Date());
 
 /** Rótulo relativo para prazos: "hoje", "amanhã", "em 3 dias", "há 2 dias". */
-export function dueLabel(iso: string, lang: AppLanguage | string = 'pt-PT'): string {
-  const normalized = normalizeAppLanguage(lang);
+export function dueLabel(iso: string, lang?: AppLanguage | string): string {
+  const normalized = normalizeAppLanguage(activeLang(lang));
   const d = dayDiff(iso);
   if (normalized === 'en') {
     if (d === 0) return 'today';
@@ -31,16 +34,14 @@ export function dueLabel(iso: string, lang: AppLanguage | string = 'pt-PT'): str
 }
 
 /** Rótulo para "última vez estudada". */
-export function lastStudiedLabel(iso?: string, lang: AppLanguage | string = 'pt-PT'): string {
-  const normalized = normalizeAppLanguage(lang);
+export function lastStudiedLabel(iso?: string, lang?: AppLanguage | string): string {
+  const normalized = normalizeAppLanguage(activeLang(lang));
   if (!iso) {
     return normalized === 'en'
       ? 'Never studied'
       : normalized === 'es'
         ? 'Nunca estudiada'
-        : normalized === 'pt-BR'
-          ? 'Nunca estudada'
-          : 'Nunca estudada';
+        : 'Nunca estudada';
   }
   const d = -dayDiff(iso);
   if (normalized === 'en') {
@@ -59,12 +60,12 @@ export function lastStudiedLabel(iso?: string, lang: AppLanguage | string = 'pt-
 }
 
 /** "3 dez · 14:00" para avaliações. */
-export const fmtAssessmentDate = (iso: string, lang: AppLanguage | string = 'pt-PT') =>
-  format(parseISO(iso), 'd MMM yyyy · HH:mm', { locale: resolveDateFnsLocale(lang) });
+export const fmtAssessmentDate = (iso: string, lang?: AppLanguage | string) =>
+  format(parseISO(iso), 'd MMM yyyy · HH:mm', { locale: resolveDateFnsLocale(activeLang(lang)) });
 
 /** "3 dez" para datas simples. */
-export const fmtShortDate = (iso: string, lang: AppLanguage | string = 'pt-PT') =>
-  format(parseISO(iso), 'd MMM', { locale: resolveDateFnsLocale(lang) });
+export const fmtShortDate = (iso: string, lang?: AppLanguage | string) =>
+  format(parseISO(iso), 'd MMM', { locale: resolveDateFnsLocale(activeLang(lang)) });
 
 /** Valor no formato YYYY-MM-DDTHH:mm (DateTimeField). */
 export const toDatetimeLocal = (iso: string) => iso.slice(0, 16);

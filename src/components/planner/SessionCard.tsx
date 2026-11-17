@@ -27,11 +27,11 @@ function deadlineLabel(a: Assessment): string {
 }
 
 export default function SessionCard({ session, course, topic, assessment, onFocus, onEdit }: SessionCardProps) {
-  const { t } = useTranslation('plan');
+  const { t, i18n } = useTranslation('plan');
   const patch = useStore((s) => s.patch);
   const remove = useStore((s) => s.remove);
   const color = course ? courseColors[course.color].hex : undefined;
-  const { title, badge, isPersonalized } = formatSessionDisplay(session, topic);
+  const { title, badge, isPersonalized } = formatSessionDisplay(session, topic, i18n.language);
 
   const toggle = () => {
     if (session.done) patch('sessions', session.id, { done: false, actualMinutes: undefined });
@@ -64,7 +64,7 @@ export default function SessionCard({ session, course, topic, assessment, onFocu
         {badge && (
           <Badge
             tone={
-              badge.includes('Teste')
+              /(teste|prova|exam)/i.test(badge)
                 ? 'warn'
                 : badge.includes('SRS') || isPersonalized
                   ? 'ok'

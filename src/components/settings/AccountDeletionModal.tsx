@@ -235,7 +235,7 @@ export default function AccountDeletionModal({ open, onClose }: AccountDeletionM
               type="button"
               onClick={handleLocalSignOutWipe}
               disabled={busy}
-              className="inline-flex min-h-[36px] items-center gap-1.5 text-xs font-semibold text-muted hover:text-fg hover:underline"
+              className="inline-flex min-h-11 items-center gap-1.5 text-xs font-semibold text-muted hover:text-fg hover:underline"
             >
               <LogOut size={13} />
               {t('del.signOutOnly')}
@@ -244,7 +244,10 @@ export default function AccountDeletionModal({ open, onClose }: AccountDeletionM
 
           <p className="text-xs text-muted">
             {t('del.gdprContact')}{' '}
-            <a href={`mailto:${LEGAL_INFO.contactEmail}`} className="font-semibold text-accent underline">
+            <a
+              href={`mailto:${LEGAL_INFO.contactEmail}`}
+              className="inline-flex min-h-11 items-center font-semibold text-accent underline"
+            >
               {LEGAL_INFO.contactEmail}
             </a>
           </p>

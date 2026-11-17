@@ -130,5 +130,47 @@
     "sessionsLeft": "Faltam {{count}} sessões para fechares a meta de hoje. Vamos a isso!",
     "noSessions": "Sem sessões marcadas para hoje — adiciona as tuas cadeiras ou conversa comigo no Tutor!"
   },
-  "sessionFallback": "Estudo livre"
+  "sessionFallback": "Estudo livre",
+  "nudgeAria": "Lembrete do Uni",
+  "highlights": {
+    "ariaLabel": "Destaques do dia",
+    "title": "Destaques de hoje",
+    "streakDays": "{{count}}d seguidos",
+    "startToday": "Começa hoje",
+    "focused": "Focado",
+    "thisWeek": "esta semana",
+    "rhythm": "Ritmo",
+    "streak": "sequência",
+    "sessions": "Sessões",
+    "completed": "concluídas",
+    "tasks": "Tarefas",
+    "pending": "por fechar"
+  },
+  "mail": {
+    "taskPrefix": "Aviso: {{subject}}",
+    "badge": "Caixa Postal",
+    "titleConnected": "Correio ({{email}})",
+    "title": "Correio Académico",
+    "sync": "Sincronizar",
+    "personalHint": "A tua conta pessoal ({{email}}) fica só para Drive e Agenda. Liga abaixo o teu email institucional da faculdade ou importa um aviso ",
+    "connectHint": "Liga o teu email institucional da faculdade para ver avisos dos docentes num só cartão ou importa já um ficheiro ",
+    "emailPlaceholder": "ex: nome@universidade.pt",
+    "emailAria": "Email institucional",
+    "connectBtn": "Ligar Email Académico",
+    "importEml": "Importar (.eml)",
+    "importEmlPlain": "Importar .eml",
+    "needsPermission": "A tua sessão Google precisa de autorização para ler o correio académico.",
+    "authorizeBtn": "Autorizar leitura",
+    "loading": "A consultar o teu correio académico...",
+    "cachedHint": "Conta {{email}} guardada. Clica em «Sincronizar» para carregar novos avisos do Gmail.",
+    "emptyInbox": "Nenhum aviso recente encontrado na tua caixa.",
+    "syncGmail": "Sincronizar Gmail",
+    "checkAgain": "Verificar de novo",
+    "taskCreated": "Tarefa criada!",
+    "createTask": "Criar Tarefa",
+    "fromLabel": "De:",
+    "dateLabel": "Data:",
+    "linkedCourse": "Cadeira associada:",
+    "openCourse": "Abrir cadeira"
+  }
 }

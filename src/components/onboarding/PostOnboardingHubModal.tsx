@@ -483,16 +483,16 @@ export default function PostOnboardingHubModal({
                       {sharedUrls.map((url) => (
                         <li
                           key={url}
-                          className="flex items-center justify-between gap-2 rounded-xl bg-surface-2 px-3 py-1.5 text-xs"
+                          className="flex items-center justify-between gap-2 rounded-xl bg-surface-2 pl-3 pr-1 py-0.5 text-xs"
                         >
                           <span className="truncate text-muted">{url}</span>
                           <button
                             type="button"
                             onClick={() => handleRemoveSharedDriveUrl(url)}
                             aria-label={t('hub.ui.removeShared')}
-                            className="grid size-8 shrink-0 place-items-center rounded-full text-muted transition hover:bg-danger/10 hover:text-danger"
+                            className="grid size-11 shrink-0 place-items-center rounded-full text-muted transition hover:bg-danger/10 hover:text-danger"
                           >
-                            <Trash2 size={13} />
+                            <Trash2 size={14} />
                           </button>
                         </li>
                       ))}

@@ -1,10 +1,11 @@
 import { format, parseISO } from 'date-fns';
-import { appDateLocale as pt } from '../../lib/dateLocale';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Cell, CartesianGrid, ReferenceLine, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis,
   type TooltipContentProps,
 } from 'recharts';
+import { appDateLocale as pt } from '../../lib/dateLocale';
 import type { Assessment, Course } from '../../types';
 import { ChartCard } from './ChartCard';
 import { animation, axisProps, gridProps } from './chartStyle';
@@ -13,6 +14,7 @@ import { plural, readinessPoints, type ReadinessPoint } from './data';
 const COMFORT = 60;
 
 function ReadinessTooltip({ active, payload }: TooltipContentProps) {
+  const { t } = useTranslation('progress');
   const point = active ? (payload?.[0]?.payload as ReadinessPoint | undefined) : undefined;
   if (!point) return null;
   return (
@@ -23,11 +25,11 @@ function ReadinessTooltip({ active, payload }: TooltipContentProps) {
         {point.courseName}
       </p>
       <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-0.5 tabular">
-        <dt className="text-muted">Data</dt>
+        <dt className="text-muted">{t('charts.readiness.date')}</dt>
         <dd className="text-right text-fg">{format(parseISO(point.date), 'EEE d MMM', { locale: pt })}</dd>
-        <dt className="text-muted">Peso</dt>
+        <dt className="text-muted">{t('charts.readiness.weight')}</dt>
         <dd className="text-right text-fg">{point.weight}%</dd>
-        <dt className="text-muted">Preparação</dt>
+        <dt className="text-muted">{t('charts.readiness.readiness')}</dt>
         <dd className="text-right text-fg">{point.readiness}%</dd>
       </dl>
     </div>
@@ -41,24 +43,27 @@ interface Props {
 
 /** "Estou preparado para o que aí vem?" — avaliações sem nota nos próximos 45 dias. */
 export function ReadinessChart({ assessments, courses }: Props) {
+  const { t } = useTranslation('progress');
   const points = useMemo(() => readinessPoints(assessments, courses, 45), [assessments, courses]);
   const risky = points.filter((p) => p.days <= 14 && p.readiness < COMFORT).length;
+  const riskLabel = plural(
+    risky,
+    t('charts.plural.assessmentOne'),
+    t('charts.plural.assessmentMany'),
+  );
 
   return (
     <ChartCard
-      title="Estou preparado para o que aí vem?"
+      title={t('charts.readiness.title')}
       isEmpty={points.length === 0}
-      emptyTitle="Sem avaliações nos próximos 45 dias"
-      emptyHint="Quando houver datas de testes, trabalhos ou exames, aparecem aqui."
+      emptyTitle={t('charts.readiness.emptyTitle')}
+      emptyHint={t('charts.readiness.emptyHint')}
       takeaway={
-        risky > 0 ? (
-          <>
-            <span className="tabular">{plural(risky, 'avaliação', 'avaliações')}</span> nos próximos 14 dias com menos de{' '}
-            <span className="tabular">{COMFORT}%</span> de preparação
-          </>
-        ) : (
-          <>Nenhuma avaliação nos próximos 14 dias está abaixo de <span className="tabular">{COMFORT}%</span> de preparação.</>
-        )
+        <span className="tabular">
+          {risky > 0
+            ? t('charts.readiness.takeawayRisk', { count: riskLabel, pct: COMFORT })
+            : t('charts.readiness.takeawaySafe', { pct: COMFORT })}
+        </span>
       }
     >
       <div className="h-64">
@@ -67,7 +72,7 @@ export function ReadinessChart({ assessments, courses }: Props) {
             <CartesianGrid {...gridProps} />
             <XAxis
               type="number" dataKey="days" domain={[0, 45]} ticks={[0, 7, 14, 21, 30, 45]}
-              tickFormatter={(v: number) => (v === 0 ? 'hoje' : `${v} d`)} {...axisProps}
+              tickFormatter={(v: number) => (v === 0 ? t('charts.readiness.today') : t('charts.readiness.dayShort', { n: v }))} {...axisProps}
             />
             <YAxis
               type="number" dataKey="readiness" domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} width={44}
@@ -78,7 +83,7 @@ export function ReadinessChart({ assessments, courses }: Props) {
               y={COMFORT}
               stroke="var(--muted)"
               strokeDasharray="4 4"
-              label={{ value: 'mínimo confortável', position: 'insideTopLeft', fill: 'var(--muted)', fontSize: 11 }}
+              label={{ value: t('charts.readiness.minComfort'), position: 'insideTopLeft', fill: 'var(--muted)', fontSize: 12 }}
             />
             <Tooltip cursor={{ stroke: 'var(--muted)', strokeDasharray: '3 3' }} content={(p) => <ReadinessTooltip {...p} />} />
             <Scatter data={points} fillOpacity={0.85} {...animation()}>

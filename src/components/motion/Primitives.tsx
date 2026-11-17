@@ -203,6 +203,7 @@ export function BentoMetricTile({
   onClick?: () => void;
   className?: string;
 }) {
+  const { t } = useTranslation('common');
   const isMinimal = useStore((s) => (s.settings.appTone ?? 'vibrante') === 'serio');
   const resolvedTone: BentoTone = isMinimal ? 'neutral' : tone;
   const Tag = onClick ? motion.button : motion.div;
@@ -246,7 +247,7 @@ export function BentoMetricTile({
         <div className="min-w-0 text-xl font-bold leading-tight tracking-tight tabular sm:text-2xl">{value}</div>
         {(actionLabel || onClick) && (
           <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-semibold opacity-85">
-            {actionLabel || 'Ver'}
+            {actionLabel || t('actions.see')}
             <ArrowRight size={13} aria-hidden="true" />
           </span>
         )}
@@ -274,6 +275,7 @@ export function WeekDayPills({
   onSelect: (key: string) => void;
   className?: string;
 }) {
+  const { t } = useTranslation('common');
   return (
     <div
       className={cx(
@@ -281,7 +283,7 @@ export function WeekDayPills({
         className,
       )}
       role="tablist"
-      aria-label="Dias da semana"
+      aria-label={t('ui.weekdaysAria')}
     >
       {days.map((d) => {
         const active = d.key === selectedKey;

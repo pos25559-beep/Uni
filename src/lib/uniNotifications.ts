@@ -522,7 +522,7 @@ export function planSmartNotifications(input: NotificationPlannerInput): Schedul
         }
 
         const course = courseMap.get(c.courseId);
-        const courseName = course?.code || course?.name || 'Aula';
+        const courseName = course?.code || course?.name || n('classFallback');
         const copy = formatClassCopy(c, courseName, prefs.classBeforeMinutes, tone);
 
         candidates.push({
@@ -575,7 +575,7 @@ export function planSmartNotifications(input: NotificationPlannerInput): Schedul
         }
 
         const course = courseMap.get(c.courseId);
-        const courseName = course?.code || course?.shortName || course?.name || 'Aula';
+        const courseName = course?.code || course?.shortName || course?.name || n('classFallback');
         const copy = formatPostClassCopy(c, courseName, persona, tone);
 
         candidates.push({
@@ -822,7 +822,7 @@ export function pickActiveInAppNudge(input: NotificationPlannerInput): InAppUniN
       const diff = startMins - nowMins;
       if (diff >= 5 && diff <= 60) {
         const course = courseMap.get(cl.courseId);
-        const courseName = course?.code || course?.name || 'Aula';
+        const courseName = course?.code || course?.name || n('classFallback');
         const copy = formatClassCopy(cl, courseName, diff, tone);
         return {
           key: `inapp-class-${cl.id}-${todayYmd}`,
@@ -846,7 +846,7 @@ export function pickActiveInAppNudge(input: NotificationPlannerInput): InAppUniN
       const delay = prefs.postClassDelayMinutes ?? 10;
       if (endMins >= 0 && minsSinceEnd >= delay && minsSinceEnd <= 180) {
         const course = courseMap.get(cl.courseId);
-        const courseName = course?.code || course?.shortName || course?.name || 'Aula';
+        const courseName = course?.code || course?.shortName || course?.name || n('classFallback');
         const copy = formatPostClassCopy(cl, courseName, persona, tone);
         return {
           key: `inapp-postclass-${cl.id}-${todayYmd}`,

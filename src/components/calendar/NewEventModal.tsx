@@ -93,7 +93,7 @@ export default function NewEventModal({ defaultDate, onClose }: Props) {
             aria-pressed={mode === m}
             onClick={() => { setMode(m); setError(null); }}
             className={cx(
-              'h-8 rounded-lg text-sm font-medium transition',
+              'min-h-11 rounded-lg text-sm font-medium transition',
               mode === m ? 'bg-surface text-fg shadow-sm' : 'text-muted hover:text-fg',
             )}
           >

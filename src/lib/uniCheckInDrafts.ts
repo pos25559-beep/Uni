@@ -1,4 +1,5 @@
 import { format, parseISO, startOfWeek } from 'date-fns';
+import { tr } from '../i18n/tr';
 import type { Course, StudyLogEntry, StudyLogKind, StudyLogMessage } from '../types';
 import { extractStudyFocusPhrase, feelingDisplayLabel, type ParsedCheckInUnderstanding } from './uniCheckInNlu';
 
@@ -130,16 +131,19 @@ export function buildTurnsFromSavedEntry(
   }
 
   const parts = [
-    entry.topicTitle ? `Matéria/tópico: ${entry.topicTitle}` : '',
-    entry.studiedSummary ? `Estudei/avancei: ${entry.studiedSummary}` : '',
-    entry.difficulties ? `Dúvidas/dificuldades: ${entry.difficulties}` : '',
+    entry.topicTitle ? tr('assistant:checkin.fallback.topicLine', { val: entry.topicTitle }) : '',
+    entry.studiedSummary ? tr('assistant:checkin.fallback.studiedLine', { val: entry.studiedSummary }) : '',
+    entry.difficulties ? tr('assistant:checkin.fallback.diffLine', { val: entry.difficulties }) : '',
     !entry.topicTitle && !entry.studiedSummary && !entry.difficulties && entry.notes ? entry.notes : '',
   ].filter(Boolean);
 
   const userSummary =
     parts.join(' · ') || `${feelingDisplayLabel(entry.feeling)}${entry.rating ? ` (${entry.rating}/5)` : ''}`;
-  const cname = course?.shortName || course?.name || 'a cadeira';
-  const modelConfirm = `Registo guardado para **${cname}** (${feelingDisplayLabel(entry.feeling)}) e plano alinhado. Se quiseres acrescentar mais algum detalhe ou dúvida, escreve abaixo para atualizar.`;
+  const cname = course?.shortName || course?.name || tr('assistant:checkin.fallback.courseFallback');
+  const modelConfirm = tr('assistant:checkin.fallback.savedConfirm', {
+    course: cname,
+    feeling: feelingDisplayLabel(entry.feeling),
+  });
 
   return [
     { id: `saved-greet-${entry.id}`, role: 'model', text: greeting },

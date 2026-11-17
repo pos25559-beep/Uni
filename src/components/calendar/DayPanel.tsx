@@ -3,6 +3,7 @@ import { format, parseISO } from 'date-fns';
 import { appDateLocale as pt, longDatePattern } from '../../lib/dateLocale';
 import { CalendarPlus, ChevronRight, Check, MapPin, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 import type { ClassSlot, Course } from '../../types';
@@ -22,6 +23,7 @@ interface Props {
 }
 
 export default function DayPanel({ date, items, courseById, onNewEvent }: Props) {
+  const { t } = useTranslation('plan');
   const classes = useStore((s) => s.classes);
   const remove = useStore((s) => s.remove);
   const patch = useStore((s) => s.patch);
@@ -38,11 +40,11 @@ export default function DayPanel({ date, items, courseById, onNewEvent }: Props)
     >
       {items.length === 0 ? (
         <EmptyState
-          title="Nada neste dia"
-          hint="Seleciona outro dia ou cria um evento ou avaliação."
+          title={t('cal.dayEmpty')}
+          hint={t('cal.dayEmptyHint')}
           action={
             <Button size="sm" onClick={onNewEvent}>
-              <CalendarPlus size={14} /> Novo evento
+              <CalendarPlus size={14} /> {t('newEvent.title')}
             </Button>
           }
         />
@@ -81,12 +83,12 @@ export default function DayPanel({ date, items, courseById, onNewEvent }: Props)
                 {localEvent && (
                   <button
                     type="button"
-                    aria-label="Apagar evento"
-                    title="Apagar evento"
+                    aria-label={t('cal.deleteEvent')}
+                    title={t('cal.deleteEvent')}
                     onClick={() =>
                       setToDelete({ storeKey: 'events', refId: it.refId, title: it.title })
                     }
-                    className="grid size-8 shrink-0 place-items-center rounded-lg text-muted transition hover:bg-danger/12 hover:text-danger"
+                    className="grid size-11 shrink-0 place-items-center rounded-lg text-muted transition hover:bg-danger/12 hover:text-danger"
                   >
                     <Trash2 size={15} />
                   </button>
@@ -96,23 +98,23 @@ export default function DayPanel({ date, items, courseById, onNewEvent }: Props)
                   <div className="flex shrink-0 items-center gap-1">
                     <button
                       type="button"
-                      aria-label={`Editar aula ${it.title}`}
-                      title="Alterar dia ou hora da aula"
+                      aria-label={t('cal.editClassAria', { title: it.title })}
+                      title={t('cal.editClassHint')}
                       onClick={() => setEditingClass({ slot: classSlot, course })}
-                      className="grid size-8 place-items-center rounded-lg text-muted transition hover:bg-surface hover:text-fg"
+                      className="grid size-11 place-items-center rounded-lg text-muted transition hover:bg-surface hover:text-fg"
                     >
-                      <Pencil size={14} />
+                      <Pencil size={15} />
                     </button>
                     <button
                       type="button"
-                      aria-label={`Apagar aula ${it.title}`}
-                      title="Apagar aula"
+                      aria-label={t('cal.deleteClassAria', { title: it.title })}
+                      title={t('cal.deleteClass')}
                       onClick={() =>
                         setToDelete({ storeKey: 'classes', refId: classSlot.id, title: it.title })
                       }
-                      className="grid size-8 place-items-center rounded-lg text-muted transition hover:bg-danger/12 hover:text-danger"
+                      className="grid size-11 place-items-center rounded-lg text-muted transition hover:bg-danger/12 hover:text-danger"
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={15} />
                     </button>
                   </div>
                 )}
@@ -120,30 +122,30 @@ export default function DayPanel({ date, items, courseById, onNewEvent }: Props)
                 {it.kind === 'estudo' && (
                   <button
                     type="button"
-                    aria-label={it.done ? 'Desmarcar sessão' : 'Marcar sessão como concluída'}
-                    title={it.done ? 'Desmarcar sessão' : 'Marcar como concluída'}
+                    aria-label={it.done ? t('cal.uncheckSession') : t('cal.checkSession')}
+                    title={it.done ? t('cal.uncheckSession') : t('cal.checkTitle')}
                     onClick={() =>
                       it.done
                         ? patch('sessions', it.refId, { done: false })
                         : patch('sessions', it.refId, { done: true, actualMinutes: it.minutes ?? 0 })
                     }
                     className={cx(
-                      'grid size-8 shrink-0 place-items-center rounded-lg border transition',
+                      'grid size-11 shrink-0 place-items-center rounded-lg border transition',
                       it.done ? 'border-ok/40 bg-ok/12 text-ok' : 'border-line bg-surface text-muted hover:text-fg',
                     )}
                   >
-                    <Check size={15} />
+                    <Check size={16} />
                   </button>
                 )}
 
                 {it.kind === 'avaliacao' && it.courseId && (
                   <Link
                     to={`/cadeiras/${it.courseId}`}
-                    aria-label="Abrir cadeira"
-                    title="Abrir cadeira"
-                    className="inline-flex h-8 shrink-0 items-center gap-0.5 rounded-lg border border-line bg-surface px-2 text-xs font-medium text-fg transition hover:border-muted/50"
+                    aria-label={t('cal.openCourseAria')}
+                    title={t('cal.openCourseAria')}
+                    className="inline-flex min-h-11 shrink-0 items-center gap-0.5 rounded-lg border border-line bg-surface px-3 text-xs font-medium text-fg transition hover:border-muted/50"
                   >
-                    Abrir <ChevronRight size={14} />
+                    {t('cal.openShort')} <ChevronRight size={14} />
                   </Link>
                 )}
               </li>
@@ -161,9 +163,9 @@ export default function DayPanel({ date, items, courseById, onNewEvent }: Props)
     )}
     {toDelete && (
       <ConfirmModal
-        title={toDelete.storeKey === 'classes' ? 'Apagar aula' : 'Apagar evento'}
-        message={`Apagar "${toDelete.title}"? Esta ação não se pode desfazer.`}
-        confirmLabel="Apagar"
+        title={toDelete.storeKey === 'classes' ? t('cal.deleteClass') : t('cal.deleteEvent')}
+        message={t('cal.deleteConfirmMsg', { title: toDelete.title })}
+        confirmLabel={t('cal.deleteConfirmBtn')}
         onConfirm={() => remove(toDelete.storeKey, toDelete.refId)}
         onClose={() => setToDelete(null)}
       />

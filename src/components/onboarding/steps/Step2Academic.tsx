@@ -395,10 +395,10 @@ export default function Step2Academic({
             <span className="block text-xs font-semibold text-fg">{t('s2.extras')}</span>
             <div className="flex flex-wrap gap-2">
               {EXTRA_ACTIVITY_PRESETS.map((preset) => {
-                const active = extraActivities.some((a) => a.label === preset.label);
+                const active = extraActivities.some((a) => a.kind === preset.kind);
                 return (
                   <button
-                    key={preset.label}
+                    key={preset.kind}
                     type="button"
                     onClick={() => onToggleExtraPreset(preset)}
                     className={cx(
@@ -416,25 +416,30 @@ export default function Step2Academic({
 
             {extraActivities.length > 0 && (
               <div className="flex flex-wrap gap-1.5 pt-1">
-                {extraActivities.map((act) => (
-                  <span
-                    key={act.id}
-                    className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-surface-2 px-3 text-xs font-medium text-fg"
-                  >
-                    {EXTRA_ACTIVITY_PRESETS.some((p) => p.label === act.label) ? t(`common:extra.${act.kind}`) : act.label} ({act.hoursPerWeek}h)
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void hapticTap();
-                        onRemoveExtra(act.id);
-                      }}
-                      aria-label={t('s2.remove', { label: act.label })}
-                      className="inline-flex size-6 items-center justify-center rounded-full text-muted hover:text-fg"
+                {extraActivities.map((act) => {
+                  const displayLabel = EXTRA_ACTIVITY_PRESETS.some((p) => p.kind === act.kind)
+                    ? t(`common:extra.${act.kind}`)
+                    : act.label;
+                  return (
+                    <span
+                      key={act.id}
+                      className="inline-flex min-h-11 items-center gap-1 rounded-full bg-surface-2 pl-3.5 pr-1 text-xs font-medium text-fg"
                     >
-                      <X size={13} />
-                    </button>
-                  </span>
-                ))}
+                      <span>{displayLabel} ({act.hoursPerWeek}h)</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void hapticTap();
+                          onRemoveExtra(act.id);
+                        }}
+                        aria-label={t('s2.remove', { label: displayLabel })}
+                        className="inline-flex size-11 items-center justify-center rounded-full text-muted hover:text-fg"
+                      >
+                        <X size={14} />
+                      </button>
+                    </span>
+                  );
+                })}
               </div>
             )}
 

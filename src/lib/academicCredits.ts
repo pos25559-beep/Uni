@@ -14,16 +14,16 @@ export interface PaletteOption {
 export const APP_PALETTES: PaletteOption[] = [
   {
     id: 'caderno',
-    name: 'Caderno Vivo',
-    tagline: 'Folha creme, verde floresta e marcador coral',
+    get name() { return tr('common:palettes.caderno.name'); },
+    get tagline() { return tr('common:palettes.caderno.tagline'); },
     bgHex: '#FAF8F2',
     accentHex: '#157F58',
     secondaryHex: '#E04F33',
   },
   {
     id: 'ardosia',
-    name: 'Ardósia Minimal',
-    tagline: 'Visual sério e sobriedade editorial em grafite',
+    get name() { return tr('common:palettes.ardosia.name'); },
+    get tagline() { return tr('common:palettes.ardosia.tagline'); },
     bgHex: '#F6F7F9',
     accentHex: '#334155',
     secondaryHex: '#94A3B8',
@@ -31,24 +31,24 @@ export const APP_PALETTES: PaletteOption[] = [
   },
   {
     id: 'botanico',
-    name: 'Verde Botânico',
-    tagline: 'Tom orgânico calmo para sessões longas sem cansar a vista',
+    get name() { return tr('common:palettes.botanico.name'); },
+    get tagline() { return tr('common:palettes.botanico.tagline'); },
     bgHex: '#F6F9F5',
     accentHex: '#2D6A4F',
     secondaryHex: '#D8F3DC',
   },
   {
     id: 'terracota',
-    name: 'Linho & Terracota',
-    tagline: 'Quente e acolhedor com notas de barro e âmbar',
+    get name() { return tr('common:palettes.terracota.name'); },
+    get tagline() { return tr('common:palettes.terracota.tagline'); },
     bgHex: '#FBF7F2',
     accentHex: '#C2410C',
     secondaryHex: '#FFEDD5',
   },
   {
     id: 'oceano',
-    name: 'Oceano Académico',
-    tagline: 'Foco clássico em branco técnico e azul marinho',
+    get name() { return tr('common:palettes.oceano.name'); },
+    get tagline() { return tr('common:palettes.oceano.tagline'); },
     bgHex: '#F5F8FC',
     accentHex: '#1D4ED8',
     secondaryHex: '#DBEAFE',
@@ -56,43 +56,43 @@ export const APP_PALETTES: PaletteOption[] = [
   },
   {
     id: 'cafe',
-    name: 'Café & Creme',
-    tagline: 'Aconchego quente de biblioteca em sépia e caramelo',
+    get name() { return tr('common:palettes.cafe.name'); },
+    get tagline() { return tr('common:palettes.cafe.tagline'); },
     bgHex: '#FAF5EE',
     accentHex: '#7C4D34',
     secondaryHex: '#EFE0D4',
   },
   {
     id: 'menta',
-    name: 'Menta Botânica',
-    tagline: 'Frescura leve de papel reciclado e turquesa suave',
+    get name() { return tr('common:palettes.menta.name'); },
+    get tagline() { return tr('common:palettes.menta.tagline'); },
     bgHex: '#F4FAF7',
     accentHex: '#0F766E',
     secondaryHex: '#CCFBF1',
   },
 ];
 
-export const CHALLENGE_OPTIONS = [
-  { id: 'tempo', label: 'Gerir o tempo e conciliar prazos' },
-  { id: 'procrastinacao', label: 'Começar sem adiar blocos' },
-  { id: 'exercicios', label: 'Resolução de exercícios & cálculo' },
-  { id: 'teoria', label: 'Memorizar matéria muito teórica' },
-  { id: 'ansiedade', label: 'Pressão / ansiedade antes de testes' },
-  { id: 'organizacao', label: 'Apontamentos e links espalhados' },
-] as const;
-
-export const EXTRA_ACTIVITY_PRESETS: Array<Omit<ExtraActivity, 'id'>> = [
-  { label: 'Trabalho / Part-time', kind: 'trabalho', hoursPerWeek: 12, weekdays: [2, 4, 6] },
-  { label: 'Desporto / Ginásio', kind: 'desporto', hoursPerWeek: 4, weekdays: [1, 3, 5] },
-  { label: 'Núcleo / Associação', kind: 'nucleo', hoursPerWeek: 3, weekdays: [3] },
-  { label: 'Voluntariado / Música', kind: 'musica', hoursPerWeek: 3, weekdays: [6] },
+export const CHALLENGE_OPTIONS: ReadonlyArray<{ id: string; readonly label: string }> = [
+  { id: 'tempo', get label() { return tr('common:challenge.tempo'); } },
+  { id: 'procrastinacao', get label() { return tr('common:challenge.procrastinacao'); } },
+  { id: 'exercicios', get label() { return tr('common:challenge.exercicios'); } },
+  { id: 'teoria', get label() { return tr('common:challenge.teoria'); } },
+  { id: 'ansiedade', get label() { return tr('common:challenge.ansiedade'); } },
+  { id: 'organizacao', get label() { return tr('common:challenge.organizacao'); } },
 ];
 
-export const ECTS_TARGETS = [
-  { total: 180, label: '180 ECTS · Licenciatura (3 anos)', shortLabel: '180 ECTS' },
-  { total: 120, label: '120 ECTS · Mestrado isolado (2 anos)', shortLabel: '120 ECTS' },
-  { total: 300, label: '300 ECTS · Licenciatura + Mestrado (5 anos)', shortLabel: '300 ECTS' },
-] as const;
+export const EXTRA_ACTIVITY_PRESETS: Array<Omit<ExtraActivity, 'id'>> = [
+  { get label() { return tr('common:extra.trabalho'); }, kind: 'trabalho', hoursPerWeek: 12, weekdays: [2, 4, 6] },
+  { get label() { return tr('common:extra.desporto'); }, kind: 'desporto', hoursPerWeek: 4, weekdays: [1, 3, 5] },
+  { get label() { return tr('common:extra.nucleo'); }, kind: 'nucleo', hoursPerWeek: 3, weekdays: [3] },
+  { get label() { return tr('common:extra.musica'); }, kind: 'musica', hoursPerWeek: 3, weekdays: [6] },
+];
+
+export const ECTS_TARGETS: ReadonlyArray<{ total: 180 | 120 | 300; readonly label: string; shortLabel: string }> = [
+  { total: 180, get label() { return tr('common:ectsTargets.180'); }, shortLabel: '180 ECTS' },
+  { total: 120, get label() { return tr('common:ectsTargets.120'); }, shortLabel: '120 ECTS' },
+  { total: 300, get label() { return tr('common:ectsTargets.300'); }, shortLabel: '300 ECTS' },
+];
 
 export function defaultTargetEctsForCycle(
   cycle: 'licenciatura' | 'mestrado' | 'misto',

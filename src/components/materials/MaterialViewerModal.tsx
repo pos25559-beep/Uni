@@ -1,5 +1,6 @@
 import { ExternalLink, HardDrive, FolderOpen, FileText, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Material } from '../../types';
 import { Badge, Button } from '../ui';
 import { providerLabel } from '../../lib/colors';
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export default function MaterialViewerModal({ material, onClose }: Props) {
+  const { t } = useTranslation('courses');
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(() => material.provider === 'upload');
 
@@ -67,10 +69,10 @@ export default function MaterialViewerModal({ material, onClose }: Props) {
             <div className="min-w-0">
               <h3 className="text-sm font-semibold text-fg truncate">{material.title}</h3>
               <div className="flex items-center gap-2 text-xs text-muted">
-                <Badge>{providerLabel[material.provider] ?? 'Ficheiro'}</Badge>
+                <Badge>{providerLabel[material.provider] ?? t('materialsModals.viewer.defaultBadge')}</Badge>
                 {material.year && <span>{material.year}</span>}
                 {material.epoch && <span>({material.epoch})</span>}
-                {isGoogleFolder && <span className="text-accent font-medium">• Pasta Embutida</span>}
+                {isGoogleFolder && <span className="text-accent font-medium">{t('materialsModals.viewer.embeddedFolder')}</span>}
               </div>
             </div>
           </div>
@@ -81,13 +83,13 @@ export default function MaterialViewerModal({ material, onClose }: Props) {
                 href={material.url}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-3 py-1.5 text-xs font-medium text-fg transition hover:border-accent hover:text-accent"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-line bg-surface px-3.5 py-2 text-xs font-medium text-fg transition hover:border-accent hover:text-accent"
               >
-                Abrir em Nova Aba
+                {t('materialsModals.viewer.openNewTab')}
                 <ExternalLink size={12} />
               </a>
             )}
-            <Button size="sm" variant="ghost" onClick={onClose} aria-label="Fechar visualizador">
+            <Button size="sm" variant="ghost" onClick={onClose} aria-label={t('materialsModals.viewer.closeAria')}>
               <X size={16} />
             </Button>
           </div>
@@ -97,7 +99,7 @@ export default function MaterialViewerModal({ material, onClose }: Props) {
         <div className="flex-1 relative bg-surface-2/30 overflow-hidden">
           {loading ? (
             <div className="flex h-full items-center justify-center text-xs text-muted">
-              A carregar documento...
+              {t('materialsModals.viewer.loading')}
             </div>
           ) : embedUrl ? (
             <iframe
@@ -112,9 +114,9 @@ export default function MaterialViewerModal({ material, onClose }: Props) {
                 <HardDrive size={28} />
               </div>
               <div className="max-w-md space-y-1.5">
-                <h4 className="text-base font-semibold text-fg">Pasta do Google Drive</h4>
+                <h4 className="text-base font-semibold text-fg">{t('materialsModals.viewer.gdriveFolderTitle')}</h4>
                 <p className="text-xs text-muted leading-relaxed">
-                  Esta pasta contém provas e apontamentos partilhados. Por políticas de segurança da Google, pastas completas abrem de forma direta e segura no Google Drive com a tua conta.
+                  {t('materialsModals.viewer.gdriveFolderBody')}
                 </p>
               </div>
               {material.url && (
@@ -124,7 +126,7 @@ export default function MaterialViewerModal({ material, onClose }: Props) {
                   rel="noreferrer"
                   className="inline-flex min-h-11 items-center gap-2 rounded-full bg-ink-cta px-5 py-2 text-xs font-semibold text-ink-cta-fg shadow-card transition hover:opacity-90"
                 >
-                  Abrir Pasta no Google Drive
+                  {t('materialsModals.viewer.openGdriveFolder')}
                   <ExternalLink size={13} />
                 </a>
               )}
@@ -135,9 +137,9 @@ export default function MaterialViewerModal({ material, onClose }: Props) {
                 <FolderOpen size={28} />
               </div>
               <div className="max-w-md space-y-1.5">
-                <h4 className="text-base font-semibold text-fg">Pasta do OneDrive / SharePoint institucional</h4>
+                <h4 className="text-base font-semibold text-fg">{t('materialsModals.viewer.sharepointFolderTitle')}</h4>
                 <p className="text-xs text-muted leading-relaxed">
-                  Esta pasta pertence a um repositório institucional de provas e exercícios. Devido às políticas de segurança da Microsoft, abre diretamente com a tua sessão académica.
+                  {t('materialsModals.viewer.sharepointFolderBody')}
                 </p>
               </div>
               <a
@@ -146,7 +148,7 @@ export default function MaterialViewerModal({ material, onClose }: Props) {
                 rel="noreferrer"
                 className="inline-flex min-h-11 items-center gap-2 rounded-full bg-ink-cta px-5 py-2 text-xs font-semibold text-ink-cta-fg shadow-card transition hover:opacity-90"
               >
-                Abrir Repositório no SharePoint
+                {t('materialsModals.viewer.openSharepointFolder')}
                 <ExternalLink size={13} />
               </a>
             </div>
@@ -154,16 +156,16 @@ export default function MaterialViewerModal({ material, onClose }: Props) {
             <div className="flex flex-col items-center justify-center h-full p-6 text-center space-y-3">
               <FileText size={32} className="text-muted" />
               <p className="text-xs text-muted max-w-sm">
-                Este material está disponível diretamente através do link oficial.
+                {t('materialsModals.viewer.externalBody')}
               </p>
               {material.url && (
                 <a
                   href={material.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-3 py-1.5 text-xs font-medium text-fg hover:border-accent"
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-line bg-surface px-3.5 py-2 text-xs font-medium text-fg hover:border-accent"
                 >
-                  Abrir Material <ExternalLink size={12} />
+                  {t('materialsModals.viewer.openMaterial')} <ExternalLink size={12} />
                 </a>
               )}
             </div>

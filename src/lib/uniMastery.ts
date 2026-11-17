@@ -214,6 +214,7 @@ export function computeCourseMilestones(
   nowIso?: string,
   gradingScale: GradingScale = 'pt20',
   lang: AppLanguage = 'pt-PT',
+  dayKeyParam?: string,
 ): { milestones: UniAgentMilestone[]; items: string[] } {
   const effectiveNowIso = nowIso ?? new Date().toISOString();
   const byId = new Map<string, UniAgentMilestone>();
@@ -292,7 +293,7 @@ export function computeCourseMilestones(
     .filter((d): d is string => Boolean(d))
     .sort()
     .pop();
-  const dayKey = (nowIso ? nowIso.slice(0, 10) : latestStudied) || todayStr();
+  const dayKey = dayKeyParam || (nowIso ? nowIso.slice(0, 10) : latestStudied) || todayStr();
   const mastery = computeCourseMastery(course, assessments, dayKey, gradingScale);
   const stage = stageFromMastery(mastery);
   const items: string[] = [];
@@ -344,6 +345,7 @@ export function recomputeUniAgentProgression(
     new Date().toISOString(),
     gradingScale,
     lang,
+    dayKey,
   );
 
   const nextUpcoming = assessments

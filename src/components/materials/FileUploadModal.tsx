@@ -1,6 +1,7 @@
 import { Upload } from 'lucide-react';
 import { useState } from 'react';
 import type { ChangeEvent, DragEvent, FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { saveFile, formatBytes } from '../../lib/fileStorage';
 import { newId, useStore } from '../../store/useStore';
 import type { Course, Material } from '../../types';
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export default function FileUploadModal({ initialCourseId, onClose }: Props) {
+  const { t } = useTranslation('courses');
   const courses = useStore((s) => s.courses);
   const upsert = useStore((s) => s.upsert);
 
@@ -52,11 +54,11 @@ export default function FileUploadModal({ initialCourseId, onClose }: Props) {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!file) {
-      setError('Seleciona um ficheiro (PDF, slides, etc.).');
+      setError(t('materialsModals.upload.missingFile'));
       return;
     }
     if (!title.trim()) {
-      setError('Indica um título para o material.');
+      setError(t('materialsModals.upload.missingTitle'));
       return;
     }
 
@@ -81,22 +83,31 @@ export default function FileUploadModal({ initialCourseId, onClose }: Props) {
 
       upsert('materials', material);
       onClose();
-    } catch (err: any) {
-      setError(err?.message || 'Erro ao guardar ficheiro.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '';
+      setError(msg || t('materialsModals.upload.saveError'));
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <Modal open onClose={onClose} title="Carregar ficheiro (PDF, Slides, Ficha)">
+    <Modal open onClose={onClose} title={t('materialsModals.upload.title')}>
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         {/* Zona de Drag & Drop */}
         <div
+          role="button"
+          tabIndex={0}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          className={`flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center transition cursor-pointer ${
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              document.getElementById('file-upload-input')?.click();
+            }
+          }}
+          className={`flex min-h-11 flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center transition cursor-pointer ${
             isDragging
               ? 'border-accent bg-accent-soft'
               : 'border-line bg-surface-2 hover:border-muted'
@@ -123,24 +134,24 @@ export default function FileUploadModal({ initialCourseId, onClose }: Props) {
           ) : (
             <div className="space-y-1">
               <p className="text-sm font-medium text-fg">
-                Arrasta um PDF ou apresentação para aqui
+                {t('materialsModals.upload.dropTitle')}
               </p>
-              <p className="text-xs text-muted">ou clica para escolher do teu computador</p>
+              <p className="text-xs text-muted">{t('materialsModals.upload.dropHint')}</p>
             </div>
           )}
         </div>
 
-        <Field label="Título">
+        <Field label={t('materialsModals.upload.titleLabel')}>
           <Input
             value={title}
-            placeholder="Ex.: Slides Aula 4 - Mecânica de Fluidos"
+            placeholder={t('materialsModals.upload.titlePlaceholder')}
             onChange={(e) => setTitle(e.target.value)}
           />
         </Field>
 
-        <Field label="Cadeira">
+        <Field label={t('materialsModals.upload.courseLabel')}>
           <Select value={courseId} onChange={(e) => setCourseId(e.target.value)}>
-            <option value="">Sem cadeira (Geral)</option>
+            <option value="">{t('materialsModals.upload.noCourse')}</option>
             {courses.map((c: Course) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -153,10 +164,10 @@ export default function FileUploadModal({ initialCourseId, onClose }: Props) {
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" onClick={onClose} disabled={busy}>
-            Cancelar
+            {t('materialsModals.upload.cancel')}
           </Button>
           <Button type="submit" variant="primary" disabled={busy || !file}>
-            {busy ? 'A guardar…' : 'Adicionar ficheiro'}
+            {busy ? t('materialsModals.upload.saving') : t('materialsModals.upload.submit')}
           </Button>
         </div>
       </form>

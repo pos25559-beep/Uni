@@ -34,19 +34,9 @@ const DEFAULT_PREFS: PlannerPreferences = {
   includeOverdue: true,
 };
 
-const STRATEGIES: { id: PlannerStrategy; label: string; hint: string }[] = [
-  { id: 'balanced', label: 'Equilibrado', hint: 'Adapta provas, SRS e dificuldade' },
-  { id: 'exams_first', label: 'Foco provas', hint: 'Intensifica exames nos próximos 14d' },
-  { id: 'srs_focus', label: 'Memória SRS', hint: 'Até 2 revisões espaçadas/dia' },
-  { id: 'catch_up', label: 'Recuperar', hint: 'Prioriza atrasos nos slots livres' },
-];
+const STRATEGY_IDS: PlannerStrategy[] = ['balanced', 'exams_first', 'srs_focus', 'catch_up'];
 
-const PERIODS: { id: PlannerDayPeriod; label: string; sub: string }[] = [
-  { id: 'auto', label: 'Automático', sub: '17h+ útil / 10h+ fds' },
-  { id: 'morning', label: 'Manhã', sub: '08:30+' },
-  { id: 'afternoon', label: 'Tarde', sub: '14:00+' },
-  { id: 'evening', label: 'Noite', sub: '17:30+' },
-];
+const PERIOD_IDS: PlannerDayPeriod[] = ['auto', 'morning', 'afternoon', 'evening'];
 
 const BLOCK_DURATIONS: (25 | 35 | 50 | 75)[] = [25, 35, 50, 75];
 const HORIZONS: (7 | 14 | 21)[] = [7, 14, 21];
@@ -280,13 +270,13 @@ export default function PlanBuilderModal({
         <div className="space-y-2">
           <label className="text-xs font-semibold uppercase tracking-wider text-muted">{t('builder.goal')}</label>
           <div className="grid grid-cols-2 gap-2">
-            {STRATEGIES.map((st) => {
-              const active = strategy === st.id;
+            {STRATEGY_IDS.map((strategyId) => {
+              const active = strategy === strategyId;
               return (
                 <button
-                  key={st.id}
+                  key={strategyId}
                   type="button"
-                  onClick={() => setStrategy(st.id)}
+                  onClick={() => setStrategy(strategyId)}
                   className={cx(
                     'flex min-h-[54px] flex-col items-start justify-center rounded-2xl border px-3.5 py-2 text-left transition',
                     active
@@ -294,8 +284,8 @@ export default function PlanBuilderModal({
                       : 'border-line bg-surface hover:bg-surface-2',
                   )}
                 >
-                  <span className="text-xs font-bold">{t(`builder.strategy.${st.id}`)}</span>
-                  <span className="mt-0.5 text-xs opacity-75">{t(`builder.strategy.${st.id}Hint`)}</span>
+                  <span className="text-xs font-bold">{t(`builder.strategy.${strategyId}`)}</span>
+                  <span className="mt-0.5 text-xs opacity-75">{t(`builder.strategy.${strategyId}Hint`)}</span>
                 </button>
               );
             })}
@@ -355,20 +345,20 @@ export default function PlanBuilderModal({
         <div className="space-y-2">
           <span className="text-xs font-semibold uppercase tracking-wider text-muted">{t('builder.periodTitle')}</span>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {PERIODS.map((p) => (
+            {PERIOD_IDS.map((periodId) => (
               <button
-                key={p.id}
+                key={periodId}
                 type="button"
-                onClick={() => setPreferredPeriod(p.id)}
+                onClick={() => setPreferredPeriod(periodId)}
                 className={cx(
                   'flex min-h-[48px] flex-col items-center justify-center rounded-xl border px-2 py-1.5 text-center transition',
-                  preferredPeriod === p.id
+                  preferredPeriod === periodId
                     ? 'border-accent bg-accent-soft text-accent-ink'
                     : 'border-line bg-surface-2/60 text-fg hover:bg-surface-2',
                 )}
               >
-                <span className="text-xs font-bold">{t(`builder.period.${p.id}`)}</span>
-                <span className="text-xs text-muted">{p.id === 'auto' ? t('builder.period.autoSub') : p.sub}</span>
+                <span className="text-xs font-bold">{t(`builder.period.${periodId}`)}</span>
+                <span className="text-xs text-muted">{t(`builder.period.${periodId}Sub`)}</span>
               </button>
             ))}
           </div>
@@ -387,7 +377,7 @@ export default function PlanBuilderModal({
                   type="button"
                   onClick={() => setDailyMinutes(m)}
                   className={cx(
-                    'min-h-[36px] rounded-full px-2.5 text-xs font-semibold tabular transition',
+                    'min-h-11 rounded-full px-3 text-xs font-semibold tabular transition',
                     dailyMinutes === m ? 'bg-ink-cta text-ink-cta-fg' : 'bg-surface text-muted hover:text-fg',
                   )}
                 >
@@ -483,7 +473,7 @@ export default function PlanBuilderModal({
               setBoostIds([]);
               setPausedIds([]);
             }}
-            className="inline-flex min-h-[36px] items-center gap-1.5 text-xs font-medium text-muted hover:text-fg"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-2 text-xs font-medium text-muted hover:text-fg"
           >
             <RotateCcw size={13} /> {t('builder.reset')}
           </button>

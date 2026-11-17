@@ -67,7 +67,7 @@ export function CourseSheetsModal({
           : { attachments: [], textExcerpts: [], readTitles: [], skipped: [], needsDriveAuth: false, contextTokens: 0, contextTokenBudget: null };
 
       if (resolved.needsDriveAuth) {
-        showToast('Autoriza o Google Drive no separador Materiais para ler PDFs da pasta.');
+        showToast(t('memory.needDriveAuth'));
       }
 
       const sources: NotebookSourceInput[] = resolved.textExcerpts.map((e) => ({
@@ -76,7 +76,7 @@ export function CourseSheetsModal({
       }));
       if (manualText.trim()) {
         sources.push({
-          title: selectedTopic?.title ? `Notas · ${selectedTopic.title}` : `Apontamentos · ${course.shortName}`,
+          title: selectedTopic?.title ? t('memory.notesPrefix', { topic: selectedTopic.title }) : t('memory.courseNotesPrefix', { course: course.shortName }),
           content: manualText.trim(),
         });
       }
@@ -103,7 +103,7 @@ export function CourseSheetsModal({
       await onRefreshSheets();
       setPreviewSheet(saved);
       setManualText('');
-      showToast('Ficha guardada em IndexedDB para o Tutor e Foco.');
+      showToast(t('memory.sheetSaved'));
     } catch (e) {
       setError(e instanceof Error ? e.message : t('memory.sheetFail'));
     } finally {
@@ -119,7 +119,7 @@ export function CourseSheetsModal({
       footer={
         <div className="flex w-full flex-wrap items-center justify-between gap-2">
           <Button size="sm" variant="secondary" onClick={onOpenInTutor}>
-            <Sparkles size={14} /> Abrir no Tutor
+            <Sparkles size={14} /> {t('memory.openInTutor')}
           </Button>
           <Button size="sm" variant="primary" onClick={onClose}>
             {t('memory.close')}
@@ -251,7 +251,7 @@ export function CourseSheetsModal({
                       aria-label={t('memory.copy', { title: sheet.title })}
                       onClick={async () => {
                         await navigator.clipboard?.writeText(sheet.summary);
-                        showToast('Ficha copiada!');
+                        showToast(t('memory.sheetCopied'));
                       }}
                       className="grid size-11 shrink-0 place-items-center rounded-xl text-muted hover:bg-surface hover:text-fg"
                     >

@@ -101,10 +101,10 @@ export default function UniFocusRecallPanel({
       } catch (err) {
         if (!active) return;
         setPromptData({
-          question: `Explica em 2 frases, sem olhar para os apontamentos, a ideia essencial de «${topic.title}».`,
-          hint: 'Inclui a definição principal e um exemplo ou condição onde se aplica.',
+          question: t('focus.recallFallback', { topic: topic.title }),
+          hint: t('focus.recallFallbackHint'),
         });
-        setError(err instanceof Error ? err.message : 'Não foi possível gerar pergunta personalizada agora.');
+        setError(err instanceof Error ? err.message : t('focus.recallGenErr'));
       } finally {
         if (active) setLoadingPrompt(false);
       }
@@ -114,7 +114,7 @@ export default function UniFocusRecallPanel({
     return () => {
       active = false;
     };
-  }, [agent, course.id, course.name, reloadNonce, topic.id, topic.title]);
+  }, [agent, course.id, course.name, reloadNonce, t, topic.id, topic.title]);
 
   const handleSubmit = async () => {
     const trimmed = answer.trim();
@@ -181,7 +181,7 @@ export default function UniFocusRecallPanel({
       setError(
         err instanceof Error
           ? err.message
-          : 'Não foi possível avaliar a resposta agora. Podes usar o Baralho de Cartões.',
+          : t('focus.recallEvalErr'),
       );
     } finally {
       setEvaluating(false);
@@ -223,7 +223,7 @@ export default function UniFocusRecallPanel({
             </p>
             <p className="text-xs text-muted">
               {stageInfo.localizedLabel} ({agent.mastery}%)
-              {sheets.length > 0 && ` · ${sheets.length} ${sheets.length === 1 ? 'ficha' : 'fichas'}`}
+              {sheets.length > 0 && ` · ${t('focus.sheetsCount', { count: sheets.length })}`}
             </p>
           </div>
         </div>
@@ -243,7 +243,7 @@ export default function UniFocusRecallPanel({
       {loadingPrompt ? (
         <div className="mt-4 flex items-center gap-2 rounded-xl border border-line bg-surface-2/60 px-3.5 py-4 text-xs text-muted">
           <Loader2 size={15} className="animate-spin text-accent-ink" />
-          A preparar pergunta de recall para «{topic.title}»…
+          {t('focus.preparingTopic', { topic: topic.title })}
         </div>
       ) : (
         <>
@@ -251,7 +251,7 @@ export default function UniFocusRecallPanel({
             <p className="text-sm leading-relaxed text-fg">{promptData?.question}</p>
             {showHint && promptData?.hint && !evaluation && (
               <p className="mt-2 rounded-lg border border-accent/25 bg-accent-soft/60 px-2.5 py-1.5 text-xs text-accent-ink">
-                Pista: {promptData.hint}
+                {t('focus.hintPrefix', { hint: promptData.hint })}
               </p>
             )}
           </div>
@@ -265,7 +265,7 @@ export default function UniFocusRecallPanel({
                   onClick={onFallbackToDeck}
                   className="mt-1 inline-flex min-h-11 items-center font-semibold underline underline-offset-2"
                 >
-                  Trocar para Baralho de Cartões
+                  {t('focus.fallbackToDeck')}
                 </button>
               )}
             </div>

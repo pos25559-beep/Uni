@@ -7,6 +7,7 @@ import {
   setGoogleAccessToken,
   logoutFirebase,
 } from '../lib/firebase';
+import { tr } from '../i18n/tr';
 
 export const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/drive.readonly',
@@ -42,7 +43,7 @@ function loadScript(): Promise<void> {
     s.src = 'https://accounts.google.com/gsi/client';
     s.async = true;
     s.onload = () => resolve();
-    s.onerror = () => { scriptPromise = null; reject(new Error('Não foi possível carregar o login da Google.')); };
+    s.onerror = () => { scriptPromise = null; reject(new Error(tr('common:googleSvc.googleScriptErr'))); };
     document.head.appendChild(s);
   });
   return scriptPromise;
@@ -60,7 +61,7 @@ export async function getGoogleToken(): Promise<string> {
   if (cached && cached.expiresAt > Date.now() + 60_000) return cached.token;
   const clientId = useStore.getState().settings.googleClientId.trim();
   if (!clientId) {
-    throw new Error('Autoriza o acesso ao Google Drive na janela de ligação (ou configura um Client ID nas Definições).');
+    throw new Error(tr('common:googleSvc.driveAuthPrompt'));
   }
   await loadScript();
   return new Promise((resolve, reject) => {
@@ -136,7 +137,7 @@ export async function googleFetch<T>(
   } catch (err) {
     cleanup();
     if (didTimeout()) {
-      throw new Error('A ligação ao Google Drive demorou demasiado no telemóvel. Tenta novamente.');
+      throw new Error(tr('common:googleSvc.driveTimeout'));
     }
     throw err;
   }
@@ -147,7 +148,7 @@ export async function googleFetch<T>(
       cached = null;
       clearGoogleAccessToken();
     }
-    throw new Error('A sessão do Google Drive expirou ou precisa de nova autorização. Clica em «Autorizar Google Drive».');
+    throw new Error(tr('common:googleSvc.driveExpired'));
   }
   if (!res.ok) {
     const body = await res.json().catch(() => null) as { error?: { message?: string } } | null;

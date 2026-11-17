@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { courseColors } from '../../lib/colors';
 import { formatGradeByScale, GRADE_SCALES, gradeToPercent } from '../../lib/grading';
@@ -15,6 +16,7 @@ interface Props {
 
 /** "Como estão as notas face ao objetivo?" — lista de barras (bullet) por cadeira normalizada na escala ativa. */
 export function GradeBullets({ courses, assessments }: Props) {
+  const { t } = useTranslation('progress');
   const gradingScale = useStore((s) => s.settings.gradingScale) ?? 'pt20';
   const appLang = useStore((s) => s.settings.language) ?? 'pt-PT';
   const scaleMeta = GRADE_SCALES[gradingScale] ?? GRADE_SCALES.pt20;
@@ -29,19 +31,22 @@ export function GradeBullets({ courses, assessments }: Props) {
 
   return (
     <ChartCard
-      title="Como estão as notas face ao objetivo?"
+      title={t('charts.gradeBullets.title')}
       isEmpty={courses.length === 0}
-      emptyTitle="Ainda não tens cadeiras"
-      emptyHint="Adiciona cadeiras para acompanhar as notas face ao objetivo."
-      emptyAction={<Link to="/cadeiras" className="text-sm font-medium text-accent">Ir para as cadeiras</Link>}
+      emptyTitle={t('charts.gradeBullets.emptyTitle')}
+      emptyHint={t('charts.gradeBullets.emptyHint')}
+      emptyAction={<Link to="/cadeiras" className="text-sm font-medium text-accent">{t('charts.gradeBullets.emptyAction')}</Link>}
       takeaway={
         average === null ? (
-          'Ainda sem notas lançadas.'
+          t('charts.gradeBullets.noGrades')
         ) : (
-          <>
-            Média ponderada <span className="tabular">{fmt(average)}</span> — <span className="tabular">{below}</span> de{' '}
-            <span className="tabular">{graded}</span> {below === 1 ? 'cadeira abaixo' : 'cadeiras abaixo'} do objetivo
-          </>
+          <span className="tabular">
+            {t(below === 1 ? 'charts.gradeBullets.takeawayOne' : 'charts.gradeBullets.takeawayMany', {
+              avg: fmt(average),
+              below,
+              graded,
+            })}
+          </span>
         )
       }
     >
@@ -51,10 +56,13 @@ export function GradeBullets({ courses, assessments }: Props) {
             <div className="mb-2 flex items-baseline justify-between gap-3 text-xs">
               <span className="truncate font-medium text-fg">{course.shortName}</span>
               {current === null ? (
-                <span className="shrink-0 text-muted">sem notas</span>
+                <span className="shrink-0 text-muted">{t('charts.gradeBullets.noGradesShort')}</span>
               ) : (
                 <span className="shrink-0 tabular text-fg">
-                  {fmt(current)} <span className="text-muted">/ objetivo {fmt(course.targetGrade)}</span>
+                  {fmt(current)}{' '}
+                  <span className="text-muted">
+                    {t('charts.gradeBullets.targetShort', { grade: fmt(course.targetGrade) })}
+                  </span>
                 </span>
               )}
             </div>
@@ -68,19 +76,19 @@ export function GradeBullets({ courses, assessments }: Props) {
               <div
                 className="absolute -inset-y-1 w-0.5 bg-fg"
                 style={{ left: scale(course.targetGrade) }}
-                title={`Objetivo ${fmt(course.targetGrade)}`}
+                title={t('charts.gradeBullets.targetTitle', { grade: fmt(course.targetGrade) })}
               />
               <div
                 className="absolute -inset-y-1 border-l border-dotted border-muted"
                 style={{ left: scale(passingGrade) }}
-                title={`Nota mínima ${fmt(passingGrade)}`}
+                title={t('charts.gradeBullets.minTitle', { grade: fmt(passingGrade) })}
               />
             </div>
           </li>
         ))}
       </ul>
       <p className="mt-5 text-xs text-muted">
-        Traço escuro: objetivo. Pontilhado: nota mínima de aprovação ({fmt(passingGrade)}).
+        {t('charts.gradeBullets.legend', { grade: fmt(passingGrade) })}
       </p>
     </ChartCard>
   );

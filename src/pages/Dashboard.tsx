@@ -374,7 +374,7 @@ export default function Dashboard() {
 
       {visibleNudge && (
         <section
-          aria-label="Lembrete do Uni"
+          aria-label={t('nudgeAria')}
           className={cx(
             'flex flex-col gap-3 border px-4 py-3 shadow-card sm:flex-row sm:items-center sm:justify-between',
             isMinimal
@@ -498,7 +498,7 @@ export default function Dashboard() {
         <StaggerItem>
         <Link
           to="/plano"
-          className="flex items-center gap-3 rounded-2xl border border-warn/40 bg-warn/10 px-4 py-2.5 transition hover:bg-warn/15"
+          className="flex min-h-11 items-center gap-3 rounded-2xl border border-warn/40 bg-warn/10 px-4 py-2.5 transition hover:bg-warn/15"
         >
           <AlertTriangle size={16} className="shrink-0 text-warn" />
           <p className="min-w-0 flex-1 text-xs sm:text-sm">
@@ -590,7 +590,7 @@ export default function Dashboard() {
                       <li key={s.id}>
                         <Link
                           to="/plano"
-                          className="flex items-center justify-between gap-3 rounded-2xl bg-white/80 px-3.5 py-2.5 transition hover:bg-white dark:bg-black/25 dark:hover:bg-black/35"
+                          className="flex min-h-11 items-center justify-between gap-3 rounded-2xl bg-white/80 px-3.5 py-2.5 transition hover:bg-white dark:bg-black/25 dark:hover:bg-black/35"
                         >
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">

@@ -7,6 +7,7 @@ import type {
   AssessmentKind, CalendarEvent, ClassType, Course,
 } from '../types';
 import type { IcsEvent } from './ics';
+import { tr } from '../i18n/tr';
 
 export interface DraftClass {
   key: string;
@@ -169,7 +170,7 @@ export function icsToClipData(events: IcsEvent[], courses: Course[]): ClipImport
   const seenSlots = new Set<string>();
 
   for (const e of events) {
-    const summary = e.summary || '(sem título)';
+    const summary = e.summary || tr('common:googleSvc.gcalNoTitle');
     const courseName = courseNameFromSummary(summary) || summary;
     const courseId = matchCourse(courseName, courses)?.id;
     const k = slotKey(e);

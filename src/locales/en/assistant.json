@@ -38,7 +38,24 @@
     "markDoubt": "Save doubt for class",
     "minutesLabel": "{{minutes}} min · {{date}}",
     "cardsCount": "{{count}} card(s)",
-    "doubtLabel": "Topic: {{topic}}"
+    "doubtLabel": "Topic: {{topic}}",
+    "saveErr": "Couldn't save action.",
+    "confirmRequired": "The {{name}} tool requires explicit student confirmation before saving.",
+    "planSummary": "{{sessions}} pending session(s) · {{assessments}} upcoming assessment(s)",
+    "sheetSummary": "{{count}} sheet(s) found",
+    "noCourseRecall": "No course selected to record recall.",
+    "noTopicRecall": "Could not find or create the topic to record recall.",
+    "recallSaved": "Recall ({{score}}/3) saved for “{{title}}” · next review {{date}}.",
+    "defaultTopic": "In-chat review",
+    "studyFallback": "Study",
+    "selectCourseSession": "Select a course first to save this session.",
+    "sessionAdded": "{{minutes}}-min session added for {{date}}.",
+    "selectCourseFlashcards": "Select a course to save flashcards.",
+    "noTopicFlashcards": "Could not create or find the topic for flashcards.",
+    "flashcardsSaved": "{{count}} flashcard(s) saved in “{{title}}”.",
+    "doubtTitle": "Question ({{topic}}): {{note}}",
+    "doubtSaved": "Question saved to bring to class ({{topic}}).",
+    "invalidProposal": "Invalid or incomplete proposal."
   },
   "notebook": {
     "mode": {
@@ -90,7 +107,8 @@
     "generate": "Generate from sources",
     "result": "Notebook result",
     "savedSheets": "Sheets saved on this device ({{count}})",
-    "deleteSheet": "Delete sheet {{title}}"
+    "deleteSheet": "Delete sheet {{title}}",
+    "pdfPage": "Unipedia · Page {{current}} of {{total}}"
   },
   "page": {
     "sugExamCourse": "Review the material for the {{course}} test with me",
@@ -187,7 +205,9 @@
     "notes": "Notes",
     "hide": "Hide",
     "suggestions": "Suggestions",
-    "keyHowTo": "How to add a free key (>15 msgs)"
+    "keyHowTo": "How to add a free key (>15 msgs)",
+    "activeDocsChat_one": "{{count}} active document in this chat",
+    "activeDocsChat_other": "{{count}} active documents in this chat"
   },
   "checkin": {
     "tabs": {
@@ -267,7 +287,68 @@
     "phExam": "E.g. Up to slide 8, I've reviewed T01–T03…",
     "phClass": "E.g. We covered integrals, I still have doubts…",
     "phDefault": "Reply to Uni in your own words…",
-    "sendAria": "Send reply to Uni"
+    "sendAria": "Send reply to Uni",
+    "topicsPrefix": "Topics:",
+    "feelings": {
+      "clara": "Understood well",
+      "mais_ou_menos": "Some doubts",
+      "dificil": "Difficult",
+      "faltei": "Missed / review",
+      "produtivo": "Productive",
+      "normal": "Normal",
+      "cansado": "Tired",
+      "confiante": "Confident",
+      "estavel": "Steady",
+      "pressionado": "Pressured",
+      "atrasado": "Behind",
+      "ansioso": "Anxious"
+    },
+    "fallback": {
+      "courseFallback": "the course",
+      "topicLine": "Topic/material: {{val}}",
+      "studiedLine": "Studied/covered: {{val}}",
+      "diffLine": "Questions/difficulties: {{val}}",
+      "savedConfirm": "Entry saved for **{{course}}** ({{feeling}}) and plan aligned. If you want to add another detail or question, write below to update.",
+      "upToScope": "Up to {{unit}} {{num}}",
+      "upToNewTopic": "Material up to {{unit}} {{num}}",
+      "focusPastTests": "Redo past tests",
+      "focusPastExams": "Solve past exams",
+      "focusExercises": "Solve practice exercises",
+      "focusSummaries": "Review summaries and slides",
+      "studiedNotStarted": "Not started yet",
+      "studiedPrefix": "Already studied {{rest}}",
+      "studiedAll": "Material already reviewed",
+      "reviewPrefix": "Review {{scope}}",
+      "examScope": "aligned the focus (**{{scope}}**)",
+      "examTopics": "marked **{{count}} topic(s)** for the test",
+      "examNotes": "saved your notes on the test scope",
+      "testOf": "{{test}} for {{course}}",
+      "empathyLow": "I'll prioritise shorter, guided blocks to ease that pressure.",
+      "empathyConfident": "Great pace — keeping just strategic reviews to lock it in.",
+      "empathyDefault": "Keeping a balanced pace until test day.",
+      "withFocus": " focusing on **{{focus}}**",
+      "examReply": "Got it! For **{{testName}}**, I {{scopeNote}}{{focusNote}}{{studied}}. {{empathy}} If that looks right, tap **Save & align** or correct me here!",
+      "classTopic": " **“{{topic}}”**",
+      "classTopics": " **{{count}} topic(s)**",
+      "classToday": " today's class",
+      "classBoost": "I've scheduled **extra reinforcement** for {{course}} in your upcoming blocks.",
+      "classKeep": "Saved under {{course}} with a positive status to keep the momentum.",
+      "classReply": "Noted for **{{course}}**! Logged{{topicBit}} ({{feeling}}). {{followUp}}",
+      "weekHard": " with extra attention on the courses mentioned",
+      "weekReply": "Thanks for the Sunday check-in! Logged as a **{{feeling}}** week{{hard}}. Ready to align next week!",
+      "dayTired": "Since you felt tired, tomorrow's plan trims block length so it doesn't overload you.",
+      "dayProd": "Great energy today! That counts towards your pace and Uni streak.",
+      "dayDefault": "All noted to calibrate tomorrow's pace.",
+      "dayReply": "Logged your day as **{{feeling}}**{{rating}}. {{note}}",
+      "topicsCount": "{{count}} topic(s)",
+      "promptExamCourseFallback": "the test",
+      "promptExam": "I aligned {{course}}: feeling {{feeling}}{{studied}}. Want to build a review strategy?",
+      "promptClassCourseFallback": "course",
+      "promptClassTopic": " about \"{{topic}}\"",
+      "promptClass": "Had {{course}} class ({{feeling}}){{topic}}. Can you help me review the key points?",
+      "promptDayDefaultNotes": "how should I adjust my study?",
+      "promptDay": "About my log today ({{feeling}}): {{notes}}"
+    }
   },
   "quick": {
     "todayL": "What should I study today?",
@@ -326,7 +407,8 @@
     "renameAria": "Rename {{title}}",
     "rename": "Rename conversation",
     "deleteAria": "Delete {{title}}",
-    "deleteConv": "Delete conversation"
+    "deleteConv": "Delete conversation",
+    "subjectGroup": "Subject · {{s}}"
   },
   "weekly": {
     "mood": {
@@ -363,7 +445,8 @@
     "q2": "Explain simply what I didn't understand in class",
     "q3": "Ask me 1 practice question on the most urgent topic",
     "chatEmpty": "Your tutor knows your degree, grade history, stated difficulties, Test Mode and weekly check-ins. Ask a question or pick a suggestion above.",
-    "chatPh": "Ask your weekly tutor..."
+    "chatPh": "Ask your weekly tutor...",
+    "thinking": "Tutor is thinking..."
   },
   "modals": {
     "optionsTitle": "Tutor options",
@@ -398,6 +481,39 @@
     "cancel": "Cancel",
     "delete": "Delete",
     "deleteBody": "Deletes this conversation's message history. Your study data and other conversations aren't affected.",
-    "knowsTitle": "What Uni knows"
+    "knowsTitle": "What Uni knows",
+    "knowsDesc": "This summary is sent to Google with each question. It doesn't include your API key or the contents of your notes."
+  },
+  "composer": {
+    "maxAttachments": "You can attach up to {{count}} photos or PDFs per message.",
+    "invalidFile": "Invalid file",
+    "analyzeAttachments": "Analyse the attached files and summarise the key points for my study.",
+    "removeAttachment": "Remove {{name}}",
+    "attachAria": "Attach a photo or PDF of notes",
+    "attachTitle": "Attach photo or PDF",
+    "inputAria": "Message for the assistant",
+    "stop": "Stop",
+    "sendAria": "Send message"
+  },
+  "sync": {
+    "title": "Sync with the rest of the app",
+    "applied": "Applied",
+    "counts": "{{assessments}} assess. · {{classes}} class(es)",
+    "defaultSummary": "Information applied to Calendar and Plan.",
+    "openCalendar": "Open Calendar",
+    "room": "Room {{room}}",
+    "linksTo": "Links to {{name}}",
+    "createsCourse": "Creates course",
+    "weekdayAria": "Weekday for {{course}}",
+    "hint": "You can adjust the weekday or uncheck items before saving.",
+    "applyBtn": "Apply to Calendar and Plan ({{count}})"
+  },
+  "chat": {
+    "emptyReply": "Couldn't generate text this time. Could you try again?",
+    "sheetPrefix": "Sheet: {{title}}",
+    "replyErr": "Uni hit a snag while replying.",
+    "sendErr": "Couldn't save or send the message right now. Try again.",
+    "syncNoneFound": "No exact test or class dates were found in this reply.",
+    "syncPrepErr": "Couldn't prepare the sync right now."
   }
 }

@@ -183,14 +183,14 @@ export default function Step3Courses({
           {/* Métricas rápidas */}
           <div className="mt-3 flex flex-wrap gap-2 text-xs">
             <span className="rounded-full bg-white/80 px-3 py-1 font-semibold text-[#141312] tabular dark:bg-black/25 dark:text-[#FAF6EC]">
-              {doingCount} ativas{isSecondarySchool ? '' : ` · ${activeEctsFromList} ECTS`}
+              {t('s3.activeCount', { count: doingCount })}{isSecondarySchool ? '' : ` · ${activeEctsFromList} ECTS`}
             </span>
             <span className="rounded-full bg-white/65 px-3 py-1 font-semibold text-[#141312] tabular dark:bg-black/20 dark:text-[#FAF6EC]">
-              {approvedCount} concluídas{isSecondarySchool ? '' : ` · ${approvedEctsFromList} ECTS`}
+              {t('s3.doneCount', { count: approvedCount })}{isSecondarySchool ? '' : ` · ${approvedEctsFromList} ECTS`}
             </span>
             {weightedAvg !== null && (
               <span className="rounded-full bg-pastel-butter px-3 py-1 font-semibold text-[#141312] tabular">
-                Média {weightedAvg.toFixed(1)}
+                {t('s3.avgLabel', { avg: weightedAvg.toFixed(1) })}
               </span>
             )}
           </div>
@@ -252,7 +252,7 @@ export default function Step3Courses({
                 ))}
                 {scheduleDoneInfo.slotSummaries.length > 6 && (
                   <li className="text-xs font-medium text-fg/75">
-                    + {scheduleDoneInfo.slotSummaries.length - 6} outra(s) aula(s) no horário
+                    {t('s3.moreSlots', { count: scheduleDoneInfo.slotSummaries.length - 6 })}
                   </li>
                 )}
               </ul>
@@ -297,7 +297,7 @@ export default function Step3Courses({
               rows={4}
               value={pastedPlanText}
               onChange={(e) => setPastedPlanText(e.target.value)}
-              placeholder="Ex.: Álgebra Linear (6 ECTS)&#10;Cálculo I (6 ECTS)"
+              placeholder={t('s3.pastePh')}
               className="w-full rounded-xl border border-line bg-surface p-3 text-xs text-fg focus:border-accent focus:outline-none"
             />
             <div className="flex flex-wrap gap-2">
@@ -420,7 +420,7 @@ export default function Step3Courses({
                   <button
                     type="button"
                     onClick={() => onRemoveRecord(rec)}
-                    aria-label={`Remover ${rec.name}`}
+                    aria-label={t('s3.removeAria', { name: rec.name })}
                     className="inline-flex size-11 items-center justify-center rounded-xl text-muted transition hover:bg-coral-soft hover:text-coral-ink"
                   >
                     <Trash2 size={15} />
@@ -480,7 +480,7 @@ export default function Step3Courses({
                 <button
                   type="button"
                   onClick={() => setShowManualAdd(false)}
-                  className="min-h-9 px-2 text-xs text-muted hover:text-fg"
+                  className="min-h-11 px-2 text-xs text-muted hover:text-fg"
                 >
                   {t('s3.close')}
                 </button>
@@ -507,7 +507,7 @@ export default function Step3Courses({
                   >
                     {yearChoices.map((yr) => (
                       <option key={yr} value={yr}>
-                        {yr}.º
+                        {t('s3.yearOption', { n: yr })}
                       </option>
                     ))}
                   </Select>

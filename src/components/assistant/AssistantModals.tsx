@@ -205,7 +205,7 @@ export default function AssistantModals({
                         : availableMaterials.slice(0, maxAiFiles).map((m) => m.id);
                     onSelectAllMaterials(picked);
                   }}
-                  className="font-semibold text-accent-ink hover:underline dark:text-accent"
+                  className="inline-flex min-h-11 items-center rounded-full px-2 font-semibold text-accent-ink hover:underline dark:text-accent"
                 >
                   {t('modals.selectAll', { n: maxAiFiles })}
                 </button>
@@ -213,7 +213,7 @@ export default function AssistantModals({
                   <button
                     type="button"
                     onClick={onClearAttachedMaterials}
-                    className="text-muted hover:text-fg"
+                    className="inline-flex min-h-11 items-center rounded-full px-2 text-muted hover:text-fg"
                   >
                     {t('modals.clearSel')}
                   </button>
@@ -244,7 +244,7 @@ export default function AssistantModals({
                 <li
                   key={mat.id}
                   onClick={() => onToggleMaterial(mat.id)}
-                  className="flex cursor-pointer items-center justify-between rounded-xl p-2 hover:bg-surface-2"
+                  className="flex min-h-11 cursor-pointer items-center justify-between rounded-xl p-2 hover:bg-surface-2"
                 >
                   <div className="min-w-0 pr-3">
                     <div className="flex items-center gap-1.5 text-xs font-medium text-fg">
@@ -307,7 +307,7 @@ export default function AssistantModals({
           title={t('modals.knowsTitle')}
           footer={
             <Button variant="primary" onClick={onCloseContextModal}>
-              Fechar
+              {t('notebook.close')}
             </Button>
           }
         >

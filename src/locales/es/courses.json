@@ -5,6 +5,7 @@
   "newCourse": "Nueva asignatura",
   "importCurriculum": "Importar asignaturas",
   "courseNotFound": "Esta asignatura no existe",
+  "courseNotFoundHint": "Puede haberse eliminado o el enlace no es correcto.",
   "backToCourses": "Volver a asignaturas",
   "subtitleFallback": "Detalles de la asignatura",
   "unitOne": "asignatura",
@@ -117,7 +118,10 @@
     "futureBody": "{{title}} está prevista dentro de {{n}} día(s). Al guardar la nota {{grade}}, esta evaluación cuenta como completada en el plan.",
     "cancel": "Cancelar",
     "yes": "Sí, ya la hice",
-    "gradeAria": "Nota (0 a {{max}})"
+    "gradeAria": "Nota (0 a {{max}})",
+    "topicsCount_one": "{{count}} tema",
+    "topicsCount_other": "{{count}} temas",
+    "gradeLabel": "Nota"
   },
   "topics": {
     "atRisk": "En riesgo · {{n}} %",
@@ -136,7 +140,8 @@
     "studied": "Estudié hoy",
     "delete": "¿Eliminar el tema \"{{title}}\"?",
     "newAria": "Nuevo tema",
-    "newPh": "Nuevo tema… (Intro para añadir)"
+    "newPh": "Nuevo tema… (Intro para añadir)",
+    "add": "Añadir"
   },
   "rulesModal": {
     "title": "Actualizar reglas de la asignatura — {{name}}",
@@ -205,9 +210,16 @@
     "unpin": "Desfijar",
     "pin": "Fijar",
     "open": "Abrir",
-    "removeConfirm": "¿Quitar «{{title}}» del repositorio?"
+    "removeConfirm": "¿Quitar «{{title}}» del repositorio?",
+    "prevYears": "Años anteriores",
+    "solved": "Resuelto",
+    "withSolution": "Con solución",
+    "closeNotice": "Cerrar aviso",
+    "materialFallback": "Material"
   },
   "emails": {
+    "cardTitle": "Avisos Gmail de la Asignatura",
+    "cardHint": "Mensajes del profesorado y actualizaciones relacionadas con {{course}}",
     "taskTitle": "Aviso de Gmail: {{subject}}",
     "title": "Avisos y correo académico",
     "count_one": "{{count}} mensaje",
@@ -276,7 +288,8 @@
     "linksTo": "Vincula a {{name}}",
     "creates": "Crea asignatura",
     "assess": "Evaluaciones detectadas ({{n}})",
-    "courses": "Asignaturas detectadas ({{n}})"
+    "courses": "Asignaturas detectadas ({{n}})",
+    "selectAria": "Seleccionar {{name}}"
   },
   "device": {
     "cat": {
@@ -367,6 +380,9 @@
     "expandAll": "Expandir todo",
     "showMore": "Mostrar {{n}} más ({{total}} en total)",
     "showFirst": "Mostrar solo los 6 primeros",
+    "count_one": "{{count}} material",
+    "count_other": "{{count}} materiales",
+    "pinnedTitle": "Fijados",
     "notebooks": "Cuadernos externos",
     "notebooksEmpty": "aún sin enlaces guardados. Usa el Cuaderno de Uni en el Tutor o pega un enlace aquí.",
     "saveLink": "Guardar enlace",
@@ -386,6 +402,7 @@
   },
   "cloud": {
     "root": "Raíz",
+    "loading": "Cargando…",
     "tab": {
       "folders": "Mi unidad",
       "shared": "Compartidos conmigo",
@@ -421,5 +438,185 @@
     "path": "Ruta",
     "course": "Asignatura de los archivos",
     "noCourse": "Sin asignatura"
+  },
+  "materialsModals": {
+    "notebooks": {
+      "savedMaterial": "Material guardado",
+      "courseNotebook": "Cuaderno de {{name}}",
+      "title": "Cuadernos externos",
+      "info": "Puedes guardar enlaces directos a cuadernos de estudio externos opcionales. Pega la URL en «Añadir enlace», en el Hub inicial o en el formulario de la asignatura.",
+      "emptyTitle": "Aún sin cuadernos externos",
+      "emptyHint": "Guarda la URL de un cuaderno externo opcional si quieres abrirlo desde aquí en un clic."
+    },
+    "row": {
+      "fileNotFound": "Archivo no encontrado en el almacenamiento local.",
+      "modified": "Modificado {{time}}",
+      "courseAria": "Asignatura de {{title}}",
+      "noCourse": "Sin asignatura",
+      "unpin": "Desfijar",
+      "pin": "Fijar",
+      "remove": "Quitar",
+      "removeTitle": "Quitar material",
+      "removeConfirm": "¿Quitar \"{{title}}\" de la biblioteca? El archivo no podrá recuperarse."
+    },
+    "addLink": {
+      "invalidUrl": "Indica una URL válida (http o https).",
+      "missingTitle": "Indica un título.",
+      "title": "Añadir enlace",
+      "cancel": "Cancelar",
+      "save": "Guardar",
+      "urlLabel": "URL",
+      "urlHint": "Pega el enlace del archivo, carpeta, cuaderno externo o portal de tu facultad.",
+      "detectedProvider": "Proveedor detectado:",
+      "titleLabel": "Título",
+      "titlePlaceholder": "Ej.: Apuntes — Semana 3",
+      "courseLabel": "Asignatura",
+      "noCourse": "Sin asignatura"
+    },
+    "upload": {
+      "missingFile": "Selecciona un archivo (PDF, diapositivas, etc.).",
+      "missingTitle": "Indica un título para el material.",
+      "saveError": "Error al guardar el archivo.",
+      "title": "Subir archivo (PDF, Diapositivas, Ficha)",
+      "dropTitle": "Arrastra aquí un PDF o una presentación",
+      "dropHint": "o haz clic para elegir de tu ordenador",
+      "titleLabel": "Título",
+      "titlePlaceholder": "Ej.: Diapositivas Clase 4 - Mecánica de Fluidos",
+      "courseLabel": "Asignatura",
+      "noCourse": "Sin asignatura (General)",
+      "cancel": "Cancelar",
+      "saving": "Guardando…",
+      "submit": "Añadir archivo"
+    },
+    "viewer": {
+      "defaultBadge": "Archivo",
+      "embeddedFolder": "• Carpeta integrada",
+      "openNewTab": "Abrir en nueva pestaña",
+      "closeAria": "Cerrar visor",
+      "loading": "Cargando documento...",
+      "gdriveFolderTitle": "Carpeta de Google Drive",
+      "gdriveFolderBody": "Esta carpeta contiene exámenes y apuntes compartidos. Por políticas de seguridad de Google, las carpetas completas se abren de forma directa y segura en Google Drive con tu cuenta.",
+      "openGdriveFolder": "Abrir carpeta en Google Drive",
+      "sharepointFolderTitle": "Carpeta de OneDrive / SharePoint institucional",
+      "sharepointFolderBody": "Esta carpeta pertenece a un repositorio institucional de exámenes y ejercicios. Por políticas de seguridad de Microsoft, se abre directamente con tu sesión académica.",
+      "openSharepointFolder": "Abrir repositorio en SharePoint",
+      "externalBody": "Este material está disponible directamente a través del enlace oficial.",
+      "openMaterial": "Abrir material"
+    }
+  },
+  "assessForm": {
+    "errTitle": "Indica el título de la evaluación.",
+    "errDate": "Indica la fecha.",
+    "errWeight": "El peso debe estar entre 0 y 100 %.",
+    "editTitle": "Editar evaluación",
+    "newTitle": "Nueva evaluación",
+    "kind": "Tipo",
+    "weight": "Peso (%)",
+    "titleLabel": "Título *",
+    "titlePh": "Parcial 1",
+    "dateTime": "Fecha y hora *",
+    "dateTimeAria": "Fecha y hora de la evaluación",
+    "location": "Lugar",
+    "locationPh": "Aula III",
+    "notes": "Notas",
+    "topicsLegend": "Temas cubiertos",
+    "noTopicsHint": "Aún no hay temas. Añádelos en la pestaña Temario."
+  },
+  "classModal": {
+    "types": {
+      "T": "Teórica (T)",
+      "TP": "Teórico-práctica (TP)",
+      "P": "Práctica (P)",
+      "OT": "Tutoría (OT)"
+    },
+    "errTimes": "Indica la hora de inicio y fin.",
+    "errOrder": "La hora de fin debe ser posterior al inicio.",
+    "editTitle": "Editar clase",
+    "newTitle": "Nueva clase",
+    "kind": "Tipo",
+    "weekday": "Día de la semana",
+    "start": "Inicio",
+    "startAria": "Hora de inicio",
+    "end": "Fin",
+    "endAria": "Hora de fin",
+    "room": "Aula",
+    "roomPh": "B2.04"
+  },
+  "courseModal": {
+    "errName": "Indica el nombre de la asignatura.",
+    "errShort": "Indica un nombre corto.",
+    "errInvalid": "Valor no válido.",
+    "editTitle": "Editar asignatura",
+    "newTitle": "Nueva asignatura",
+    "deleteConfirm": "¿Eliminar \"{{name}}\"? También se eliminarán las evaluaciones, clases, sesiones, tareas y materiales de esta asignatura. Esta acción no se puede deshacer.",
+    "name": "Nombre *",
+    "namePh": "Algoritmos y Estructuras de Datos",
+    "shortName": "Nombre corto *",
+    "shortNamePh": "AED",
+    "code": "Código",
+    "codePh": "M3112",
+    "ects": "ECTS",
+    "teacher": "Profesorado",
+    "teacherPh": "Prof. Nombre",
+    "target": "Objetivo (0–{{max}})",
+    "color": "Color",
+    "colorAria": "Color de la asignatura",
+    "links": "Enlaces",
+    "notebook": "Cuaderno externo (URL privada opcional)",
+    "notebookPh": "Opcional — o usa el Cuaderno interno de Uni",
+    "drive": "Carpeta en Google Drive",
+    "portal": "Portal de la asignatura"
+  },
+  "schedule": {
+    "newClass": "Nueva clase",
+    "emptyTitle": "Sin clases en el horario",
+    "emptyHint": "Añade tus clases teóricas, prácticas y tutorías para verlas en el calendario semanal.",
+    "noRoom": "Sin aula",
+    "editAria": "Editar clase",
+    "deleteConfirm": "¿Eliminar esta clase del horario?"
+  },
+  "tasks": {
+    "priority": {
+      "1": "Alta",
+      "2": "Media",
+      "3": "Baja"
+    },
+    "newAria": "Nueva tarea",
+    "newPh": "Nueva tarea…",
+    "dueAria": "Fecha de entrega",
+    "duePh": "Fecha de entrega",
+    "add": "Añadir",
+    "emptyTitle": "Sin tareas",
+    "emptyHint": "Registra entregas y tareas de esta asignatura con fecha límite para no olvidarlas.",
+    "completeAria": "Completar {{title}}",
+    "deleteConfirm": "¿Eliminar la tarea \"{{title}}\"?"
+  },
+  "courseMaterials": {
+    "errTitle": "Indica un título.",
+    "errLink": "Indica un enlace válido.",
+    "fileNotFound": "Archivo no encontrado en el almacenamiento local.",
+    "titleAria": "Título del material",
+    "titlePh": "Título",
+    "urlAria": "Enlace del material",
+    "addLink": "Añadir enlace",
+    "uploadBtn": "Subir PDF / Diapositivas",
+    "emptyTitle": "Sin materiales",
+    "emptyHint": "Sube los PDFs, diapositivas de clase y fichas o añade enlaces de esta asignatura.",
+    "uploadShort": "Subir archivo",
+    "modifiedAt": "Modificado {{date}}",
+    "unpin": "Desfijar",
+    "pin": "Fijar",
+    "removeConfirm": "¿Quitar el material \"{{title}}\" de la lista?"
+  },
+  "practiceModal": {
+    "title": "Repaso activo y retención (SRS)",
+    "progress": "Tema {{current}} de {{total}} · temario prioritario",
+    "emptyTitle": "Todo repasado por hoy",
+    "emptyHint": "Tus temas están dentro de la ventana de retención. Puedes empezar cualquier bloque en el Plan o abrir una asignatura para practicar.",
+    "back": "Volver",
+    "gotoTopic": "Ir al tema {{n}}",
+    "close": "Cerrar",
+    "nextTopic": "Siguiente tema",
+    "finish": "Completar repaso"
   }
 }

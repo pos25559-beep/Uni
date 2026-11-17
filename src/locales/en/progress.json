@@ -78,5 +78,89 @@
     "pct": "{{n}}% retention",
     "dueOne": "review due",
     "practice": "Practise"
+  },
+  "charts": {
+    "noDataPeriod": "No data in this period",
+    "plural": {
+      "assessmentOne": "assessment",
+      "assessmentMany": "assessments",
+      "dayOne": "day",
+      "dayMany": "days",
+      "activeDayOne": "active day",
+      "activeDayMany": "active days"
+    },
+    "studyByDay": {
+      "title": "How much did I study per day?",
+      "emptyTitle": "No completed sessions in this period yet",
+      "emptyHint": "Mark study sessions as done in your plan to see daily totals here.",
+      "emptyAction": "Open study plan",
+      "takeaway": "Studied {{time}}",
+      "takeawayWithGoal": "Studied {{time}} — {{pct}}% of goal",
+      "goalLine": "Goal {{time}}"
+    },
+    "plannedDone": {
+      "title": "Planned vs. completed",
+      "emptyTitle": "No planned sessions in this period",
+      "emptyHint": "Generate a study plan to compare what you planned against what you finished.",
+      "emptyAction": "Generate plan",
+      "nothingYet": "Nothing scheduled has elapsed yet.",
+      "takeaway": "Completed {{pct}}% of planned — {{done}} of {{planned}}",
+      "planned": "Planned",
+      "done": "Done"
+    },
+    "courseTime": {
+      "title": "Where did the time go?",
+      "emptyTitle": "No logged study time in this period yet",
+      "emptyHint": "Once you finish study sessions, time spent per course appears here.",
+      "emptyAction": "Open study plan",
+      "takeaway": "Most time in {{course}} — {{time}}",
+      "takeawayPct": " ({{pct}}% of total)",
+      "seriesName": "Study"
+    },
+    "streakHeatmap": {
+      "title": "Consistency",
+      "emptyTitle": "No study logged yet",
+      "emptyHint": "Every day with completed sessions shows up here.",
+      "takeaway": "Current streak: {{streak}} · {{active}} in the last 12 weeks",
+      "noStudy": "no study",
+      "less": "less",
+      "more": "more"
+    },
+    "gradeBullets": {
+      "title": "How are grades tracking against target?",
+      "emptyTitle": "No courses yet",
+      "emptyHint": "Add courses to track grades against your target.",
+      "emptyAction": "Go to courses",
+      "noGrades": "No grades recorded yet.",
+      "takeawayOne": "Weighted average {{avg}} — {{below}} of {{graded}} course below target",
+      "takeawayMany": "Weighted average {{avg}} — {{below}} of {{graded}} courses below target",
+      "noGradesShort": "no grades",
+      "targetShort": "/ target {{grade}}",
+      "targetTitle": "Target {{grade}}",
+      "minTitle": "Passing grade {{grade}}",
+      "legend": "Dark bar: target. Dotted line: minimum passing grade ({{grade}})."
+    },
+    "readiness": {
+      "title": "Am I ready for what's coming?",
+      "emptyTitle": "No assessments in the next 45 days",
+      "emptyHint": "When you add exam, test, or assignment dates, they appear here.",
+      "takeawayRisk": "{{count}} in the next 14 days below {{pct}}% readiness",
+      "takeawaySafe": "No assessment in the next 14 days is below {{pct}}% readiness.",
+      "today": "today",
+      "dayShort": "{{n}} d",
+      "minComfort": "comfort minimum",
+      "date": "Date",
+      "weight": "Weight",
+      "readiness": "Readiness"
+    },
+    "weakness": {
+      "title": "Where am I weakest?",
+      "emptyTitle": "No syllabus topics to evaluate yet",
+      "emptyHint": "Add topics to your courses and rate confidence to spot weaker subjects.",
+      "emptyAction": "Go to courses",
+      "takeaway": "Weakest: {{course}} — {{progress}} of syllabus, confidence {{confidence}}/5",
+      "topicSeries": "Syllabus",
+      "confidenceSeries": "Confidence"
+    }
   }
 }

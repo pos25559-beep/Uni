@@ -88,7 +88,7 @@ export default function TopicsTab({ course }: Props) {
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                   <Select
                     aria-label={tc('topics.status')}
-                    className="h-8 w-auto min-w-36 text-xs"
+                    className="w-auto min-w-36 text-xs"
                     value={t.status}
                     onChange={(e) => {
                       const status = e.target.value as TopicStatus;
@@ -100,7 +100,7 @@ export default function TopicsTab({ course }: Props) {
                     ))}
                   </Select>
 
-                  <div className="flex items-center gap-1" role="group" aria-label={tc('topics.confidence')}>
+                  <div className="flex items-center" role="group" aria-label={tc('topics.confidence')}>
                     {([1, 2, 3, 4, 5] as const).map((n) => (
                       <button
                         key={n}
@@ -108,11 +108,15 @@ export default function TopicsTab({ course }: Props) {
                         aria-label={tc('topics.confN', { n })}
                         aria-pressed={t.confidence >= n}
                         onClick={() => updateTopic(course.id, t.id, { confidence: n })}
-                        className={cx(
-                          'size-3.5 rounded-full border transition hover:scale-110',
-                          t.confidence >= n ? 'border-accent bg-accent' : 'border-line bg-surface',
-                        )}
-                      />
+                        className="group grid size-11 -mx-1 place-items-center rounded-full"
+                      >
+                        <span
+                          className={cx(
+                            'size-4 rounded-full border transition group-hover:scale-110',
+                            t.confidence >= n ? 'border-accent bg-accent' : 'border-line bg-surface',
+                          )}
+                        />
+                      </button>
                     ))}
                   </div>
 
@@ -184,7 +188,7 @@ export default function TopicsTab({ course }: Props) {
           onKeyDown={onAddKey}
         />
         <Button onClick={addTopic} disabled={!draft.trim()}>
-          <Plus size={16} /> Adicionar
+          <Plus size={16} /> {tc('topics.add')}
         </Button>
       </div>
 

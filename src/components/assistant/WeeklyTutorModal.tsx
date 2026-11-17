@@ -25,11 +25,11 @@ interface WeeklyTutorModalProps {
   initialTab?: 'checkin' | 'chat';
 }
 
-const MOODS: Array<{ value: WeeklyCheckIn['mood']; label: string }> = [
-  { value: 'confiante', label: 'Confiante' },
-  { value: 'estavel', label: 'Estável' },
-  { value: 'pressionado', label: 'Pressionado' },
-  { value: 'atrasado', label: 'Com atraso' },
+const MOOD_VALUES: Array<WeeklyCheckIn['mood']> = [
+  'confiante',
+  'estavel',
+  'pressionado',
+  'atrasado',
 ];
 
 const parseList = (text: string): string[] =>
@@ -222,7 +222,7 @@ export default function WeeklyTutorModal({
           type="button"
           onClick={() => setTab('checkin')}
           className={cx(
-            'inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition',
+            'inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium transition',
             tab === 'checkin' ? 'bg-accent text-accent-fg' : 'text-muted hover:text-fg',
           )}
         >
@@ -232,7 +232,7 @@ export default function WeeklyTutorModal({
           type="button"
           onClick={() => setTab('chat')}
           className={cx(
-            'inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition',
+            'inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium transition',
             tab === 'chat' ? 'bg-accent text-accent-fg' : 'text-muted hover:text-fg',
           )}
         >
@@ -246,19 +246,19 @@ export default function WeeklyTutorModal({
               <div>
                 <span className="mb-1.5 block text-xs font-medium text-muted">{t('weekly.how')}</span>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  {MOODS.map((m) => (
+                  {MOOD_VALUES.map((m) => (
                     <button
-                      key={m.value}
+                      key={m}
                       type="button"
-                      onClick={() => setMood(m.value)}
+                      onClick={() => setMood(m)}
                       className={cx(
-                        'rounded-xl border px-3 py-2 text-xs font-medium transition',
-                        mood === m.value
+                        'min-h-11 rounded-xl border px-3 py-2 text-xs font-medium transition',
+                        mood === m
                           ? 'border-accent bg-accent-soft text-accent'
                           : 'border-line bg-surface-2 text-muted hover:text-fg',
                       )}
                     >
-                      {t(`weekly.mood.${m.value}`)}
+                      {t(`weekly.mood.${m}`)}
                     </button>
                   ))}
                 </div>
@@ -307,7 +307,7 @@ export default function WeeklyTutorModal({
                         type="button"
                         onClick={() => toggleCourse(c.id)}
                         className={cx(
-                          'inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium transition',
+                          'inline-flex min-h-11 items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium transition',
                           active
                             ? 'border-warn bg-warn/15 text-warn'
                             : 'border-line bg-surface-2 text-muted hover:text-fg',
@@ -340,42 +340,42 @@ export default function WeeklyTutorModal({
                   t('weekly.q2'),
                   t('weekly.q3'),
                 ].map((q) => (
-                  <button
-                    key={q}
-                    type="button"
-                    onClick={() => void sendToTutor(q)}
-                    className="rounded-xl border border-line bg-surface-2 px-2.5 py-1.5 text-left text-xs text-muted hover:border-accent/50 hover:text-fg"
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex-1 space-y-3 overflow-y-auto rounded-xl border border-line bg-surface-2 p-3">
-                {chatMsgs.length === 0 ? (
-                  <p className="text-xs text-muted">
-                    {t('weekly.chatEmpty')}
-                  </p>
-                ) : (
-                  chatMsgs.map((m) => (
-                    <div
-                      key={m.id}
-                      className={cx(
-                        'rounded-xl px-3.5 py-2.5 text-sm',
-                        m.role === 'user'
-                          ? 'ml-8 bg-accent text-accent-fg'
-                          : 'mr-4 border border-line bg-surface text-fg',
-                      )}
+                    <button
+                      key={q}
+                      type="button"
+                      onClick={() => void sendToTutor(q)}
+                      className="min-h-11 rounded-xl border border-line bg-surface-2 px-3 py-2 text-left text-xs text-muted hover:border-accent/50 hover:text-fg"
                     >
-                      {m.role === 'user' ? m.text : <Markdown text={m.text} />}
+                      {q}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex-1 space-y-3 overflow-y-auto rounded-xl border border-line bg-surface-2 p-3">
+                  {chatMsgs.length === 0 ? (
+                    <p className="text-xs text-muted">
+                      {t('weekly.chatEmpty')}
+                    </p>
+                  ) : (
+                    chatMsgs.map((m) => (
+                      <div
+                        key={m.id}
+                        className={cx(
+                          'rounded-xl px-3.5 py-2.5 text-sm',
+                          m.role === 'user'
+                            ? 'ml-8 bg-accent text-accent-fg'
+                            : 'mr-4 border border-line bg-surface text-fg',
+                        )}
+                      >
+                        {m.role === 'user' ? m.text : <Markdown text={m.text} />}
+                      </div>
+                    ))
+                  )}
+                  {chatBusy && (
+                    <div className="flex items-center gap-2 text-xs text-muted">
+                      <Loader2 size={14} className="animate-spin" /> {t('weekly.thinking')}
                     </div>
-                  ))
-                )}
-                {chatBusy && (
-                  <div className="flex items-center gap-2 text-xs text-muted">
-                    <Loader2 size={14} className="animate-spin" /> O tutor está a pensar...
-                  </div>
-                )}
+                  )}
                 {chatError && <p className="text-xs text-danger">{chatError}</p>}
               </div>
 

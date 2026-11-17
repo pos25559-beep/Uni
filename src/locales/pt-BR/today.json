@@ -130,5 +130,47 @@
     "sessionsLeft": "Faltam {{count}} sessões para fechar a meta de hoje. Vamos nessa!",
     "noSessions": "Sem sessões marcadas para hoje — adicione suas disciplinas ou converse comigo no Tutor!"
   },
-  "sessionFallback": "Estudo livre"
+  "sessionFallback": "Estudo livre",
+  "nudgeAria": "Lembrete do Uni",
+  "highlights": {
+    "ariaLabel": "Destaques do dia",
+    "title": "Destaques de hoje",
+    "streakDays": "{{count}}d seguidos",
+    "startToday": "Comece hoje",
+    "focused": "Focado",
+    "thisWeek": "esta semana",
+    "rhythm": "Ritmo",
+    "streak": "sequência",
+    "sessions": "Sessões",
+    "completed": "concluídas",
+    "tasks": "Tarefas",
+    "pending": "pendentes"
+  },
+  "mail": {
+    "taskPrefix": "Aviso: {{subject}}",
+    "badge": "Caixa Postal",
+    "titleConnected": "E-mail ({{email}})",
+    "title": "E-mail Acadêmico",
+    "sync": "Sincronizar",
+    "personalHint": "Sua conta pessoal ({{email}}) fica só para Drive e Agenda. Conecte abaixo seu e-mail institucional da faculdade ou importe um aviso ",
+    "connectHint": "Conecte seu e-mail institucional da faculdade para ver avisos dos professores em um só cartão ou importe já um arquivo ",
+    "emailPlaceholder": "ex: nome@universidade.edu.br",
+    "emailAria": "E-mail institucional",
+    "connectBtn": "Conectar E-mail Acadêmico",
+    "importEml": "Importar (.eml)",
+    "importEmlPlain": "Importar .eml",
+    "needsPermission": "Sua sessão Google precisa de autorização para ler o e-mail acadêmico.",
+    "authorizeBtn": "Autorizar leitura",
+    "loading": "Consultando seu e-mail acadêmico...",
+    "cachedHint": "Conta {{email}} salva. Clique em «Sincronizar» para carregar novos avisos do Gmail.",
+    "emptyInbox": "Nenhum aviso recente encontrado na sua caixa.",
+    "syncGmail": "Sincronizar Gmail",
+    "checkAgain": "Verificar novamente",
+    "taskCreated": "Tarefa criada!",
+    "createTask": "Criar Tarefa",
+    "fromLabel": "De:",
+    "dateLabel": "Data:",
+    "linkedCourse": "Disciplina associada:",
+    "openCourse": "Abrir disciplina"
+  }
 }

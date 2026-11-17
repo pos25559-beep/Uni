@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Check, ChevronDown } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Children, isValidElement, useEffect, useMemo, useRef, useState } from 'react';
@@ -115,6 +116,7 @@ export function Select({
   name,
   'aria-label': ariaLabel,
 }: SelectHTMLAttributes<HTMLSelectElement> & { error?: boolean }) {
+  const { t } = useTranslation('common');
   const options = useMemo(() => parseSelectChildren(children), [children]);
   const [uncontrolledValue, setUncontrolledValue] = useState<string>(() =>
     defaultValue !== undefined ? String(defaultValue) : (options[0]?.value ?? ''),
@@ -196,7 +198,7 @@ export function Select({
         role="combobox"
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={ariaLabel || selected?.label || 'Selecionar opção'}
+        aria-label={ariaLabel || selected?.label || t('ui.selectOption')}
         disabled={disabled}
         onClick={(e) => {
           e.preventDefault();
@@ -210,7 +212,7 @@ export function Select({
           className,
         )}
       >
-        <span className="min-w-0 flex-1 truncate">{selected?.label ?? 'Selecionar…'}</span>
+        <span className="min-w-0 flex-1 truncate">{selected?.label ?? t('ui.selectDots')}</span>
         <ChevronDown
           size={15}
           className={cx('shrink-0 text-muted transition-transform', open && 'rotate-180 text-accent')}
@@ -223,7 +225,7 @@ export function Select({
         createPortal(
           <dialog
             ref={dialogRef}
-            aria-label={ariaLabel || 'Selecionar opção'}
+            aria-label={ariaLabel || t('ui.selectOption')}
             onClose={() => setOpen(false)}
             onCancel={(e) => {
               e.preventDefault();
@@ -270,7 +272,7 @@ export function Select({
                 <div data-sheet-handle="" className="-mx-4 -mt-3 mb-2.5 px-4 pt-3 pb-1 touch-none">
                   <div className="mx-auto mb-2.5 h-1.5 w-11 rounded-full bg-line" aria-hidden="true" />
                   <p className="px-1 font-display text-sm font-bold text-fg">
-                    {ariaLabel || 'Escolher opção'}
+                    {ariaLabel || t('ui.chooseOption')}
                   </p>
                 </div>
               )}

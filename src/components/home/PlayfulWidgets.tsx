@@ -31,15 +31,19 @@ export function HighlightShapesGrid({
   onOpenPlan: () => void;
   onFocusTasks: () => void;
 }) {
+  const { t } = useTranslation('today');
+  const isMinimal = useStore((s) => (s.settings.appTone ?? 'vibrante') === 'serio');
   return (
-    <section aria-label="Destaques do dia" className="space-y-2.5">
+    <section aria-label={t('highlights.ariaLabel')} className="space-y-2.5">
       <div className="flex items-center justify-between px-1">
         <h2 className="font-display text-sm font-bold uppercase tracking-wider text-muted">
-          Destaques de hoje
+          {t('highlights.title')}
         </h2>
         <span className="inline-flex items-center gap-1 text-xs font-semibold text-accent-ink">
           <Flame size={13} />
-          {streakDays > 0 ? `${streakDays}d seguidos` : 'Começa hoje'}
+          {streakDays > 0
+            ? t('highlights.streakDays', { count: streakDays })
+            : t('highlights.startToday')}
         </span>
       </div>
 
@@ -47,69 +51,89 @@ export function HighlightShapesGrid({
         {/* Gota azul céu: Foco */}
         <motion.button
           type="button"
-          whileHover={{ y: -2, scale: 1.02 }}
-          whileTap={{ scale: 0.96 }}
+          whileHover={isMinimal ? undefined : { y: -2, scale: 1.02 }}
+          whileTap={isMinimal ? undefined : { scale: 0.96 }}
           transition={UNIPEDIA_BOUNCE_SPRING}
           onClick={() => {
             void hapticTap();
             onOpenProgress();
           }}
-          className="relative flex min-h-[126px] flex-col items-center justify-center overflow-hidden rounded-[30px] rounded-tl-[12px] bg-pastel-sky p-3.5 text-center text-[#141312] shadow-card dark:bg-[#192A3D] dark:text-[#FAF6EC]"
+          className={cx(
+            'relative flex min-h-[126px] flex-col items-center justify-center overflow-hidden p-3.5 text-center shadow-card',
+            isMinimal
+              ? 'rounded-2xl border border-line bg-surface text-fg'
+              : 'rounded-[30px] rounded-tl-[12px] bg-pastel-sky text-[#141312] dark:bg-[#192A3D] dark:text-[#FAF6EC]',
+          )}
         >
-          <span className="text-xs font-bold uppercase tracking-wider opacity-70">Focado</span>
+          <span className="text-xs font-bold uppercase tracking-wider opacity-70">{t('highlights.focused')}</span>
           <span className="mt-1 font-display text-2xl font-extrabold tabular">{focusedLabel}</span>
-          <span className="mt-1 text-xs font-medium opacity-75">esta semana</span>
+          <span className="mt-1 text-xs font-medium opacity-75">{t('highlights.thisWeek')}</span>
         </motion.button>
 
         {/* Trevo verde salva: Sequência */}
         <motion.button
           type="button"
-          whileHover={{ y: -2, scale: 1.02 }}
-          whileTap={{ scale: 0.96 }}
+          whileHover={isMinimal ? undefined : { y: -2, scale: 1.02 }}
+          whileTap={isMinimal ? undefined : { scale: 0.96 }}
           transition={UNIPEDIA_BOUNCE_SPRING}
           onClick={() => {
             void hapticTap();
             onOpenProgress();
           }}
-          className="relative flex min-h-[126px] flex-col items-center justify-center overflow-hidden rounded-[34px] rounded-br-[12px] bg-pastel-sage p-3.5 text-center text-[#141312] shadow-card dark:bg-[#23311B] dark:text-[#FAF6EC]"
+          className={cx(
+            'relative flex min-h-[126px] flex-col items-center justify-center overflow-hidden p-3.5 text-center shadow-card',
+            isMinimal
+              ? 'rounded-2xl border border-line bg-surface text-fg'
+              : 'rounded-[34px] rounded-br-[12px] bg-pastel-sage text-[#141312] dark:bg-[#23311B] dark:text-[#FAF6EC]',
+          )}
         >
-          <span className="text-xs font-bold uppercase tracking-wider opacity-70">Ritmo</span>
+          <span className="text-xs font-bold uppercase tracking-wider opacity-70">{t('highlights.rhythm')}</span>
           <span className="mt-1 font-display text-2xl font-extrabold tabular">{streakDays}d</span>
-          <span className="mt-1 text-xs font-medium opacity-75">sequência</span>
+          <span className="mt-1 text-xs font-medium opacity-75">{t('highlights.streak')}</span>
         </motion.button>
 
         {/* Cartão sol manteiga: Sessões */}
         <motion.button
           type="button"
-          whileHover={{ y: -2, scale: 1.02 }}
-          whileTap={{ scale: 0.96 }}
+          whileHover={isMinimal ? undefined : { y: -2, scale: 1.02 }}
+          whileTap={isMinimal ? undefined : { scale: 0.96 }}
           transition={UNIPEDIA_BOUNCE_SPRING}
           onClick={() => {
             void hapticTap();
             onOpenPlan();
           }}
-          className="relative flex min-h-[126px] flex-col items-center justify-center overflow-hidden rounded-[22px] rounded-tr-[38px] bg-pastel-butter p-3.5 text-center text-[#141312] shadow-card dark:bg-[#352D14] dark:text-[#FAF6EC]"
+          className={cx(
+            'relative flex min-h-[126px] flex-col items-center justify-center overflow-hidden p-3.5 text-center shadow-card',
+            isMinimal
+              ? 'rounded-2xl border border-line bg-surface text-fg'
+              : 'rounded-[22px] rounded-tr-[38px] bg-pastel-butter text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]',
+          )}
         >
-          <span className="text-xs font-bold uppercase tracking-wider opacity-70">Sessões</span>
+          <span className="text-xs font-bold uppercase tracking-wider opacity-70">{t('highlights.sessions')}</span>
           <span className="mt-1 font-display text-2xl font-extrabold tabular">{sessionsLabel}</span>
-          <span className="mt-1 text-xs font-medium opacity-75">concluídas</span>
+          <span className="mt-1 text-xs font-medium opacity-75">{t('highlights.completed')}</span>
         </motion.button>
 
         {/* Sticker pêssego: Tarefas */}
         <motion.button
           type="button"
-          whileHover={{ y: -2, scale: 1.02 }}
-          whileTap={{ scale: 0.96 }}
+          whileHover={isMinimal ? undefined : { y: -2, scale: 1.02 }}
+          whileTap={isMinimal ? undefined : { scale: 0.96 }}
           transition={UNIPEDIA_BOUNCE_SPRING}
           onClick={() => {
             void hapticTap();
             onFocusTasks();
           }}
-          className="relative flex min-h-[126px] flex-col items-center justify-center overflow-hidden rounded-[34px] rounded-bl-[12px] bg-pastel-peach p-3.5 text-center text-[#141312] shadow-card dark:bg-[#382317] dark:text-[#FAF6EC]"
+          className={cx(
+            'relative flex min-h-[126px] flex-col items-center justify-center overflow-hidden p-3.5 text-center shadow-card',
+            isMinimal
+              ? 'rounded-2xl border border-line bg-surface text-fg'
+              : 'rounded-[34px] rounded-bl-[12px] bg-pastel-peach text-[#141312] dark:bg-[#382317] dark:text-[#FAF6EC]',
+          )}
         >
-          <span className="text-xs font-bold uppercase tracking-wider opacity-70">Tarefas</span>
+          <span className="text-xs font-bold uppercase tracking-wider opacity-70">{t('highlights.tasks')}</span>
           <span className="mt-1 font-display text-2xl font-extrabold tabular">{pendingCount}</span>
-          <span className="mt-1 text-xs font-medium opacity-75">por fechar</span>
+          <span className="mt-1 text-xs font-medium opacity-75">{t('highlights.pending')}</span>
         </motion.button>
       </div>
     </section>

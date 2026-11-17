@@ -40,6 +40,7 @@ import {
   type UniToolProposal,
 } from '../../lib/uniTools';
 import { extractUniSyncBlock, looksSyncableReply } from '../../lib/visionParsers';
+import { tr } from '../../i18n/tr';
 import { newId, useStore } from '../../store/useStore';
 import type { AcademicProfile, Course, IntegrationKey, IntegrationStatus, Material } from '../../types';
 
@@ -379,7 +380,7 @@ export function useAssistantChat({
       opts?.subject ?? (activeSubject !== 'all' ? activeSubject : 'geral');
     const newConv: Conversation = {
       id,
-      title: opts?.title?.trim() || 'Nova conversa',
+      title: opts?.title?.trim() || tr('assistant:convs.newTitle'),
       courseId: resolvedCourseId,
       subject: resolvedSubject,
       materialIds: selectedMaterialIds,
@@ -473,7 +474,7 @@ export function useAssistantChat({
         );
         showToast(res.summary, 'ok');
       } catch (err) {
-        showToast(err instanceof Error ? err.message : 'Erro ao guardar ação.', 'danger');
+        showToast(err instanceof Error ? err.message : tr('assistant:tools.saveErr'), 'danger');
       } finally {
         setBusyToolId(null);
       }
@@ -579,7 +580,7 @@ export function useAssistantChat({
         const imageAtt = attachments?.find((a) => a.mimeType.startsWith('image/'));
         const displayText =
           extractedTools.displayText ||
-          'Não consegui gerar texto desta vez. Podes tentar novamente?';
+          tr('assistant:chat.emptyReply');
 
         const shouldAutoExtract =
           !syncPayload &&
@@ -620,7 +621,7 @@ export function useAssistantChat({
           text: displayText,
           at: now,
           sourceDocTitles: [
-            ...retrievedSheets.map((s) => `Ficha: ${s.title}`),
+            ...retrievedSheets.map((s) => tr('assistant:chat.sheetPrefix', { title: s.title })),
             ...resolvedMaterials.readTitles,
             ...attachedMaterials
               .filter(
@@ -692,7 +693,7 @@ export function useAssistantChat({
         }
       } catch (err) {
         if (controller.signal.aborted) return;
-        const message = err instanceof Error ? err.message : 'O Uni teve um percalço ao responder.';
+        const message = err instanceof Error ? err.message : tr('assistant:chat.replyErr');
         setError(message);
         setIntegration('gemini', { error: message });
       } finally {
@@ -749,7 +750,9 @@ export function useAssistantChat({
         };
         await upsertConversation(newConv);
         setActiveConvId(convId);
-      } else if (currentConv.title === 'Nova conversa') {
+      } else if (
+        ['Nova conversa', 'Nueva conversación', 'New conversation'].includes(currentConv.title)
+      ) {
         await upsertConversation({
           ...currentConv,
           title: text.slice(0, 40) + (text.length > 40 ? '…' : ''),
@@ -769,7 +772,7 @@ export function useAssistantChat({
       const msg =
         err instanceof Error
           ? err.message
-          : 'Não foi possível guardar ou enviar a mensagem agora. Tenta novamente.';
+          : tr('assistant:chat.sendErr');
       setError(msg);
     }
   };
@@ -805,7 +808,7 @@ export function useAssistantChat({
           inline ?? (await extractScheduleFromText(msg.text, knownCourses));
         const resolved = resolveExtractedScheduleBundle(parsed);
         if (resolved.slots.length === 0 && resolved.assessments.length === 0) {
-          showToast('Não encontrei datas exatas de provas ou aulas nesta resposta.', 'neutral');
+          showToast(tr('assistant:chat.syncNoneFound'), 'neutral');
           return;
         }
         updatePendingSyncForMsg(msg.id, resolved);
@@ -813,7 +816,7 @@ export function useAssistantChat({
         showToast(
           err instanceof Error
             ? err.message
-            : 'Não foi possível preparar a sincronização agora.',
+            : tr('assistant:chat.syncPrepErr'),
           'danger',
         );
       } finally {

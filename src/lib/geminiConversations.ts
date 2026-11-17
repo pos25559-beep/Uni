@@ -66,7 +66,7 @@ export function groupConversations(
     const cLabel = conv.courseId ? courseMap.get(conv.courseId) : undefined;
     const sLabel = subjectLabel(conv.subject);
     const key = cLabel ? `course:${conv.courseId}` : `subj:${sLabel.toLowerCase()}`;
-    const label = cLabel ? cLabel : `Assunto · ${sLabel}`;
+    const label = cLabel ? cLabel : tr('assistant:convs.subjectGroup', { s: sLabel });
     const existing = groups.get(key);
     if (existing) {
       existing.items.push(conv);

@@ -1,5 +1,6 @@
 import { CalendarDays, Pencil, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { weekdayLong } from '../../lib/colors';
 import { useStore } from '../../store/useStore';
 import type { ClassSlot, Course } from '../../types';
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export default function ScheduleTab({ course }: Props) {
+  const { t } = useTranslation('courses');
   const allClasses = useStore((s) => s.classes);
   const remove = useStore((s) => s.remove);
   const [adding, setAdding] = useState(false);
@@ -30,15 +32,15 @@ export default function ScheduleTab({ course }: Props) {
     <div className="space-y-4">
       <div className="flex justify-end">
         <Button variant="primary" size="sm" onClick={() => setAdding(true)}>
-          <Plus size={14} /> Nova aula
+          <Plus size={14} /> {t('schedule.newClass')}
         </Button>
       </div>
 
       {groups.length === 0 ? (
         <EmptyState
           icon={<CalendarDays size={28} />}
-          title="Sem aulas no horário"
-          hint="Acrescenta as aulas teóricas, práticas e tutoriais para as veres no calendário semanal."
+          title={t('schedule.emptyTitle')}
+          hint={t('schedule.emptyHint')}
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
@@ -82,21 +84,22 @@ function SlotRow({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation('courses');
   return (
-    <li className="flex items-center gap-2.5 rounded-xl bg-surface-2 px-3 py-2.5">
+    <li className="flex items-center gap-2.5 rounded-xl bg-surface-2 px-3 py-2">
       <Badge tone="accent">{slot.type}</Badge>
       <span className="text-sm font-medium tabular">{slot.start}–{slot.end}</span>
-      <span className="min-w-0 flex-1 truncate text-xs text-muted">{slot.room ?? 'Sem sala'}</span>
+      <span className="min-w-0 flex-1 truncate text-xs text-muted">{slot.room ?? t('schedule.noRoom')}</span>
       <button
         type="button"
         onClick={onEdit}
-        aria-label="Editar aula"
-        title="Editar aula"
-        className="grid size-8 shrink-0 place-items-center rounded-lg text-muted transition hover:bg-surface hover:text-fg"
+        aria-label={t('schedule.editAria')}
+        title={t('schedule.editAria')}
+        className="grid size-11 shrink-0 place-items-center rounded-lg text-muted transition hover:bg-surface hover:text-fg"
       >
-        <Pencil size={14} />
+        <Pencil size={15} />
       </button>
-      <DeleteButton message="Apagar esta aula do horário?" onConfirm={onDelete} />
+      <DeleteButton message={t('schedule.deleteConfirm')} onConfirm={onDelete} />
     </li>
   );
 }

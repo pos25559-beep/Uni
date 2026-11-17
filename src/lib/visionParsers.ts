@@ -1,3 +1,5 @@
+import { tr } from '../i18n/tr';
+
 export interface ExtractedHistoryItem {
   code?: string;
   name: string;
@@ -59,9 +61,7 @@ function parseJsonFlexible(rawText: string): unknown {
         return JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
       }
     }
-    throw new Error(
-      'O Uni recebeu uma resposta fora do formato JSON esperado. Tenta outra imagem mais nítida.',
-    );
+    throw new Error(tr('common:errors.visionBadJson'));
   }
 }
 
@@ -377,7 +377,7 @@ export function parseScheduleJsonText(rawText: string): ExtractedSchedulePayload
       return {
         courseName,
         ...(typeof rawCode === 'string' && rawCode.trim() ? { courseCode: rawCode.trim() } : {}),
-        title: typeof a.title === 'string' && a.title.trim() ? a.title.trim() : 'Avaliação',
+        title: typeof a.title === 'string' && a.title.trim() ? a.title.trim() : tr('common:errors.visionDefaultTitle'),
         date,
         kind:
           kind === 'exame' ||

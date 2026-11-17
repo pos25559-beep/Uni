@@ -1,5 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { tr } from '../i18n/tr';
 import { useHubUiStore } from '../store/useHubUiStore';
 import {
   buildSampleUniNotification,
@@ -85,8 +86,8 @@ async function ensureAndroidChannel() {
   try {
     await LocalNotifications.createChannel({
       id: CHANNEL_ID,
-      name: 'Lembretes do Uni',
-      description: 'Sequência diária, revisões espaçadas, testes e aulas',
+      name: tr('common:errors.notifChannelName'),
+      description: tr('common:errors.notifChannelDesc'),
       importance: 4,
       visibility: 1,
     });

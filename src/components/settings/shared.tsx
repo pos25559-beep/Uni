@@ -2,6 +2,7 @@
 import { Check, ChevronDown, Copy } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { IntegrationStatus } from '../../types';
 import { Badge, Button } from '../ui';
 import { cx } from '../../lib/uiHelpers';
@@ -9,9 +10,10 @@ import { useStore } from '../../store/useStore';
 import { relativeTime } from './helpers';
 
 export function StatusBadge({ status }: { status: IntegrationStatus }) {
-  if (status.error) return <Badge tone="danger">Erro</Badge>;
-  if (status.connected) return <Badge tone="ok">Ligado</Badge>;
-  return <Badge>Por ligar</Badge>;
+  const { t } = useTranslation('settings');
+  if (status.error) return <Badge tone="danger">{t('shared.statusError')}</Badge>;
+  if (status.connected) return <Badge tone="ok">{t('shared.statusConnected')}</Badge>;
+  return <Badge>{t('shared.statusDisconnected')}</Badge>;
 }
 
 /** Cartão de uma fonte de dados: ícone, estado, erro e conteúdo próprio. */
@@ -22,6 +24,7 @@ export function IntegrationCard({ icon, title, description, status, children }: 
   status: IntegrationStatus;
   children: ReactNode;
 }) {
+  const { t } = useTranslation('settings');
   const isMinimal = useStore((s) => (s.settings.appTone ?? 'vibrante') === 'serio');
   return (
     <section
@@ -50,7 +53,9 @@ export function IntegrationCard({ icon, title, description, status, children }: 
         <StatusBadge status={status} />
       </div>
       {status.lastSync && (
-        <p className="-mt-1 text-xs text-muted">Última sincronização {relativeTime(status.lastSync)}</p>
+        <p className="-mt-1 text-xs text-muted">
+          {t('shared.lastSync', { time: relativeTime(status.lastSync) })}
+        </p>
       )}
       {status.error && (
         <p className="break-words rounded-2xl bg-coral-soft px-3.5 py-2.5 text-sm text-coral-ink">{status.error}</p>
@@ -62,13 +67,14 @@ export function IntegrationCard({ icon, title, description, status, children }: 
 
 /** Passos numerados, recolhíveis. */
 export function HowTo({ steps }: { steps: ReactNode[] }) {
+  const { t } = useTranslation('settings');
   return (
-    <details className="group rounded-xl border border-line bg-surface-2/60 px-4 py-3">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-medium">
-        Como configurar
+    <details className="group rounded-xl border border-line bg-surface-2/60 px-4 py-1.5">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-sm font-medium">
+        {t('shared.howTo')}
         <ChevronDown size={16} className="text-muted transition group-open:rotate-180" />
       </summary>
-      <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-muted marker:font-medium marker:text-fg">
+      <ol className="mt-2 list-decimal space-y-2 pb-2 pl-5 text-sm text-muted marker:font-medium marker:text-fg">
         {steps.map((step, i) => (
           <li key={i} className="pl-1">{step}</li>
         ))}
@@ -79,6 +85,7 @@ export function HowTo({ steps }: { steps: ReactNode[] }) {
 
 /** Valor só de leitura (ex.: origem do site) com botão para copiar. */
 export function CopyField({ value, label }: { value: string; label: string }) {
+  const { t } = useTranslation('settings');
   const [copied, setCopied] = useState(false);
   const copy = async () => {
     try {
@@ -92,9 +99,9 @@ export function CopyField({ value, label }: { value: string; label: string }) {
   return (
     <div className="flex items-center gap-2 rounded-xl border border-line bg-surface-2 py-1 pl-3 pr-1">
       <code className="min-w-0 flex-1 truncate text-xs">{value}</code>
-      <Button size="sm" variant="ghost" onClick={copy} aria-label={`Copiar ${label}`}>
+      <Button size="sm" variant="ghost" onClick={copy} aria-label={t('shared.copyAria', { label })}>
         {copied ? <Check size={14} /> : <Copy size={14} />}
-        <span className={cx(copied && 'text-ok')}>{copied ? 'Copiado' : 'Copiar'}</span>
+        <span className={cx(copied && 'text-ok')}>{copied ? t('shared.copied') : t('shared.copy')}</span>
       </Button>
     </div>
   );

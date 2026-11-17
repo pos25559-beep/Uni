@@ -1,6 +1,7 @@
 import { requestAiConsent } from '../../store/useAiConsentStore';
 import { CheckCircle2, ExternalLink, Eye, EyeOff, KeyRound, ShieldCheck, Sparkles } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { verifyGeminiApiKey, type GeminiKeyTestResult } from '../../integrations/geminiKeyVerify';
 import { DAILY_CHAT_LIMIT, DAILY_NOTEBOOK_LIMIT } from '../../lib/aiQuota';
 import { useStore } from '../../store/useStore';
@@ -13,6 +14,7 @@ export default function GeminiKeyGuideModal({
   open: boolean;
   onClose: () => void;
 }) {
+  const { t } = useTranslation('settings');
   const apiKey = useStore((s) => s.settings.geminiApiKey);
   const model = useStore((s) => s.settings.geminiModel || 'gemini-4-hydrogen');
   const updateSettings = useStore((s) => s.updateSettings);
@@ -38,7 +40,7 @@ export default function GeminiKeyGuideModal({
         error: undefined,
       });
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Erro ao testar a chave.';
+      const msg = e instanceof Error ? e.message : t('geminiGuide.testError');
       setError(msg);
       setIntegration('gemini', { connected: false, error: msg });
     } finally {
@@ -50,13 +52,13 @@ export default function GeminiKeyGuideModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="Como ligar a tua chave gratuita do Gemini"
+      title={t('geminiGuide.title')}
       maxWidthClass="sm:max-w-lg"
       footer={
         <div className="flex w-full items-center justify-between gap-2">
-          <span className="text-xs text-muted">Guardada apenas no teu dispositivo</span>
+          <span className="text-xs text-muted">{t('geminiGuide.storedLocalOnly')}</span>
           <Button variant="primary" onClick={onClose}>
-            Concluir
+            {t('geminiGuide.done')}
           </Button>
         </div>
       }
@@ -65,13 +67,17 @@ export default function GeminiKeyGuideModal({
         <div className="rounded-2xl border border-line bg-surface-2 p-3.5 leading-relaxed">
           <div className="mb-1.5 flex items-center justify-between gap-2">
             <span className="inline-flex items-center gap-1.5 font-semibold text-fg">
-              <Sparkles size={14} className="text-accent" /> Uni Nativo vs Chave Própria
+              <Sparkles size={14} className="text-accent" /> {t('geminiGuide.compareTitle')}
             </span>
-            <Badge tone="accent">100% Opcional</Badge>
+            <Badge tone="accent">{t('geminiGuide.optionalBadge')}</Badge>
           </div>
           <p className="text-muted">
-            O <strong className="text-fg">Uni Nativo</strong> inclui <strong className="text-fg">{DAILY_CHAT_LIMIT} mensagens/dia</strong> e{' '}
-            <strong className="text-fg">{DAILY_NOTEBOOK_LIMIT} gerações no Caderno</strong> grátis (renova à meia-noite). Se precisares de estudar sem limite diário da app, basta usar uma chave gratuita da tua própria conta Google no AI Studio.
+            {t('geminiGuide.compareBodyPrefix') ? `${t('geminiGuide.compareBodyPrefix')} ` : ''}
+            <strong className="text-fg">{t('geminiGuide.compareBodyNative')}</strong> {t('geminiGuide.compareBodyMiddle')}{' '}
+            <strong className="text-fg">{t('geminiGuide.compareBodyMessages', { count: DAILY_CHAT_LIMIT })}</strong>{' '}
+            {t('geminiGuide.compareBodyAnd')}{' '}
+            <strong className="text-fg">{t('geminiGuide.compareBodyNotebooks', { count: DAILY_NOTEBOOK_LIMIT })}</strong>{' '}
+            {t('geminiGuide.compareBodySuffix')}
           </p>
         </div>
 
@@ -81,15 +87,15 @@ export default function GeminiKeyGuideModal({
               1
             </span>
             <div className="min-w-0 flex-1 space-y-1.5">
-              <p className="font-semibold text-fg">Abre o Google AI Studio com a tua conta Google</p>
-              <p className="text-muted">É gratuito (não obriga cartão para o nível base em regiões elegíveis).</p>
+              <p className="font-semibold text-fg">{t('geminiGuide.step1Title')}</p>
+              <p className="text-muted">{t('geminiGuide.step1Hint')}</p>
               <a
                 href="https://aistudio.google.com/apikey"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex min-h-[34px] items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1 font-semibold text-accent transition hover:bg-accent/20"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-accent-soft px-3.5 py-2 font-semibold text-accent transition hover:bg-accent/20"
               >
-                <KeyRound size={13} /> Abrir aistudio.google.com/apikey <ExternalLink size={12} />
+                <KeyRound size={13} /> {t('geminiGuide.step1Btn')} <ExternalLink size={12} />
               </a>
             </div>
           </li>
@@ -99,9 +105,11 @@ export default function GeminiKeyGuideModal({
               2
             </span>
             <div className="min-w-0 flex-1 space-y-1">
-              <p className="font-semibold text-fg">Clica em «Create API key» num projeto gratuito e copia</p>
+              <p className="font-semibold text-fg">{t('geminiGuide.step2Title')}</p>
               <p className="text-muted">
-                Começa por <code className="rounded bg-surface-2 px-1 py-0.5 font-mono text-xs">AIza...</code>. Se já tiveste créditos pagos/pré-pagos que acabaram, cria um <strong className="text-fg">projeto novo no nível gratuito (Free tier)</strong> para não levar erro de saldo esgotado.
+                {t('geminiGuide.step2HintA')} <code className="rounded bg-surface-2 px-1 py-0.5 font-mono text-xs">AIza...</code>
+                {t('geminiGuide.step2HintB')} <strong className="text-fg">{t('geminiGuide.step2HintFree')}</strong>{' '}
+                {t('geminiGuide.step2HintC')}
               </p>
             </div>
           </li>
@@ -111,8 +119,8 @@ export default function GeminiKeyGuideModal({
               3
             </span>
             <div className="min-w-0 flex-1 space-y-2.5">
-              <p className="font-semibold text-fg">Cola aqui em baixo e testa a ligação</p>
-              <Field label="A tua chave Gemini API">
+              <p className="font-semibold text-fg">{t('geminiGuide.step3Title')}</p>
+              <Field label={t('geminiGuide.keyLabel')}>
                 <div className="flex gap-2">
                   <Input
                     type={showKey ? 'text' : 'password'}
@@ -131,7 +139,7 @@ export default function GeminiKeyGuideModal({
                     type="button"
                     variant="secondary"
                     onClick={() => setShowKey((v) => !v)}
-                    aria-label={showKey ? 'Ocultar chave' : 'Mostrar chave'}
+                    aria-label={showKey ? t('geminiGuide.hideKey') : t('geminiGuide.showKey')}
                   >
                     {showKey ? <EyeOff size={15} /> : <Eye size={15} />}
                   </Button>
@@ -139,7 +147,7 @@ export default function GeminiKeyGuideModal({
               </Field>
               <div className="flex flex-wrap items-center gap-2">
                 <Button variant="primary" size="sm" onClick={() => void runTest()} disabled={testing}>
-                  <Sparkles size={14} /> {testing ? 'A validar…' : 'Testar & Ativar sem limite'}
+                  <Sparkles size={14} /> {testing ? t('geminiGuide.validating') : t('geminiGuide.testActivate')}
                 </Button>
                 {apiKey.trim() && (
                   <Button
@@ -151,21 +159,21 @@ export default function GeminiKeyGuideModal({
                       setError(null);
                     }}
                   >
-                    Voltar ao Uni Nativo (15/dia)
+                    {t('geminiGuide.backToNative', { limit: DAILY_CHAT_LIMIT })}
                   </Button>
                 )}
               </div>
               {error && (
                 <div className="space-y-1.5 rounded-xl border border-danger/25 bg-danger/10 p-2.5 text-xs text-danger">
                   <p className="break-words">{error}</p>
-                  {error.toLowerCase().includes('créditos pré-pagos') && (
+                  {(error.toLowerCase().includes('créditos') || error.toLowerCase().includes('credit') || error.toLowerCase().includes('quota') || error.toLowerCase().includes('billing')) && (
                     <a
                       href="https://ai.studio/projects"
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1 font-semibold underline underline-offset-2"
+                      className="inline-flex min-h-11 items-center gap-1 font-semibold underline underline-offset-2"
                     >
-                      Gerir projetos e faturação no AI Studio <ExternalLink size={11} />
+                      {t('geminiGuide.manageProjectsLink')} <ExternalLink size={12} />
                     </a>
                   )}
                 </div>
@@ -173,7 +181,7 @@ export default function GeminiKeyGuideModal({
               {result && (
                 <p className="flex items-center gap-1.5 rounded-xl bg-ok/10 px-2.5 py-2 text-xs font-medium text-ok">
                   <CheckCircle2 size={14} />
-                  Chave validada ({result.total} modelos disponíveis). Limite diário local desativado!
+                  {t('geminiGuide.validated', { total: result.total })}
                 </p>
               )}
             </div>
@@ -182,7 +190,7 @@ export default function GeminiKeyGuideModal({
 
         <p className="flex items-center gap-1.5 text-xs text-muted">
           <ShieldCheck size={14} className="shrink-0 text-accent" />
-          A chave é enviada diretamente do teu navegador/app para a Google API — nunca passa por servidores próprios da Unipedia.
+          {t('geminiGuide.privacyNote')}
         </p>
       </div>
     </Modal>

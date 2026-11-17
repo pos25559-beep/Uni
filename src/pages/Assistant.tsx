@@ -229,7 +229,7 @@ export default function Assistant() {
     <div className="flex h-[calc(100dvh-5.25rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)-var(--keyboard-height,0px))] min-h-0 flex-col md:h-[calc(100dvh-3.5rem)]">
       {/* Cabeçalho minimalista estilo app Gemini no telemóvel (< md) */}
       <div className="shrink-0 space-y-2 pb-1 md:hidden">
-        <h1 className="sr-only">Tutor Uni</h1>
+        <h1 className="sr-only">{t('srHeading')}</h1>
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-1">
             <button
@@ -254,7 +254,7 @@ export default function Assistant() {
               aria-label={
                 currentConv && messages.length > 0
                   ? currentConv.title
-                  : t('page.styleOptions', { persona: personas.find((p) => p.id === uniPersona)?.label ?? 'Amigo' })
+                  : t('page.styleOptions', { persona: personas.find((p) => p.id === uniPersona)?.label ?? personas[0]?.label ?? '' })
               }
               className="flex min-h-[44px] min-w-0 items-center gap-1.5 rounded-full px-2 text-left transition hover:bg-surface-2"
             >
@@ -265,7 +265,7 @@ export default function Assistant() {
                   <>
                     {courseUniAgent ? courseUniAgent.name : 'Uni'}{' '}
                     <span className="font-normal text-muted">
-                      {personas.find((p) => p.id === effectivePersona)?.label ?? 'Amigo'}
+                      {personas.find((p) => p.id === effectivePersona)?.label ?? personas[0]?.label ?? ''}
                     </span>
                   </>
                 )}
@@ -283,7 +283,7 @@ export default function Assistant() {
               onClick={() => setConvsModalMode('new')}
               aria-label={t('page.newConv')}
               title={t('page.newConv')}
-              className="grid size-10 place-items-center rounded-full text-fg transition hover:bg-surface-2"
+              className="grid size-11 place-items-center rounded-full text-fg transition hover:bg-surface-2"
             >
               <SquarePen size={18} />
             </button>
@@ -292,7 +292,7 @@ export default function Assistant() {
               onClick={() => setMenuOpen(true)}
               aria-label={t('page.moreOptions')}
               title={t('page.options')}
-              className="grid size-10 place-items-center rounded-full text-muted transition hover:bg-surface-2 hover:text-fg"
+              className="grid size-11 place-items-center rounded-full text-muted transition hover:bg-surface-2 hover:text-fg"
             >
               <MoreHorizontal size={19} />
             </button>
@@ -311,7 +311,7 @@ export default function Assistant() {
               <button
                 type="button"
                 onClick={() => setKeyGuideOpen(true)}
-                className="min-h-[38px] rounded-full border border-line bg-surface-2 px-3 text-xs font-medium tabular text-muted"
+                className="min-h-11 rounded-full border border-line bg-surface-2 px-3 text-xs font-medium tabular text-muted"
               >
                 {quota.bypassed ? t('page.unlimited') : `${quota.chatRemaining}/${quota.chatLimit} msgs`}
               </button>
@@ -323,9 +323,9 @@ export default function Assistant() {
                   setMobileFiltersOpen(false);
                   setNotebookOpen(true);
                 }}
-                className="flex min-h-[38px] items-center gap-1.5 rounded-full bg-pastel-butter/80 px-3 text-xs font-semibold text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]"
+                className="flex min-h-11 items-center gap-1.5 rounded-full bg-pastel-butter/80 px-3 text-xs font-semibold text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]"
               >
-                <Sparkles size={13} /> Caderno do Uni
+                <Sparkles size={13} /> {t('notebook.title')}
               </button>
               <button
                 type="button"
@@ -333,7 +333,7 @@ export default function Assistant() {
                   setMobileFiltersOpen(false);
                   openUniCheckIn({ kind: 'day', courseId: activeCourse?.id });
                 }}
-                className="flex min-h-[38px] items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg"
+                className="flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg"
               >
                 <BookOpenCheck size={13} /> {t('page.journal')}
               </button>
@@ -343,7 +343,7 @@ export default function Assistant() {
                   setMobileFiltersOpen(false);
                   setLiveVoiceOpen(true);
                 }}
-                className="flex min-h-[38px] items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg"
+                className="flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg"
               >
                 <Mic size={13} /> {t('liveVoice.openBtn')}
               </button>
@@ -454,7 +454,7 @@ export default function Assistant() {
                 type="button"
                 onClick={() => setKeyGuideOpen(true)}
                 title={t('page.unlockTitle')}
-                className="min-h-[40px] rounded-full border border-line bg-surface px-3 py-1 text-xs font-medium tabular text-muted transition hover:border-accent hover:text-fg"
+                className="min-h-11 rounded-full border border-line bg-surface px-3 py-1 text-xs font-medium tabular text-muted transition hover:border-accent hover:text-fg"
               >
                 {quota.bypassed
                   ? t('page.ownKey')
@@ -473,7 +473,7 @@ export default function Assistant() {
                     type="button"
                     onClick={() => setActiveSubject(subj.id)}
                     className={cx(
-                      'min-h-[38px] shrink-0 rounded-full border px-3.5 text-xs font-medium transition',
+                      'min-h-11 shrink-0 rounded-full border px-3.5 text-xs font-medium transition',
                       active
                         ? 'border-accent bg-accent-soft font-semibold text-accent-ink'
                         : 'border-line bg-surface text-muted hover:text-fg',
@@ -503,7 +503,7 @@ export default function Assistant() {
                     <button
                       type="button"
                       onClick={() => setActiveConvId(c.id)}
-                      className="flex min-h-[40px] max-w-[210px] items-center gap-1.5 px-3 text-xs font-medium"
+                      className="flex min-h-11 max-w-[210px] items-center gap-1.5 px-3 text-xs font-medium"
                     >
                       <span className="truncate">{c.title}</span>
                       <span
@@ -521,9 +521,9 @@ export default function Assistant() {
                         onClick={() => setConfirmDeleteConv(true)}
                         aria-label={t('page.deleteConv', { title: c.title })}
                         title={t('page.deleteThis')}
-                        className="mr-1 grid size-9 place-items-center rounded-full text-ink-cta-fg/80 transition hover:bg-white/15 hover:text-ink-cta-fg"
+                        className="grid size-11 place-items-center rounded-full text-ink-cta-fg/80 transition hover:bg-white/15 hover:text-ink-cta-fg"
                       >
-                        <Trash2 size={13} />
+                        <Trash2 size={14} />
                       </button>
                     )}
                   </div>
@@ -626,7 +626,7 @@ export default function Assistant() {
                     type="button"
                     onClick={() => setActiveSubject(subj.id)}
                     className={cx(
-                      'min-h-[34px] shrink-0 rounded-full px-3 text-xs font-medium transition',
+                      'min-h-11 shrink-0 rounded-full px-3.5 text-xs font-medium transition',
                       active
                         ? 'bg-accent-soft font-semibold text-accent-ink'
                         : 'bg-surface/80 text-muted hover:text-fg',
@@ -640,7 +640,7 @@ export default function Assistant() {
 
             {attachedMaterials.length > 0 && (
               <p className="mt-2.5 rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent-ink">
-                {attachedMaterials.length} documento(s) ativo(s) neste chat
+                {t('page.activeDocsChat', { count: attachedMaterials.length })}
               </p>
             )}
 
@@ -656,7 +656,7 @@ export default function Assistant() {
                   type="button"
                   disabled={loading}
                   onClick={() => void send(starter)}
-                  className="min-h-10 rounded-full border border-line/80 bg-surface/90 px-3.5 py-1.5 text-xs font-medium text-fg shadow-sm transition hover:border-accent hover:bg-accent-soft/45 disabled:opacity-50"
+                  className="min-h-11 rounded-full border border-line/80 bg-surface/90 px-3.5 py-1.5 text-xs font-medium text-fg shadow-sm transition hover:border-accent hover:bg-accent-soft/45 disabled:opacity-50"
                 >
                   {starter}
                 </button>
@@ -979,15 +979,15 @@ export default function Assistant() {
               <div className="flex items-center justify-between gap-2 rounded-2xl border border-line/80 bg-surface-2/60 px-2.5 py-1.5 text-xs">
                 <div className="flex min-w-0 items-center gap-1.5">
                   {activeCourse && (
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 font-medium text-accent-ink md:hidden">
+                    <span className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full bg-accent-soft pl-3 pr-0.5 font-medium text-accent-ink md:hidden">
                       <span className="max-w-[90px] truncate">{activeCourse.shortName || activeCourse.name}</span>
                       <button
                         type="button"
                         onClick={() => setActiveCourseId('all')}
                         aria-label={t('page.clearCourse')}
-                        className="hover:text-danger"
+                        className="grid size-11 place-items-center rounded-full hover:text-danger"
                       >
-                        <X size={11} />
+                        <X size={13} />
                       </button>
                     </span>
                   )}
@@ -995,7 +995,7 @@ export default function Assistant() {
                     type="button"
                     onClick={() => setMaterialsStripMode('compact')}
                     aria-label={t('page.expandNotes')}
-                    className="inline-flex min-h-[30px] items-center gap-1.5 truncate font-semibold text-fg hover:text-accent-ink"
+                    className="inline-flex min-h-11 items-center gap-1.5 truncate font-semibold text-fg hover:text-accent-ink"
                   >
                     <Paperclip size={12} className="shrink-0 text-accent" />
                     <span className="truncate">{t('page.notesAttachedN', { count: attachedMaterials.length })}</span>
@@ -1006,7 +1006,7 @@ export default function Assistant() {
                   type="button"
                   onClick={handleClearAttachedMaterials}
                   aria-label={t('page.clearAllAttached')}
-                  className="min-h-[30px] shrink-0 rounded-full px-2 text-xs font-medium text-muted hover:bg-surface hover:text-danger"
+                  className="min-h-11 shrink-0 rounded-full px-3 text-xs font-medium text-muted hover:bg-surface hover:text-danger"
                 >
                   {t('page.clear')}
                 </button>
@@ -1024,7 +1024,7 @@ export default function Assistant() {
                         onClick={() =>
                           setMaterialsStripMode((m) => (m === 'expanded' ? 'compact' : 'expanded'))
                         }
-                        className="inline-flex min-h-[28px] items-center gap-1 rounded-full px-2 font-medium text-muted hover:bg-surface-2 hover:text-fg"
+                        className="inline-flex min-h-11 items-center gap-1 rounded-full px-2.5 font-medium text-muted hover:bg-surface-2 hover:text-fg"
                       >
                         {materialsStripMode === 'expanded' ? (
                           <>
@@ -1040,7 +1040,7 @@ export default function Assistant() {
                         type="button"
                         onClick={() => setMaterialsStripMode('collapsed')}
                         aria-label={t('page.shrinkBar')}
-                        className="inline-flex min-h-[28px] items-center gap-1 rounded-full bg-surface-2 px-2.5 font-semibold text-fg hover:bg-surface-2/80"
+                        className="inline-flex min-h-11 items-center gap-1 rounded-full bg-surface-2 px-3 font-semibold text-fg hover:bg-surface-2/80"
                       >
                         {t('page.shrink')}
                       </button>
@@ -1048,7 +1048,7 @@ export default function Assistant() {
                         type="button"
                         onClick={handleClearAttachedMaterials}
                         aria-label={t('page.clearAllNotes')}
-                        className="min-h-[28px] rounded-full px-2 text-muted hover:text-danger"
+                        className="min-h-11 rounded-full px-2.5 text-muted hover:text-danger"
                       >
                         {t('page.clear')}
                       </button>
@@ -1065,31 +1065,31 @@ export default function Assistant() {
                   )}
                 >
                   {activeCourse && (
-                    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent-ink md:hidden">
+                    <span className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full bg-accent-soft pl-3 pr-0.5 text-xs font-medium text-accent-ink md:hidden">
                       <span className="max-w-[140px] truncate">{activeCourse.shortName || activeCourse.name}</span>
                       <button
                         type="button"
                         onClick={() => setActiveCourseId('all')}
                         aria-label={t('page.clearCourse')}
-                        className="hover:text-danger"
+                        className="grid size-11 place-items-center rounded-full hover:text-danger"
                       >
-                        <X size={12} />
+                        <X size={13} />
                       </button>
                     </span>
                   )}
                   {attachedMaterials.map((m) => (
                     <span
                       key={m.id}
-                      className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-surface-2 px-3 py-1 text-xs text-muted"
+                      className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full bg-surface-2 pl-3 pr-0.5 text-xs text-muted"
                     >
                       <span className="max-w-[140px] truncate">{m.title}</span>
                       <button
                         type="button"
                         onClick={() => toggleMaterial(m.id)}
                         aria-label={t('page.remove', { title: m.title })}
-                        className="hover:text-danger"
+                        className="grid size-11 place-items-center rounded-full hover:text-danger"
                       >
-                        <X size={12} />
+                        <X size={13} />
                       </button>
                     </span>
                   ))}

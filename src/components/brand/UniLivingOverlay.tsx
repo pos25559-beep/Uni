@@ -1,6 +1,7 @@
 import { Heart } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { hapticTap } from '../../lib/nativeBridge';
 import { studyStreak, todayStr } from '../../lib/selectors';
@@ -37,6 +38,7 @@ const ZONE_CONTAINER_CLASS: Record<PetAnchorZone, string> = {
  * escondem-se automaticamente quando o estudante escreve, faz scroll ou ativa o modo sério.
  */
 export default function UniLivingOverlay() {
+  const { t } = useTranslation('uni');
   const { pathname } = useLocation();
   const sessions = useStore((s) => s.sessions);
   const courses = useStore((s) => s.courses);
@@ -215,7 +217,9 @@ export default function UniLivingOverlay() {
     void hapticTap();
     const prev = companion.dailyHugs;
     const next = recordUniPetCare(today);
-    setHugFeedback(next > prev ? 'Carinho! +3 energia ⚡' : 'Aqui ao teu lado!');
+    setHugFeedback(
+      next > prev ? t('collectibles.overlay.hugBoost') : t('collectibles.overlay.hereWithYou'),
+    );
     setBlushed(true);
     window.dispatchEvent(new CustomEvent('uni-companion-care-updated'));
   };
@@ -248,7 +252,7 @@ export default function UniLivingOverlay() {
               className="mb-1 flex max-w-[175px] items-center gap-1 rounded-xl border border-line/80 bg-surface/95 px-2.5 py-1 text-xs font-medium leading-tight text-fg shadow-sm backdrop-blur-sm"
             >
               {blushed && <Heart size={11} className="shrink-0 fill-coral text-coral" />}
-              <span>{blushed ? hugFeedback ?? 'Carinho!' : quietNote}</span>
+              <span>{blushed ? hugFeedback ?? t('collectibles.overlay.hugShort') : quietNote}</span>
             </motion.div>
           )}
         </AnimatePresence>
@@ -285,7 +289,7 @@ export default function UniLivingOverlay() {
           tabIndex={-1}
           disabled={isHidden}
           onClick={handleTapUni}
-          aria-label="Fazer carinho no Uni discreto"
+          aria-label={t('collectibles.overlay.tapAria')}
           className="pointer-events-auto inline-flex min-h-11 min-w-11 items-center justify-center rounded-full p-1 transition-transform hover:scale-110 active:scale-95 focus:outline-none"
         >
           <UniBuddy

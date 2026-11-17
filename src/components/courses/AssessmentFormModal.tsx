@@ -1,6 +1,7 @@
 import { format, addDays } from 'date-fns';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { kindLabel } from '../../lib/colors';
 import { newId, useStore } from '../../store/useStore';
 import type { Assessment, AssessmentKind, Course } from '../../types';
@@ -17,6 +18,7 @@ interface Props {
 const kinds = Object.keys(kindLabel) as AssessmentKind[];
 
 export default function AssessmentFormModal({ course, assessment, onClose }: Props) {
+  const { t } = useTranslation(['courses', 'common']);
   const upsert = useStore((s) => s.upsert);
   const [kind, setKind] = useState<AssessmentKind>(assessment?.kind ?? 'teste');
   const [title, setTitle] = useState(assessment?.title ?? '');
@@ -35,9 +37,9 @@ export default function AssessmentFormModal({ course, assessment, onClose }: Pro
   const save = (e: FormEvent) => {
     e.preventDefault();
     const w = Number(weight.replace(',', '.'));
-    if (!title.trim()) return setError('Indique o título da avaliação.');
-    if (!date) return setError('Indique a data.');
-    if (!Number.isFinite(w) || w < 0 || w > 100) return setError('O peso deve estar entre 0 e 100%.');
+    if (!title.trim()) return setError(t('assessForm.errTitle'));
+    if (!date) return setError(t('assessForm.errDate'));
+    if (!Number.isFinite(w) || w < 0 || w > 100) return setError(t('assessForm.errWeight'));
     setError(null);
     const opt = (v: string) => v.trim() || undefined;
     const item: Assessment = {
@@ -61,54 +63,54 @@ export default function AssessmentFormModal({ course, assessment, onClose }: Pro
     <Modal
       open
       onClose={onClose}
-      title={assessment ? 'Editar avaliação' : 'Nova avaliação'}
+      title={assessment ? t('assessForm.editTitle') : t('assessForm.newTitle')}
       footer={
         <>
-          <Button onClick={onClose}>Cancelar</Button>
-          <Button variant="primary" type="submit" form="assessment-form">Guardar</Button>
+          <Button onClick={onClose}>{t('common:actions.cancel')}</Button>
+          <Button variant="primary" type="submit" form="assessment-form">{t('common:actions.save')}</Button>
         </>
       }
     >
       <form id="assessment-form" onSubmit={save} className="space-y-4" noValidate>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Tipo">
+          <Field label={t('assessForm.kind')}>
             <Select value={kind} onChange={(e) => setKind(e.target.value as AssessmentKind)}>
               {kinds.map((k) => <option key={k} value={k}>{kindLabel[k]}</option>)}
             </Select>
           </Field>
-          <Field label="Peso (%)">
+          <Field label={t('assessForm.weight')}>
             <Input inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} />
           </Field>
-          <Field label="Título *">
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Teste 1" />
+          <Field label={t('assessForm.titleLabel')}>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('assessForm.titlePh')} />
           </Field>
-          <Field label="Data e hora *">
-            <DateTimeField aria-label="Data e hora da avaliação" value={date} onChange={setDate} />
+          <Field label={t('assessForm.dateTime')}>
+            <DateTimeField aria-label={t('assessForm.dateTimeAria')} value={date} onChange={setDate} />
           </Field>
-          <Field label="Local">
-            <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Anf. III" />
+          <Field label={t('assessForm.location')}>
+            <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder={t('assessForm.locationPh')} />
           </Field>
         </div>
 
-        <Field label="Notas">
+        <Field label={t('assessForm.notes')}>
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
         </Field>
 
         <fieldset>
-          <legend className="mb-1.5 text-xs font-medium text-muted">Tópicos cobertos</legend>
+          <legend className="mb-1.5 text-xs font-medium text-muted">{t('assessForm.topicsLegend')}</legend>
           {course.topics.length === 0 ? (
-            <p className="text-xs text-muted">Ainda não há tópicos. Acrescenta-os no separador Matéria.</p>
+            <p className="text-xs text-muted">{t('assessForm.noTopicsHint')}</p>
           ) : (
             <div className="grid max-h-48 gap-1.5 overflow-y-auto rounded-xl border border-line p-2 sm:grid-cols-2">
-              {course.topics.map((t) => (
-                <label key={t.id} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-surface-2">
+              {course.topics.map((topic) => (
+                <label key={topic.id} className="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-surface-2">
                   <input
                     type="checkbox"
-                    checked={topicIds.includes(t.id)}
-                    onChange={() => toggleTopic(t.id)}
+                    checked={topicIds.includes(topic.id)}
+                    onChange={() => toggleTopic(topic.id)}
                     className="size-4 accent-[var(--accent)]"
                   />
-                  <span className="truncate">{t.title}</span>
+                  <span className="truncate">{topic.title}</span>
                 </label>
               ))}
             </div>

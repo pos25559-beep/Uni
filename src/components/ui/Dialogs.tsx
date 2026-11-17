@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useId, useRef, useState } from 'react';
@@ -143,16 +144,17 @@ export function ActionSheet({
     onSelect: () => void;
   }>;
 }) {
+  const { t } = useTranslation('common');
   const sheetRef = useRef<HTMLDivElement>(null);
   useSheetSwipeDismiss({ ref: sheetRef, open, onClose });
 
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label={title || 'Ações'}>
+        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label={title || t('ui.actionsTitle')}>
           <motion.button
             type="button"
-            aria-label="Fechar opções"
+            aria-label={t('ui.closeOptions')}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -204,7 +206,7 @@ export function ActionSheet({
                 ))}
               </div>
               <Button variant="secondary" className="mt-3 w-full" onClick={onClose}>
-                Cancelar
+                {t('actions.cancel')}
               </Button>
             </div>
           </motion.div>

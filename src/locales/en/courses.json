@@ -5,6 +5,7 @@
   "newCourse": "New course",
   "importCurriculum": "Import courses",
   "courseNotFound": "Course not found",
+  "courseNotFoundHint": "It may have been deleted or the link is wrong.",
   "backToCourses": "Back to courses",
   "subtitleFallback": "Course details",
   "unitOne": "course",
@@ -117,7 +118,10 @@
     "futureBody": "{{title}} is scheduled in {{n}} day(s). Saving the grade {{grade}} marks this assessment as done in your plan.",
     "cancel": "Cancel",
     "yes": "Yes, I took it",
-    "gradeAria": "Grade (0 to {{max}})"
+    "gradeAria": "Grade (0 to {{max}})",
+    "topicsCount_one": "{{count}} topic",
+    "topicsCount_other": "{{count}} topics",
+    "gradeLabel": "Grade"
   },
   "topics": {
     "atRisk": "At risk · {{n}}%",
@@ -136,7 +140,8 @@
     "studied": "Studied today",
     "delete": "Delete the topic \"{{title}}\"?",
     "newAria": "New topic",
-    "newPh": "New topic… (Enter to add)"
+    "newPh": "New topic… (Enter to add)",
+    "add": "Add"
   },
   "rulesModal": {
     "title": "Update course rules — {{name}}",
@@ -205,9 +210,16 @@
     "unpin": "Unpin",
     "pin": "Pin",
     "open": "Open",
-    "removeConfirm": "Remove “{{title}}” from the repository?"
+    "removeConfirm": "Remove “{{title}}” from the repository?",
+    "prevYears": "Past years",
+    "solved": "Solved",
+    "withSolution": "With solution",
+    "closeNotice": "Close notice",
+    "materialFallback": "Material"
   },
   "emails": {
+    "cardTitle": "Course Gmail Notices",
+    "cardHint": "Messages from lecturers and updates related to {{course}}",
     "taskTitle": "Gmail notice: {{subject}}",
     "title": "Notices and academic email",
     "count_one": "{{count}} message",
@@ -276,7 +288,8 @@
     "linksTo": "Links to {{name}}",
     "creates": "Creates course",
     "assess": "Assessments found ({{n}})",
-    "courses": "Courses found ({{n}})"
+    "courses": "Courses found ({{n}})",
+    "selectAria": "Select {{name}}"
   },
   "device": {
     "cat": {
@@ -367,6 +380,9 @@
     "expandAll": "Expand all",
     "showMore": "Show {{n}} more ({{total}} total)",
     "showFirst": "Show only the first 6",
+    "count_one": "{{count}} item",
+    "count_other": "{{count}} items",
+    "pinnedTitle": "Pinned",
     "notebooks": "External notebooks",
     "notebooksEmpty": "no links saved yet. Use Uni's Notebook in the Tutor or paste a link here.",
     "saveLink": "Save link",
@@ -386,6 +402,7 @@
   },
   "cloud": {
     "root": "Root",
+    "loading": "Loading…",
     "tab": {
       "folders": "My Drive",
       "shared": "Shared with me",
@@ -421,5 +438,185 @@
     "path": "Path",
     "course": "Course for these files",
     "noCourse": "No course"
+  },
+  "materialsModals": {
+    "notebooks": {
+      "savedMaterial": "Saved material",
+      "courseNotebook": "{{name}} Notebook",
+      "title": "External notebooks",
+      "info": "You can save direct links to optional external study notebooks. Paste the URL in “Add link”, the Home Hub, or the course form.",
+      "emptyTitle": "No external notebooks yet",
+      "emptyHint": "Save an optional external notebook URL if you'd like to open it here in one click."
+    },
+    "row": {
+      "fileNotFound": "File not found in local storage.",
+      "modified": "Modified {{time}}",
+      "courseAria": "Course for {{title}}",
+      "noCourse": "No course",
+      "unpin": "Unpin",
+      "pin": "Pin",
+      "remove": "Remove",
+      "removeTitle": "Remove material",
+      "removeConfirm": "Remove “{{title}}” from your library? The file cannot be recovered."
+    },
+    "addLink": {
+      "invalidUrl": "Enter a valid URL (http or https).",
+      "missingTitle": "Enter a title.",
+      "title": "Add link",
+      "cancel": "Cancel",
+      "save": "Save",
+      "urlLabel": "URL",
+      "urlHint": "Paste the link to a file, folder, external notebook, or university portal.",
+      "detectedProvider": "Detected provider:",
+      "titleLabel": "Title",
+      "titlePlaceholder": "e.g. Lecture Notes — Week 3",
+      "courseLabel": "Course",
+      "noCourse": "No course"
+    },
+    "upload": {
+      "missingFile": "Select a file (PDF, slides, etc.).",
+      "missingTitle": "Enter a title for this material.",
+      "saveError": "Failed to save file.",
+      "title": "Upload file (PDF, Slides, Handout)",
+      "dropTitle": "Drag a PDF or presentation here",
+      "dropHint": "or click to choose from your computer",
+      "titleLabel": "Title",
+      "titlePlaceholder": "e.g. Lecture 4 Slides - Fluid Mechanics",
+      "courseLabel": "Course",
+      "noCourse": "No course (General)",
+      "cancel": "Cancel",
+      "saving": "Saving…",
+      "submit": "Add file"
+    },
+    "viewer": {
+      "defaultBadge": "File",
+      "embeddedFolder": "• Embedded Folder",
+      "openNewTab": "Open in New Tab",
+      "closeAria": "Close viewer",
+      "loading": "Loading document...",
+      "gdriveFolderTitle": "Google Drive Folder",
+      "gdriveFolderBody": "This folder contains shared exams and notes. Due to Google security policies, full folders open directly and securely in Google Drive with your account.",
+      "openGdriveFolder": "Open Folder in Google Drive",
+      "sharepointFolderTitle": "OneDrive / SharePoint Institutional Folder",
+      "sharepointFolderBody": "This folder belongs to an institutional repository of exams and exercises. Due to Microsoft security policies, it opens directly with your academic sign-in.",
+      "openSharepointFolder": "Open Repository in SharePoint",
+      "externalBody": "This material is available directly via its official link.",
+      "openMaterial": "Open Material"
+    }
+  },
+  "assessForm": {
+    "errTitle": "Enter the assessment title.",
+    "errDate": "Enter the date.",
+    "errWeight": "Weight must be between 0 and 100%.",
+    "editTitle": "Edit assessment",
+    "newTitle": "New assessment",
+    "kind": "Type",
+    "weight": "Weight (%)",
+    "titleLabel": "Title *",
+    "titlePh": "Test 1",
+    "dateTime": "Date & time *",
+    "dateTimeAria": "Assessment date and time",
+    "location": "Location",
+    "locationPh": "Hall III",
+    "notes": "Notes",
+    "topicsLegend": "Covered topics",
+    "noTopicsHint": "No topics yet. Add them in the Syllabus tab."
+  },
+  "classModal": {
+    "types": {
+      "T": "Lecture (T)",
+      "TP": "Lecture & Lab (TP)",
+      "P": "Lab / Practice (P)",
+      "OT": "Tutorial (OT)"
+    },
+    "errTimes": "Enter the start and end time.",
+    "errOrder": "End time must be after the start time.",
+    "editTitle": "Edit class",
+    "newTitle": "New class",
+    "kind": "Type",
+    "weekday": "Weekday",
+    "start": "Start",
+    "startAria": "Start time",
+    "end": "End",
+    "endAria": "End time",
+    "room": "Room",
+    "roomPh": "B2.04"
+  },
+  "courseModal": {
+    "errName": "Enter the course name.",
+    "errShort": "Enter a short name.",
+    "errInvalid": "Invalid value.",
+    "editTitle": "Edit course",
+    "newTitle": "New course",
+    "deleteConfirm": "Delete \"{{name}}\"? All assessments, classes, study sessions, tasks and materials for this course will also be deleted. This action cannot be undone.",
+    "name": "Name *",
+    "namePh": "Algorithms and Data Structures",
+    "shortName": "Short name *",
+    "shortNamePh": "ADS",
+    "code": "Code",
+    "codePh": "CS3112",
+    "ects": "Credits",
+    "teacher": "Instructor",
+    "teacherPh": "Prof. Name",
+    "target": "Target (0–{{max}})",
+    "color": "Color",
+    "colorAria": "Course color",
+    "links": "Links",
+    "notebook": "External notebook (optional private URL)",
+    "notebookPh": "Optional — or use Uni's built-in Notebook",
+    "drive": "Google Drive folder",
+    "portal": "Course portal"
+  },
+  "schedule": {
+    "newClass": "New class",
+    "emptyTitle": "No classes on schedule",
+    "emptyHint": "Add lectures, labs and tutorials to see them on your weekly calendar.",
+    "noRoom": "No room",
+    "editAria": "Edit class",
+    "deleteConfirm": "Delete this class from the schedule?"
+  },
+  "tasks": {
+    "priority": {
+      "1": "High",
+      "2": "Medium",
+      "3": "Low"
+    },
+    "newAria": "New task",
+    "newPh": "New task…",
+    "dueAria": "Due date",
+    "duePh": "Due date",
+    "add": "Add",
+    "emptyTitle": "No tasks",
+    "emptyHint": "Track assignments and tasks with due dates so nothing slips past you.",
+    "completeAria": "Complete {{title}}",
+    "deleteConfirm": "Delete task \"{{title}}\"?"
+  },
+  "courseMaterials": {
+    "errTitle": "Enter a title.",
+    "errLink": "Enter a valid link.",
+    "fileNotFound": "File not found in local storage.",
+    "titleAria": "Material title",
+    "titlePh": "Title",
+    "urlAria": "Material link",
+    "addLink": "Add link",
+    "uploadBtn": "Upload PDF / Slides",
+    "emptyTitle": "No materials",
+    "emptyHint": "Upload PDFs, lecture slides and problem sets or add links for this course.",
+    "uploadShort": "Upload file",
+    "modifiedAt": "Modified {{date}}",
+    "unpin": "Unpin",
+    "pin": "Pin",
+    "removeConfirm": "Remove \"{{title}}\" from the list?"
+  },
+  "practiceModal": {
+    "title": "Active review & retention (SRS)",
+    "progress": "Topic {{current}} of {{total}} · priority syllabus",
+    "emptyTitle": "All caught up for today",
+    "emptyHint": "Your topics are within their retention window. You can start any block in the Plan or open a course to practise.",
+    "back": "Back",
+    "gotoTopic": "Go to topic {{n}}",
+    "close": "Close",
+    "nextTopic": "Next topic",
+    "finish": "Finish review"
   }
 }

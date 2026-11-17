@@ -523,7 +523,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
 
   const toggleExtraPreset = (preset: (typeof EXTRA_ACTIVITY_PRESETS)[number]) => {
     void hapticTap();
-    const exists = extraActivities.find((a) => a.label === preset.label);
+    const exists = extraActivities.find((a) => a.kind === preset.kind || a.label === preset.label);
     if (exists) {
       setExtraActivities((prev) => prev.filter((a) => a.id !== exists.id));
       return;
@@ -919,7 +919,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
         slotSummaries,
       });
     } catch (err) {
-      setOcrError(err instanceof Error ? err.message : 'Erro ao analisar o print agora.');
+      setOcrError(err instanceof Error ? err.message : t('shell.ocrError'));
     } finally {
       setOcrBusy(false);
     }
@@ -1036,12 +1036,12 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
 
     const uniName =
       universityId === 'outra'
-        ? customUniversity.trim() || 'Outra Instituição'
-        : selectedUniversity?.name ?? 'Instituição Portuguesa';
+        ? customUniversity.trim() || t('shell.fallback.otherUni')
+        : selectedUniversity?.name ?? t('shell.fallback.ptUni');
     const degName =
       degreeId === 'outro'
-        ? customDegree.trim() || 'Plano Personalizado'
-        : availableDegrees.find((d) => d.id === degreeId)?.name ?? 'Percurso Académico';
+        ? customDegree.trim() || t('shell.fallback.customPlan')
+        : availableDegrees.find((d) => d.id === degreeId)?.name ?? t('shell.fallback.academicPath');
 
     const profile: AcademicProfile = {
       onboardingCompleted: true,
@@ -1064,7 +1064,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
     };
 
     updateSettings({
-      userName: userName.trim() || 'Estudante',
+      userName: userName.trim() || t('shell.fallback.student'),
       theme: themePref,
       themePalette,
       appTone,

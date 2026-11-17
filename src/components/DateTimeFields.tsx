@@ -13,11 +13,12 @@ import {
   startOfWeek,
   subMonths,
 } from 'date-fns';
-import { appDateLocale as pt } from '../lib/dateLocale';
+import { appDateLocale as pt, fullDatePattern } from '../lib/dateLocale';
 import { CalendarDays, ChevronLeft, ChevronRight, Clock, Keyboard, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { hapticTap } from '../lib/nativeBridge';
 import { cx } from '../lib/uiHelpers';
 import { useSheetSwipeDismiss } from '../lib/useSheetSwipeDismiss';
@@ -27,7 +28,7 @@ const CONTROL_CLS =
 
 const HOURS_ALL = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
 const MINUTES_STEP5 = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'));
-const WEEKDAY_HDR = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+const WEEKDAY_KEYS = ['1', '2', '3', '4', '5', '6', '0'] as const;
 
 interface DialogCoords {
   isMobile: boolean;
@@ -69,6 +70,7 @@ function TopLayerPickerDialog({
   title: string;
   children: ReactNode;
 }) {
+  const { t } = useTranslation('common');
   const dialogRef = useRef<HTMLDialogElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
@@ -160,7 +162,7 @@ function TopLayerPickerDialog({
                 <button
                   type="button"
                   onClick={onClose}
-                  aria-label="Fechar seletor"
+                  aria-label={t('ui.dateTime.closePicker')}
                   className="flex size-11 -mr-2 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-fg"
                 >
                   <X size={17} />
@@ -195,6 +197,7 @@ function TimePanel({
   onSelect: (hhmm: string) => void;
   onDone?: () => void;
 }) {
+  const { t } = useTranslation('common');
   const { hour, minute } = parseHhMm(value);
   const [manualOpen, setManualOpen] = useState(false);
   const [manualText, setManualText] = useState(`${hour}:${minute}`);
@@ -228,17 +231,17 @@ function TimePanel({
             setManualErr(false);
             setManualOpen((v) => !v);
           }}
-          className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-line bg-surface px-3 text-xs font-semibold text-fg transition hover:bg-surface-2"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-surface px-3 text-xs font-semibold text-fg transition hover:bg-surface-2"
         >
           <Keyboard size={14} aria-hidden="true" />
-          {manualOpen ? 'Grelha rápida' : 'Hora exata'}
+          {manualOpen ? t('ui.dateTime.quickGrid') : t('ui.dateTime.exactTime')}
         </button>
       </div>
 
       {manualOpen ? (
         <div className="space-y-2.5">
           <label className="block space-y-1">
-            <span className="text-xs font-semibold text-muted">Escreve em formato HH:MM (ex.: 08:20)</span>
+            <span className="text-xs font-semibold text-muted">{t('ui.dateTime.manualHint')}</span>
             <input
               type="text"
               inputMode="numeric"
@@ -253,7 +256,7 @@ function TimePanel({
             />
           </label>
           {manualErr && (
-            <p className="text-xs font-medium text-danger">Formato inválido. Usa HH:MM entre 00:00 e 23:59.</p>
+            <p className="text-xs font-medium text-danger">{t('ui.dateTime.manualError')}</p>
           )}
           <div className="flex justify-end">
             <button
@@ -261,14 +264,14 @@ function TimePanel({
               onClick={commitManual}
               className="min-h-11 rounded-full bg-ink-cta px-4 text-xs font-semibold text-ink-cta-fg"
             >
-              Aplicar hora
+              {t('ui.dateTime.applyTime')}
             </button>
           </div>
         </div>
       ) : (
         <>
           <div>
-            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted">Hora</p>
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted">{t('ui.dateTime.hour')}</p>
             <div className="grid grid-cols-6 gap-1.5">
               {HOURS_ALL.map((h) => {
                 const active = h === hour;
@@ -281,7 +284,7 @@ function TimePanel({
                       onSelect(`${h}:${minute}`);
                     }}
                     className={cx(
-                      'min-h-[42px] rounded-xl font-mono text-xs font-semibold tabular transition',
+                      'min-h-[44px] rounded-xl font-mono text-xs font-semibold tabular transition',
                       active
                         ? 'bg-accent text-accent-fg shadow-card'
                         : 'bg-surface-2/80 text-fg hover:bg-surface-2',
@@ -295,7 +298,7 @@ function TimePanel({
           </div>
 
           <div>
-            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted">Minutos</p>
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted">{t('ui.dateTime.minutes')}</p>
             <div className="grid grid-cols-6 gap-1.5">
               {MINUTES_STEP5.map((m) => {
                 const active = m === minute;
@@ -309,7 +312,7 @@ function TimePanel({
                       onDone?.();
                     }}
                     className={cx(
-                      'min-h-[42px] rounded-xl font-mono text-xs font-semibold tabular transition',
+                      'min-h-[44px] rounded-xl font-mono text-xs font-semibold tabular transition',
                       active
                         ? 'bg-ink-cta text-ink-cta-fg shadow-card'
                         : 'bg-surface-2/80 text-fg hover:bg-surface-2',
@@ -344,6 +347,7 @@ function DatePanel({
   clearable?: boolean;
   onClear?: () => void;
 }) {
+  const { t } = useTranslation('common');
   const selected = parseYyyyMmDd(value);
   const [today] = useState(() => new Date());
   const todayKey = format(today, 'yyyy-MM-dd');
@@ -366,23 +370,23 @@ function DatePanel({
         <button
           type="button"
           onClick={() => pickDate(today)}
-          className="min-h-9 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg hover:bg-surface"
+          className="min-h-11 rounded-full border border-line bg-surface-2 px-3.5 text-xs font-semibold text-fg hover:bg-surface"
         >
-          Hoje
+          {t('ui.dateTime.today')}
         </button>
         <button
           type="button"
           onClick={() => pickDate(addDays(today, 1))}
-          className="min-h-9 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg hover:bg-surface"
+          className="min-h-11 rounded-full border border-line bg-surface-2 px-3.5 text-xs font-semibold text-fg hover:bg-surface"
         >
-          Amanhã
+          {t('ui.dateTime.tomorrow')}
         </button>
         <button
           type="button"
           onClick={() => pickDate(addDays(today, 7))}
-          className="min-h-9 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg hover:bg-surface"
+          className="min-h-11 rounded-full border border-line bg-surface-2 px-3.5 text-xs font-semibold text-fg hover:bg-surface"
         >
-          +7 dias
+          {t('ui.dateTime.plus7Days')}
         </button>
         {clearable && value && onClear && (
           <button
@@ -391,9 +395,9 @@ function DatePanel({
               void hapticTap();
               onClear();
             }}
-            className="ml-auto min-h-9 rounded-full px-3 text-xs font-semibold text-danger hover:bg-danger/10"
+            className="ml-auto min-h-11 rounded-full px-3.5 text-xs font-semibold text-danger hover:bg-danger/10"
           >
-            Limpar
+            {t('ui.dateTime.clear')}
           </button>
         )}
       </div>
@@ -401,9 +405,9 @@ function DatePanel({
       <div className="flex items-center justify-between">
         <button
           type="button"
-          aria-label="Mês anterior"
+          aria-label={t('ui.dateTime.prevMonth')}
           onClick={() => setCursorMonth((m) => subMonths(m, 1))}
-          className="grid size-10 place-items-center rounded-full text-muted hover:bg-surface-2 hover:text-fg"
+          className="grid size-11 place-items-center rounded-full text-muted hover:bg-surface-2 hover:text-fg"
         >
           <ChevronLeft size={16} />
         </button>
@@ -412,18 +416,18 @@ function DatePanel({
         </p>
         <button
           type="button"
-          aria-label="Mês seguinte"
+          aria-label={t('ui.dateTime.nextMonth')}
           onClick={() => setCursorMonth((m) => addMonths(m, 1))}
-          className="grid size-10 place-items-center rounded-full text-muted hover:bg-surface-2 hover:text-fg"
+          className="grid size-11 place-items-center rounded-full text-muted hover:bg-surface-2 hover:text-fg"
         >
           <ChevronRight size={16} />
         </button>
       </div>
 
       <div className="grid grid-cols-7 gap-1 text-center">
-        {WEEKDAY_HDR.map((w) => (
-          <span key={w} className="pb-1 text-xs font-semibold text-muted">
-            {w}
+        {WEEKDAY_KEYS.map((key) => (
+          <span key={key} className="pb-1 text-xs font-semibold text-muted">
+            {t(`labels.weekdayShort.${key}`)}
           </span>
         ))}
         {days.map((day) => {
@@ -436,11 +440,11 @@ function DatePanel({
               key={ds}
               type="button"
               onClick={() => pickDate(day)}
-              aria-label={format(day, "d 'de' MMMM 'de' yyyy", { locale: pt })}
+              aria-label={format(day, fullDatePattern(), { locale: pt })}
               aria-current={isToday ? 'date' : undefined}
               aria-pressed={isSelected}
               className={cx(
-                'grid min-h-[40px] place-items-center rounded-xl text-xs font-semibold tabular transition',
+                'grid min-h-[44px] place-items-center rounded-xl text-xs font-semibold tabular transition',
                 isSelected
                   ? 'bg-accent text-accent-fg shadow-card'
                   : isToday
@@ -476,6 +480,7 @@ export function TimeField({
   id?: string;
   'aria-label'?: string;
 }) {
+  const { t } = useTranslation('common');
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState<DialogCoords>({ isMobile: true });
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -496,7 +501,7 @@ export function TimeField({
         disabled={disabled}
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={ariaLabel || `Selecionar hora (${value || 'vazio'})`}
+        aria-label={ariaLabel || t('ui.dateTime.selectTimeAria', { val: value || t('ui.dateTime.empty') })}
         onClick={openPicker}
         className={cx(
           CONTROL_CLS,
@@ -515,7 +520,7 @@ export function TimeField({
         open={open}
         onClose={() => setOpen(false)}
         coords={coords}
-        title={ariaLabel || 'Escolher hora'}
+        title={ariaLabel || t('ui.dateTime.chooseTime')}
       >
         <TimePanel
           value={value}
@@ -534,7 +539,7 @@ export function DateField({
   error,
   disabled,
   clearable = false,
-  placeholder = 'Escolher data',
+  placeholder,
   id,
   'aria-label': ariaLabel,
 }: {
@@ -548,6 +553,8 @@ export function DateField({
   id?: string;
   'aria-label'?: string;
 }) {
+  const { t } = useTranslation('common');
+  const resolvedPlaceholder = placeholder ?? t('ui.dateTime.chooseDate');
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState<DialogCoords>({ isMobile: true });
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -571,7 +578,7 @@ export function DateField({
         disabled={disabled}
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={ariaLabel || `Selecionar data (${display || placeholder})`}
+        aria-label={ariaLabel || t('ui.dateTime.selectDateAria', { val: display || resolvedPlaceholder })}
         onClick={openPicker}
         className={cx(
           CONTROL_CLS,
@@ -581,7 +588,7 @@ export function DateField({
         )}
       >
         <span className={cx('truncate', !display && 'text-muted')}>
-          {display || placeholder}
+          {display || resolvedPlaceholder}
         </span>
         <CalendarDays size={15} className="shrink-0 text-muted" aria-hidden="true" />
       </button>
@@ -590,7 +597,7 @@ export function DateField({
         open={open}
         onClose={() => setOpen(false)}
         coords={coords}
-        title={ariaLabel || 'Escolher data'}
+        title={ariaLabel || t('ui.dateTime.chooseDate')}
       >
         <DatePanel
           value={value}
@@ -626,6 +633,7 @@ export function DateTimeField({
   id?: string;
   'aria-label'?: string;
 }) {
+  const { t } = useTranslation('common');
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<'date' | 'time'>('date');
   const [coords, setCoords] = useState<DialogCoords>({ isMobile: true });
@@ -640,7 +648,7 @@ export function DateTimeField({
   const parsedDate = parseYyyyMmDd(datePart);
   const display = parsedDate
     ? `${format(parsedDate, 'd MMM yyyy', { locale: pt })} · ${timePart}`
-    : 'Escolher data e hora';
+    : t('ui.dateTime.chooseDateTime');
 
   const openPicker = () => {
     if (disabled) return;
@@ -659,7 +667,7 @@ export function DateTimeField({
         disabled={disabled}
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={ariaLabel || `Selecionar data e hora (${display})`}
+        aria-label={ariaLabel || t('ui.dateTime.selectDateTimeAria', { val: display })}
         onClick={openPicker}
         className={cx(
           CONTROL_CLS,
@@ -676,7 +684,7 @@ export function DateTimeField({
         open={open}
         onClose={() => setOpen(false)}
         coords={coords}
-        title={ariaLabel || 'Escolher data e hora'}
+        title={ariaLabel || t('ui.dateTime.chooseDateTime')}
       >
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-1.5 rounded-2xl bg-surface-2 p-1">
@@ -684,21 +692,23 @@ export function DateTimeField({
               type="button"
               onClick={() => setTab('date')}
               className={cx(
-                'min-h-10 rounded-xl px-3 text-xs font-semibold transition',
+                'min-h-11 rounded-xl px-3 text-xs font-semibold transition',
                 tab === 'date' ? 'bg-surface text-fg shadow-card' : 'text-muted hover:text-fg',
               )}
             >
-              Dia: {parsedDate ? format(parsedDate, 'd MMM', { locale: pt }) : '—'}
+              {t('ui.dateTime.dayTab', {
+                day: parsedDate ? format(parsedDate, 'd MMM', { locale: pt }) : '—',
+              })}
             </button>
             <button
               type="button"
               onClick={() => setTab('time')}
               className={cx(
-                'min-h-10 rounded-xl px-3 font-mono text-xs font-semibold tabular transition',
+                'min-h-11 rounded-xl px-3 font-mono text-xs font-semibold tabular transition',
                 tab === 'time' ? 'bg-surface text-fg shadow-card' : 'text-muted hover:text-fg',
               )}
             >
-              Hora: {timePart}
+              {t('ui.dateTime.timeTab', { time: timePart })}
             </button>
           </div>
 
@@ -724,7 +734,7 @@ export function DateTimeField({
               onClick={() => setOpen(false)}
               className="min-h-11 rounded-full bg-ink-cta px-5 text-xs font-semibold text-ink-cta-fg"
             >
-              Concluir
+              {t('actions.done')}
             </button>
           </div>
         </div>

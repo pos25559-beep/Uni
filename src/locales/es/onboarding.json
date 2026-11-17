@@ -29,6 +29,33 @@
     "unisAccent": "que aprende contigo",
     "unisDesc": "Elige la forma, el nombre y el estilo de cada Uni. Evoluciona de Huevo a Maestro únicamente con tu dominio real."
   },
+  "s1": {
+    "badge": "Paso 3 · Estilo personal",
+    "titleBefore": "¡Hola! ¿Cómo quieres que te trate tu ",
+    "titleAccent": "cuaderno",
+    "titleAfter": "?",
+    "intro": "Elige tu nombre, los colores del cuaderno y el estilo de Uni. Puedes cambiarlo todo más tarde.",
+    "nameLabel": "Tu nombre (o apodo)",
+    "namePh": "Ej.: Clara o Mateo",
+    "paletteSection": "Ambiente y paleta",
+    "themes": {
+      "system": "Sistema",
+      "light": "Claro",
+      "dark": "Oscuro"
+    },
+    "tones": {
+      "vibrante": {
+        "label": "Expresivo",
+        "hint": "Pasteles vivos, movimiento táctil y Uni activo"
+      },
+      "serio": {
+        "label": "Sobrio y Minimal",
+        "hint": "Superficies neutras, enfoque sereno y sin distracciones"
+      }
+    },
+    "uniVoiceTitle": "Estilo y voz de Uni",
+    "autoAccessory": "Automático por área"
+  },
   "s2": {
     "title": "Tu carrera y semestre",
     "badge": "Trayectoria",
@@ -106,7 +133,14 @@
     "courseNamePh": "Ej.: Cálculo I",
     "year": "Curso",
     "addToList": "Añadir a la lista",
-    "updateActive": "Actualizar las asignaturas activas de mi espacio de estudio con esta lista ({{count}})"
+    "updateActive": "Actualizar las asignaturas activas de mi espacio de estudio con esta lista ({{count}})",
+    "activeCount": "{{count}} activas",
+    "doneCount": "{{count}} superadas",
+    "avgLabel": "Media {{avg}}",
+    "moreSlots": "+ {{count}} clase(s) más en el horario",
+    "pastePh": "Ej.: Álgebra Lineal (6 ECTS)\nCálculo I (6 ECTS)",
+    "removeAria": "Eliminar {{name}}",
+    "yearOption": "{{n}}.º"
   },
   "s4": {
     "day": {
@@ -180,6 +214,14 @@
       "ai": "El Uni compartido usa la cuota gratuita de Gemini: Google puede usar lo que envías para mejorar sus productos. No envíes datos personales. Las funciones de IA requieren 18 años.",
       "terms": "{{app}} es una herramienta gratuita de apoyo al estudio para universitarios. Las funciones de IA requieren 18 años; el resto sigue la edad mínima de tu país.",
       "open": "Abrir página completa"
+    },
+    "ocrError": "No se ha podido analizar la captura ahora.",
+    "fallback": {
+      "otherUni": "Otra institución",
+      "ptUni": "Centro universitario",
+      "customPlan": "Plan personalizado",
+      "academicPath": "Trayectoria académica",
+      "student": "Estudiante"
     }
   },
   "hub": {
@@ -309,5 +351,33 @@
     "demoTopic": "Límites hasta el examen",
     "demoStatus": "Plan + Recall al día",
     "accessoryAria": "Cambiar accesorio de Uni"
+  },
+  "hubInvite": {
+    "closeAria": "Cerrar invitación de Uni",
+    "titleBefore": "¡Eh! ¿Completamos tus Primeros pasos para ",
+    "titleAccent": "empezar a estudiar",
+    "titleAfter": "?",
+    "body": "Reúne aquí el horario, los exámenes, Drives compartidos y apuntes para que organice tu ritmo hoy mismo.",
+    "primaryCta": "Completar primeros pasos",
+    "secondaryCta": "Explorar un poco más"
+  },
+  "modal": {
+    "title": "Configurar trayectoria y ritmo",
+    "aria": "Configuración inicial de Unipedia"
+  },
+  "tour": {
+    "welcomeTitle": "Te damos la bienvenida a Unipedia",
+    "welcomeDesc": "Este es tu panel «Hoy»: reúne tu racha de estudio, alertas de exámenes y tus clases del día de un vistazo.",
+    "progressTitle": "Progreso en tiempo real",
+    "progressDesc": "Sigue tu preparación, horas estudiadas esta semana, media académica y sesiones programadas.",
+    "coursesTitle": "Asignaturas",
+    "coursesDesc": "Gestiona temas, nivel de confianza (1–5), notas necesarias y enlaces directos de tu carrera.",
+    "planTitle": "Plan de 14 días y Foco",
+    "planDesc": "Bloques generados automáticamente por prioridad de evaluaciones, con temporizador integrado.",
+    "tutorTitle": "Uni · Tu Tutor IA",
+    "tutorDesc": "Resuelve dudas con tus asignaturas y apuntes siempre que quieras.",
+    "next": "Siguiente",
+    "prev": "Anterior",
+    "done": "Empezar a estudiar"
   }
 }

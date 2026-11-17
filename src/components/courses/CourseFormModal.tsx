@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { courseColors, colorNames } from '../../lib/colors';
 import { GRADE_SCALES } from '../../lib/grading';
 import { newId, useStore } from '../../store/useStore';
@@ -18,6 +19,7 @@ interface Props {
 const parseNumber = (v: string) => (v.trim() === '' ? NaN : Number(v.replace(',', '.')));
 
 export default function CourseFormModal({ course, onClose, onDelete }: Props) {
+  const { t } = useTranslation(['courses', 'common']);
   const upsert = useStore((s) => s.upsert);
   const gradingScale = useStore((s) => s.settings.gradingScale) ?? 'pt20';
   const maxGrade = GRADE_SCALES[gradingScale]?.max ?? 20;
@@ -39,9 +41,9 @@ export default function CourseFormModal({ course, onClose, onDelete }: Props) {
     const ectsNum = parseNumber(ects);
     const targetNum = parseNumber(targetGrade);
     const next: typeof errors = {};
-    if (!name.trim()) next.name = 'Indique o nome da cadeira.';
-    if (!shortName.trim()) next.shortName = 'Indique um nome curto.';
-    if (!Number.isFinite(ectsNum) || ectsNum < 0) next.ects = 'Valor inválido.';
+    if (!name.trim()) next.name = t('courseModal.errName');
+    if (!shortName.trim()) next.shortName = t('courseModal.errShort');
+    if (!Number.isFinite(ectsNum) || ectsNum < 0) next.ects = t('courseModal.errInvalid');
     if (!Number.isFinite(targetNum) || targetNum < 0 || targetNum > maxGrade) {
       next.targetGrade = `0–${maxGrade}`;
     }
@@ -69,14 +71,14 @@ export default function CourseFormModal({ course, onClose, onDelete }: Props) {
     <Modal
       open
       onClose={onClose}
-      title={course ? 'Editar cadeira' : 'Nova cadeira'}
+      title={course ? t('courseModal.editTitle') : t('courseModal.newTitle')}
       footer={
         <div className="flex w-full flex-wrap items-center justify-between gap-2">
           <div>
             {course && onDelete && (
               <DeleteButton
-                label="Apagar"
-                message={`Apagar "${course.name}"? Também são apagadas as avaliações, aulas, sessões, tarefas e materiais desta cadeira. Esta ação não pode ser desfeita.`}
+                label={t('common:actions.delete')}
+                message={t('courseModal.deleteConfirm', { name: course.name })}
                 onConfirm={() => {
                   onClose();
                   onDelete();
@@ -85,68 +87,73 @@ export default function CourseFormModal({ course, onClose, onDelete }: Props) {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <Button onClick={onClose}>Cancelar</Button>
-            <Button variant="primary" type="submit" form="course-form">Guardar</Button>
+            <Button onClick={onClose}>{t('common:actions.cancel')}</Button>
+            <Button variant="primary" type="submit" form="course-form">{t('common:actions.save')}</Button>
           </div>
         </div>
       }
     >
       <form id="course-form" onSubmit={save} className="space-y-4" noValidate>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Nome *">
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Algoritmos e Estruturas de Dados" />
+          <Field label={t('courseModal.name')}>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('courseModal.namePh')} />
             {errors.name && <span className="mt-1 block text-xs text-danger">{errors.name}</span>}
           </Field>
-          <Field label="Nome curto *">
-            <Input value={shortName} onChange={(e) => setShortName(e.target.value)} placeholder="AED" />
+          <Field label={t('courseModal.shortName')}>
+            <Input value={shortName} onChange={(e) => setShortName(e.target.value)} placeholder={t('courseModal.shortNamePh')} />
             {errors.shortName && <span className="mt-1 block text-xs text-danger">{errors.shortName}</span>}
           </Field>
-          <Field label="Código">
-            <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="M3112" />
+          <Field label={t('courseModal.code')}>
+            <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder={t('courseModal.codePh')} />
           </Field>
-          <Field label="ECTS">
+          <Field label={t('courseModal.ects')}>
             <Input inputMode="decimal" value={ects} onChange={(e) => setEcts(e.target.value)} />
             {errors.ects && <span className="mt-1 block text-xs text-danger">{errors.ects}</span>}
           </Field>
-          <Field label="Docente">
-            <Input value={teacher} onChange={(e) => setTeacher(e.target.value)} placeholder="Prof. Nome" />
+          <Field label={t('courseModal.teacher')}>
+            <Input value={teacher} onChange={(e) => setTeacher(e.target.value)} placeholder={t('courseModal.teacherPh')} />
           </Field>
-          <Field label={`Objetivo (0–${maxGrade})`}>
+          <Field label={t('courseModal.target', { max: maxGrade })}>
             <Input inputMode="decimal" value={targetGrade} onChange={(e) => setTargetGrade(e.target.value)} />
             {errors.targetGrade && <span className="mt-1 block text-xs text-danger">{errors.targetGrade}</span>}
           </Field>
         </div>
 
         <div>
-          <span className="mb-1.5 block text-xs font-medium text-muted">Cor</span>
-          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Cor da cadeira">
+          <span className="mb-1.5 block text-xs font-medium text-muted">{t('courseModal.color')}</span>
+          <div className="flex flex-wrap gap-1" role="radiogroup" aria-label={t('courseModal.colorAria')}>
             {colorNames.map((c) => (
               <button
                 key={c}
                 type="button"
                 role="radio"
                 aria-checked={color === c}
-                aria-label={c}
+                aria-label={courseColors[c].label}
+                title={courseColors[c].label}
                 onClick={() => setColor(c)}
-                className={cx(
-                  'size-7 rounded-full transition',
-                  courseColors[c].dot,
-                  color === c ? 'ring-2 ring-fg ring-offset-2 ring-offset-surface' : 'opacity-70 hover:opacity-100',
-                )}
-              />
+                className="grid size-11 place-items-center rounded-full transition hover:bg-surface-2"
+              >
+                <span
+                  className={cx(
+                    'size-7 rounded-full transition',
+                    courseColors[c].dot,
+                    color === c ? 'ring-2 ring-fg ring-offset-2 ring-offset-surface' : 'opacity-75 hover:opacity-100',
+                  )}
+                />
+              </button>
             ))}
           </div>
         </div>
 
         <fieldset className="space-y-3 rounded-xl border border-line p-4">
-          <legend className="px-1 text-xs font-medium text-muted">Ligações</legend>
-          <Field label="Caderno externo (URL privado opcional)">
-            <Input type="url" value={notebookUrl} onChange={(e) => setNotebookUrl(e.target.value)} placeholder="Opcional — ou usa o Caderno do Uni interno" />
+          <legend className="px-1 text-xs font-medium text-muted">{t('courseModal.links')}</legend>
+          <Field label={t('courseModal.notebook')}>
+            <Input type="url" value={notebookUrl} onChange={(e) => setNotebookUrl(e.target.value)} placeholder={t('courseModal.notebookPh')} />
           </Field>
-          <Field label="Pasta no Google Drive">
+          <Field label={t('courseModal.drive')}>
             <Input type="url" value={driveFolderUrl} onChange={(e) => setDriveFolderUrl(e.target.value)} placeholder="https://drive.google.com/…" />
           </Field>
-          <Field label="Portal da cadeira">
+          <Field label={t('courseModal.portal')}>
             <Input type="url" value={clipUrl} onChange={(e) => setClipUrl(e.target.value)} placeholder="https://…" />
           </Field>
         </fieldset>

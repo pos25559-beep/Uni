@@ -54,7 +54,7 @@ export function StudyBridgeModal({
       showToast(t('uni:bridge.copied'), 'ok');
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
-      showToast('Não foi possível copiar para a área de transferência.', 'danger');
+      showToast(t('uni:bridge.copyFail'), 'danger');
     }
   };
 

@@ -258,7 +258,7 @@ export default function ProfileCard() {
                   type="button"
                   onClick={() => updateSettings({ uniPersona: p.id })}
                   className={cx(
-                    'min-h-[40px] rounded-full px-3 text-xs font-semibold transition',
+                    'min-h-11 rounded-full px-3 text-xs font-semibold transition',
                     active ? 'bg-ink-cta text-ink-cta-fg' : 'text-muted hover:text-fg',
                   )}
                 >
@@ -425,7 +425,7 @@ export default function ProfileCard() {
                     type="button"
                     onClick={() => updateSettings({ uniLiveCompanions: modeId })}
                     className={cx(
-                      'min-h-[40px] rounded-full px-3 text-xs font-semibold transition',
+                      'min-h-11 rounded-full px-3 text-xs font-semibold transition',
                       active ? 'bg-ink-cta text-ink-cta-fg' : 'text-muted hover:text-fg',
                     )}
                   >

@@ -1,3 +1,5 @@
+import { tr } from '../i18n/tr';
+
 /** Utilitários partilhados para leitura e normalização de prints/imagens antes do OCR com IA. */
 
 const MAX_RAW_IMAGE_BYTES = 15 * 1024 * 1024;
@@ -24,7 +26,7 @@ function readFileAsDataUrl(file: File): Promise<string> {
       } catch {
         // Ignora erro de abort em browsers antigos
       }
-      reject(new Error(`A leitura do ficheiro "${file.name}" demorou demasiado tempo.`));
+      reject(new Error(tr('common:errors.imgTimeout', { name: file.name })));
     }, 12_000);
 
     reader.onload = () => {
@@ -33,11 +35,11 @@ function readFileAsDataUrl(file: File): Promise<string> {
     };
     reader.onerror = () => {
       window.clearTimeout(timer);
-      reject(new Error(`Não foi possível ler "${file.name}".`));
+      reject(new Error(tr('common:errors.imgReadFail', { name: file.name })));
     };
     reader.onabort = () => {
       window.clearTimeout(timer);
-      reject(new Error(`Leitura de "${file.name}" interrompida.`));
+      reject(new Error(tr('common:errors.imgAborted', { name: file.name })));
     };
     reader.readAsDataURL(file);
   });
@@ -104,7 +106,7 @@ export async function readNormalizedScreenshot(
   file: File,
 ): Promise<{ base64: string; mimeType: string }> {
   if (file.size > MAX_RAW_IMAGE_BYTES) {
-    throw new Error(`A imagem "${file.name}" excede 15 MB. Tenta uma versão mais leve.`);
+    throw new Error(tr('common:errors.imgTooLarge', { name: file.name }));
   }
 
   const rawDataUrl = await readFileAsDataUrl(file);

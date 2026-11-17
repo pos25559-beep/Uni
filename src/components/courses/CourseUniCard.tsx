@@ -191,8 +191,8 @@ export default function CourseUniCard({ course }: { course: Course }) {
     await saveUniAgent(record);
     showToast(
       agent
-        ? `${record.name} atualizado.`
-        : `${record.name} adotado para ${course.shortName}!`,
+        ? t('card.updatedToast', { name: record.name })
+        : t('card.adoptedToast', { name: record.name, course: course.shortName }),
     );
   };
 
@@ -274,7 +274,7 @@ export default function CourseUniCard({ course }: { course: Course }) {
         }),
       );
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Erro ao preparar expedição', 'danger');
+      showToast(err instanceof Error ? err.message : t('card.expeditionFail'), 'danger');
     } finally {
       setPreparingExpedition(false);
     }
@@ -332,12 +332,12 @@ export default function CourseUniCard({ course }: { course: Course }) {
           <Button
             size="sm"
             variant="ghost"
-            aria-label={`Personalizar ${agent.name}`}
+            aria-label={t('card.customizeAria', { name: agent.name })}
             onClick={() => setAdoptOpen(true)}
             className="shrink-0"
           >
             <Settings2 size={15} />
-            <span className="hidden sm:inline">{t('adoptModal.editTitle', { name: '', course: '' }).split(' ')[0]}</span>
+            <span className="hidden sm:inline">{t('card.customize')}</span>
           </Button>
         </div>
 
@@ -424,7 +424,7 @@ export default function CourseUniCard({ course }: { course: Course }) {
           onSave={handleSaveAdoption}
           onRemove={async () => {
             await removeUniAgent(course.id);
-            showToast(`${agent.name} removido desta cadeira.`);
+            showToast(t('card.removedToast', { name: agent.name }));
           }}
         />
       )}

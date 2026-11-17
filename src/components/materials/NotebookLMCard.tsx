@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { BookOpen, ExternalLink, Info } from 'lucide-react';
 import { EmptyState } from '../ui';
 import { cx } from '../../lib/uiHelpers';
@@ -8,6 +9,7 @@ import { safeHref } from './meta';
 interface NotebookLink { key: string; title: string; href: string; sub: string }
 
 export default function NotebookLMCard() {
+  const { t, i18n } = useTranslation('courses');
   const materials = useStore((s) => s.materials);
   const courses = useStore((s) => s.courses);
   const appTone = useStore((s) => s.settings.appTone ?? 'vibrante');
@@ -23,13 +25,17 @@ export default function NotebookLMCard() {
       out.push({ key, title, href, sub });
     };
     for (const m of materials) {
-      if (m.provider === 'notebooklm') add(`m:${m.id}`, m.title, m.url, 'Material guardado');
+      if (m.provider === 'notebooklm') {
+        add(`m:${m.id}`, m.title, m.url, t('materialsModals.notebooks.savedMaterial'));
+      }
     }
     for (const c of courses) {
-      if (c.notebookUrl) add(`c:${c.id}`, `Caderno de ${c.shortName}`, c.notebookUrl, c.name);
+      if (c.notebookUrl) {
+        add(`c:${c.id}`, t('materialsModals.notebooks.courseNotebook', { name: c.shortName }), c.notebookUrl, c.name);
+      }
     }
     return out;
-  }, [materials, courses]);
+  }, [materials, courses, t, i18n.language]);
 
   return (
     <section
@@ -42,7 +48,7 @@ export default function NotebookLMCard() {
     >
       <div className="flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 font-display text-base font-bold tracking-tight">
-          <BookOpen size={16} className="text-accent-ink dark:text-accent" /> Cadernos externos
+          <BookOpen size={16} className="text-accent-ink dark:text-accent" /> {t('materialsModals.notebooks.title')}
         </h2>
         {links.length > 0 && (
           <span className="rounded-full bg-white/70 px-2.5 py-0.5 font-mono text-xs font-semibold tabular dark:bg-black/25">
@@ -59,16 +65,13 @@ export default function NotebookLMCard() {
           )}
         >
           <Info size={14} className="mt-0.5 shrink-0" />
-          <p>
-            Podes guardar ligações diretas para cadernos de estudo externos opcionais.
-            Cola o URL em «Adicionar link», no Hub inicial ou no formulário da cadeira.
-          </p>
+          <p>{t('materialsModals.notebooks.info')}</p>
         </div>
 
         {links.length === 0 ? (
           <EmptyState
-            title="Ainda sem cadernos externos"
-            hint="Guarda o URL de um caderno externo opcional se quiseres abri-lo daqui com um clique."
+            title={t('materialsModals.notebooks.emptyTitle')}
+            hint={t('materialsModals.notebooks.emptyHint')}
           />
         ) : (
           <ul className="space-y-2">

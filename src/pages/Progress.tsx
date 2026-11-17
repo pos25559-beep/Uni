@@ -63,7 +63,7 @@ export default function ProgressPage() {
         studyLogs,
         today,
       }),
-    [sessions, tasks, weeklyCheckIns, studyLogs, today],
+    [sessions, tasks, weeklyCheckIns, studyLogs, today, appLang],
   );
   const range = useMemo(() => periodRange(period, settings, now), [period, settings, now]);
 
@@ -71,8 +71,8 @@ export default function ProgressPage() {
     () => readCollectibleTelemetry(sessions, courses, weeklyCheckIns),
     [sessions, courses, weeklyCheckIns],
   );
-  const collectibles = useMemo(() => getUniCollectibleStates(telemetry), [telemetry]);
-  const petStates = useMemo(() => getUniPetStates(telemetry), [telemetry]);
+  const collectibles = useMemo(() => getUniCollectibleStates(telemetry), [telemetry, appLang]);
+  const petStates = useMemo(() => getUniPetStates(telemetry), [telemetry, appLang]);
   const unlockedCount = collectibles.filter((c) => c.unlocked).length;
 
   const hasSessions = sessions.length > 0;

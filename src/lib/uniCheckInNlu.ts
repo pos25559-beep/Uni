@@ -1,3 +1,4 @@
+import { tr } from '../i18n/tr';
 import type {
   Assessment,
   Course,
@@ -37,23 +38,23 @@ const stripDiacritics = (s: string) =>
 
 const cleanSpaces = (s: string) => s.replace(/\s+/g, ' ').trim();
 
-const FEELING_LABELS: Record<string, string> = {
-  clara: 'Entendi bem',
-  mais_ou_menos: 'Algumas dúvidas',
-  dificil: 'Difícil',
-  faltei: 'Faltei / rever',
-  produtivo: 'Produtivo',
-  normal: 'Normal',
-  cansado: 'Cansado',
-  confiante: 'Confiante',
-  estavel: 'Estável',
-  pressionado: 'Pressionado',
-  atrasado: 'Com atraso',
-  ansioso: 'Ansioso',
-};
+const FEELING_KEYS = new Set([
+  'clara',
+  'mais_ou_menos',
+  'dificil',
+  'faltei',
+  'produtivo',
+  'normal',
+  'cansado',
+  'confiante',
+  'estavel',
+  'pressionado',
+  'atrasado',
+  'ansioso',
+]);
 
 export function feelingDisplayLabel(feeling: string): string {
-  return FEELING_LABELS[feeling] ?? feeling;
+  return FEELING_KEYS.has(feeling) ? tr(`assistant:checkin.feelings.${feeling}`) : feeling;
 }
 
 function isAdminCourseFile(title: string): boolean {
@@ -222,7 +223,7 @@ function matchTopicsAndMaterialsByText(args: {
   const boundary = detectUpToBoundary(text);
   if (boundary) {
     const { maxNumber, unitLabel } = boundary;
-    scopeLabel = `Até ${unitLabel} ${maxNumber}`;
+    scopeLabel = tr('assistant:checkin.fallback.upToScope', { unit: unitLabel, num: maxNumber });
 
     // Tópicos já existentes com número <= maxNumber
     let matchedAnyNumberedTopic = false;
@@ -267,7 +268,7 @@ function matchTopicsAndMaterialsByText(args: {
 
     // Se mesmo assim não houve correspondência nenhuma (cadeira sem tópicos nem ficheiros numerados)
     if (matchedIds.size === 0 && newTopics.length === 0) {
-      newTopics.push(`Matéria até ${unitLabel} ${maxNumber}`);
+      newTopics.push(tr('assistant:checkin.fallback.upToNewTopic', { unit: unitLabel, num: maxNumber }));
     }
   }
 
@@ -298,19 +299,19 @@ export function extractStudyFocusPhrase(text: string): string | undefined {
     /\b(?:refazer|resolver|fazer|praticar|rever|estudar)\b[^.!?\n]{0,35}\b(?:testes?\s+(?:antigos?|anteriores|passados?)|provas?\s+(?:antigas?|anteriores|passadas?|modelo))\b/.test(n) ||
     /\b(?:testes?|provas?)\s+(?:antigos?|anteriores|passados?|modelo)\b/.test(n)
   ) {
-    return 'Refazer testes antigos';
+    return tr('assistant:checkin.fallback.focusPastTests');
   }
   if (
     /\b(?:exames?\s+(?:antigos?|anteriores|passados?|modelo)|enunciados?\s+(?:antigos?|anteriores)|provas?\s+anteriores)\b/.test(n) ||
     /\b(?:refazer|resolver|fazer)\b[^.!?\n]{0,25}\bexames?\b/.test(n)
   ) {
-    return 'Resolver exames antigos';
+    return tr('assistant:checkin.fallback.focusPastExams');
   }
   if (/\b(?:resolver|fazer|praticar)\b[^.!?\n]{0,25}\b(?:exercicios?(?:\s+de\s+(?:exame|teste))?|fichas?(?:\s+praticas?)?|problemas?)\b/.test(n)) {
-    return 'Resolver exercícios práticos';
+    return tr('assistant:checkin.fallback.focusExercises');
   }
   if (/\b(?:fazer|rever|preparar)\b[^.!?\n]{0,25}\b(?:resumos?|formulario|apontamentos?|slides?)\b/.test(n)) {
-    return 'Rever resumos e slides';
+    return tr('assistant:checkin.fallback.focusSummaries');
   }
   const custom = text.match(
     /(?:quero\s+focar(?:-me)?\s+(?:em|no|na|nos|nas)|focar(?:-me)?\s+(?:em|no|na|nos|nas)|prefiro\s+focar\s+(?:em|no|na)|foco\s+(?:principal\s+)?(?:em|para|no|na)|vou\s+focar\s+(?:em|no|na))\s+([^.;!?\n]{4,70})/i,
@@ -335,7 +336,7 @@ function extractDifficultiesPhrase(text: string): string | undefined {
 function extractStudiedPhrase(text: string): { summary?: string; progress?: 'ainda_nao' | 'parcial' | 'revisto' } {
   const n = stripDiacritics(text);
   if (/\b(ainda nao comecei|nao comecei|nada estudado|nao revi nada)\b/.test(n)) {
-    return { summary: 'Ainda por começar', progress: 'ainda_nao' };
+    return { summary: tr('assistant:checkin.fallback.studiedNotStarted'), progress: 'ainda_nao' };
   }
   const m = text.match(
     /(?:j[áa]\s+(?:estudei|revi|li|fiz|vi)|estudei|revi)\s+([^.;!?\n]{2,90})/i,
@@ -343,12 +344,12 @@ function extractStudiedPhrase(text: string): { summary?: string; progress?: 'ain
   const fullReview = /\b(revi tudo|ja revi bem|estudei tudo|pronto|dominado)\b/.test(n);
   if (m?.[1]) {
     return {
-      summary: cleanSpaces(`Já estudei ${m[1]}`),
+      summary: cleanSpaces(tr('assistant:checkin.fallback.studiedPrefix', { rest: m[1] })),
       progress: fullReview ? 'revisto' : 'parcial',
     };
   }
   if (fullReview) {
-    return { summary: 'Matéria já revista', progress: 'revisto' };
+    return { summary: tr('assistant:checkin.fallback.studiedAll'), progress: 'revisto' };
   }
   return {};
 }
@@ -421,7 +422,9 @@ export function parseConversationalCheckIn(args: {
       : [];
   const classDifficulties = difficulties ? [difficulties] : [];
   const pendingNextWeek =
-    studied.progress === 'ainda_nao' && scopeLabel ? [`Rever ${scopeLabel}`] : [];
+    studied.progress === 'ainda_nao' && scopeLabel
+      ? [tr('assistant:checkin.fallback.reviewPrefix', { scope: scopeLabel })]
+      : [];
 
   return {
     kind,
@@ -498,7 +501,7 @@ export function mergeParsedUnderstandingWithAi(
     ]),
   ].slice(0, 12);
 
-  const feeling = sync.feeling && FEELING_LABELS[sync.feeling] ? sync.feeling : base.feeling;
+  const feeling = sync.feeling && FEELING_KEYS.has(sync.feeling) ? sync.feeling : base.feeling;
   const rating =
     sync.rating && sync.rating >= 1 && sync.rating <= 5
       ? (Math.round(sync.rating) as 1 | 2 | 3 | 4 | 5)
@@ -530,51 +533,73 @@ export function buildLocalUniCheckInReply(args: {
   assessment?: Assessment;
 }): string {
   const { parsed, course, assessment } = args;
-  const courseName = course?.shortName || course?.name || 'a cadeira';
+  const courseName = course?.shortName || course?.name || tr('assistant:checkin.fallback.courseFallback');
   const totalTopics = parsed.matchedTopicIds.length + parsed.newTopicsToAdd.length;
 
   if (parsed.kind === 'exam_prep') {
     const scopeNote = parsed.scopeLabel
-      ? `alinhei o foco (**${parsed.scopeLabel.toLowerCase()}**)`
+      ? tr('assistant:checkin.fallback.examScope', { scope: parsed.scopeLabel.toLowerCase() })
       : totalTopics > 0
-        ? `marquei **${totalTopics} tópico(s)** para o teste`
-        : 'registei as tuas notas sobre o alcance do teste';
-    const testName = assessment?.title ? `${assessment.title} de ${courseName}` : courseName;
+        ? tr('assistant:checkin.fallback.examTopics', { count: totalTopics })
+        : tr('assistant:checkin.fallback.examNotes');
+    const testName = assessment?.title
+      ? tr('assistant:checkin.fallback.testOf', { test: assessment.title, course: courseName })
+      : courseName;
     const empathy =
       parsed.feeling === 'ansioso' || parsed.feeling === 'atrasado'
-        ? 'Vou dar prioridade a blocos mais curtos e guiados para baixar essa pressão.'
+        ? tr('assistant:checkin.fallback.empathyLow')
         : parsed.feeling === 'confiante'
-          ? 'Excelente ritmo — mantenho apenas revisões estratégicas para consolidar.'
-          : 'Mantenho um ritmo equilibrado até ao dia da prova.';
-    const focusNote = parsed.studyFocus ? ` com foco em **${parsed.studyFocus.toLowerCase()}**` : '';
-    return `Percebi! Em **${testName}**, ${scopeNote}${focusNote}${parsed.studiedSummary ? ` (${parsed.studiedSummary.toLowerCase()})` : ''}. ${empathy} Se estiver certo, carrega em **Guardar & alinhar** ou corrige-me aqui!`;
+          ? tr('assistant:checkin.fallback.empathyConfident')
+          : tr('assistant:checkin.fallback.empathyDefault');
+    const focusNote = parsed.studyFocus
+      ? tr('assistant:checkin.fallback.withFocus', { focus: parsed.studyFocus.toLowerCase() })
+      : '';
+    return tr('assistant:checkin.fallback.examReply', {
+      testName,
+      scopeNote,
+      focusNote,
+      studied: parsed.studiedSummary ? ` (${parsed.studiedSummary.toLowerCase()})` : '',
+      empathy,
+    });
   }
 
   if (parsed.kind === 'class') {
     const topicBit = parsed.topicTitle
-      ? ` o tema **«${parsed.topicTitle}»**`
+      ? tr('assistant:checkin.fallback.classTopic', { topic: parsed.topicTitle })
       : totalTopics > 0
-        ? ` **${totalTopics} tópico(s)**`
-        : ' a aula de hoje';
+        ? tr('assistant:checkin.fallback.classTopics', { count: totalTopics })
+        : tr('assistant:checkin.fallback.classToday');
     const followUp =
       parsed.feeling === 'dificil' || parsed.feeling === 'mais_ou_menos' || parsed.feeling === 'faltei'
-        ? `Já marquei **reforço extra** para ${courseName} nos próximos blocos do plano.`
-        : `Guardei em ${courseName} com estado positivo para manter o embalo.`;
-    return `Anotado em **${courseName}**! Registei${topicBit} (${parsed.feelingLabel.toLowerCase()}). ${followUp}`;
+        ? tr('assistant:checkin.fallback.classBoost', { course: courseName })
+        : tr('assistant:checkin.fallback.classKeep', { course: courseName });
+    return tr('assistant:checkin.fallback.classReply', {
+      course: courseName,
+      topicBit,
+      feeling: parsed.feelingLabel.toLowerCase(),
+      followUp,
+    });
   }
 
   if (parsed.kind === 'week') {
-    return `Obrigado pelo balanço de domingo! Ficou registado como semana **${parsed.feelingLabel.toLowerCase()}**${parsed.hardCourseIds.length > 0 ? ' com atenção reforçada nas cadeiras mencionadas' : ''}. Pronto para alinhar a próxima semana!`;
+    return tr('assistant:checkin.fallback.weekReply', {
+      feeling: parsed.feelingLabel.toLowerCase(),
+      hard: parsed.hardCourseIds.length > 0 ? tr('assistant:checkin.fallback.weekHard') : '',
+    });
   }
 
   // day
   const tiredNote =
     parsed.feeling === 'cansado'
-      ? 'Como declaraste cansaço, amanhã o plano modera a duração dos blocos para não sobrecarregar.'
+      ? tr('assistant:checkin.fallback.dayTired')
       : parsed.feeling === 'produtivo'
-        ? 'Boa energia hoje! Isso entra já para o teu ritmo e para a sequência do Uni.'
-        : 'Tudo apontado para calibrar o ritmo de amanhã.';
-  return `Registei o teu dia como **${parsed.feelingLabel.toLowerCase()}**${parsed.rating ? ` (${parsed.rating}/5)` : ''}. ${tiredNote}`;
+        ? tr('assistant:checkin.fallback.dayProd')
+        : tr('assistant:checkin.fallback.dayDefault');
+  return tr('assistant:checkin.fallback.dayReply', {
+    feeling: parsed.feelingLabel.toLowerCase(),
+    rating: parsed.rating ? ` (${parsed.rating}/5)` : '',
+    note: tiredNote,
+  });
 }
 
 export function buildCheckInPreviewSummaryText(
@@ -588,18 +613,30 @@ export function buildCheckInPreviewSummaryText(
   if (parsed.scopeLabel) parts.push(parsed.scopeLabel);
   if (parsed.topicTitle) parts.push(parsed.topicTitle);
   const count = parsed.matchedTopicIds.length + parsed.newTopicsToAdd.length;
-  if (count > 0 && !parsed.topicTitle) parts.push(`${count} tópico(s)`);
+  if (count > 0 && !parsed.topicTitle) parts.push(tr('assistant:checkin.fallback.topicsCount', { count }));
   if (history.length > 0) parts.push('+4 ⚡');
   return parts.join(' · ');
 }
 
 export function studyLogEntryToHumanPrompt(entry: StudyLogEntry, course?: Course): string {
   const cname = course?.shortName || course?.name;
+  const feelingLower = feelingDisplayLabel(entry.feeling).toLowerCase();
   if (entry.kind === 'exam_prep') {
-    return `Alinhei ${cname ?? 'o teste'}: sinto-me ${feelingDisplayLabel(entry.feeling).toLowerCase()}${entry.studiedSummary ? `, ${entry.studiedSummary}` : ''}. Queres montar uma estratégia de revisão?`;
+    return tr('assistant:checkin.fallback.promptExam', {
+      course: cname ?? tr('assistant:checkin.fallback.promptExamCourseFallback'),
+      feeling: feelingLower,
+      studied: entry.studiedSummary ? `, ${entry.studiedSummary}` : '',
+    });
   }
   if (entry.kind === 'class') {
-    return `Tive aula de ${cname ?? 'cadeira'} (${feelingDisplayLabel(entry.feeling).toLowerCase()})${entry.topicTitle ? ` sobre "${entry.topicTitle}"` : ''}. Ajudas-me a rever os pontos principais?`;
+    return tr('assistant:checkin.fallback.promptClass', {
+      course: cname ?? tr('assistant:checkin.fallback.promptClassCourseFallback'),
+      feeling: feelingLower,
+      topic: entry.topicTitle ? tr('assistant:checkin.fallback.promptClassTopic', { topic: entry.topicTitle }) : '',
+    });
   }
-  return `Sobre o meu registo de hoje (${feelingDisplayLabel(entry.feeling).toLowerCase()}): ${entry.notes ?? 'como devo ajustar o estudo?'}`;
+  return tr('assistant:checkin.fallback.promptDay', {
+    feeling: feelingLower,
+    notes: entry.notes ?? tr('assistant:checkin.fallback.promptDayDefaultNotes'),
+  });
 }

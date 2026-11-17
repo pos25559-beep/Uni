@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { weekdayLong } from '../../lib/colors';
 import { newId, useStore } from '../../store/useStore';
 import type { ClassSlot, ClassType, Course } from '../../types';
@@ -13,11 +14,9 @@ interface Props {
 }
 
 const classTypes: ClassType[] = ['T', 'TP', 'P', 'OT'];
-const classTypeLabel: Record<ClassType, string> = {
-  T: 'Teórica (T)', TP: 'Teórico-prática (TP)', P: 'Prática (P)', OT: 'Orientação tutorial (OT)',
-};
 
 export default function ClassFormModal({ course, initialSlot, onClose }: Props) {
+  const { t } = useTranslation(['courses', 'common']);
   const upsert = useStore((s) => s.upsert);
   const remove = useStore((s) => s.remove);
   const [type, setType] = useState<ClassType>(initialSlot?.type ?? 'T');
@@ -29,8 +28,8 @@ export default function ClassFormModal({ course, initialSlot, onClose }: Props) 
 
   const save = (e: FormEvent) => {
     e.preventDefault();
-    if (!start || !end) return setError('Indique a hora de início e de fim.');
-    if (end <= start) return setError('A hora de fim tem de ser depois do início.');
+    if (!start || !end) return setError(t('classModal.errTimes'));
+    if (end <= start) return setError(t('classModal.errOrder'));
     setError(null);
     const item: ClassSlot = {
       id: initialSlot?.id ?? newId(),
@@ -50,7 +49,7 @@ export default function ClassFormModal({ course, initialSlot, onClose }: Props) 
     <Modal
       open
       onClose={onClose}
-      title={initialSlot ? 'Editar aula' : 'Nova aula'}
+      title={initialSlot ? t('classModal.editTitle') : t('classModal.newTitle')}
       footer={
         <>
           {initialSlot && (
@@ -62,34 +61,34 @@ export default function ClassFormModal({ course, initialSlot, onClose }: Props) 
                 onClose();
               }}
             >
-              Apagar
+              {t('common:actions.delete')}
             </Button>
           )}
-          <Button onClick={onClose}>Cancelar</Button>
-          <Button variant="primary" type="submit" form="class-form">Guardar</Button>
+          <Button onClick={onClose}>{t('common:actions.cancel')}</Button>
+          <Button variant="primary" type="submit" form="class-form">{t('common:actions.save')}</Button>
         </>
       }
     >
       <form id="class-form" onSubmit={save} className="space-y-4" noValidate>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Tipo">
+          <Field label={t('classModal.kind')}>
             <Select value={type} onChange={(e) => setType(e.target.value as ClassType)}>
-              {classTypes.map((t) => <option key={t} value={t}>{classTypeLabel[t]}</option>)}
+              {classTypes.map((ct) => <option key={ct} value={ct}>{t(`classModal.types.${ct}`)}</option>)}
             </Select>
           </Field>
-          <Field label="Dia da semana">
+          <Field label={t('classModal.weekday')}>
             <Select value={weekday} onChange={(e) => setWeekday(Number(e.target.value))}>
               {weekOrder.map((d) => <option key={d} value={d}>{weekdayLong[d]}</option>)}
             </Select>
           </Field>
-          <Field label="Início">
-            <TimeField aria-label="Hora de início" value={start} onChange={setStart} />
+          <Field label={t('classModal.start')}>
+            <TimeField aria-label={t('classModal.startAria')} value={start} onChange={setStart} />
           </Field>
-          <Field label="Fim">
-            <TimeField aria-label="Hora de fim" value={end} onChange={setEnd} />
+          <Field label={t('classModal.end')}>
+            <TimeField aria-label={t('classModal.endAria')} value={end} onChange={setEnd} />
           </Field>
-          <Field label="Sala">
-            <Input value={room} onChange={(e) => setRoom(e.target.value)} placeholder="B2.04" />
+          <Field label={t('classModal.room')}>
+            <Input value={room} onChange={(e) => setRoom(e.target.value)} placeholder={t('classModal.roomPh')} />
           </Field>
         </div>
         {error && <p className="text-sm text-danger">{error}</p>}

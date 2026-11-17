@@ -78,5 +78,89 @@
     "pct": "{{n}}% retenção",
     "dueOne": "revisão devida",
     "practice": "Praticar"
+  },
+  "charts": {
+    "noDataPeriod": "Sem dados neste período",
+    "plural": {
+      "assessmentOne": "avaliação",
+      "assessmentMany": "avaliações",
+      "dayOne": "dia",
+      "dayMany": "dias",
+      "activeDayOne": "dia ativo",
+      "activeDayMany": "dias ativos"
+    },
+    "studyByDay": {
+      "title": "Quanto estudei por dia?",
+      "emptyTitle": "Ainda sem sessões concluídas neste período",
+      "emptyHint": "Marca sessões como concluídas no plano de estudo para veres aqui quanto estudaste.",
+      "emptyAction": "Abrir o plano de estudo",
+      "takeaway": "Estudaste {{time}}",
+      "takeawayWithGoal": "Estudaste {{time}} — {{pct}}% da meta",
+      "goalLine": "Meta {{time}}"
+    },
+    "plannedDone": {
+      "title": "Planeado vs. feito",
+      "emptyTitle": "Sem sessões planeadas neste período",
+      "emptyHint": "Gera um plano de estudo para comparar o que planeaste com o que fizeste.",
+      "emptyAction": "Gerar plano",
+      "nothingYet": "Ainda nada decorreu neste período.",
+      "takeaway": "Fizeste {{pct}}% do planeado — {{done}} de {{planned}}",
+      "planned": "Planeado",
+      "done": "Feito"
+    },
+    "courseTime": {
+      "title": "Onde é que o tempo foi?",
+      "emptyTitle": "Ainda sem tempo registado neste período",
+      "emptyHint": "Assim que concluíres sessões de estudo, vês aqui o tempo por cadeira.",
+      "emptyAction": "Abrir o plano de estudo",
+      "takeaway": "Mais tempo em {{course}} — {{time}}",
+      "takeawayPct": " ({{pct}}% do total)",
+      "seriesName": "Estudo"
+    },
+    "streakHeatmap": {
+      "title": "Constância",
+      "emptyTitle": "Ainda sem estudo registado",
+      "emptyHint": "Cada dia com sessões concluídas aparece aqui.",
+      "takeaway": "Sequência atual: {{streak}} · {{active}} nas últimas 12 semanas",
+      "noStudy": "sem estudo",
+      "less": "menos",
+      "more": "mais"
+    },
+    "gradeBullets": {
+      "title": "Como estão as notas face ao objetivo?",
+      "emptyTitle": "Ainda não tens cadeiras",
+      "emptyHint": "Adiciona cadeiras para acompanhar as notas face ao objetivo.",
+      "emptyAction": "Ir para as cadeiras",
+      "noGrades": "Ainda sem notas lançadas.",
+      "takeawayOne": "Média ponderada {{avg}} — {{below}} de {{graded}} cadeira abaixo do objetivo",
+      "takeawayMany": "Média ponderada {{avg}} — {{below}} de {{graded}} cadeiras abaixo do objetivo",
+      "noGradesShort": "sem notas",
+      "targetShort": "/ objetivo {{grade}}",
+      "targetTitle": "Objetivo {{grade}}",
+      "minTitle": "Nota mínima {{grade}}",
+      "legend": "Traço escuro: objetivo. Pontilhado: nota mínima de aprovação ({{grade}})."
+    },
+    "readiness": {
+      "title": "Estou preparado para o que aí vem?",
+      "emptyTitle": "Sem avaliações nos próximos 45 dias",
+      "emptyHint": "Quando houver datas de testes, trabalhos ou exames, aparecem aqui.",
+      "takeawayRisk": "{{count}} nos próximos 14 dias com menos de {{pct}}% de preparação",
+      "takeawaySafe": "Nenhuma avaliação nos próximos 14 dias está abaixo de {{pct}}% de preparação.",
+      "today": "hoje",
+      "dayShort": "{{n}} d",
+      "minComfort": "mínimo confortável",
+      "date": "Data",
+      "weight": "Peso",
+      "readiness": "Preparação"
+    },
+    "weakness": {
+      "title": "Onde estou mais fraco?",
+      "emptyTitle": "Ainda sem matéria para avaliar",
+      "emptyHint": "Adiciona tópicos às cadeiras e indica o teu nível de confiança para ver onde estás mais fraco.",
+      "emptyAction": "Ir para as cadeiras",
+      "takeaway": "Mais fraco: {{course}} — {{progress}} da matéria, confiança {{confidence}}/5",
+      "topicSeries": "Matéria",
+      "confidenceSeries": "Confiança"
+    }
   }
 }

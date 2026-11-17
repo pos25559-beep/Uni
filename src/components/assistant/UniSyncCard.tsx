@@ -1,4 +1,5 @@
 import { CalendarDays, Check } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { kindLabel, weekdayLong } from '../../lib/colors';
 import type { ResolvedScheduleSyncBundle } from '../../lib/scheduleSync';
 import { cx } from '../../lib/uiHelpers';
@@ -21,6 +22,7 @@ export default function UniSyncCard({
   onApply,
   onOpenCalendar,
 }: UniSyncCardProps) {
+  const { t } = useTranslation('assistant');
   const isMinimal = useStore((s) => (s.settings.appTone ?? 'vibrante') === 'serio');
   const selectedCount =
     bundle.slots.filter((s) => s.selected).length +
@@ -40,13 +42,16 @@ export default function UniSyncCard({
         <div className="flex items-center gap-2">
           <CalendarDays size={15} className="text-accent" />
           <span className="text-xs font-semibold text-fg">
-            Sincronizar com o resto da app
+            {t('sync.title')}
           </span>
         </div>
         <Badge tone={bundle.applied ? 'accent' : 'neutral'}>
           {bundle.applied
-            ? 'Aplicado'
-            : `${bundle.assessments.length} aval. · ${bundle.slots.length} aula(s)`}
+            ? t('sync.applied')
+            : t('sync.counts', {
+                assessments: bundle.assessments.length,
+                classes: bundle.slots.length,
+              })}
         </Badge>
       </div>
 
@@ -54,10 +59,10 @@ export default function UniSyncCard({
         <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2.5 rounded-xl bg-accent-soft/60 px-3 py-2 text-xs text-accent">
           <span className="inline-flex items-center gap-1.5 font-medium">
             <Check size={14} />
-            {bundle.appliedSummary || 'Informação aplicada ao Calendário e Plano.'}
+            {bundle.appliedSummary || t('sync.defaultSummary')}
           </span>
           <Button size="sm" variant="primary" onClick={onOpenCalendar}>
-            Abrir Calendário
+            {t('sync.openCalendar')}
           </Button>
         </div>
       ) : (
@@ -108,14 +113,14 @@ export default function UniSyncCard({
                     </p>
                     <p className="truncate text-xs text-muted">
                       {a.date}
-                      {a.location ? ` · Sala ${a.location}` : ''}
+                      {a.location ? ` · ${t('sync.room', { room: a.location })}` : ''}
                     </p>
                   </div>
                 </div>
                 <Badge tone={a.matchedCourse ? 'accent' : 'neutral'}>
                   {a.matchedCourse
-                    ? `Liga a ${a.matchedCourse.shortName || a.matchedCourse.name}`
-                    : 'Cria cadeira'}
+                    ? t('sync.linksTo', { name: a.matchedCourse.shortName || a.matchedCourse.name })
+                    : t('sync.createsCourse')}
                 </Badge>
               </div>
             ))}
@@ -168,7 +173,7 @@ export default function UniSyncCard({
                       className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted"
                     >
                       <Select
-                        aria-label={`Dia da semana para ${s.courseName}`}
+                        aria-label={t('sync.weekdayAria', { course: s.courseName })}
                         value={s.weekday}
                         onChange={(e) => {
                           const nextWeekday = Number(e.target.value);
@@ -187,15 +192,15 @@ export default function UniSyncCard({
                       </Select>
                       <span>
                         {s.start}–{s.end}
-                        {s.room ? ` · Sala ${s.room}` : ''}
+                        {s.room ? ` · ${t('sync.room', { room: s.room })}` : ''}
                       </span>
                     </div>
                   </div>
                 </div>
                 <Badge tone={s.matchedCourse ? 'accent' : 'neutral'}>
                   {s.matchedCourse
-                    ? `Liga a ${s.matchedCourse.shortName || s.matchedCourse.name}`
-                    : 'Cria cadeira'}
+                    ? t('sync.linksTo', { name: s.matchedCourse.shortName || s.matchedCourse.name })
+                    : t('sync.createsCourse')}
                 </Badge>
               </div>
             ))}
@@ -203,7 +208,7 @@ export default function UniSyncCard({
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
             <span className="text-xs text-muted">
-              Podes ajustar o dia da semana ou desmarcar itens antes de guardar.
+              {t('sync.hint')}
             </span>
             <Button
               size="sm"
@@ -213,7 +218,7 @@ export default function UniSyncCard({
               className="gap-1.5"
             >
               <Check size={13} />
-              Aplicar no Calendário e Plano ({selectedCount})
+              {t('sync.applyBtn', { count: selectedCount })}
             </Button>
           </div>
         </>

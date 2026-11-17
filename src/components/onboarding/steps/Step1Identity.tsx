@@ -5,8 +5,8 @@ import { APP_PALETTES } from '../../../lib/academicCredits';
 import { defaultGradingScaleForLanguage, normalizeAppLanguage } from '../../../lib/grading';
 import { hapticTap } from '../../../lib/nativeBridge';
 import {
+  getLocalizedAccessories,
   getLocalizedPersonas,
-  UNI_ACCESSORIES,
   type UniAccessoryId,
   type UniPersonaMode,
 } from '../../../lib/uniAccessories';
@@ -34,16 +34,13 @@ interface Step1IdentityProps {
   setUniLiveCompanions: (mode: UniLiveCompanionsMode) => void;
 }
 
-const THEME_OPTIONS: Array<{ id: Settings['theme']; label: string; icon: typeof Monitor }> = [
-  { id: 'system', label: 'Sistema', icon: Monitor },
-  { id: 'light', label: 'Claro', icon: Sun },
-  { id: 'dark', label: 'Escuro', icon: Moon },
+const THEME_IDS: Array<{ id: Settings['theme']; icon: typeof Monitor }> = [
+  { id: 'system', icon: Monitor },
+  { id: 'light', icon: Sun },
+  { id: 'dark', icon: Moon },
 ];
 
-const TONE_OPTIONS: Array<{ id: AppTone; label: string; hint: string }> = [
-  { id: 'vibrante', label: 'Expressivo', hint: 'Pastéis vivos, movimento tátil e Uni ativo' },
-  { id: 'serio', label: 'Sério & Minimal', hint: 'Superfícies neutras, foco calmo e sem distrações' },
-];
+const TONE_IDS: AppTone[] = ['vibrante', 'serio'];
 
 export default function Step1Identity({
   userName,
@@ -66,6 +63,7 @@ export default function Step1Identity({
   const updateSettings = useStore((s) => s.updateSettings);
   const assessments = useStore((s) => s.assessments);
   const personas = getLocalizedPersonas(appLang);
+  const accessories = getLocalizedAccessories(appLang);
   const previewAcc = uniAccessory === 'auto' ? 'default' : uniAccessory;
   const isMinimal = appTone === 'serio';
 
@@ -100,30 +98,31 @@ export default function Step1Identity({
         <div className="min-w-0 flex-1 space-y-1.5">
           {isMinimal ? (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-3 py-1 text-xs font-semibold text-muted">
-              <Sparkles size={13} /> Passo 3 · Estilo pessoal
+              <Sparkles size={13} /> {t('onboarding:s1.badge')}
             </span>
           ) : (
             <StickerBadge tone="sage" tilt={-2}>
-              <Sparkles size={12} /> Passo 3 · Estilo pessoal
+              <Sparkles size={12} /> {t('onboarding:s1.badge')}
             </StickerBadge>
           )}
           <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl">
-            Olá! Como queres que o teu{' '}
-            <span className={cx(!isMinimal && 'font-serif font-medium italic')}>caderno</span> te trate?
+            {t('onboarding:s1.titleBefore')}
+            <span className={cx(!isMinimal && 'font-serif font-medium italic')}>{t('onboarding:s1.titleAccent')}</span>
+            {t('onboarding:s1.titleAfter')}
           </h2>
           <p className="text-xs leading-relaxed opacity-80 sm:text-sm">
-            Escolhe o teu nome, as cores do caderno e o estilo do Uni. Podes mudar tudo mais tarde.
+            {t('onboarding:s1.intro')}
           </p>
         </div>
       </div>
 
       {/* Nome */}
       <div className="rounded-3xl border border-line bg-surface p-4 shadow-[var(--shadow-card)] sm:p-5">
-        <Field label="O teu primeiro nome (ou alcunha)">
+        <Field label={t('onboarding:s1.nameLabel')}>
           <Input
             value={userName}
             onChange={(e) => setUserName(e.target.value)}
-            placeholder="Ex.: Clara ou Duarte"
+            placeholder={t('onboarding:s1.namePh')}
             autoComplete="given-name"
           />
         </Field>
@@ -162,20 +161,20 @@ export default function Step1Identity({
       <div className="space-y-4 rounded-3xl border border-line bg-surface p-4 shadow-[var(--shadow-card)] sm:p-5">
         <div className="flex items-center gap-2">
           <Palette size={16} className="text-accent-ink" />
-          <h3 className="font-display text-base font-bold text-fg">Ambiente e paleta</h3>
+          <h3 className="font-display text-base font-bold text-fg">{t('onboarding:s1.paletteSection')}</h3>
         </div>
 
         <div className="grid grid-cols-3 gap-2">
-          {THEME_OPTIONS.map((t) => {
-            const Icon = t.icon;
-            const active = themePref === t.id;
+          {THEME_IDS.map((opt) => {
+            const Icon = opt.icon;
+            const active = themePref === opt.id;
             return (
               <button
-                key={t.id}
+                key={opt.id}
                 type="button"
                 onClick={() => {
                   void hapticTap();
-                  setThemePref(t.id);
+                  setThemePref(opt.id);
                 }}
                 className={cx(
                   'flex min-h-11 items-center justify-center gap-1 whitespace-nowrap rounded-xl border px-2 text-xs font-semibold transition sm:gap-1.5 sm:px-3',
@@ -185,7 +184,7 @@ export default function Step1Identity({
                 )}
               >
                 <Icon size={15} />
-                <span>{t.label}</span>
+                <span>{t(`onboarding:s1.themes.${opt.id}`)}</span>
               </button>
             );
           })}
@@ -229,16 +228,16 @@ export default function Step1Identity({
         </div>
 
         <div className="grid gap-2 sm:grid-cols-2">
-          {TONE_OPTIONS.map((t) => {
-            const active = appTone === t.id;
+          {TONE_IDS.map((toneId) => {
+            const active = appTone === toneId;
             return (
               <button
-                key={t.id}
+                key={toneId}
                 type="button"
                 onClick={() => {
                   void hapticTap();
-                  setAppTone(t.id);
-                  if (t.id === 'serio') setUniLiveCompanions('off');
+                  setAppTone(toneId);
+                  if (toneId === 'serio') setUniLiveCompanions('off');
                   else if (uniLiveCompanions === 'off') setUniLiveCompanions('all');
                 }}
                 className={cx(
@@ -248,8 +247,8 @@ export default function Step1Identity({
                     : 'border-line bg-surface-2/60 text-fg hover:border-muted/50',
                 )}
               >
-                <span className="block text-xs font-bold">{t.label}</span>
-                <span className="block text-xs text-muted">{t.hint}</span>
+                <span className="block text-xs font-bold">{t(`onboarding:s1.tones.${toneId}.label`)}</span>
+                <span className="block text-xs text-muted">{t(`onboarding:s1.tones.${toneId}.hint`)}</span>
               </button>
             );
           })}
@@ -258,7 +257,7 @@ export default function Step1Identity({
 
       {/* Personalidade do Uni */}
       <div className="space-y-3 rounded-3xl border border-line bg-surface p-4 shadow-[var(--shadow-card)] sm:p-5">
-        <h3 className="font-display text-base font-bold text-fg">Estilo e voz do Uni</h3>
+        <h3 className="font-display text-base font-bold text-fg">{t('onboarding:s1.uniVoiceTitle')}</h3>
         <div className="grid gap-2 sm:grid-cols-2">
           {personas.map((p) => {
             const active = uniPersona === p.id;
@@ -298,9 +297,9 @@ export default function Step1Identity({
                 : 'border-line bg-surface-2 text-muted hover:text-fg',
             )}
           >
-            Automático pela área
+            {t('onboarding:s1.autoAccessory')}
           </button>
-          {UNI_ACCESSORIES.filter((a) => a.id !== 'default').map((acc) => {
+          {accessories.filter((a) => a.id !== 'default').map((acc) => {
             const active = uniAccessory === acc.id;
             return (
               <button

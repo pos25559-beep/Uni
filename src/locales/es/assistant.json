@@ -38,7 +38,24 @@
     "markDoubt": "Guardar duda para clase",
     "minutesLabel": "{{minutes}} min · {{date}}",
     "cardsCount": "{{count}} tarjeta(s)",
-    "doubtLabel": "Tema: {{topic}}"
+    "doubtLabel": "Tema: {{topic}}",
+    "saveErr": "Error al guardar la acción.",
+    "confirmRequired": "La herramienta {{name}} requiere confirmación explícita del estudiante antes de guardar.",
+    "planSummary": "{{sessions}} sesión(es) pendiente(s) · {{assessments}} evaluación(es) próxima(s)",
+    "sheetSummary": "{{count}} ficha(s) encontrada(s)",
+    "noCourseRecall": "Ninguna asignatura seleccionada para registrar el recall.",
+    "noTopicRecall": "No se pudo encontrar o crear el tema para registrar el recall.",
+    "recallSaved": "Recall ({{score}}/3) guardado para «{{title}}» · próximo repaso {{date}}.",
+    "defaultTopic": "Repaso en conversación",
+    "studyFallback": "Estudio",
+    "selectCourseSession": "Selecciona primero una asignatura para guardar esta sesión.",
+    "sessionAdded": "Sesión de {{minutes}} min añadida para {{date}}.",
+    "selectCourseFlashcards": "Selecciona una asignatura para guardar tarjetas.",
+    "noTopicFlashcards": "No se pudo crear o encontrar el tema para las tarjetas.",
+    "flashcardsSaved": "{{count}} tarjeta(s) guardada(s) en «{{title}}».",
+    "doubtTitle": "Duda ({{topic}}): {{note}}",
+    "doubtSaved": "Duda guardada para llevar a clase ({{topic}}).",
+    "invalidProposal": "Propuesta no válida o incompleta."
   },
   "notebook": {
     "mode": {
@@ -90,7 +107,8 @@
     "generate": "Generar a partir de las fuentes",
     "result": "Resultado del Cuaderno",
     "savedSheets": "Fichas guardadas localmente ({{count}})",
-    "deleteSheet": "Eliminar ficha {{title}}"
+    "deleteSheet": "Eliminar ficha {{title}}",
+    "pdfPage": "Unipedia · Página {{current}} de {{total}}"
   },
   "page": {
     "sugExamCourse": "Repasa conmigo el temario de {{course}} para el examen",
@@ -187,7 +205,9 @@
     "notes": "Apuntes",
     "hide": "Ocultar",
     "suggestions": "Sugerencias",
-    "keyHowTo": "Cómo poner una clave gratuita (>15 msgs)"
+    "keyHowTo": "Cómo poner una clave gratuita (>15 msgs)",
+    "activeDocsChat_one": "{{count}} documento activo en este chat",
+    "activeDocsChat_other": "{{count}} documentos activos en este chat"
   },
   "checkin": {
     "tabs": {
@@ -267,7 +287,68 @@
     "phExam": "Ej.: Entra hasta la diapositiva 8 y he repasado T01–T03…",
     "phClass": "Ej.: Vimos integrales, me quedaron dudas…",
     "phDefault": "Responde a Uni con tus palabras…",
-    "sendAria": "Enviar respuesta a Uni"
+    "sendAria": "Enviar respuesta a Uni",
+    "topicsPrefix": "Temas:",
+    "feelings": {
+      "clara": "Entendí bien",
+      "mais_ou_menos": "Algunas dudas",
+      "dificil": "Difícil",
+      "faltei": "Falté / repasar",
+      "produtivo": "Productivo",
+      "normal": "Normal",
+      "cansado": "Cansado",
+      "confiante": "Confiado",
+      "estavel": "Estable",
+      "pressionado": "Presionado",
+      "atrasado": "Con retraso",
+      "ansioso": "Ansioso"
+    },
+    "fallback": {
+      "courseFallback": "la asignatura",
+      "topicLine": "Temario/tema: {{val}}",
+      "studiedLine": "Estudié/avancé: {{val}}",
+      "diffLine": "Dudas/dificultades: {{val}}",
+      "savedConfirm": "Registro guardado para **{{course}}** ({{feeling}}) y plan ajustado. Si quieres añadir algún detalle o duda más, escribe abajo para actualizar.",
+      "upToScope": "Hasta {{unit}} {{num}}",
+      "upToNewTopic": "Temario hasta {{unit}} {{num}}",
+      "focusPastTests": "Repetir parciales antiguos",
+      "focusPastExams": "Resolver exámenes antiguos",
+      "focusExercises": "Resolver ejercicios prácticos",
+      "focusSummaries": "Repasar resúmenes y diapositivas",
+      "studiedNotStarted": "Aún sin empezar",
+      "studiedPrefix": "Ya estudié {{rest}}",
+      "studiedAll": "Temario ya repasado",
+      "reviewPrefix": "Repasar {{scope}}",
+      "examScope": "ajusté el enfoque (**{{scope}}**)",
+      "examTopics": "marqué **{{count}} tema(s)** para el examen",
+      "examNotes": "registré tus notas sobre el alcance del examen",
+      "testOf": "{{test}} de {{course}}",
+      "empathyLow": "Priorizaré bloques más cortos y guiados para reducir esa presión.",
+      "empathyConfident": "Excelente ritmo — mantengo solo repasos estratégicos para consolidar.",
+      "empathyDefault": "Mantengo un ritmo equilibrado hasta el día de la prueba.",
+      "withFocus": " con enfoque en **{{focus}}**",
+      "examReply": "¡Entendido! En **{{testName}}**, {{scopeNote}}{{focusNote}}{{studied}}. {{empathy}} Si es correcto, pulsa **Guardar y ajustar** o corrígeme aquí.",
+      "classTopic": " el tema **«{{topic}}»**",
+      "classTopics": " **{{count}} tema(s)**",
+      "classToday": " la clase de hoy",
+      "classBoost": "Ya marqué **refuerzo extra** para {{course}} en los próximos bloques del plan.",
+      "classKeep": "Lo guardé en {{course}} con estado positivo para mantener el ritmo.",
+      "classReply": "¡Anotado en **{{course}}**! Registré{{topicBit}} ({{feeling}}). {{followUp}}",
+      "weekHard": " con atención reforzada en las asignaturas mencionadas",
+      "weekReply": "¡Gracias por el balance del domingo! Quedó registrado como semana **{{feeling}}**{{hard}}. ¡Listo para ajustar la próxima semana!",
+      "dayTired": "Como indicaste cansancio, mañana el plan modera la duración de los bloques para no sobrecargarte.",
+      "dayProd": "¡Buena energía hoy! Eso ya cuenta para tu ritmo y tu racha de Uni.",
+      "dayDefault": "Todo anotado para calibrar el ritmo de mañana.",
+      "dayReply": "Registré tu día como **{{feeling}}**{{rating}}. {{note}}",
+      "topicsCount": "{{count}} tema(s)",
+      "promptExamCourseFallback": "el examen",
+      "promptExam": "Ajusté {{course}}: me siento {{feeling}}{{studied}}. ¿Montamos una estrategia de repaso?",
+      "promptClassCourseFallback": "asignatura",
+      "promptClassTopic": " sobre \"{{topic}}\"",
+      "promptClass": "Tuve clase de {{course}} ({{feeling}}){{topic}}. ¿Me ayudas a repasar los puntos principales?",
+      "promptDayDefaultNotes": "¿cómo debería ajustar el estudio?",
+      "promptDay": "Sobre mi registro de hoy ({{feeling}}): {{notes}}"
+    }
   },
   "quick": {
     "todayL": "¿Qué debería estudiar hoy?",
@@ -326,7 +407,8 @@
     "renameAria": "Renombrar {{title}}",
     "rename": "Renombrar conversación",
     "deleteAria": "Eliminar {{title}}",
-    "deleteConv": "Eliminar conversación"
+    "deleteConv": "Eliminar conversación",
+    "subjectGroup": "Tema · {{s}}"
   },
   "weekly": {
     "mood": {
@@ -363,7 +445,8 @@
     "q2": "Explícame de forma sencilla lo que no entendí en clase",
     "q3": "Hazme 1 pregunta de práctica sobre el tema más urgente",
     "chatEmpty": "Tu tutor conoce tu carrera, historial de notas, dificultades declaradas, Modo Examen y check-ins semanales. Escribe una pregunta o elige una sugerencia arriba.",
-    "chatPh": "Pregunta a tu tutor semanal..."
+    "chatPh": "Pregunta a tu tutor semanal...",
+    "thinking": "El tutor está pensando..."
   },
   "modals": {
     "optionsTitle": "Opciones del Tutor",
@@ -398,6 +481,39 @@
     "cancel": "Cancelar",
     "delete": "Eliminar",
     "deleteBody": "Borra el historial de mensajes de esta conversación. Tus datos de estudio y otras conversaciones no se ven afectados.",
-    "knowsTitle": "Lo que sabe Uni"
+    "knowsTitle": "Lo que sabe Uni",
+    "knowsDesc": "Este resumen se envía a Google con cada pregunta. No incluye la clave de la API ni el contenido de tus apuntes."
+  },
+  "composer": {
+    "maxAttachments": "Puedes adjuntar hasta {{count}} fotos o PDF por mensaje.",
+    "invalidFile": "Archivo no válido",
+    "analyzeAttachments": "Analiza los archivos adjuntos y resume los puntos más importantes para mi estudio.",
+    "removeAttachment": "Quitar {{name}}",
+    "attachAria": "Adjuntar foto o PDF de apuntes",
+    "attachTitle": "Adjuntar foto o PDF",
+    "inputAria": "Mensaje para el asistente",
+    "stop": "Detener",
+    "sendAria": "Enviar mensaje"
+  },
+  "sync": {
+    "title": "Sincronizar con el resto de la app",
+    "applied": "Aplicado",
+    "counts": "{{assessments}} eval. · {{classes}} clase(s)",
+    "defaultSummary": "Información aplicada al Calendario y Plan.",
+    "openCalendar": "Abrir Calendario",
+    "room": "Aula {{room}}",
+    "linksTo": "Vincula con {{name}}",
+    "createsCourse": "Crea asignatura",
+    "weekdayAria": "Día de la semana para {{course}}",
+    "hint": "Puedes ajustar el día de la semana o desmarcar elementos antes de guardar.",
+    "applyBtn": "Aplicar en Calendario y Plan ({{count}})"
+  },
+  "chat": {
+    "emptyReply": "No pude generar texto esta vez. ¿Puedes intentarlo de nuevo?",
+    "sheetPrefix": "Ficha: {{title}}",
+    "replyErr": "Uni tuvo un contratiempo al responder.",
+    "sendErr": "No se pudo guardar ni enviar el mensaje ahora. Inténtalo de nuevo.",
+    "syncNoneFound": "No encontré fechas exactas de exámenes o clases en esta respuesta.",
+    "syncPrepErr": "No se pudo preparar la sincronización ahora."
   }
 }

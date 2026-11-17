@@ -5,6 +5,7 @@ import type { IcsEvent } from './ics';
 import { useStore } from '../store/useStore';
 import type { CalendarEvent, Course } from '../types';
 import { googleFetch } from './googleAuth';
+import { tr } from '../i18n/tr';
 
 interface GoogleEventTime { dateTime?: string; date?: string }
 interface GoogleEvent {
@@ -32,7 +33,7 @@ function mapEvent(item: GoogleEvent): CalendarEvent | null {
 
   const event: CalendarEvent = {
     id: `google:${item.id}`,
-    title: item.summary ?? '(sem título)',
+    title: item.summary ?? tr('common:googleSvc.gcalNoTitle'),
     start,
     end,
     source: 'google',

@@ -1,4 +1,5 @@
 import { driver, type DriveStep } from 'driver.js';
+import { tr } from '../i18n/tr';
 import { useStore } from '../store/useStore';
 
 let activeTourInstance: ReturnType<typeof driver> | null = null;
@@ -28,9 +29,8 @@ export function startUnipediaGuidedTour(onComplete?: () => void): void {
   }> = [
     {
       popover: {
-        title: 'Bem-vindo à nova Unipedia',
-        description:
-          'Este é o teu painel «Hoje»: junta sequência de estudo, alertas de exames e as tuas aulas do dia num relance.',
+        title: tr('onboarding:tour.welcomeTitle'),
+        description: tr('onboarding:tour.welcomeDesc'),
         side: 'bottom',
         align: 'center',
       },
@@ -38,9 +38,8 @@ export function startUnipediaGuidedTour(onComplete?: () => void): void {
     {
       selector: '[data-tour="bento-overview"]',
       popover: {
-        title: 'Progresso em tempo real',
-        description:
-          'Acompanha prontidão, horas estudadas na semana, média do percurso e sessões agendadas.',
+        title: tr('onboarding:tour.progressTitle'),
+        description: tr('onboarding:tour.progressDesc'),
         side: 'bottom',
         align: isMobile ? 'center' : 'start',
       },
@@ -48,9 +47,8 @@ export function startUnipediaGuidedTour(onComplete?: () => void): void {
     {
       selector: '[data-tour="nav-cadeiras"]',
       popover: {
-        title: 'Cadeiras e Disciplinas',
-        description:
-          'Gere tópicos, confiança (1–5), notas necessárias e ligações diretas ao teu curso.',
+        title: tr('onboarding:tour.coursesTitle'),
+        description: tr('onboarding:tour.coursesDesc'),
         side: isMobile ? 'top' : 'right',
         align: 'center',
       },
@@ -58,9 +56,8 @@ export function startUnipediaGuidedTour(onComplete?: () => void): void {
     {
       selector: '[data-tour="nav-plano"]',
       popover: {
-        title: 'Plano de 14 dias & Foco',
-        description:
-          'Blocos gerados automaticamente por prioridade de avaliações, com temporizador integrado.',
+        title: tr('onboarding:tour.planTitle'),
+        description: tr('onboarding:tour.planDesc'),
         side: isMobile ? 'top' : 'right',
         align: 'center',
       },
@@ -68,9 +65,8 @@ export function startUnipediaGuidedTour(onComplete?: () => void): void {
     {
       selector: '[data-tour="nav-assistente"]',
       popover: {
-        title: 'Uni · O teu Tutor IA',
-        description:
-          'Tira dúvidas com base nas tuas cadeiras e apontamentos sempre que quiseres.',
+        title: tr('onboarding:tour.tutorTitle'),
+        description: tr('onboarding:tour.tutorDesc'),
         side: isMobile ? 'top' : 'right',
         align: 'center',
       },
@@ -100,9 +96,9 @@ export function startUnipediaGuidedTour(onComplete?: () => void): void {
     allowClose: true,
     overlayOpacity: 0.42,
     popoverClass: 'unipedia-tour-popover',
-    nextBtnText: 'Seguinte',
-    prevBtnText: 'Anterior',
-    doneBtnText: 'Começar a estudar',
+    nextBtnText: tr('onboarding:tour.next'),
+    prevBtnText: tr('onboarding:tour.prev'),
+    doneBtnText: tr('onboarding:tour.done'),
     progressText: '{{current}} / {{total}}',
     steps: availableSteps,
     onDestroyed: () => {

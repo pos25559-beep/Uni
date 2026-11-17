@@ -130,5 +130,47 @@
     "sessionsLeft": "Faltan {{count}} sesiones para cerrar la meta de hoy. ¡Vamos allá!",
     "noSessions": "Sin sesiones hoy — añade tus asignaturas o habla conmigo en el Tutor."
   },
-  "sessionFallback": "Estudio libre"
+  "sessionFallback": "Estudio libre",
+  "nudgeAria": "Recordatorio de Uni",
+  "highlights": {
+    "ariaLabel": "Destacados del día",
+    "title": "Destacados de hoy",
+    "streakDays": "{{count}}d seguidos",
+    "startToday": "Empieza hoy",
+    "focused": "Enfocado",
+    "thisWeek": "esta semana",
+    "rhythm": "Ritmo",
+    "streak": "racha",
+    "sessions": "Sesiones",
+    "completed": "completadas",
+    "tasks": "Tareas",
+    "pending": "pendientes"
+  },
+  "mail": {
+    "taskPrefix": "Aviso: {{subject}}",
+    "badge": "Buzón",
+    "titleConnected": "Correo ({{email}})",
+    "title": "Correo Académico",
+    "sync": "Sincronizar",
+    "personalHint": "Tu cuenta personal ({{email}}) queda solo para Drive y Calendar. Conecta abajo tu correo institucional o importa un aviso ",
+    "connectHint": "Conecta tu correo institucional para ver avisos del profesorado en una sola tarjeta o importa ya un archivo ",
+    "emailPlaceholder": "ej: nombre@universidad.es",
+    "emailAria": "Correo institucional",
+    "connectBtn": "Conectar Correo Académico",
+    "importEml": "Importar (.eml)",
+    "importEmlPlain": "Importar .eml",
+    "needsPermission": "Tu sesión de Google necesita autorización para leer el correo académico.",
+    "authorizeBtn": "Autorizar lectura",
+    "loading": "Consultando tu correo académico...",
+    "cachedHint": "Cuenta {{email}} guardada. Pulsa «Sincronizar» para cargar nuevos avisos de Gmail.",
+    "emptyInbox": "No se encontraron avisos recientes en tu bandeja.",
+    "syncGmail": "Sincronizar Gmail",
+    "checkAgain": "Comprobar de nuevo",
+    "taskCreated": "¡Tarea creada!",
+    "createTask": "Crear Tarea",
+    "fromLabel": "De:",
+    "dateLabel": "Fecha:",
+    "linkedCourse": "Asignatura asociada:",
+    "openCourse": "Abrir asignatura"
+  }
 }

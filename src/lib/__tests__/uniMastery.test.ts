@@ -152,7 +152,16 @@ describe('uniMastery', () => {
       },
     ];
 
-    const { milestones, items } = computeCourseMilestones(course, sessions, assessments);
+    const { milestones, items } = computeCourseMilestones(
+      course,
+      sessions,
+      assessments,
+      [],
+      `${dayKey}T12:00:00.000Z`,
+      'pt20',
+      'pt-PT',
+      dayKey,
+    );
     expect(milestones.map((m) => m.id)).toEqual([
       'first_perfect_recall',
       'five_study_days',

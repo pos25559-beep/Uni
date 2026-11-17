@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, EmptyState } from '../ui';
 
 interface ChartCardProps {
@@ -14,12 +15,13 @@ interface ChartCardProps {
 }
 
 export function ChartCard({ title, takeaway, isEmpty = false, emptyTitle, emptyHint, emptyAction, children }: ChartCardProps) {
+  const { t } = useTranslation('progress');
   return (
     <Card>
       <h2 className="text-sm font-semibold text-fg">{title}</h2>
       {isEmpty ? (
         <div className="mt-4">
-          <EmptyState title={emptyTitle ?? 'Sem dados neste período'} hint={emptyHint} action={emptyAction} />
+          <EmptyState title={emptyTitle ?? t('charts.noDataPeriod')} hint={emptyHint} action={emptyAction} />
         </div>
       ) : (
         <>
