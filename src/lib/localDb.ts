@@ -1,7 +1,7 @@
-import type { ID, UniPetId, UniSkinId } from '../types';
+import type { ID, UniPetId, UniSkinId, UniVoiceConfig } from '../types';
 import type { UniPersonaMode } from './uniAccessories';
 
-export type TopicSheetMode = 'guide' | 'quiz' | 'summary';
+export type TopicSheetMode = 'guide' | 'quiz' | 'summary' | 'podcast';
 export type UniFormId = 'nuvem' | 'gota' | 'estrela' | 'cristal' | 'folha';
 export type UniStage = 0 | 1 | 2 | 3 | 4;
 
@@ -85,6 +85,7 @@ export interface UniAgentRecord {
   skinId?: UniSkinId;
   petId?: UniPetId;
   personaId: UniPersonaMode;
+  voiceConfig?: UniVoiceConfig;
   language: string;
   memoryEnabled: boolean;
   stage: UniStage;

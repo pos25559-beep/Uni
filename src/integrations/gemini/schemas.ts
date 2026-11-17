@@ -282,3 +282,23 @@ export const NOTEBOOK_MEMORY_DELTA_SCHEMA: SchemaRequest = {
     strength: { type: SchemaType.STRING, nullable: true },
   },
 };
+
+export const PODCAST_SCRIPT_SCHEMA: SchemaRequest = {
+  type: SchemaType.OBJECT,
+  properties: {
+    title: { type: SchemaType.STRING },
+    lines: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          speaker: { type: SchemaType.STRING },
+          text: { type: SchemaType.STRING },
+        },
+        required: ['speaker', 'text'],
+      },
+    },
+  },
+  required: ['title', 'lines'],
+};
+

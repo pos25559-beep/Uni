@@ -249,6 +249,14 @@ export type UniSkinId =
   | 'ink';
 
 export type UniPetId = 'none' | 'cat' | 'owl' | 'fox' | 'turtle' | 'rabbit';
+export type UniVoiceName = 'Aoede' | 'Puck' | 'Charon' | 'Kore' | 'Fenrir' | 'Zephyr';
+
+export interface UniVoiceConfig {
+  voiceName: UniVoiceName;
+  stylePrompt?: string;
+  coHostVoiceName?: UniVoiceName;
+}
+
 export type AppLanguage = 'pt-PT' | 'pt-BR' | 'es' | 'en';
 export type GradingScale = 'pt20' | 'scale10' | 'pct100';
 
@@ -336,6 +344,8 @@ export interface Settings {
   plannerPrefs?: PlannerPreferences;
   /** Personalidade do Uni nas respostas do Tutor. */
   uniPersona?: 'amigo' | 'exigente' | 'calmo' | 'curioso' | 'treinador';
+  /** Voz configurada por omissão para o Uni geral (timbre e estilo vocal). */
+  uniVoice?: UniVoiceConfig;
   /** Indica se o tour guiado pós-onboarding já foi concluído. */
   tourCompleted?: boolean;
   /** Perfil pós-onboarding escolhido pelo aluno no Hub do Uni. */

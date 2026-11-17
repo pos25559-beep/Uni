@@ -2,7 +2,7 @@
 // com App Check e quota conservadora, ou chave pessoal opcional em Definições → Avançado.
 
 import { format, parseISO } from 'date-fns';
-import type { Content, GenerationConfig } from 'firebase/ai';
+import type { Content, GenerationConfig, SchemaRequest } from 'firebase/ai';
 import { tr } from '../i18n/tr';
 import {
   parseStudyGuide,
@@ -845,7 +845,7 @@ export interface NotebookAssessmentContext {
 }
 
 export interface NotebookBriefArgs {
-  mode: 'guide' | 'quiz' | 'summary';
+  mode: 'guide' | 'quiz' | 'summary' | 'podcast';
   sources: NotebookSourceInput[];
   attachments?: ChatAttachment[];
   courseName?: string;
@@ -901,13 +901,13 @@ Regras do JSON:
 - Nunca coloques JSON nem blocos de código dentro dos campos de texto.`;
 }
 
-async function runNotebookText(
+export async function runNotebookText(
   args: NotebookBriefArgs,
   customKey: string,
   model: string,
   goalPrompt: string,
   asJson: boolean,
-  options?: { schema?: typeof STUDY_GUIDE_SCHEMA; deep?: boolean },
+  options?: { schema?: SchemaRequest; deep?: boolean },
 ): Promise<string> {
   const formattedSources = args.sources
     .filter((s) => s.content.trim())
@@ -951,7 +951,7 @@ Regras estritas:
 /** Tempo máximo por pedido do caderno/guia (cada modelo da cadeia). */
 const NOTEBOOK_TIMEOUT_MS = 150_000;
 
-function assertNotebookInputs(args: NotebookBriefArgs): void {
+export function assertNotebookInputs(args: NotebookBriefArgs): void {
   const hasText = args.sources.some((s) => s.content.trim());
   const hasAttachments = Boolean(args.attachments && args.attachments.length > 0);
   if (!hasText && !hasAttachments) {

@@ -15,6 +15,7 @@ import { useStore } from '../store/useStore';
 import type { AppLanguage, Course } from '../types';
 import { buildStudyContext, SYSTEM_PROMPT } from './gemini';
 import { normalizeAppLanguage } from '../lib/grading';
+import { resolveUniVoiceConfig } from '../lib/uniVoice';
 import { tr } from '../i18n/tr';
 
 export const LIVE_VOICE_MODEL = 'gemini-3.8-live';
@@ -37,14 +38,6 @@ export interface LiveTranscriptEntry {
   role: 'user' | 'model';
   text: string;
 }
-
-const PERSONA_PREBUILT_VOICES: Record<UniPersonaMode, string> = {
-  amigo: 'Aoede',
-  exigente: 'Fenrir',
-  calmo: 'Kore',
-  curioso: 'Puck',
-  treinador: 'Charon',
-};
 
 /**
  * Reduz a taxa de amostragem para 16 kHz com média por janela (filtro passa-baixo simples),
@@ -307,7 +300,12 @@ export async function startUniLiveVoiceSession(
     });
     const studyContext = buildStudyContext(useStore.getState());
     const activeLang = normalizeAppLanguage(args.language);
-    const liveVoiceSuffix =
+    const resolvedVoice = resolveUniVoiceConfig(
+      args.uniAgent,
+      useStore.getState().settings.uniVoice,
+      args.persona,
+    );
+    const baseVoiceSuffix =
       activeLang === 'en'
         ? 'REAL-TIME VOICE MODE: reply naturally, warmly, concisely, and briefly (2 to 4 sentences per turn) so it is easy to listen to.'
         : activeLang === 'es'
@@ -315,6 +313,9 @@ export async function startUniLiveVoiceSession(
           : activeLang === 'pt-BR'
             ? 'MODO VOZ EM TEMPO REAL: responda de forma natural, acolhedora, objetiva e breve (2 a 4 frases por turno) para facilitar a audição.'
             : 'MODO VOZ EM TEMPO REAL: responde de forma natural, calorosa, objetiva e breve (2 a 4 frases por turno) para facilitar a audição.';
+    const liveVoiceSuffix = resolvedVoice.stylePrompt
+      ? `${baseVoiceSuffix}\nESTILO VOCAL PREFERIDO: ${resolvedVoice.stylePrompt}.`
+      : baseVoiceSuffix;
     const systemText = `${SYSTEM_PROMPT(studyContext, undefined, {
       persona: args.persona,
       accessory: args.accessory,
@@ -347,7 +348,7 @@ export async function startUniLiveVoiceSession(
             speechConfig: {
               voiceConfig: {
                 prebuiltVoiceConfig: {
-                  voiceName: PERSONA_PREBUILT_VOICES[args.persona] ?? 'Aoede',
+                  voiceName: resolvedVoice.voiceName,
                 },
               },
             },

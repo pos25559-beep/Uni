@@ -33,6 +33,8 @@ import type {
   ID,
   Settings,
   StudyLogEntry,
+  UniVoiceConfig,
+  UniVoiceName,
   WeeklyCheckIn,
 } from '../types';
 
@@ -73,6 +75,7 @@ const SETTINGS_KEYS: Array<keyof Settings> = [
   'gradingScale',
   'uniAccessory',
   'uniPersona',
+  'uniVoice',
   'uniSkin',
   'uniPet',
   'uniLiveCompanions',
@@ -89,6 +92,29 @@ const SETTINGS_KEYS: Array<keyof Settings> = [
   'notifications',
   'plannerPrefs',
 ];
+
+const VALID_VOICE_NAMES = new Set<UniVoiceName>([
+  'Aoede',
+  'Puck',
+  'Charon',
+  'Kore',
+  'Fenrir',
+  'Zephyr',
+]);
+
+function sanitizeVoiceConfig(raw: UniVoiceConfig | undefined): UniVoiceConfig | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  if (!VALID_VOICE_NAMES.has(raw.voiceName)) return undefined;
+  const stylePrompt = typeof raw.stylePrompt === 'string' ? raw.stylePrompt.trim().slice(0, 200) : '';
+  const coHost = raw.coHostVoiceName && VALID_VOICE_NAMES.has(raw.coHostVoiceName)
+    ? raw.coHostVoiceName
+    : undefined;
+  return {
+    voiceName: raw.voiceName,
+    ...(stylePrompt ? { stylePrompt } : {}),
+    ...(coHost ? { coHostVoiceName: coHost } : {}),
+  };
+}
 
 const OPTIONAL_EMAIL_OR_URL_KEYS = new Set<string>([
   'academicEmail',
@@ -134,6 +160,15 @@ export function sanitizeSettingsPayload(
     if (raw === undefined) continue;
     if (OPTIONAL_EMAIL_OR_URL_KEYS.has(key) && raw === '') {
       if (isPatch) {
+        payload[key] = deleteField();
+      }
+      continue;
+    }
+    if (key === 'uniVoice') {
+      const sanitized = sanitizeVoiceConfig(raw as UniVoiceConfig | undefined);
+      if (sanitized) {
+        payload[key] = sanitized;
+      } else if (isPatch) {
         payload[key] = deleteField();
       }
       continue;
@@ -248,6 +283,7 @@ function sanitizeUniAgent(agent: UniAgentRecord): Record<string, unknown> {
     ...(typeof agent.skinId === 'string' && agent.skinId ? { skinId: agent.skinId.slice(0, 40) } : {}),
     ...(typeof agent.petId === 'string' && agent.petId ? { petId: agent.petId.slice(0, 40) } : {}),
     personaId: agent.personaId,
+    ...(sanitizeVoiceConfig(agent.voiceConfig) ? { voiceConfig: sanitizeVoiceConfig(agent.voiceConfig) } : {}),
     language: String(agent.language || 'pt-PT').slice(0, 15),
     memoryEnabled: Boolean(agent.memoryEnabled),
     stage: Math.max(0, Math.min(4, Math.round(Number(agent.stage) || 0))),

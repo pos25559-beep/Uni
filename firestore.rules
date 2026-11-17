@@ -467,6 +467,15 @@ service cloud.firestore {
     // Domain Validators
     // ===============================================================
 
+    function isValidUniVoiceConfig(vc) {
+      return vc is map &&
+        vc.keys().hasOnly(['voiceName', 'stylePrompt', 'coHostVoiceName']) &&
+        vc.keys().hasAll(['voiceName']) &&
+        vc.voiceName is string && vc.voiceName in ['Aoede', 'Puck', 'Charon', 'Kore', 'Fenrir', 'Zephyr'] &&
+        (!('stylePrompt' in vc) || (vc.stylePrompt is string && vc.stylePrompt.size() <= 220)) &&
+        (!('coHostVoiceName' in vc) || (vc.coHostVoiceName is string && vc.coHostVoiceName in ['Aoede', 'Puck', 'Charon', 'Kore', 'Fenrir', 'Zephyr']));
+    }
+
     // Validates nested settings map
     function isValidSettingsMap(settings) {
       return settings is map &&
@@ -479,7 +488,7 @@ service cloud.firestore {
           'ageConfirmed13Plus', 'aiAgeConfirmed18Plus', 'aiConsent', 'cloudSyncConsent', 'tourCompleted',
           'guestMode', 'hasSeenWelcome', 'themePalette', 'appTone',
           'uniLiveCompanions', 'uniAccessory', 'uniSkin', 'uniSkinAutoRotate',
-          'uniPet', 'uniPersona', 'hubSetupFlow', 'hubSetupCompleted',
+          'uniPet', 'uniPersona', 'uniVoice', 'hubSetupFlow', 'hubSetupCompleted',
           'hubSetupDismissed', 'sharedHubDriveUrls', 'seenTabGuides',
           'notifications', 'plannerPrefs'
         ]) &&
@@ -516,6 +525,7 @@ service cloud.firestore {
         isValidOptionalBool(settings, 'uniSkinAutoRotate') &&
         (!('uniPet' in settings) || (settings.uniPet is string && settings.uniPet in ['none', 'cat', 'owl', 'fox', 'turtle', 'rabbit'])) &&
         (!('uniPersona' in settings) || (settings.uniPersona is string && settings.uniPersona in ['amigo', 'exigente', 'calmo', 'curioso', 'treinador'])) &&
+        (!('uniVoice' in settings) || isValidUniVoiceConfig(settings.uniVoice)) &&
         (!('hubSetupFlow' in settings) || (settings.hubSetupFlow is string && settings.hubSetupFlow in ['caloiro_inicio', 'caloiro_meio', 'veterano_inicio', 'veterano_meio'])) &&
         isValidOptionalBool(settings, 'hubSetupCompleted') &&
         isValidOptionalBool(settings, 'hubSetupDismissed') &&
@@ -536,7 +546,7 @@ service cloud.firestore {
           'ageConfirmed13Plus', 'aiAgeConfirmed18Plus', 'aiConsent', 'cloudSyncConsent', 'tourCompleted',
           'guestMode', 'hasSeenWelcome', 'themePalette', 'appTone',
           'uniLiveCompanions', 'uniAccessory', 'uniSkin', 'uniSkinAutoRotate',
-          'uniPet', 'uniPersona', 'hubSetupFlow', 'hubSetupCompleted',
+          'uniPet', 'uniPersona', 'uniVoice', 'hubSetupFlow', 'hubSetupCompleted',
           'hubSetupDismissed', 'sharedHubDriveUrls', 'seenTabGuides',
           'notifications', 'plannerPrefs',
           'settings', 'createdAt', 'updatedAt'
@@ -579,6 +589,7 @@ service cloud.firestore {
         isValidOptionalBool(data, 'uniSkinAutoRotate') &&
         (!('uniPet' in data) || (data.uniPet is string && data.uniPet in ['none', 'cat', 'owl', 'fox', 'turtle', 'rabbit'])) &&
         (!('uniPersona' in data) || (data.uniPersona is string && data.uniPersona in ['amigo', 'exigente', 'calmo', 'curioso', 'treinador'])) &&
+        (!('uniVoice' in data) || isValidUniVoiceConfig(data.uniVoice)) &&
         (!('hubSetupFlow' in data) || (data.hubSetupFlow is string && data.hubSetupFlow in ['caloiro_inicio', 'caloiro_meio', 'veterano_inicio', 'veterano_meio'])) &&
         isValidOptionalBool(data, 'hubSetupCompleted') &&
         isValidOptionalBool(data, 'hubSetupDismissed') &&
@@ -945,7 +956,7 @@ service cloud.firestore {
     // Validates Uni agent document (/users/{userId}/uniAgents/{courseId})
     function isValidUniAgent(data, userId, courseId) {
       return data.keys().hasOnly([
-          'courseId', 'name', 'formId', 'skinId', 'petId', 'personaId', 'language',
+          'courseId', 'name', 'formId', 'skinId', 'petId', 'personaId', 'voiceConfig', 'language',
           'memoryEnabled', 'stage', 'mastery', 'milestones', 'items',
           'notebook', 'expedition', 'diploma', 'createdAt', 'updatedAt', 'userId'
         ]) &&
@@ -959,6 +970,7 @@ service cloud.firestore {
         isValidOptionalString(data, 'skinId', 1, 40) &&
         (!('petId' in data) || (data.petId is string && data.petId in ['none', 'cat', 'owl', 'fox', 'turtle', 'rabbit'])) &&
         data.personaId is string && data.personaId in ['amigo', 'exigente', 'calmo', 'curioso', 'treinador'] &&
+        (!('voiceConfig' in data) || isValidUniVoiceConfig(data.voiceConfig)) &&
         data.language is string && data.language.size() >= 2 && data.language.size() <= 15 &&
         data.memoryEnabled is bool &&
         data.stage is number && data.stage >= 0 && data.stage <= 4 &&
