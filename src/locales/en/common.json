@@ -665,6 +665,13 @@
       "empty": "I couldn't make anything out. Try speaking closer to the microphone.",
       "failed": "Couldn't transcribe. Try again.",
       "limitReached": "You reached the 3 minute limit. Transcribing."
+    },
+    "preparingParts": "Preparing the audio: {{done}} of {{total}} parts…",
+    "neuralFail": {
+      "quota": "Reason: your key has hit its voice request limit for now.",
+      "model": "Reason: your key does not have access to Google's voice models.",
+      "network": "Reason: Google is overloaded or the connection failed; try again shortly.",
+      "other": "Reason: Google did not return the audio."
     }
   }
 }

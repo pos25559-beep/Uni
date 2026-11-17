@@ -5,6 +5,7 @@ import { GoogleGenAI } from '@google/genai';
 import { tr } from '../i18n/tr';
 import { hasAiAccess } from '../lib/aiAccess';
 import { pcmBase64ToWavBase64 } from '../lib/audioPlayer';
+import { chunkPodcastLines, lineStartsInChunk, pcmDurationSeconds } from '../lib/podcastAudio';
 import { MAX_CUSTOM_AUDIO_BYTES, MAX_NATIVE_AUDIO_BYTES } from '../lib/audioRecorder';
 import { friendlyCustomKeyError } from '../lib/geminiErrors';
 import { normalizeAppLanguage } from '../lib/grading';
@@ -249,7 +250,9 @@ export async function synthesizePodcastWav(args: {
   stylePrompt?: string;
   language?: string;
   signal?: AbortSignal;
-}): Promise<{ wavBase64: string }> {
+  /** Progresso da síntese por partes (feitas / total). */
+  onProgress?: (done: number, total: number) => void;
+}): Promise<{ wavBase64: string; lineStartSeconds: number[] }> {
   const settings = useStore.getState().settings;
   if (!hasAiAccess(settings)) {
     throw new AiConsentRequiredError();
@@ -276,62 +279,90 @@ export async function synthesizePodcastWav(args: {
         ? 'Estudiante universitario curioso y atento que dialoga con naturalidad'
         : 'Estudante universitário curioso, expressivo e atento num diálogo natural';
 
-  const conversation = args.script.lines
-    .map((line) => {
-      const isHost = line.speaker.toLowerCase() === args.script.hostName.toLowerCase();
-      const cleaned = markdownLatexToSpeechText(line.text, lang);
-      const speaker = isHost ? args.script.hostName : args.script.coHostName;
-      return `${speaker}: ${cleaned}`;
-    })
-    .join('\n');
   const direction =
     lang === 'en'
       ? `Read this study conversation aloud. ${args.script.hostName} speaks in this style: ${hostStyle}. ${args.script.coHostName} speaks in this style: ${coHostStyle}.`
       : lang === 'es'
         ? `Lee en voz alta esta conversación de estudio. ${args.script.hostName} habla con este estilo: ${hostStyle}. ${args.script.coHostName} habla con este estilo: ${coHostStyle}.`
         : `Lê em voz alta esta conversa de estudo. ${args.script.hostName} fala com este estilo: ${hostStyle}. ${args.script.coHostName} fala com este estilo: ${coHostStyle}.`;
-  const parts = [{ text: `${direction}\n\n${conversation}` }];
+
+  const speakerOf = (speaker: string) =>
+    speaker.toLowerCase() === args.script.hostName.toLowerCase() ? args.script.hostName : args.script.coHostName;
+  const spoken = args.script.lines.map((line) => markdownLatexToSpeechText(line.text, lang));
+  // Um pedido com o episódio inteiro passa do que o modelo de voz devolve de uma vez:
+  // sintetiza por partes pequenas e junta o áudio.
+  const chunks = chunkPodcastLines(spoken.map((text) => ({ text })));
+  const ai = buildGenAiClient(customKey);
+  const speechConfig = {
+    multiSpeakerVoiceConfig: {
+      speakerVoiceConfigs: [
+        { speaker: args.script.hostName, voiceConfig: { prebuiltVoiceConfig: { voiceName: safeHostVoice } } },
+        { speaker: args.script.coHostName, voiceConfig: { prebuiltVoiceConfig: { voiceName: safeCoHostVoice } } },
+      ],
+    },
+  };
+  let workingModels = [TTS_DESIGN_MODEL, ...TTS_FALLBACK_MODELS];
+
+  const synthChunk = async (lineIndexes: number[]) => {
+    const conversation = lineIndexes
+      .map((i) => `${speakerOf(args.script.lines[i].speaker)}: ${spoken[i]}`)
+      .join('\n');
+    const { result: response, model } = await generateWithModelFallback(workingModels, (candidate) =>
+      ai.models.generateContent({
+        model: candidate,
+        contents: [{ role: 'user', parts: [{ text: `${direction}\n\n${conversation}` }] }],
+        config: { abortSignal: args.signal, responseModalities: ['AUDIO'], speechConfig },
+      }),
+    );
+    // As partes seguintes vão logo ao modelo que respondeu.
+    workingModels = [model, ...workingModels.filter((m) => m !== model)];
+    const audioPart = response.candidates?.[0]?.content?.parts?.find((part) => part.inlineData?.data)?.inlineData;
+    if (!audioPart?.data) throw new Error(tr('common:errors.audioSynthesizeFail'));
+    const rate = Number(/rate=(\d+)/i.exec(audioPart.mimeType ?? '')?.[1] ?? 24_000);
+    let pcm = atob(audioPart.data);
+    if (pcm.startsWith('RIFF')) pcm = pcm.slice(44);
+    return { pcm, rate };
+  };
 
   try {
-    const ai = buildGenAiClient(customKey);
-    const { result: response } = await generateWithModelFallback([TTS_DESIGN_MODEL, ...TTS_FALLBACK_MODELS], (candidate) =>
-      ai.models.generateContent({
-      model: candidate,
-      contents: [{ role: 'user', parts }],
-      config: {
-        abortSignal: args.signal,
-        responseModalities: ['AUDIO'],
-        speechConfig: {
-          multiSpeakerVoiceConfig: {
-            // Estritamente 2 locutores conforme especificação do Gemini 3.8 TTS
-            speakerVoiceConfigs: [
-              {
-                speaker: args.script.hostName,
-                voiceConfig: {
-                  prebuiltVoiceConfig: { voiceName: safeHostVoice },
-                },
-              },
-              {
-                speaker: args.script.coHostName,
-                voiceConfig: {
-                  prebuiltVoiceConfig: { voiceName: safeCoHostVoice },
-                },
-              },
-            ],
-          },
-        },
-      },
-    }),
-    );
-
-    const audioPart = response.candidates?.[0]?.content?.parts?.find((part) => part.inlineData?.data)?.inlineData;
-    if (!audioPart?.data) {
-      throw new Error(tr('common:errors.audioSynthesizeFail'));
+    const results: Array<{ pcm: string; rate: number }> = new Array(chunks.length);
+    let done = 0;
+    args.onProgress?.(0, chunks.length);
+    // A primeira parte sozinha (descobre o modelo que responde); depois 2 de cada vez.
+    let next = 0;
+    const worker = async () => {
+      while (next < chunks.length) {
+        const i = next++;
+        results[i] = await synthChunk(chunks[i].lineIndexes);
+        done += 1;
+        args.onProgress?.(done, chunks.length);
+      }
+    };
+    if (chunks.length > 0) {
+      next = 1;
+      results[0] = await synthChunk(chunks[0].lineIndexes);
+      done = 1;
+      args.onProgress?.(done, chunks.length);
     }
-    return { wavBase64: pcmBase64ToWavBase64(audioPart.data, audioPart.mimeType) };
+    await Promise.all([worker(), worker()]);
+
+    const rate = results[0]?.rate ?? 24_000;
+    const lineStartSeconds: number[] = new Array(args.script.lines.length).fill(0);
+    let offset = 0;
+    chunks.forEach((chunk, ci) => {
+      const duration = pcmDurationSeconds(results[ci].pcm.length, rate);
+      const starts = lineStartsInChunk(chunk.lineIndexes.map((i) => spoken[i].length), offset, duration);
+      chunk.lineIndexes.forEach((lineIdx, k) => {
+        lineStartSeconds[lineIdx] = starts[k];
+      });
+      offset += duration;
+    });
+    const joined = btoa(results.map((r) => r.pcm).join(''));
+    return { wavBase64: pcmBase64ToWavBase64(joined, `audio/L16;rate=${rate}`), lineStartSeconds };
   } catch (err) {
     if (args.signal?.aborted) throw err;
-    throw friendlyCustomKeyError(err);
+    // Erro original: o leitor explica o motivo (quota, modelo, rede) e cai para a voz do dispositivo.
+    throw err;
   }
 }
 

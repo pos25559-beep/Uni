@@ -8,9 +8,10 @@ import type { UniPersonaMode } from '../../lib/uniAccessories';
 import type { UniVoiceConfig } from '../../types';
 import { cx, showToast } from '../../lib/uiHelpers';
 import { requestAiConsent } from '../../store/useAiConsentStore';
+import { activeLineAt, classifyNeuralAudioError, type NeuralAudioFailure } from '../../lib/podcastAudio';
 
 /** Áudio neural já sintetizado nesta sessão (por ficha), para repetir sem nova chamada. */
-const wavCache = new Map<string, string>();
+const wavCache = new Map<string, { wav: string; lineStarts: number[] }>();
 
 /** Ritmo médio de fala (palavras por segundo) para estimar a duração do episódio. */
 const WORDS_PER_SECOND = 2.5;
@@ -47,6 +48,9 @@ export default function PodcastPlayer({
   const player = useUniAudioPlayer(sourceId);
   const [preparing, setPreparing] = useState(false);
   const [fallbackNote, setFallbackNote] = useState(false);
+  const [fallbackReason, setFallbackReason] = useState<NeuralAudioFailure | null>(null);
+  const [synthProgress, setSynthProgress] = useState<{ done: number; total: number } | null>(null);
+  const [lineStarts, setLineStarts] = useState<number[]>(() => wavCache.get(sheetId)?.lineStarts ?? []);
   const turnRefs = useRef<Array<HTMLLIElement | null>>([]);
   const listRef = useRef<HTMLOListElement | null>(null);
   const runRef = useRef(0);
@@ -55,6 +59,9 @@ export default function PodcastPlayer({
   const neural = hasCustomGeminiKey();
   const estimate = useMemo(() => estimatePodcastSeconds(script), [script]);
   const active = player.isPlaying || player.isPaused;
+  // No áudio neural (um só ficheiro) a fala ativa vem do tempo de reprodução.
+  const activeIdx =
+    player.mode === 'wav' && lineStarts.length > 0 ? activeLineAt(lineStarts, player.currentTime) : player.activeTurnIndex;
   const busy = preparing || player.isLoading;
 
   // Ao sair do ecrã ou trocar de episódio, pára o que estiver a tocar e cancela a síntese.
@@ -68,15 +75,15 @@ export default function PodcastPlayer({
 
   // Mantém a fala ativa visível dentro da lista (sem mexer na página inteira).
   useEffect(() => {
-    if (!active || player.activeTurnIndex < 0) return;
-    const el = turnRefs.current[player.activeTurnIndex];
+    if (!active || activeIdx < 0) return;
+    const el = turnRefs.current[activeIdx];
     const list = listRef.current;
     if (!el || !list) return;
     const top = el.offsetTop - list.offsetTop;
     const target = top - (list.clientHeight - el.clientHeight) / 2;
     const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     list.scrollTo({ top: Math.max(0, target), behavior: reduce ? 'auto' : 'smooth' });
-  }, [active, player.activeTurnIndex]);
+  }, [active, activeIdx]);
 
   const playOnDevice = async (run: number) => {
     if (run !== runRef.current) return;
@@ -93,6 +100,7 @@ export default function PodcastPlayer({
   const start = async () => {
     const run = ++runRef.current;
     setFallbackNote(false);
+    setFallbackReason(null);
     if (!neural) {
       await playOnDevice(run);
       return;
@@ -100,7 +108,8 @@ export default function PodcastPlayer({
 
     const cached = wavCache.get(sheetId);
     try {
-      let wav = cached;
+      let wav = cached?.wav;
+      if (cached) setLineStarts(cached.lineStarts);
       if (!wav) {
         setPreparing(true);
         player.setLoading();
@@ -115,21 +124,30 @@ export default function PodcastPlayer({
           stylePrompt: voice.stylePrompt,
           language,
           signal: controller.signal,
+          onProgress: (done, total) => {
+            if (run === runRef.current) setSynthProgress({ done, total });
+          },
         });
         wav = result.wavBase64;
-        wavCache.set(sheetId, wav);
+        wavCache.set(sheetId, { wav, lineStarts: result.lineStartSeconds });
+        setLineStarts(result.lineStartSeconds);
       }
       if (run !== runRef.current) return;
       setPreparing(false);
+      setSynthProgress(null);
       await playWavBase64(sourceId, wav);
     } catch (err) {
       if (run !== runRef.current) return;
       setPreparing(false);
+      setSynthProgress(null);
       stopUniAudio();
+      if (import.meta.env.DEV) console.warn('[Uni podcast]', err);
       if (err instanceof Error && err.name === 'AiConsentRequiredError') {
         requestAiConsent();
         return;
       }
+      const kind = (err as { kind?: string } | null)?.kind;
+      setFallbackReason(kind === 'quota' ? 'quota' : classifyNeuralAudioError(err));
       setFallbackNote(true);
       await playOnDevice(run);
     }
@@ -255,9 +273,11 @@ export default function PodcastPlayer({
 
       <p role="status" aria-live="polite" className="text-xs text-muted">
         {busy
-          ? t('notebook.podcast.preparing')
+          ? synthProgress && synthProgress.total > 1
+            ? t('common:audio.preparingParts', { done: synthProgress.done, total: synthProgress.total })
+            : t('notebook.podcast.preparing')
           : fallbackNote
-            ? t('notebook.podcast.fallback')
+            ? `${t('notebook.podcast.fallback')} ${t(`common:audio.neuralFail.${fallbackReason ?? 'other'}`)}`
             : !neural
               ? t('notebook.podcast.deviceNote')
               : ''}
@@ -270,7 +290,7 @@ export default function PodcastPlayer({
       >
         {script.lines.map((line, idx) => {
           const isHost = line.speaker.toLowerCase() === script.hostName.toLowerCase();
-          const isActive = active && player.activeTurnIndex === idx;
+          const isActive = active && activeIdx === idx;
           return (
             <li
               key={`${idx}-${line.speaker}`}

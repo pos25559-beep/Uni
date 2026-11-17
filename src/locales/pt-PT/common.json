@@ -665,6 +665,13 @@
       "empty": "Não percebi nada. Tenta falar mais perto do microfone.",
       "failed": "Não consegui transcrever. Tenta outra vez.",
       "limitReached": "Chegaste ao limite de 3 minutos. A transcrever."
+    },
+    "preparingParts": "A preparar o áudio: {{done}} de {{total}} partes…",
+    "neuralFail": {
+      "quota": "Motivo: a tua chave atingiu o limite de pedidos de voz por agora.",
+      "model": "Motivo: a tua chave não tem acesso aos modelos de voz da Google.",
+      "network": "Motivo: a Google está sobrecarregada ou a ligação falhou; tenta daqui a pouco.",
+      "other": "Motivo: a Google não devolveu o áudio."
     }
   }
 }
