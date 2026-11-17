@@ -1,9 +1,11 @@
-import { FileText, Image as ImageIcon, Paperclip, ArrowUp, Square, X } from 'lucide-react';
+import { FileText, Image as ImageIcon, Paperclip, ArrowUp, Check, Loader2, Mic, Square, X } from 'lucide-react';
 import { useId, useLayoutEffect, useRef, useState } from 'react';
 import type { ChangeEvent, KeyboardEvent, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fileToChatAttachment, type ChatAttachment } from '../../integrations/gemini';
 import { cx, showToast } from '../../lib/uiHelpers';
+import { appendTranscript, formatElapsed } from '../audio/speechText';
+import { useDictation } from '../audio/useDictation';
 
 export interface ComposerSlotHelpers {
   openFilePicker: () => void;
@@ -34,12 +36,19 @@ export function Composer({
   placeholder,
 }: Props) {
   const { t } = useTranslation('assistant');
+  const { t: tc } = useTranslation('common');
   const resolvedPlaceholder = placeholder ?? t('placeholder');
   const [text, setText] = useState('');
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const fileInputId = useId();
   const ref = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const dictation = useDictation((transcript) => {
+    setText((prev) => appendTranscript(prev, transcript));
+    requestAnimationFrame(() => ref.current?.focus());
+  });
+  const dictating = dictation.status !== 'idle';
 
   const slotHelpers: ComposerSlotHelpers = {
     openFilePicker: () => {
@@ -90,6 +99,9 @@ export function Composer({
     setAttachments((prev) => prev.filter((a) => a.id !== id));
   };
 
+  // Como nas apps de mensagens: o microfone ocupa o lugar de «enviar» enquanto não há nada para enviar.
+  const showMic = dictation.supported && !disabled && !loading && !canSend;
+
   const submit = () => {
     if (!canSend) return;
     const payloadText = trimmed || t('composer.analyzeAttachments');
@@ -136,6 +148,44 @@ export function Composer({
         </div>
       )}
 
+      {dictating ? (
+        <div className="flex items-center gap-1.5" role="group" aria-label={tc('audio.dictation.group')}>
+          <button
+            type="button"
+            onClick={dictation.cancel}
+            aria-label={tc('audio.dictation.cancel')}
+            title={tc('audio.dictation.cancel')}
+            className="grid size-11 shrink-0 place-items-center rounded-full text-muted transition hover:bg-surface-2 hover:text-danger focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
+            <X size={18} aria-hidden />
+          </button>
+          <div className="flex min-h-11 min-w-0 flex-1 items-center gap-2 px-1.5 text-sm text-fg" role="status" aria-live="polite">
+            {dictation.status === 'recording' ? (
+              <>
+                <span className="size-2.5 shrink-0 animate-pulse rounded-full bg-danger" aria-hidden />
+                <span className="tabular-nums">{formatElapsed(dictation.elapsed)}</span>
+                <span className="truncate text-muted">{tc('audio.dictation.recording')}</span>
+              </>
+            ) : (
+              <>
+                <Loader2 size={16} className="shrink-0 animate-spin text-accent-ink" aria-hidden />
+                <span className="truncate text-muted">{tc('audio.dictation.transcribing')}</span>
+              </>
+            )}
+          </div>
+          {dictation.status === 'recording' && (
+            <button
+              type="button"
+              onClick={() => void dictation.stop()}
+              aria-label={tc('audio.dictation.stop')}
+              title={tc('audio.dictation.stop')}
+              className="grid size-11 shrink-0 place-items-center rounded-full bg-ink-cta text-ink-cta-fg transition hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              <Check size={18} strokeWidth={2.2} aria-hidden />
+            </button>
+          )}
+        </div>
+      ) : (
       <div className="flex items-end gap-1.5">
         {resolvedLeadingSlot}
         <input
@@ -184,6 +234,16 @@ export function Composer({
             <Square size={13} className="fill-current" />
             {t('composer.stop')}
           </button>
+        ) : showMic ? (
+          <button
+            type="button"
+            onClick={dictation.start}
+            aria-label={tc('audio.dictation.start')}
+            title={tc('audio.dictation.start')}
+            className="grid size-11 shrink-0 place-items-center rounded-full bg-surface-2 text-fg transition hover:bg-accent-soft hover:text-accent-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
+            <Mic size={18} aria-hidden />
+          </button>
         ) : (
           <button
             type="button"
@@ -196,6 +256,7 @@ export function Composer({
           </button>
         )}
       </div>
+      )}
     </div>
   );
 }

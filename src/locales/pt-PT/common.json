@@ -635,5 +635,36 @@
     "more": "+{{count}}",
     "moreLabel": "Mostrar mais {{count}} fontes",
     "hide": "Esconder fontes"
+  },
+  "audio": {
+    "listen": "Ouvir esta resposta",
+    "listenShort": "Ouvir",
+    "listenTopic": "Ouvir o tópico «{{title}}»",
+    "listenGuide": "Ouvir o guia",
+    "loading": "A preparar…",
+    "cancelLoading": "Cancelar a preparação do áudio",
+    "controls": "Controlo do áudio",
+    "pause": "Pausar",
+    "resume": "Continuar",
+    "stop": "Parar",
+    "speed": "Velocidade {{rate}}",
+    "unavailable": "Este dispositivo não consegue ler em voz alta.",
+    "empty": "Não há texto para ouvir.",
+    "failed": "Não consegui ler em voz alta. Tenta outra vez.",
+    "fallback": "Voz neural indisponível. A usar a voz do dispositivo.",
+    "dictation": {
+      "group": "Ditado por voz",
+      "start": "Ditar por voz",
+      "stop": "Parar e transcrever",
+      "cancel": "Cancelar gravação",
+      "recording": "A gravar",
+      "transcribing": "A transcrever…",
+      "denied": "Sem acesso ao microfone. Permite-o nas definições do navegador.",
+      "micError": "Não consegui usar o microfone.",
+      "tooLong": "A gravação é demasiado longa para transcrever. Tenta uma mais curta.",
+      "empty": "Não percebi nada. Tenta falar mais perto do microfone.",
+      "failed": "Não consegui transcrever. Tenta outra vez.",
+      "limitReached": "Chegaste ao limite de 3 minutos. A transcrever."
+    }
   }
 }

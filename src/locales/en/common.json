@@ -635,5 +635,36 @@
     "more": "+{{count}}",
     "moreLabel": "Show {{count}} more sources",
     "hide": "Hide sources"
+  },
+  "audio": {
+    "listen": "Listen to this answer",
+    "listenShort": "Listen",
+    "listenTopic": "Listen to the topic “{{title}}”",
+    "listenGuide": "Listen to the guide",
+    "loading": "Preparing…",
+    "cancelLoading": "Cancel audio preparation",
+    "controls": "Audio controls",
+    "pause": "Pause",
+    "resume": "Resume",
+    "stop": "Stop",
+    "speed": "Speed {{rate}}",
+    "unavailable": "This device cannot read aloud.",
+    "empty": "There is no text to listen to.",
+    "failed": "Couldn't read it aloud. Try again.",
+    "fallback": "Neural voice unavailable. Using the device voice.",
+    "dictation": {
+      "group": "Voice dictation",
+      "start": "Dictate by voice",
+      "stop": "Stop and transcribe",
+      "cancel": "Cancel recording",
+      "recording": "Recording",
+      "transcribing": "Transcribing…",
+      "denied": "No microphone access. Allow it in your browser settings.",
+      "micError": "Couldn't use the microphone.",
+      "tooLong": "The recording is too long to transcribe. Try a shorter one.",
+      "empty": "I couldn't make anything out. Try speaking closer to the microphone.",
+      "failed": "Couldn't transcribe. Try again.",
+      "limitReached": "You reached the 3 minute limit. Transcribing."
+    }
   }
 }

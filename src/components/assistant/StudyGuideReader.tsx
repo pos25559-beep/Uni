@@ -3,6 +3,12 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEven
 import { useTranslation } from 'react-i18next';
 import { topicCounts, type StudyGuide } from '../../lib/studyGuide';
 import { cx } from '../../lib/uiHelpers';
+import { ListenButton } from '../audio/ListenButton';
+import {
+  studyGuideSpeechMarkdown,
+  studyGuideTopicSpeechMarkdown,
+  type GuideSpeechLabels,
+} from '../audio/speechText';
 import StudyGuideView, {
   GUIDE_CHECK_ID,
   GUIDE_PLAN_ID,
@@ -122,6 +128,18 @@ export default function StudyGuideReader({
   onRefineTopic: (idx: number, instruction: string) => Promise<string | null>;
 }) {
   const { t } = useTranslation('assistant');
+  const { t: tc } = useTranslation('common');
+  const speechLabels = useMemo<GuideSpeechLabels>(
+    () => ({
+      keyIdeas: t('notebook.guide.keyIdeas'),
+      formulas: t('notebook.guide.formulas'),
+      workedExample: t('notebook.guide.workedExample'),
+      pitfalls: t('notebook.guide.pitfalls'),
+    }),
+    [t],
+  );
+  const guideSpeech = useMemo(() => studyGuideSpeechMarkdown(guide, speechLabels), [guide, speechLabels]);
+  const guideSourceId = useId();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const pillsRef = useRef<HTMLDivElement>(null);
@@ -259,6 +277,13 @@ export default function StudyGuideReader({
             )}
           </div>
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+            <ListenButton
+              sourceId={`guide:${guideSourceId}`}
+              text={guideSpeech}
+              size="sm"
+              label={tc('audio.listenGuide')}
+              className="border border-line bg-surface-2 !text-fg hover:border-line-strong"
+            />
             <button type="button" onClick={onCopy} title={t('notebook.copyMd')} className={cx(actionCls, secondaryCls)}>
               <Copy size={16} aria-hidden />
               <span className="sr-only sm:not-sr-only">{t('notebook.copyMd')}</span>
@@ -354,12 +379,21 @@ export default function StudyGuideReader({
               variant="reader"
               busyTopic={busyTopic}
               topicFooter={(idx) => (
+                <>
+                  <div className="mt-6 flex items-center gap-2 border-t border-line pt-3">
+                    <ListenButton
+                      sourceId={`guide:${guideSourceId}:topic:${idx}`}
+                      text={studyGuideTopicSpeechMarkdown(guide.topics[idx], speechLabels)}
+                      label={tc('audio.listenTopic', { title: guide.topics[idx].title })}
+                    />
+                  </div>
                 <RefineForm
                   topicTitle={guide.topics[idx].title}
                   busy={busyTopic === idx}
                   disabled={busyTopic !== null}
                   onSubmit={(instruction) => refine(idx, instruction)}
                 />
+                </>
               )}
             />
           </main>

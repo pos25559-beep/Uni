@@ -24,6 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import AssistantModals from '../components/assistant/AssistantModals';
 import { Composer } from '../components/assistant/Composer';
+import { ListenButton } from '../components/audio/ListenButton';
 import { AnswerSources, SourcesPill, SourcesSheet } from '../components/assistant/SourcesSheet';
 import { Markdown } from '../components/assistant/Markdown';
 import { QuickActions } from '../components/assistant/QuickActions';
@@ -791,6 +792,7 @@ export default function Assistant() {
                   )}
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
+                  <ListenButton sourceId={`tutor:${m.id}`} text={m.text} />
                   {flaggedWrongIds[m.id] ? (
                     <span className="inline-flex min-h-11 items-center gap-1 px-2 text-xs font-medium text-coral">
                       <Flag size={12} /> {t('page.flagged')}
