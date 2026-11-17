@@ -5,7 +5,6 @@ import {
   Brain,
   CalendarDays,
   ChevronDown,
-  ChevronUp,
   FileText,
   Flag,
   FolderOpen,
@@ -25,6 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import AssistantModals from '../components/assistant/AssistantModals';
 import { Composer } from '../components/assistant/Composer';
+import { AnswerSources, SourcesPill, SourcesSheet } from '../components/assistant/SourcesSheet';
 import { Markdown } from '../components/assistant/Markdown';
 import { QuickActions } from '../components/assistant/QuickActions';
 import UniLiveVoiceModal from '../components/assistant/UniLiveVoiceModal';
@@ -98,7 +98,7 @@ export default function Assistant() {
   const [convsModalMode, setConvsModalMode] = useState<'list' | 'new' | null>(null);
   const [confirmDeleteConv, setConfirmDeleteConv] = useState(false);
   const [showActions, setShowActions] = useState(false);
-  const [materialsStripMode, setMaterialsStripMode] = useState<'compact' | 'collapsed' | 'expanded'>('compact');
+  const [sourcesOpen, setSourcesOpen] = useState(false);
   const [tutorOpen, setTutorOpen] = useState(false);
   const [keyGuideOpen, setKeyGuideOpen] = useState(false);
   const [collectiblesOpen, setCollectiblesOpen] = useState(false);
@@ -225,7 +225,6 @@ export default function Assistant() {
 
   const handleClearAttachedMaterials = () => {
     clearAttachedMaterials();
-    setMaterialsStripMode('compact');
   };
 
   const firstName = userName?.trim().split(/\s+/)[0] || '';
@@ -770,10 +769,7 @@ export default function Assistant() {
                 <div className="flex flex-wrap items-center gap-2">
                   <span>{t('page.suggestion')}</span>
                   {m.sourceDocTitles && m.sourceDocTitles.length > 0 && (
-                    <span className="inline-flex items-center gap-1 text-fg">
-                      <FileText size={12} className="text-accent" />
-                      {m.sourceDocTitles.join(', ')}
-                    </span>
+                    <AnswerSources text={m.text} titles={m.sourceDocTitles} />
                   )}
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -956,24 +952,7 @@ export default function Assistant() {
                 })),
               ]}
             />
-            <button
-              type="button"
-              onClick={() => setShowDocPicker(true)}
-              aria-label={t('page.attachNotes')}
-              className={cx(
-                'flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition',
-                attachedMaterials.length > 0
-                  ? 'border-accent bg-accent-soft text-accent-ink'
-                  : 'border-line bg-surface text-muted hover:text-fg',
-              )}
-            >
-              <FileText size={14} />
-              <span>
-                {attachedMaterials.length === 0
-                  ? t('page.attachNotes')
-                  : t('page.attachedN', { count: attachedMaterials.length })}
-              </span>
-            </button>
+            <SourcesPill count={attachedMaterials.length} onClick={() => setSourcesOpen(true)} />
           </div>
           <button
             type="button"
@@ -986,128 +965,21 @@ export default function Assistant() {
         </div>
 
         {(activeCourse || attachedMaterials.length > 0) && (
-          <div className="space-y-1.5">
-            {materialsStripMode === 'collapsed' && attachedMaterials.length > 0 ? (
-              <div className="flex items-center justify-between gap-2 rounded-2xl border border-line/80 bg-surface-2/60 px-2.5 py-1.5 text-xs">
-                <div className="flex min-w-0 items-center gap-1.5">
-                  {activeCourse && (
-                    <span className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full bg-accent-soft pl-3 pr-0.5 font-medium text-accent-ink md:hidden">
-                      <span className="max-w-[90px] truncate">{activeCourse.shortName || activeCourse.name}</span>
-                      <button
-                        type="button"
-                        onClick={() => setActiveCourseId('all')}
-                        aria-label={t('page.clearCourse')}
-                        className="grid size-11 place-items-center rounded-full hover:text-danger"
-                      >
-                        <X size={13} />
-                      </button>
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setMaterialsStripMode('compact')}
-                    aria-label={t('page.expandNotes')}
-                    className="inline-flex min-h-11 items-center gap-1.5 truncate font-semibold text-fg hover:text-accent-ink"
-                  >
-                    <Paperclip size={12} className="shrink-0 text-accent" />
-                    <span className="truncate">{t('page.notesAttachedN', { count: attachedMaterials.length })}</span>
-                    <ChevronDown size={13} className="shrink-0 text-muted" />
-                  </button>
-                </div>
+          <div className="flex min-w-0 items-center gap-1.5 md:hidden">
+            {activeCourse && (
+              <span className="inline-flex min-h-11 min-w-0 items-center gap-1 rounded-full bg-accent-soft pl-3 pr-0.5 text-xs font-medium text-accent-ink">
+                <span className="max-w-[120px] truncate">{activeCourse.shortName || activeCourse.name}</span>
                 <button
                   type="button"
-                  onClick={handleClearAttachedMaterials}
-                  aria-label={t('page.clearAllAttached')}
-                  className="min-h-11 shrink-0 rounded-full px-3 text-xs font-medium text-muted hover:bg-surface hover:text-danger"
+                  onClick={() => setActiveCourseId('all')}
+                  aria-label={t('page.clearCourse')}
+                  className="grid size-11 place-items-center rounded-full hover:text-danger"
                 >
-                  {t('page.clear')}
+                  <X size={13} />
                 </button>
-              </div>
-            ) : (
-              <>
-                {attachedMaterials.length > 1 && (
-                  <div className="flex items-center justify-between gap-2 px-0.5 text-xs">
-                    <span className="font-medium text-muted">
-                      {t('page.activeNotes', { count: attachedMaterials.length })}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setMaterialsStripMode((m) => (m === 'expanded' ? 'compact' : 'expanded'))
-                        }
-                        className="inline-flex min-h-11 items-center gap-1 rounded-full px-2.5 font-medium text-muted hover:bg-surface-2 hover:text-fg"
-                      >
-                        {materialsStripMode === 'expanded' ? (
-                          <>
-                            <ChevronUp size={12} /> {t('page.oneLine')}
-                          </>
-                        ) : (
-                          <>
-                            <ChevronDown size={12} /> {t('page.seeList')}
-                          </>
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setMaterialsStripMode('collapsed')}
-                        aria-label={t('page.shrinkBar')}
-                        className="inline-flex min-h-11 items-center gap-1 rounded-full bg-surface-2 px-3 font-semibold text-fg hover:bg-surface-2/80"
-                      >
-                        {t('page.shrink')}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleClearAttachedMaterials}
-                        aria-label={t('page.clearAllNotes')}
-                        className="min-h-11 rounded-full px-2.5 text-muted hover:text-danger"
-                      >
-                        {t('page.clear')}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <div
-                  className={cx(
-                    'flex gap-1.5',
-                    materialsStripMode === 'expanded'
-                      ? 'max-h-28 flex-wrap overflow-y-auto pr-1'
-                      : 'flex-nowrap items-center overflow-x-auto pb-0.5 no-scrollbar',
-                  )}
-                >
-                  {activeCourse && (
-                    <span className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full bg-accent-soft pl-3 pr-0.5 text-xs font-medium text-accent-ink md:hidden">
-                      <span className="max-w-[140px] truncate">{activeCourse.shortName || activeCourse.name}</span>
-                      <button
-                        type="button"
-                        onClick={() => setActiveCourseId('all')}
-                        aria-label={t('page.clearCourse')}
-                        className="grid size-11 place-items-center rounded-full hover:text-danger"
-                      >
-                        <X size={13} />
-                      </button>
-                    </span>
-                  )}
-                  {attachedMaterials.map((m) => (
-                    <span
-                      key={m.id}
-                      className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full bg-surface-2 pl-3 pr-0.5 text-xs text-muted"
-                    >
-                      <span className="max-w-[140px] truncate">{m.title}</span>
-                      <button
-                        type="button"
-                        onClick={() => toggleMaterial(m.id)}
-                        aria-label={t('page.remove', { title: m.title })}
-                        className="grid size-11 place-items-center rounded-full hover:text-danger"
-                      >
-                        <X size={13} />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              </>
+              </span>
             )}
+            <SourcesPill count={attachedMaterials.length} onClick={() => setSourcesOpen(true)} />
           </div>
         )}
 
@@ -1206,7 +1078,7 @@ export default function Assistant() {
                   type="button"
                   onClick={() => {
                     setMobileComposerToolsOpen(false);
-                    setShowDocPicker(true);
+                    setSourcesOpen(true);
                   }}
                   className="flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 text-xs font-semibold text-fg"
                 >
@@ -1250,6 +1122,16 @@ export default function Assistant() {
           }
         />
       </div>
+
+      <SourcesSheet
+        open={sourcesOpen}
+        onClose={() => setSourcesOpen(false)}
+        materials={availableMaterials}
+        selectedIds={selectedMaterialIds}
+        onToggle={toggleMaterial}
+        onSelectMany={selectAllMaterials}
+        onOpenAttach={() => setShowDocPicker(true)}
+      />
 
       <AssistantModals
         menuOpen={menuOpen}

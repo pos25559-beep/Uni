@@ -102,6 +102,18 @@ describe('visionParsers.looksSyncableReply', () => {
     expect(looksSyncableReply('O teu 1.º teste de TEP é em 20/11 às 09:00 na sala 1.2.')).toBe(true);
     expect(looksSyncableReply('Aula TP de TEP às 14:30 às terças na sala A2.1')).toBe(true);
   });
+
+  it('não oferece guardar datas por uma data citada num guia ou num quiz', () => {
+    expect(
+      looksSyncableReply(
+        'Objetivo: este guia prepara-te para o teste de 20 de novembro de 2026 (30% da nota).\n1. O que é um campo cinematicamente admissível?',
+      ),
+    ).toBe(false);
+    expect(
+      looksSyncableReply('- [ ] 2026-11-18: revisão do teste de 2010 (150 min)\n- [ ] 2026-11-19: exame de 2011 (180 min)'),
+    ).toBe(false);
+    expect(looksSyncableReply('1.º Teste de TEP: 20/11\n2.º Teste de TEP: 18/12')).toBe(true);
+  });
 });
 
 describe('calendar.formatAssessmentCalendarTitle', () => {

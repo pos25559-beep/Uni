@@ -425,23 +425,22 @@ export function extractUniSyncBlock(rawText: string): {
 export function looksSyncableReply(text: string): boolean {
   const clean = text.trim();
   if (clean.length < 18) return false;
-  const hasAcademicKind =
-    /(teste|exame|frequ[eê]ncia|avalia[cç]|trabalho|projeto|entrega|hor[aá]rio|aula|calend[aá]rio)/i.test(
-      clean,
-    );
-  if (!hasAcademicKind) return false;
-  const hasExplicitDate =
-    /(\b\d{1,2}[/.-]\d{1,2}\b|\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}\s+de\s+(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez))/i.test(
-      clean,
-    );
-  const hasClockTime = /\b\d{1,2}(?:[:h]\d{2}|h)\b/i.test(clean);
-  const hasWeekdayMarker =
-    /(\b[2-6][ªa]\b|\b(?:segunda|ter[cç]a|quarta|quinta|sexta|s[aá]bado)(?:-feira)?\b)/i.test(
-      clean,
-    );
-  return (
-    hasExplicitDate ||
-    (hasClockTime &&
-      (hasWeekdayMarker || /\b(?:[àa]s|das|entre|sala|audit[oó]rio|t|tp|pl|ot)\b/i.test(clean)))
+  const academicKind = /(teste|exame|frequ[eê]ncia|avalia[cç]|trabalho|projeto|entrega|hor[aá]rio|aula|calend[aá]rio)/i;
+  if (!academicKind.test(clean)) return false;
+  const explicitDate =
+    /(\b\d{1,2}[/.-]\d{1,2}\b|\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}\s+de\s+(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez))/i;
+  const clockTime = /\b\d{1,2}(?:[:h]\d{2}|h)\b/i;
+  const weekdayMarker = /(\b[2-6][ªa]\b|\b(?:segunda|ter[cç]a|quarta|quinta|sexta|s[aá]bado)(?:-feira)?\b)/i;
+  const placeMarker = /\b(?:[àa]s|das|entre|sala|audit[oó]rio|t|tp|pl|ot)\b/i;
+  // Uma linha concreta (data com hora ou sala, ou hora com dia da semana) chega para
+  // oferecer guardar. Uma data solta numa explicação, guia ou quiz («o teste de 20 de
+  // novembro») só conta se houver pelo menos 2 linhas assim, e nunca as de checklists.
+  const lines = clean.split(/\n+/).filter((line) => academicKind.test(line) && !/\[\s?[xX ]?\s?\]/.test(line));
+  const strong = lines.filter(
+    (line) =>
+      (explicitDate.test(line) && (clockTime.test(line) || placeMarker.test(line.replace(explicitDate, '')))) ||
+      (clockTime.test(line) && (weekdayMarker.test(line) || placeMarker.test(line))),
   );
+  if (strong.length > 0) return true;
+  return lines.filter((line) => explicitDate.test(line)).length >= 2;
 }
