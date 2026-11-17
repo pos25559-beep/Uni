@@ -1,0 +1,250 @@
+import { X } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import { useEffect, useId, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
+import { hapticTap } from '../../lib/nativeBridge';
+import { cx, getToastQueue, subscribeToasts, type ToastItem } from '../../lib/uiHelpers';
+import { useSheetSwipeDismiss } from '../../lib/useSheetSwipeDismiss';
+import { Button } from './Button';
+
+export function Modal({
+  open,
+  onClose,
+  title,
+  children,
+  footer,
+  maxWidthClass = 'sm:max-w-lg',
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  children: ReactNode;
+  footer?: ReactNode;
+  maxWidthClass?: string;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const wasOpenRef = useRef(false);
+  const titleId = useId();
+  const pressedOutsideRef = useRef(false);
+
+  useSheetSwipeDismiss({
+    ref: dialogRef,
+    open,
+    onClose,
+    maxViewportWidth: 640,
+  });
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (open && !wasOpenRef.current) {
+      previousFocusRef.current =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    }
+    if (open && dialog && !dialog.open) {
+      dialog.showModal();
+    } else if (!open && dialog && dialog.open) {
+      dialog.close();
+    }
+    if (!open && wasOpenRef.current) {
+      const target = previousFocusRef.current;
+      previousFocusRef.current = null;
+      if (target && target.isConnected) {
+        requestAnimationFrame(() => target.focus());
+      }
+    }
+    wasOpenRef.current = open;
+  }, [open]);
+
+  if (!open) return null;
+
+  const isOutsideDialog = (clientX: number, clientY: number) => {
+    const dialog = dialogRef.current;
+    if (!dialog) return false;
+    const rect = dialog.getBoundingClientRect();
+    return (
+      clientX < rect.left ||
+      clientX > rect.right ||
+      clientY < rect.top ||
+      clientY > rect.bottom
+    );
+  };
+
+  return (
+    <dialog
+      ref={dialogRef}
+      aria-labelledby={titleId}
+      onClose={onClose}
+      onCancel={(e) => {
+        e.preventDefault();
+        onClose();
+      }}
+      onPointerDown={(e) => {
+        if (!('closedBy' in HTMLDialogElement.prototype)) {
+          pressedOutsideRef.current = isOutsideDialog(e.clientX, e.clientY);
+        }
+      }}
+      onPointerUp={(e) => {
+        if (
+          !('closedBy' in HTMLDialogElement.prototype) &&
+          pressedOutsideRef.current &&
+          isOutsideDialog(e.clientX, e.clientY)
+        ) {
+          onClose();
+        }
+        pressedOutsideRef.current = false;
+      }}
+      {...({ closedby: 'any' } as Record<string, unknown>)}
+      className={cx(
+        'rise m-auto mb-0 w-full max-w-none open:flex max-h-[90dvh] flex-col overscroll-contain rounded-t-[26px] border border-line bg-surface p-0 text-fg shadow-float backdrop:bg-black/45 backdrop:backdrop-blur-[2px] sm:mb-auto sm:rounded-[24px]',
+        maxWidthClass,
+      )}
+    >
+      <div data-sheet-handle="" className="touch-none sm:touch-auto">
+        <div className="mx-auto mt-2.5 h-1.5 w-11 rounded-full bg-line sm:hidden" aria-hidden="true" />
+        <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
+          <h2 id={titleId} className="font-display text-base font-bold">{title}</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fechar"
+            className="hidden size-11 items-center justify-center rounded-full text-muted transition hover:bg-surface-2 hover:text-fg sm:flex"
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+      <div className="space-y-4 overflow-y-auto overscroll-contain px-5 py-4">{children}</div>
+      {footer && (
+        <div className="flex flex-wrap justify-end gap-2 border-t border-line px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:pb-4">
+          {footer}
+        </div>
+      )}
+    </dialog>
+  );
+}
+
+/** Folha de ações móvel para menus compactos sem sobrecarregar ecrãs pequenos. */
+export function ActionSheet({
+  open,
+  onClose,
+  title,
+  actions,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title?: string;
+  actions: ReadonlyArray<{
+    id: string;
+    label: string;
+    hint?: string;
+    icon?: ReactNode;
+    danger?: boolean;
+    onSelect: () => void;
+  }>;
+}) {
+  const sheetRef = useRef<HTMLDivElement>(null);
+  useSheetSwipeDismiss({ ref: sheetRef, open, onClose });
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label={title || 'Ações'}>
+          <motion.button
+            type="button"
+            aria-label="Fechar opções"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"
+          />
+          <motion.div
+            initial={{ y: 40, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: '100%', opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 360, damping: 28 }}
+            className="relative z-10 w-full max-w-md"
+          >
+            <div
+              ref={sheetRef}
+              className="w-full overscroll-contain rounded-t-[28px] border border-line bg-surface px-4 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-float sm:rounded-[26px] sm:pb-4"
+            >
+              <div
+                data-sheet-handle=""
+                className="-mx-4 -mt-3 mb-2 cursor-grab touch-none px-4 pt-3 pb-1 active:cursor-grabbing sm:cursor-auto sm:touch-auto"
+              >
+                <div className="mx-auto mb-2 h-1.5 w-11 rounded-full bg-line sm:hidden" aria-hidden="true" />
+                {title && <p className="px-2 font-display text-sm font-bold text-fg">{title}</p>}
+              </div>
+              <div className="divide-y divide-line overflow-hidden rounded-[20px] border border-line bg-bg">
+                {actions.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      void hapticTap();
+                      onClose();
+                      item.onSelect();
+                    }}
+                    className="flex min-h-[54px] w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-surface-2"
+                  >
+                    {item.icon && (
+                      <span className={cx('shrink-0', item.danger ? 'text-coral' : 'text-fg')}>
+                        {item.icon}
+                      </span>
+                    )}
+                    <span className="min-w-0 flex-1">
+                      <span className={cx('block text-sm font-semibold', item.danger ? 'text-coral' : 'text-fg')}>
+                        {item.label}
+                      </span>
+                      {item.hint && <span className="block text-xs text-muted">{item.hint}</span>}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <Button variant="secondary" className="mt-3 w-full" onClick={onClose}>
+                Cancelar
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+export function ToastViewport() {
+  const [items, setItems] = useState<ToastItem[]>(() => getToastQueue());
+
+  useEffect(() => subscribeToasts(setItems), []);
+
+  return (
+    <div
+      aria-live="polite"
+      className="pointer-events-none fixed inset-x-0 top-[max(0.75rem,env(safe-area-inset-top))] z-[70] flex flex-col items-center gap-2 px-4"
+    >
+      <AnimatePresence>
+        {items.map((t) => (
+          <motion.div
+            key={t.id}
+            initial={{ opacity: 0, y: -12, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.96 }}
+            transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+            className={cx(
+              'pointer-events-auto flex items-center gap-2 rounded-full border px-4 py-2.5 text-xs font-semibold shadow-float',
+              t.tone === 'danger'
+                ? 'border-coral/40 bg-coral-soft text-coral'
+                : t.tone === 'ok'
+                  ? 'border-accent/35 bg-ink-cta text-ink-cta-fg'
+                  : 'border-line bg-surface text-fg',
+            )}
+          >
+            {t.message}
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+}
