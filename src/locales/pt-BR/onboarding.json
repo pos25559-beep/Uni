@@ -110,13 +110,13 @@
   },
   "s4": {
     "day": {
+      "0": "Dom",
       "1": "Seg",
       "2": "Ter",
       "3": "Qua",
       "4": "Qui",
       "5": "Sex",
-      "6": "Sáb",
-      "0": "Dom"
+      "6": "Sáb"
     },
     "preset": {
       "90": "Leve",
@@ -141,7 +141,7 @@
     "ageBody": "confirmo que tenho pelo menos {{age}} anos ou autorização do meu responsável.",
     "ageError": "Confirme sua idade mínima acima para entrar no caderno.",
     "aiTitle": "Ativar o Tutor Uni com IA (opcional):",
-    "aiBody": "permite que o Uni responda perguntas, gere desafios de revisão e leia prints que você enviar. Seus dados ficam apenas para o seu estudo.",
+    "aiBody": "permite que o Uni responda perguntas, gere desafios de revisão e leia prints que você enviar. É preciso ter 18 anos ou mais; o que você enviar vai para o Google (Gemini), que no nível gratuito pode usar o conteúdo para melhorar seus produtos.",
     "cloudTitle": "Cópia segura na nuvem (opcional):",
     "cloudSigned": "salva seu caderno na sua conta ({{email}}) para acessar em vários dispositivos.",
     "cloudLater": "se você entrar mais tarde, sincroniza seu caderno entre celular e computador.",

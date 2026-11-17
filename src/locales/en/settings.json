@@ -332,6 +332,31 @@
     }
   },
   "gemini": {
-    "keyLocalOnly": "Your key is stored on this device only. It is never sent to your Unipedia account or other devices."
+    "keyLocalOnly": "Your key is stored on this device only. It is never sent to your Unipedia account or other devices.",
+    "needConsent": "Turn on the Uni authorisation below first.",
+    "needKey": "Enter a personal Google AI Studio key or open the step-by-step guide.",
+    "modeKey": "Advanced mode (personal key)",
+    "modeNative": "Included Uni",
+    "quotaKey": "No daily app limit · using your AI Studio quota.",
+    "quotaNative": "{{chat}}/{{chatLimit}} messages and {{nb}}/{{nbLimit}} notebooks left today.",
+    "manageKey": "Manage key",
+    "raiseLimit": "Go beyond {{limit}}/day (free)",
+    "badgeKey": "Own key",
+    "badgeNative": "Included",
+    "enableStrong": "Turn on Uni:",
+    "enableBody": "the questions, images and PDFs you choose are sent to Google (Gemini) so Uni can answer. When you turn it on, we ask you to confirm you are 18 or older.",
+    "advanced": "Advanced: use a personal key (AI Studio) or change model",
+    "optional": "Optional: for heavy use without the daily limit of {{chatLimit}} messages/{{nbLimit}} notebooks, you can paste a free key from",
+    "keyLabel": "Personal Gemini API key (optional)",
+    "keyPlaceholder": "Leave empty to use the included Uni",
+    "hideKey": "Hide key",
+    "showKey": "Show key",
+    "modelLabel": "Uni model (default: Gemini 4 Hydrogen)",
+    "testing": "Testing…",
+    "test": "Test personal key",
+    "okModel": "Connection ok. The model \"{{model}}\" is available.",
+    "okNoModel": "Connection ok, but the model \"{{model}}\" is not in the list ({{total}} models).",
+    "available": "Available models (tap to use):",
+    "keyNeverShared": "Any personal key is stored on this device only and is never shared."
   }
 }

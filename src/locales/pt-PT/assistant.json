@@ -146,7 +146,7 @@
     "retry": "Tentar de novo",
     "enableUni": "Ativar o Uni",
     "included": "Incluído",
-    "consentLong": "Pronto a usar com 1 toque (até {{limit}} mensagens/dia). Aceita apenas o envio das tuas perguntas para o Tutor responder.",
+    "consentLong": "Até {{limit}} mensagens/dia incluídas. As tuas perguntas e anexos são enviados para a Google (Gemini) para o Tutor responder.",
     "consentShort": "Até {{limit}} msgs/dia incluídas",
     "enableBtn": "Ativar Uni",
     "driveTitle": "Autoriza o Google Drive para o Uni ler os PDFs anexados",

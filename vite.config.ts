@@ -24,7 +24,6 @@ export default defineConfig({
             return 'vendor-firebase-ai'
           }
           if (id.includes('firebase') || id.includes('@firebase')) return 'vendor-firebase-core'
-          if (id.includes('@azure/msal-browser')) return 'vendor-msal'
           if (
             id.includes('node_modules/react/') ||
             id.includes('node_modules/react-dom/') ||

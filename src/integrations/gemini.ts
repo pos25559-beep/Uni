@@ -23,6 +23,7 @@ import {
   ModelTimeoutError,
   friendlyCustomKeyError,
 } from '../lib/geminiErrors';
+import { hasAiAccess, isRetryableAiStatus } from '../lib/aiAccess';
 import { getNativeAI } from '../lib/firebase';
 
 export { CustomKeyError, friendlyCustomKeyError };
@@ -172,8 +173,9 @@ export async function fileToChatAttachment(file: File): Promise<ChatAttachment> 
 }
 
 function resolveGeminiConfig() {
-  const { geminiModel, aiConsent } = useStore.getState().settings;
-  if (!aiConsent) {
+  const settings = useStore.getState().settings;
+  const { geminiModel } = settings;
+  if (!hasAiAccess(settings)) {
     throw new AiConsentRequiredError();
   }
   const customKey = getCustomGeminiKey();
@@ -190,17 +192,7 @@ function isFallbackEligible(err: unknown, outerAborted?: boolean): boolean {
   if (outerAborted) return false;
   if (err instanceof ModelTimeoutError) return true;
   const statusCode = err instanceof HttpStatusError ? err.statusCode : undefined;
-  if (
-    statusCode === 400 ||
-    statusCode === 403 ||
-    statusCode === 404 ||
-    statusCode === 429 ||
-    statusCode === 500 ||
-    statusCode === 503 ||
-    statusCode === 504
-  ) {
-    return true;
-  }
+  if (isRetryableAiStatus(statusCode)) return true;
   const lower = (err instanceof Error ? err.message : String(err ?? '')).toLowerCase();
   return (
     lower.includes('model not found') ||
@@ -2175,17 +2167,21 @@ Devolve APENAS JSON válido:
     responseMimeType: 'application/json',
   };
 
-  const rawText = await withQuotaAndFallback('recall', customKey, () =>
-    customKey
-      ? callDirectRest({ key: customKey, model, contents, generationConfig })
-      : runNativeGenerate({ model, contents, generationConfig }),
-  );
+  // Tarefa interna: não desconta da quota de recall que o estudante vê.
+  const rawText = customKey
+    ? await callDirectRest({ key: customKey, model, contents, generationConfig })
+    : await runNativeGenerate({ model, contents, generationConfig });
 
   const match = /\{[\s\S]*\}/.exec(rawText || '{}');
-  const parsed = JSON.parse(match ? match[0] : rawText || '{}') as {
+  let parsed: {
     weakSpot?: { topic?: string; note?: string } | null;
     strength?: string | null;
-  };
+  } = {};
+  try {
+    parsed = JSON.parse(match ? match[0] : rawText || '{}') as typeof parsed;
+  } catch {
+    return {};
+  }
   return {
     ...(parsed.weakSpot?.topic?.trim() && parsed.weakSpot?.note?.trim()
       ? {

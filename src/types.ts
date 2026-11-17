@@ -310,6 +310,8 @@ export interface Settings {
   gdprPolicyVersion?: string;
   /** Confirmação mínima de idade (>= 13 anos em Portugal, Lei n.º 58/2019). */
   ageConfirmed13Plus?: boolean;
+  /** Confirmação explícita de >= 18 anos para uso da API Gemini (ADR-001). */
+  aiAgeConfirmed18Plus?: boolean;
   /** Consentimento explícito para envio de contexto/prints à Google Gemini API. */
   aiConsent?: boolean;
   /** Preferência explícita por sincronização cloud (Firebase Firestore). */

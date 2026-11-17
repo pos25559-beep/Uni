@@ -1,3 +1,4 @@
+import { requestAiConsent } from '../../store/useAiConsentStore';
 import { OnboardingProvider, useOnboarding } from '@onboardjs/react';
 import type { OnboardingStep } from '@onboardjs/core';
 import { ArrowRight, ChevronLeft, ChevronRight, ExternalLink, X } from 'lucide-react';
@@ -1333,12 +1334,13 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
               pendingAiConsentCount={pendingPrintFilesForConsent?.length ?? 0}
               onConfirmAiAndReadPrint={() => {
                 const queued = pendingPrintFilesForConsent;
-                setAiConsent(true);
-                updateSettings({ aiConsent: true });
-                setPendingPrintFilesForConsent(null);
-                if (queued && queued.length > 0) {
-                  void handleScreenshotUpload(queued, true);
-                }
+                requestAiConsent(() => {
+                  setAiConsent(true);
+                  setPendingPrintFilesForConsent(null);
+                  if (queued && queued.length > 0) {
+                    void handleScreenshotUpload(queued, true);
+                  }
+                });
               }}
               onCancelAiPrintConsent={() => setPendingPrintFilesForConsent(null)}
             />
@@ -1365,8 +1367,12 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
               setAgeConfirmed={setAgeConfirmed}
               aiConsent={aiConsent}
               setAiConsent={(next) => {
-                setAiConsent(next);
-                updateSettings({ aiConsent: next });
+                if (next) {
+                  requestAiConsent(() => setAiConsent(true));
+                  return;
+                }
+                setAiConsent(false);
+                updateSettings({ aiConsent: false });
               }}
               cloudSyncConsent={cloudSyncConsent}
               setCloudSyncConsent={setCloudSyncConsent}

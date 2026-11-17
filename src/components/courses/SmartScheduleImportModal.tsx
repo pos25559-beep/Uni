@@ -1,3 +1,4 @@
+import { requestAiConsent } from '../../store/useAiConsentStore';
 import { CalendarDays, Camera, Check, CheckCircle2, FileText, Loader2, Sparkles, Upload } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -94,8 +95,6 @@ export default function SmartScheduleImportModal({
   const googleConnected = Boolean(useStore((s) => s.integrations?.google?.connected));
   const appTone = useStore((s) => s.settings.appTone);
   const isExpressive = appTone !== 'serio';
-  const aiConsent = Boolean(useStore((s) => s.settings.aiConsent));
-  const updateSettings = useStore((s) => s.updateSettings);
   const upsertMany = useStore((s) => s.upsertMany);
   const remove = useStore((s) => s.remove);
   const reconcileFuturePlan = useStore((s) => s.reconcileFuturePlan);
@@ -263,8 +262,10 @@ export default function SmartScheduleImportModal({
       return;
     }
 
-    if (!aiConsent) {
-      updateSettings({ aiConsent: true });
+    if (!useStore.getState().settings.aiConsent) {
+      // Consentimento explícito (18+ e aviso sobre a Google) antes de enviar a imagem.
+      requestAiConsent(() => void handlePhotoPick(imageFiles));
+      return;
     }
     setPickedNames(imageFiles.map((f) => f.name));
     setBusy(true);

@@ -372,5 +372,17 @@
     },
     "course": "Asignatura",
     "nextClass": "Próxima clase"
+  },
+  "aiConsent": {
+    "title": "Activar Uni con IA",
+    "what": "Uni usa Gemini, de Google. Tus preguntas y los archivos que adjuntes (PDF, fotos, capturas) se envían a Google para generar la respuesta.",
+    "shared": "En el Uni incluido (gratuito), Google puede usar ese contenido para mejorar sus productos y puede haber revisión por personas. No envíes datos personales o sensibles.",
+    "ownKey": "Estás usando tu clave personal: se aplican los términos de tu cuenta de Google, y la clave se queda solo en este dispositivo.",
+    "age": "Tengo 18 años o más.",
+    "ageWhy": "Google solo permite usar Gemini a mayores de 18 años.",
+    "off": "Puedes desactivarlo en cualquier momento en Ajustes.",
+    "privacy": "Leer la Política de Privacidad",
+    "confirm": "Activar Uni",
+    "cancel": "Ahora no"
   }
 }

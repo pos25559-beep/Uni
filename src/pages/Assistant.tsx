@@ -1,3 +1,4 @@
+import { requestAiConsent } from '../store/useAiConsentStore';
 import {
   BookOpen,
   BookOpenCheck,
@@ -874,7 +875,7 @@ export default function Assistant() {
               {t('page.consentShort', { limit: quota.chatLimit })}
             </p>
           </div>
-          <Button size="sm" variant="primary" onClick={() => updateSettings({ aiConsent: true })}>
+          <Button size="sm" variant="primary" onClick={() => requestAiConsent()}>
             {t('page.enableBtn')}
           </Button>
         </div>

@@ -372,5 +372,17 @@
     },
     "course": "Course",
     "nextClass": "Next class"
+  },
+  "aiConsent": {
+    "title": "Turn on Uni with AI",
+    "what": "Uni uses Gemini, by Google. Your questions and the files you attach (PDFs, photos, screenshots) are sent to Google to generate the answer.",
+    "shared": "On the included (free) Uni, Google may use that content to improve its products, and people may review it. Do not send personal or sensitive data.",
+    "ownKey": "You are using your personal key: your Google account terms apply, and the key stays on this device only.",
+    "age": "I am 18 or older.",
+    "ageWhy": "Google only allows Gemini to be used by people aged 18 or over.",
+    "off": "You can turn it off at any time in Settings.",
+    "privacy": "Read the Privacy Policy",
+    "confirm": "Turn on Uni",
+    "cancel": "Not now"
   }
 }

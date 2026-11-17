@@ -1,3 +1,4 @@
+import { requestAiConsent } from '../../store/useAiConsentStore';
 import { ChevronDown, Eye, EyeOff, ExternalLink, HelpCircle, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -37,11 +38,11 @@ export default function GeminiCard() {
     const key = apiKey.trim() || (import.meta.env.DEV ? (import.meta.env.VITE_GEMINI_API_KEY ?? '') : '');
     const wanted = model.trim() || 'gemini-4-hydrogen';
     if (!aiConsent) {
-      setLocalError('Ativa primeiro a autorização para o Uni abaixo.');
+      setLocalError(t('gemini.needConsent'));
       return;
     }
     if (!key) {
-      setLocalError('Insere uma chave pessoal do Google AI Studio ou abre o guia passo-a-passo.');
+      setLocalError(t('gemini.needKey'));
       return;
     }
     setTesting(true);
@@ -67,20 +68,25 @@ export default function GeminiCard() {
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-surface-2 px-3 py-2.5 text-xs">
         <div>
           <p className="font-semibold text-fg">
-            {customKeyActive ? 'Modo Avançado (Chave Pessoal)' : 'Uni Nativo Incluído'}
+            {customKeyActive ? t('gemini.modeKey') : t('gemini.modeNative')}
           </p>
           <p className="mt-0.5 text-xs text-muted">
             {customKeyActive
-              ? 'Sem limite diário da app · a usar a tua quota AI Studio.'
-              : `${quota.chatRemaining}/${quota.chatLimit} mensagens e ${quota.notebookRemaining}/${quota.notebookLimit} cadernos disponíveis hoje.`}
+              ? t('gemini.quotaKey')
+              : t('gemini.quotaNative', {
+                  chat: quota.chatRemaining,
+                  chatLimit: quota.chatLimit,
+                  nb: quota.notebookRemaining,
+                  nbLimit: quota.notebookLimit,
+                })}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" variant="secondary" onClick={() => setGuideOpen(true)}>
-            <HelpCircle size={13} /> {customKeyActive ? 'Gerir chave' : 'Passar de 15/dia (grátis)'}
+            <HelpCircle size={13} /> {customKeyActive ? t('gemini.manageKey') : t('gemini.raiseLimit', { limit: quota.chatLimit })}
           </Button>
           <Badge tone={aiConsent ? 'ok' : 'neutral'}>
-            {customKeyActive ? 'Chave própria' : 'Nativo'}
+            {customKeyActive ? t('gemini.badgeKey') : t('gemini.badgeNative')}
           </Badge>
         </div>
       </div>
@@ -93,28 +99,29 @@ export default function GeminiCard() {
           checked={aiConsent}
           onChange={(e) => {
             const next = e.target.checked;
-            updateSettings({ aiConsent: next });
-            setIntegration('gemini', {
-              connected: next,
-              ...(next ? { lastSync: new Date().toISOString(), error: undefined } : {}),
-            });
+            if (next) {
+              requestAiConsent();
+              return;
+            }
+            updateSettings({ aiConsent: false });
+            setIntegration('gemini', { connected: false });
           }}
           className="mt-0.5 size-4 rounded accent-accent"
         />
         <span>
-          <strong className="text-fg">Ativar o Uni:</strong> permito o processamento das perguntas, imagens e PDFs escolhidos por mim através da IA do Uni.
+          <strong className="text-fg">{t('gemini.enableStrong')}</strong> {t('gemini.enableBody')}
         </span>
       </label>
 
       <details className="group rounded-xl border border-line bg-surface-2/60 p-3">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-fg">
-          <span>Avançado: usar chave pessoal (AI Studio) ou trocar modelo</span>
+          <span>{t('gemini.advanced')}</span>
           <ChevronDown size={15} className="text-muted transition group-open:rotate-180" />
         </summary>
 
         <div className="mt-3 space-y-3 border-t border-line pt-3">
           <p className="text-xs text-muted">
-            Opcional: para uso intensivo sem limite diário de {quota.chatLimit} mensagens/{quota.notebookLimit} cadernos, podes colar uma chave gratuita em{' '}
+            {t('gemini.optional', { chatLimit: quota.chatLimit, nbLimit: quota.notebookLimit })}{' '}
             <a
               className="text-accent-ink underline-offset-2 hover:underline"
               href="https://aistudio.google.com/apikey"
@@ -126,12 +133,12 @@ export default function GeminiCard() {
             .
           </p>
 
-          <Field label="Chave API Gemini pessoal (opcional)">
+          <Field label={t('gemini.keyLabel')}>
             <div className="flex gap-2">
               <Input
                 type={showKey ? 'text' : 'password'}
                 value={apiKey}
-                placeholder="Deixa vazio para usar o Uni Nativo"
+                placeholder={t('gemini.keyPlaceholder')}
                 autoComplete="off"
                 spellCheck={false}
                 className="min-w-0 flex-1"
@@ -140,7 +147,7 @@ export default function GeminiCard() {
               <Button
                 variant="secondary"
                 onClick={() => setShowKey((v) => !v)}
-                aria-label={showKey ? 'Ocultar chave' : 'Mostrar chave'}
+                aria-label={showKey ? t('gemini.hideKey') : t('gemini.showKey')}
               >
                 {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
               </Button>
@@ -148,7 +155,7 @@ export default function GeminiCard() {
             <p className="mt-1.5 text-xs text-muted">{t('gemini.keyLocalOnly')}</p>
           </Field>
 
-          <Field label="Modelo do Uni (predefinido: Gemini 4 Hydrogen)">
+          <Field label={t('gemini.modelLabel')}>
             <div className="mb-2 flex flex-wrap gap-1.5">
               {[
                 { id: 'gemini-4-hydrogen', label: 'Gemini 4 Hydrogen (Recomendado)' },
@@ -186,7 +193,7 @@ export default function GeminiCard() {
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="secondary" onClick={test} disabled={testing}>
               <Sparkles size={15} />
-              {testing ? 'A testar…' : 'Testar chave pessoal'}
+              {testing ? t('gemini.testing') : t('gemini.test')}
             </Button>
             <a
               href="https://aistudio.google.com/apikey"
@@ -203,15 +210,15 @@ export default function GeminiCard() {
           {result && (
             <div className="space-y-2 rounded-xl border border-line bg-surface p-3">
               {result.available ? (
-                <p className="text-xs text-ok">Ligação ok. O modelo «{model}» está disponível.</p>
+                <p className="text-xs text-ok">{t('gemini.okModel', { model })}</p>
               ) : (
                 <p className="text-xs text-warn">
-                  Ligação ok, mas o modelo «{model}» não aparece na lista ({result.total} modelos).
+                  {t('gemini.okNoModel', { model, total: result.total })}
                 </p>
               )}
               {result.suggestions.length > 0 && (
                 <div>
-                  <span className="text-xs text-muted">Modelos disponíveis (clica para usar):</span>
+                  <span className="text-xs text-muted">{t('gemini.available')}</span>
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
                     {result.suggestions.map((name) => (
                       <button
@@ -235,7 +242,7 @@ export default function GeminiCard() {
           )}
 
           <p className="text-xs text-muted">
-            Qualquer chave pessoal fica guardada apenas neste dispositivo (localStorage) e nunca é partilhada.
+            {t('gemini.keyNeverShared')}
           </p>
         </div>
       </details>

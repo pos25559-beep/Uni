@@ -22,6 +22,7 @@ import { googleService } from '../services/googleService';
 import { useHubUiStore } from '../store/useHubUiStore';
 import { useStore } from '../store/useStore';
 import type { StudyLogKind } from '../types';
+import AiConsentDialog from './AiConsentDialog';
 import AuthStatus from './auth/AuthStatus';
 import UniCheckInModal from './assistant/UniCheckInModal';
 import { UnipediaLogoMark } from './brand/UnipediaMarks';
@@ -245,6 +246,15 @@ export default function AppShell() {
 
   useEffect(() => initNotificationListeners((route) => navigate(route)), [navigate]);
 
+  // ADR-001: a IA só fica ligada com a confirmação de 18+. Consentimentos antigos
+  // (ou vindos de outro dispositivo) sem essa confirmação voltam a ser pedidos.
+  const aiConsentOn = useStore((s) => Boolean(s.settings.aiConsent));
+  const aiAdultConfirmed = useStore((s) => Boolean(s.settings.aiAgeConfirmed18Plus));
+  const updateSettingsForConsent = useStore((s) => s.updateSettings);
+  useEffect(() => {
+    if (aiConsentOn && !aiAdultConfirmed) updateSettingsForConsent({ aiConsent: false });
+  }, [aiConsentOn, aiAdultConfirmed, updateSettingsForConsent]);
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void syncScheduledUniNotifications({
@@ -299,6 +309,7 @@ export default function AppShell() {
         {t('nav.skipToContent')}
       </a>
       <ToastViewport />
+      <AiConsentDialog />
 
       {/* Navegação lateral (Desktop & Tablet) */}
       {!isBypassRoute && (

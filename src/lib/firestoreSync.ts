@@ -64,6 +64,7 @@ const SETTINGS_KEYS: Array<keyof Settings> = [
   'gdprAcceptedAt',
   'gdprPolicyVersion',
   'ageConfirmed13Plus',
+  'aiAgeConfirmed18Plus',
   'aiConsent',
   'cloudSyncConsent',
   'tourCompleted',

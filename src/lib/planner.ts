@@ -16,6 +16,7 @@ import type {
   Settings,
   StudyLogEntry,
   StudySession,
+  StudySessionReason,
   TestModeStatus,
   Topic,
   WeeklyCheckIn,
@@ -67,6 +68,7 @@ interface Block {
   assessmentId?: ID;
   minutes: number;
   notes?: string;
+  reason?: StudySessionReason;
 }
 
 interface WorkItem {
@@ -203,6 +205,14 @@ export function generatePlan(input: PlanInput): StudySession[] {
 
   const resolvePeriodStart = (weekday: number, roundedNow?: number) => {
     const weekend = weekday === 0 || weekday === 6;
+    const eveningClassMin = classes
+      .filter((c) => c.weekday === weekday && toMin(c.end) > 17 * 60)
+      .reduce((sum, c) => sum + Math.max(0, toMin(c.end) - Math.max(17 * 60, toMin(c.start))), 0);
+    const autoBase = weekend
+      ? 10 * 60
+      : eveningClassMin >= 120 || settings.dailyStudyMinutes > 200
+        ? 9 * 60
+        : 17 * 60;
     const base =
       preferredPeriod === 'morning'
         ? 8 * 60 + 30
@@ -210,9 +220,7 @@ export function generatePlan(input: PlanInput): StudySession[] {
           ? 14 * 60
           : preferredPeriod === 'evening'
             ? 17 * 60 + 30
-            : weekend
-              ? 10 * 60
-              : 17 * 60;
+            : autoBase;
     return Math.max(base, roundedNow ?? 0);
   };
 

@@ -1,3 +1,4 @@
+import { requestAiConsent } from '../../store/useAiConsentStore';
 import { CheckCircle2, ExternalLink, Eye, EyeOff, KeyRound, ShieldCheck, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { verifyGeminiApiKey, type GeminiKeyTestResult } from '../../integrations/geminiKeyVerify';
@@ -29,7 +30,8 @@ export default function GeminiKeyGuideModal({
     try {
       const checked = await verifyGeminiApiKey(apiKey, model);
       setResult(checked);
-      updateSettings({ aiConsent: true });
+      if (!useStore.getState().settings.aiAgeConfirmed18Plus) requestAiConsent();
+      else updateSettings({ aiConsent: true });
       setIntegration('gemini', {
         connected: true,
         lastSync: new Date().toISOString(),

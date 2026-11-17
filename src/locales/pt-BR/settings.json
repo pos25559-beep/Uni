@@ -332,6 +332,31 @@
     }
   },
   "gemini": {
-    "keyLocalOnly": "A chave fica salva só neste dispositivo. Nunca é enviada para a conta Unipedia nem para outros aparelhos."
+    "keyLocalOnly": "A chave fica salva só neste dispositivo. Nunca é enviada para a conta Unipedia nem para outros aparelhos.",
+    "needConsent": "Ative primeiro a autorização para o Uni abaixo.",
+    "needKey": "Insira uma chave pessoal do Google AI Studio ou abra o guia passo a passo.",
+    "modeKey": "Modo avançado (chave pessoal)",
+    "modeNative": "Uni incluído",
+    "quotaKey": "Sem limite diário do app · usando sua cota do AI Studio.",
+    "quotaNative": "{{chat}}/{{chatLimit}} mensagens e {{nb}}/{{nbLimit}} cadernos disponíveis hoje.",
+    "manageKey": "Gerenciar chave",
+    "raiseLimit": "Passar de {{limit}}/dia (grátis)",
+    "badgeKey": "Chave própria",
+    "badgeNative": "Incluído",
+    "enableStrong": "Ativar o Uni:",
+    "enableBody": "as perguntas, imagens e PDFs que você escolher são enviados ao Google (Gemini) para o Uni responder. Ao ligar, pedimos que você confirme que tem 18 anos ou mais.",
+    "advanced": "Avançado: usar chave pessoal (AI Studio) ou trocar de modelo",
+    "optional": "Opcional: para uso intensivo sem o limite diário de {{chatLimit}} mensagens/{{nbLimit}} cadernos, você pode colar uma chave gratuita de",
+    "keyLabel": "Chave API Gemini pessoal (opcional)",
+    "keyPlaceholder": "Deixe vazio para usar o Uni incluído",
+    "hideKey": "Ocultar chave",
+    "showKey": "Mostrar chave",
+    "modelLabel": "Modelo do Uni (padrão: Gemini 4 Hydrogen)",
+    "testing": "Testando…",
+    "test": "Testar chave pessoal",
+    "okModel": "Conexão ok. O modelo «{{model}}» está disponível.",
+    "okNoModel": "Conexão ok, mas o modelo «{{model}}» não aparece na lista ({{total}} modelos).",
+    "available": "Modelos disponíveis (toque para usar):",
+    "keyNeverShared": "Qualquer chave pessoal fica guardada apenas neste dispositivo e nunca é compartilhada."
   }
 }

@@ -110,13 +110,13 @@
   },
   "s4": {
     "day": {
+      "0": "Sun",
       "1": "Mon",
       "2": "Tue",
       "3": "Wed",
       "4": "Thu",
       "5": "Fri",
-      "6": "Sat",
-      "0": "Sun"
+      "6": "Sat"
     },
     "preset": {
       "90": "Light",
@@ -141,7 +141,7 @@
     "ageBody": "I confirm I am at least {{age}} or have permission from my parent or guardian.",
     "ageError": "Confirm the minimum age above to continue.",
     "aiTitle": "Turn on the AI Uni Tutor (optional):",
-    "aiBody": "lets Uni answer questions, create review challenges and read screenshots you send. Your data is used only for your studies.",
+    "aiBody": "lets Uni answer questions, create review challenges and read screenshots you send. You must be 18 or older; what you send goes to Google (Gemini), which on the free tier may use it to improve its products.",
     "cloudTitle": "Secure cloud backup (optional):",
     "cloudSigned": "saves your notebook to your account ({{email}}) so you can use it on several devices.",
     "cloudLater": "if you sign in later, syncs your notebook between phone and computer.",

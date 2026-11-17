@@ -1,3 +1,4 @@
+import { requestAiConsent } from '../store/useAiConsentStore';
 import {
   Bell,
   Cloud,
@@ -131,7 +132,7 @@ export default function SettingsPage() {
             trailing={
               <Switch
                 checked={Boolean(settings.aiConsent)}
-                onCheckedChange={(v) => updateSettings({ aiConsent: v })}
+                onCheckedChange={(v) => (v ? requestAiConsent() : updateSettings({ aiConsent: false }))}
                 label={t('sections.tutor.consentAria')}
               />
             }

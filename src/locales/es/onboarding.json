@@ -110,13 +110,13 @@
   },
   "s4": {
     "day": {
+      "0": "Dom",
       "1": "Lun",
       "2": "Mar",
       "3": "Mié",
       "4": "Jue",
       "5": "Vie",
-      "6": "Sáb",
-      "0": "Dom"
+      "6": "Sáb"
     },
     "preset": {
       "90": "Ligero",
@@ -141,7 +141,7 @@
     "ageBody": "confirmo que tengo al menos {{age}} años o autorización de mi tutor legal.",
     "ageError": "Confirma tu edad mínima arriba para entrar en el cuaderno.",
     "aiTitle": "Activar el Tutor Uni con IA (opcional):",
-    "aiBody": "permite que Uni responda preguntas, genere retos de repaso y lea las capturas que le envíes. Tus datos solo se usan para tu estudio.",
+    "aiBody": "permite que Uni responda preguntas, genere retos de repaso y lea las capturas que le envíes. Debes tener 18 años o más; lo que envíes va a Google (Gemini), que en el nivel gratuito puede usarlo para mejorar sus productos.",
     "cloudTitle": "Copia segura en la nube (opcional):",
     "cloudSigned": "guarda tu cuaderno en tu cuenta ({{email}}) para acceder desde varios dispositivos.",
     "cloudLater": "si inicias sesión más tarde, sincroniza tu cuaderno entre el móvil y el ordenador.",

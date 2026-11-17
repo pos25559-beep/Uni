@@ -476,7 +476,7 @@ service cloud.firestore {
           'dailyStudyMinutes', 'studyDays', 'geminiApiKey', 'geminiModel',
           'googleClientId', 'msClientId', 'academicEmail', 'personalEmail',
           'personalNotebookUrl', 'gdprAcceptedAt', 'gdprPolicyVersion',
-          'ageConfirmed13Plus', 'aiConsent', 'cloudSyncConsent', 'tourCompleted',
+          'ageConfirmed13Plus', 'aiAgeConfirmed18Plus', 'aiConsent', 'cloudSyncConsent', 'tourCompleted',
           'guestMode', 'hasSeenWelcome', 'themePalette', 'appTone',
           'uniLiveCompanions', 'uniAccessory', 'uniSkin', 'uniSkinAutoRotate',
           'uniPet', 'uniPersona', 'hubSetupFlow', 'hubSetupCompleted',
@@ -502,6 +502,7 @@ service cloud.firestore {
         isValidOptionalTimestampOrBoundedString(settings, 'gdprAcceptedAt', 40) &&
         isValidOptionalString(settings, 'gdprPolicyVersion', 0, 40) &&
         isValidOptionalBool(settings, 'ageConfirmed13Plus') &&
+        isValidOptionalBool(settings, 'aiAgeConfirmed18Plus') &&
         isValidOptionalBool(settings, 'aiConsent') &&
         isValidOptionalBool(settings, 'cloudSyncConsent') &&
         isValidOptionalBool(settings, 'tourCompleted') &&
@@ -532,7 +533,7 @@ service cloud.firestore {
           'dailyStudyMinutes', 'studyDays', 'geminiApiKey', 'geminiModel',
           'googleClientId', 'msClientId', 'academicEmail', 'personalEmail',
           'personalNotebookUrl', 'gdprAcceptedAt', 'gdprPolicyVersion',
-          'ageConfirmed13Plus', 'aiConsent', 'cloudSyncConsent', 'tourCompleted',
+          'ageConfirmed13Plus', 'aiAgeConfirmed18Plus', 'aiConsent', 'cloudSyncConsent', 'tourCompleted',
           'guestMode', 'hasSeenWelcome', 'themePalette', 'appTone',
           'uniLiveCompanions', 'uniAccessory', 'uniSkin', 'uniSkinAutoRotate',
           'uniPet', 'uniPersona', 'hubSetupFlow', 'hubSetupCompleted',
@@ -564,6 +565,7 @@ service cloud.firestore {
         isValidOptionalTimestampOrBoundedString(data, 'gdprAcceptedAt', 40) &&
         isValidOptionalString(data, 'gdprPolicyVersion', 0, 40) &&
         isValidOptionalBool(data, 'ageConfirmed13Plus') &&
+        isValidOptionalBool(data, 'aiAgeConfirmed18Plus') &&
         isValidOptionalBool(data, 'aiConsent') &&
         isValidOptionalBool(data, 'cloudSyncConsent') &&
         isValidOptionalBool(data, 'tourCompleted') &&
