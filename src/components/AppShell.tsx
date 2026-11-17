@@ -14,6 +14,7 @@ import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { APP_VERSION_LABEL } from '../lib/appVersion';
 import { auth, onAuthStateChanged, type User } from '../lib/firebase';
 import { hapticTap, syncNativeTheme } from '../lib/nativeBridge';
 import { initNotificationListeners, syncScheduledUniNotifications } from '../lib/notificationBridge';
@@ -366,6 +367,9 @@ export default function AppShell() {
             {t('footer.data')}
           </NavLink>
         </div>
+        <p className="px-3 pt-1.5 font-mono text-xs tabular-nums text-muted/70">
+          Unipedia · {APP_VERSION_LABEL}
+        </p>
       </aside>
       )}
 
@@ -554,6 +558,10 @@ export default function AppShell() {
                     <ShieldCheck size={14} /> {t('moreSheet.privacy')}
                   </NavLink>
                 </div>
+
+                <p className="pt-0.5 text-center font-mono text-xs tabular-nums text-muted/70">
+                  Unipedia · {APP_VERSION_LABEL}
+                </p>
               </div>
               </div>
             </motion.div>

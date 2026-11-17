@@ -32,6 +32,7 @@ import ProfileCard from '../components/settings/ProfileCard';
 import { Badge, Button, ListGroup, ListRow, PageHeader, SegmentedControl, SubpageHeader, Switch } from '../components/ui';
 import { showToast } from '../lib/uiHelpers';
 import { APP_PALETTES } from '../lib/academicCredits';
+import { APP_VERSION_LABEL } from '../lib/appVersion';
 import { auth, logoutFirebase, onAuthStateChanged, type User } from '../lib/firebase';
 import { migrateLocalDataToCloud } from '../lib/firestoreSync';
 import { fmtMinutes } from '../lib/selectors';
@@ -451,6 +452,10 @@ export default function SettingsPage() {
           </Button>
         </div>
       </section>
+
+      <p className="order-5 pt-1 text-center font-mono text-xs tabular-nums text-muted/70">
+        Unipedia · {APP_VERSION_LABEL}
+      </p>
 
       <OnboardingModal
         open={wizardOpen}
