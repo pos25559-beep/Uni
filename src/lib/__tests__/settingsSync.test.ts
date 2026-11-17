@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn(),
@@ -19,15 +19,19 @@ vi.mock('../../store/useStore', () => ({
 }));
 
 describe('sincronização de definições', () => {
-  it('nunca envia a chave Gemini pessoal para o Firestore', async () => {
-    const { sanitizeSettingsPayload } = await import('../firestoreSync');
+  let sanitizeSettingsPayload: (typeof import('../firestoreSync'))['sanitizeSettingsPayload'];
+
+  beforeAll(async () => {
+    ({ sanitizeSettingsPayload } = await import('../firestoreSync'));
+  }, 20000);
+
+  it('nunca envia a chave Gemini pessoal para o Firestore', () => {
     const payload = sanitizeSettingsPayload({ geminiApiKey: 'AIza-segredo', theme: 'dark' }, true);
     expect(payload).not.toHaveProperty('geminiApiKey');
     expect(payload).toHaveProperty('theme', 'dark');
   });
 
-  it('preserva preferências do plano, notificações, setup do Hub e links partilhados na sincronização', async () => {
-    const { sanitizeSettingsPayload } = await import('../firestoreSync');
+  it('preserva preferências do plano, notificações, setup do Hub e links partilhados na sincronização', () => {
     const payload = sanitizeSettingsPayload(
       {
         geminiApiKey: 'AIza-segredo',

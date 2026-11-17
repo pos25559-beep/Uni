@@ -24,9 +24,14 @@ jobs:
         with:
           node-version: 22
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
       - name: Install dependencies
         run: |
-          if [ -f package-lock.json ]; then
+          if [ -f bun.lock ] || [ -f bun.lockb ]; then
+            bun install --frozen-lockfile
+          elif [ -f package-lock.json ]; then
             npm ci
           else
             npm install --no-audit --no-fund
