@@ -135,7 +135,8 @@
       "region": "Foco em andamento",
       "expand": "Voltar à tela de foco",
       "back": "Foco",
-      "minimize": "Continuar contando e usar o app"
+      "minimize": "Continuar contando e usar o app",
+      "drag": "Arrastar para mover (setas ou clique duplo para redefinir)"
     },
     "chat": {
       "open": "Perguntar a {{name}} aqui, sem sair do foco",

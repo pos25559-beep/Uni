@@ -135,7 +135,8 @@
       "region": "Focus in progress",
       "expand": "Back to the focus screen",
       "back": "Focus",
-      "minimize": "Keep the timer running and use the app"
+      "minimize": "Keep the timer running and use the app",
+      "drag": "Drag to move (arrow keys or double-click to reset)"
     },
     "chat": {
       "open": "Ask {{name}} here without leaving focus",

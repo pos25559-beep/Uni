@@ -3,7 +3,6 @@
 import {
   Check,
   ChevronDown,
-  Maximize2,
   Minimize2,
   ChevronUp,
   Pause,
@@ -63,6 +62,7 @@ import {
 import { UniBuddy } from '../brand/UnipediaMarks';
 import ActivePracticeDeck, { type PracticeOutcomeSummary } from '../practice/ActivePracticeDeck';
 import UniFocusRecallPanel from '../practice/UniFocusRecallPanel';
+import FloatingFocusPill from './FloatingFocusPill';
 import FocusShieldPanel from './FocusShieldPanel';
 
 type Phase = FocusTimerPhase;
@@ -609,34 +609,20 @@ export default function FocusTimer({
 
   if (minimized) {
     return (
-      <div
-        role="region"
-        aria-label={t('plan:focus.mini.region')}
-        className="fixed left-1/2 top-[max(0.75rem,env(safe-area-inset-top))] z-40 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full border border-line bg-surface/95 py-1 pl-3 pr-1 text-xs shadow-float backdrop-blur-md lg:left-auto lg:right-6 lg:translate-x-0"
-      >
-        {course && <span className={cx('size-2 shrink-0 rounded-full', courseColors[course.color].dot)} aria-hidden="true" />}
-        <span className="max-w-[7rem] truncate font-semibold text-fg">{course?.shortName ?? t('common:actions.focus')}</span>
-        <span className="tabular shrink-0 px-1.5 font-mono text-sm font-semibold text-fg" aria-live="off">
-          {formatClock(remainingMs)}
-        </span>
-        <button
-          type="button"
-          onClick={running ? pause : start}
-          aria-label={running ? t('plan:focus.ui.pause') : t('plan:focus.ui.resume')}
-          className="flex size-11 items-center justify-center rounded-full text-fg hover:bg-surface-2"
-        >
-          {running ? <Pause size={16} /> : <Play size={16} />}
-        </button>
-        <button
-          type="button"
-          onClick={onExpand}
-          aria-label={t('plan:focus.mini.expand')}
-          className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-full bg-ink-cta px-3.5 font-semibold text-ink-cta-fg"
-        >
-          <Maximize2 size={14} aria-hidden="true" />
-          <span>{t('plan:focus.mini.back')}</span>
-        </button>
-      </div>
+      <FloatingFocusPill
+        regionLabel={t('plan:focus.mini.region')}
+        dragLabel={t('plan:focus.mini.drag')}
+        courseName={course?.shortName ?? t('common:actions.focus')}
+        courseDotClass={course ? courseColors[course.color].dot : undefined}
+        clockText={formatClock(remainingMs)}
+        running={running}
+        pauseLabel={t('plan:focus.ui.pause')}
+        resumeLabel={t('plan:focus.ui.resume')}
+        expandLabel={t('plan:focus.mini.expand')}
+        backText={t('plan:focus.mini.back')}
+        onToggleRun={running ? pause : start}
+        onExpand={onExpand}
+      />
     );
   }
 

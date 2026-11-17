@@ -250,7 +250,6 @@ export default function AppShell() {
 
   // ADR-001: a IA só fica ligada com a confirmação de 18+. Consentimentos antigos
   // (ou vindos de outro dispositivo) sem essa confirmação voltam a ser pedidos.
-  const focusPillVisible = useHubUiStore((s) => Boolean(s.focusSessionId) && s.focusMinimized);
   const aiConsentOn = useStore((s) => Boolean(s.settings.aiConsent));
   const aiAdultConfirmed = useStore((s) => Boolean(s.settings.aiAgeConfirmed18Plus));
   const updateSettingsForConsent = useStore((s) => s.updateSettings);
@@ -382,8 +381,6 @@ export default function AppShell() {
         tabIndex={-1}
         className={cx(
           'min-w-0 flex-1 overflow-x-hidden overflow-y-auto focus:outline-none md:pt-0',
-          // Espaço para a pílula do foco a correr em segundo plano (telemóvel).
-          focusPillVisible && 'max-lg:!pt-[calc(env(safe-area-inset-top)+4rem)]',
           isFullBleedRoute
             ? 'pt-0 pb-0 md:pb-0'
             : location.pathname.startsWith('/entrar')
