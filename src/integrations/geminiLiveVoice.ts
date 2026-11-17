@@ -5,6 +5,7 @@ import type { UniAccessoryId, UniPersonaMode } from '../lib/uniAccessories';
 import {
   buildUniToolProposal,
   executeReadOnlyOrRecallUniTool,
+  extractUniToolsFromText,
   isUniToolName,
   requiresStudentConfirmation,
   UNI_TOOL_DECLARATIONS,
@@ -16,6 +17,7 @@ import type { AppLanguage, Course } from '../types';
 import { buildStudyContext, SYSTEM_PROMPT } from './gemini';
 import { normalizeAppLanguage } from '../lib/grading';
 import { resolveUniVoiceConfig } from '../lib/uniVoice';
+import { joinTranscriptFragment, visibleLiveText } from '../lib/liveTranscript';
 import { tr } from '../i18n/tr';
 
 export const LIVE_VOICE_MODEL = 'gemini-3.8-live';
@@ -267,6 +269,14 @@ export async function startUniLiveVoiceSession(
     };
   };
 
+  // Cada fala chega aos bocados: junta-os numa entrada por turno (mesmo id) e tira
+  // etiquetas técnicas que o modelo diga por engano, transformando-as em propostas.
+  let userTurn: { id: string; text: string } | null = null;
+  let modelTurn: { id: string; text: string; handledTools: number } | null = null;
+  const newTurnId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  const joinFragment = joinTranscriptFragment;
+  const visibleModelText = visibleLiveText;
+
   const buildToolContext = (): UniToolExecutionContext => {
     const state = useStore.getState();
     return {
@@ -312,7 +322,7 @@ export async function startUniLiveVoiceSession(
           ? 'MODO VOZ EN TIEMPO REAL: responde de forma natural, cercana, objetiva y breve (2 a 4 frases por turno) para facilitar la escucha.'
           : activeLang === 'pt-BR'
             ? 'MODO VOZ EM TEMPO REAL: responda de forma natural, acolhedora, objetiva e breve (2 a 4 frases por turno) para facilitar a audição.'
-            : 'MODO VOZ EM TEMPO REAL: responde de forma natural, calorosa, objetiva e breve (2 a 4 frases por turno) para facilitar a audição.';
+            : 'MODO VOZ EM TEMPO REAL: responde de forma natural, calorosa, objetiva e breve (2 a 4 frases por turno) para facilitar a audição. Fala português de Portugal: trata o estudante por «tu» (nunca «você») e usa vocabulário e pronúncia europeus.';
     const liveVoiceSuffix = resolvedVoice.stylePrompt
       ? `${baseVoiceSuffix}\nESTILO VOCAL PREFERIDO: ${resolvedVoice.stylePrompt}.`
       : baseVoiceSuffix;
@@ -324,6 +334,7 @@ export async function startUniLiveVoiceSession(
       language: args.language,
       uniAgent: args.uniAgent,
       courseName: args.activeCourse?.shortName || args.activeCourse?.name,
+      voiceMode: true,
     })}\n\n${liveVoiceSuffix}`;
 
     let connected = false;
@@ -372,22 +383,37 @@ export async function startUniLiveVoiceSession(
                 args.onStatusChange(muted ? 'sleeping' : 'listening');
               }
 
-              const inText = message.serverContent?.inputTranscription?.text?.trim();
-              if (inText) {
-                args.onTranscript({
-                  id: `u-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-                  role: 'user',
-                  text: inText,
-                });
+              const inText = message.serverContent?.inputTranscription?.text;
+              if (inText && inText.trim()) {
+                modelTurn = null;
+                if (!userTurn) userTurn = { id: newTurnId('u'), text: '' };
+                userTurn.text = joinFragment(userTurn.text, inText);
+                args.onTranscript({ id: userTurn.id, role: 'user', text: userTurn.text.trim() });
               }
 
-              const outText = message.serverContent?.outputTranscription?.text?.trim();
-              if (outText) {
-                args.onTranscript({
-                  id: `m-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-                  role: 'model',
-                  text: outText,
-                });
+              const outText = message.serverContent?.outputTranscription?.text;
+              if (outText && outText.trim()) {
+                userTurn = null;
+                if (!modelTurn) modelTurn = { id: newTurnId('m'), text: '', handledTools: 0 };
+                modelTurn.text = joinFragment(modelTurn.text, outText);
+                const shown = visibleModelText(modelTurn.text);
+                if (shown) args.onTranscript({ id: modelTurn.id, role: 'model', text: shown });
+
+                const { calls } = extractUniToolsFromText(modelTurn.text);
+                const fresh = calls.slice(modelTurn.handledTools);
+                modelTurn.handledTools = calls.length;
+                if (fresh.length > 0) {
+                  const ctx = buildToolContext();
+                  for (const call of fresh) {
+                    if (!requiresStudentConfirmation(call.name)) continue;
+                    const proposal = buildUniToolProposal(call, ctx);
+                    if (proposal) args.onToolProposal(proposal);
+                  }
+                }
+              }
+
+              if (message.serverContent?.turnComplete) {
+                modelTurn = null;
               }
 
               const parts = message.serverContent?.modelTurn?.parts ?? [];

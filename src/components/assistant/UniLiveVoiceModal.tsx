@@ -79,7 +79,12 @@ export default function UniLiveVoiceModal({
       },
       onTranscript: (entry) => {
         if (!cancelled) {
-          setTranscripts((prev) => [...prev.slice(-16), entry]);
+          // A mesma fala chega várias vezes com o texto acumulado: atualiza em vez de repetir.
+          setTranscripts((prev) => {
+            const idx = prev.findIndex((e) => e.id === entry.id);
+            if (idx >= 0) return prev.map((e, i) => (i === idx ? entry : e));
+            return [...prev.slice(-16), entry];
+          });
         }
       },
       onToolProposal: (proposal) => {

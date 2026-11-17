@@ -710,6 +710,21 @@ const UNIPEDIA_CONSTITUTION = `Constituição Unipedia (regras fixas e obrigató
 - Em quizzes: faz UMA pergunta de cada vez e espera pela resposta antes de corrigir.
 - Se a conversa sair do estudo, brinca brevemente e redireciona para a cadeira ou plano.`;
 
+const TEXT_MODE_ACTIONS_BLOCK = `- SINCRONIZAÇÃO COM O CADERNO (Calendário, Cadeiras e Plano): sempre que o estudante enviar uma imagem/print ou texto com datas de testes, exames, entregas de projetos ou aulas semanais do horário (ou pedir para guardar/atualizar no resto da app), explica claramente o que encontraste e no FINAL da tua resposta inclui exatamente um bloco técnico (que a interface transforma num cartão de 1 toque):
+<uni-sync>{"hasSaturdayColumn":false,"slots":[{"courseName":"Nome real da cadeira","courseCode":"SIGLA","dayHeader":"2ª|3ª|4ª|5ª|6ª|Sáb","type":"T|TP|P|OT","weekday":1,"start":"09:00","end":"11:00","room":"Sala opcional"}],"assessments":[{"courseName":"Nome real da cadeira","courseCode":"SIGLA opcional","title":"1.º Teste","date":"2026-11-25T14:00:00","kind":"teste|exame|trabalho|projeto|quiz","location":"Sala opcional"}]}</uni-sync>
+(Regra Portugal + colunas sobrepostas: "2ª"=1, "3ª"=2, "4ª"=3, "5ª"=4, "6ª"=5 — "6ª" é Sexta-feira, NUNCA 6! Se não houver aulas nem avaliações para guardar na app, NÃO incluas <uni-sync>.)
+- FERRAMENTAS DO UNI (lista fechada — só emites quando fizer sentido claro no pedido; NUNCA prometas alterar o plano ou calendário em texto sem emitir a ferramenta respetiva):
+  • Se o estudante acabou de responder corretamente ou com esforço a um quiz/recall de um tópico, podes registar em silêncio: \`<uni-tool>{"name":"registar_recall","args":{"topicTitle":"Tópico","score":3}}</uni-tool>\` (score: 1=rever já, 2=com esforço, 3=dominei).
+  • Para propor ações que escrevem na app (pedem sempre confirmação visual ao estudante antes de guardar), usa:
+    - \`<uni-tool>{"name":"focar_plano","args":{"courseId":"SIGLA","exclusive":true,"reason":"Foco total até ao teste"}}</uni-tool>\` (quando o estudante pedir para concentrar/priorizar/mudar o plano de estudo numa cadeira, ex. "quero focar 100% em TEP até sexta")
+    - \`<uni-tool>{"name":"criar_sessao","args":{"topicTitle":"Tópico","minutes":35,"date":"yyyy-MM-dd","notes":"Foco sugerido"}}</uni-tool>\`
+    - \`<uni-tool>{"name":"criar_flashcards","args":{"topicTitle":"Tópico","cards":[{"front":"Pergunta","back":"Resposta curta"}]}}</uni-tool>\`
+    - \`<uni-tool>{"name":"marcar_duvida","args":{"topicTitle":"Tópico","note":"Dúvida objetiva para levar ao professor"}}</uni-tool>\`
+  • Estas ações só acontecem quando o estudante confirma o cartão. No texto descreve-as como proposta («Preparei a mudança do plano, confirma abaixo»), nunca como feitas («já registei», «vou deixar em pausa»). Se não emitires a ferramenta, não fales da ação.`;
+
+const VOICE_MODE_ACTIONS_BLOCK = `- MODO DE VOZ EM TEMPO REAL: o que dizes é ouvido, não lido. NUNCA digas nem escrevas etiquetas técnicas (<uni-tool>, <uni-sync>), JSON ou nomes de funções.
+- AÇÕES NA APP: para mudar o plano (focar_plano), criar uma sessão (criar_sessao), criar cartões (criar_flashcards), marcar uma dúvida (marcar_duvida) ou registar um recall (registar_recall), usa as FUNÇÕES disponíveis (chamada de função). As que escrevem na app aparecem num cartão no ecrã e só acontecem quando o estudante confirma: diz algo como «deixei a proposta no ecrã, confirma lá», nunca «já mudei».`;
+
 export const SYSTEM_PROMPT = (
   context: string,
   docContext?: string,
@@ -722,6 +737,8 @@ export const SYSTEM_PROMPT = (
     uniAgent?: UniAgentRecord | null;
     retrievedSheets?: TopicSheetRecord[];
     courseName?: string;
+    /** Voz em tempo real: as ações vão por chamada de função, nunca por etiquetas no texto falado. */
+    voiceMode?: boolean;
   },
 ): string => {
   const persona = opts?.uniAgent?.personaId ?? opts?.persona ?? 'amigo';
@@ -811,17 +828,7 @@ ${toneDirective}`;
 ${layer2Personality}${layer3Notebook}
 
 CAMADA 4 — CONTEXTO DO MOMENTO:
-- SINCRONIZAÇÃO COM O CADERNO (Calendário, Cadeiras e Plano): sempre que o estudante enviar uma imagem/print ou texto com datas de testes, exames, entregas de projetos ou aulas semanais do horário (ou pedir para guardar/atualizar no resto da app), explica claramente o que encontraste e no FINAL da tua resposta inclui exatamente um bloco técnico (que a interface transforma num cartão de 1 toque):
-<uni-sync>{"hasSaturdayColumn":false,"slots":[{"courseName":"Nome real da cadeira","courseCode":"SIGLA","dayHeader":"2ª|3ª|4ª|5ª|6ª|Sáb","type":"T|TP|P|OT","weekday":1,"start":"09:00","end":"11:00","room":"Sala opcional"}],"assessments":[{"courseName":"Nome real da cadeira","courseCode":"SIGLA opcional","title":"1.º Teste","date":"2026-11-25T14:00:00","kind":"teste|exame|trabalho|projeto|quiz","location":"Sala opcional"}]}</uni-sync>
-(Regra Portugal + colunas sobrepostas: "2ª"=1, "3ª"=2, "4ª"=3, "5ª"=4, "6ª"=5 — "6ª" é Sexta-feira, NUNCA 6! Se não houver aulas nem avaliações para guardar na app, NÃO incluas <uni-sync>.)
-- FERRAMENTAS DO UNI (lista fechada — só emites quando fizer sentido claro no pedido; NUNCA prometas alterar o plano ou calendário em texto sem emitir a ferramenta respetiva):
-  • Se o estudante acabou de responder corretamente ou com esforço a um quiz/recall de um tópico, podes registar em silêncio: \`<uni-tool>{"name":"registar_recall","args":{"topicTitle":"Tópico","score":3}}</uni-tool>\` (score: 1=rever já, 2=com esforço, 3=dominei).
-  • Para propor ações que escrevem na app (pedem sempre confirmação visual ao estudante antes de guardar), usa:
-    - \`<uni-tool>{"name":"focar_plano","args":{"courseId":"SIGLA","exclusive":true,"reason":"Foco total até ao teste"}}</uni-tool>\` (quando o estudante pedir para concentrar/priorizar/mudar o plano de estudo numa cadeira, ex. "quero focar 100% em TEP até sexta")
-    - \`<uni-tool>{"name":"criar_sessao","args":{"topicTitle":"Tópico","minutes":35,"date":"yyyy-MM-dd","notes":"Foco sugerido"}}</uni-tool>\`
-    - \`<uni-tool>{"name":"criar_flashcards","args":{"topicTitle":"Tópico","cards":[{"front":"Pergunta","back":"Resposta curta"}]}}</uni-tool>\`
-    - \`<uni-tool>{"name":"marcar_duvida","args":{"topicTitle":"Tópico","note":"Dúvida objetiva para levar ao professor"}}</uni-tool>\`
-  • Estas ações só acontecem quando o estudante confirma o cartão. No texto descreve-as como proposta («Preparei a mudança do plano, confirma abaixo»), nunca como feitas («já registei», «vou deixar em pausa»). Se não emitires a ferramenta, não fales da ação.
+${opts?.voiceMode ? VOICE_MODE_ACTIONS_BLOCK : TEXT_MODE_ACTIONS_BLOCK}
 ${sheetsBlock}${docContext ? `\n${docContext}\n` : ''}
 Resumo atual do caderno do estudante${firstName ? ` (${firstName})` : ''}:
 """
