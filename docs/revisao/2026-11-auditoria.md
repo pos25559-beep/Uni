@@ -304,3 +304,39 @@ Ordem sugerida: **0 → 1 → 2 → 3 → 4 → 5 → 6**, com 7 e 8 em paralelo
 3. **O que vai para «experimental»** da tabela da secção 3.
 4. **NLU do check-in** fora do português: dicionários por língua (L) ou esconder a escrita livre nas outras línguas (S).
 5. **Deploy do Firebase:** depois de cada PR ou só no fim de cada fase.
+
+---
+
+## 7. Verificação em produção (17 de novembro)
+
+Feita no Chrome, na conta real do Pedro (6 cadeiras, 6 testes, 186 materiais do Drive), depois do deploy das proteções do ADR-001. Duas mensagens enviadas ao Tutor numa conversa nova de TEP.
+
+### Plano real desta semana (confirma os problemas 2, 3 e 4)
+
+| O que se vê | Dados |
+|---|---|
+| Sessões de revisão **depois** do teste | Teste de TEP na sexta 20/11 às 09:00; há «Revisão total para teste» de TEP na sexta às 17:00 e 17:45 e na segunda 23/11 |
+| Matéria por cobrir | TEP tem 6 tópicos; antes do teste só entram 2 (Von Mises, 7 blocos; «TEP - Teoria da Plasticidade», 4 blocos). Limite Superior só depois do teste; Fatia Elementar, Energia Uniforme e Tresca/Mohr nunca |
+| Segundo teste ignorado | Fabrico Aditivo tem teste a 23/11 (30 %) e zero sessões, apesar de o cabeçalho dizer «Equilíbrio entre TEP e Fab. Aditivo» |
+| Meta inalcançável | Meta de 5 h; o dia tem 2 h 20 (4 blocos de 35 min, todos do mesmo tópico) |
+| Fim de semana vazio | Sábado sem sessões, com teste na segunda |
+
+### Tutor a responder (o que não tinha sido possível testar)
+
+Funciona em produção: responde em cerca de 20 s, conhece o teste próximo e cita o material da cadeira. Problemas observados:
+
+1. **Trata treino como trabalho avaliado.** A um exercício com «Resolve.», respondeu «Como estamos num exercício avaliado, vou usar o modo socrático» e não resolveu. Também anuncia o próprio modo, que é mecânica interna.
+2. **Faz contas de cabeça e corrige-se a meio.** Na segunda resposta escreveu um valor, depois «Espera aí, deixa-me corrigir a minha continha rápida» e refez a soma. Chegou ao valor certo (153,3 MPa) e apanhou o erro propositado do estudante (139 MPa), mas a correção ficou à vista.
+3. **LaTeX partido em listas.** Linhas como `$14400 + 4800 = 19200$` aparecem com os cifrões; a fórmula em bloco ao lado renderiza bem.
+4. **Texto corrompido.** A resposta inclui «Mand」、「ou bem! Quereres avançar…», com caracteres estranhos a meio da frase.
+5. **Facto errado.** Diz «teste de quinta»; o teste é na sexta.
+6. **Cartão fora de contexto.** «Queres guardar estas datas no Calendário e Plano? · Sincronizar com a app» aparece por baixo de uma resolução de exercício, sem datas nenhumas.
+7. **Citação sem página e com marca interna.** `[Fonte: Aula T03b … [slide_oficial]]`: nome do ficheiro, sem página, e a etiqueta `[slide_oficial]` exposta.
+8. **Promete mudar o plano e não muda.** Numa conversa anterior do Pedro («quero focar 100 % em TEP até sexta»), o Uni respondeu «Vamos alterar isso já» duas vezes e limitou-se a perguntar por que tópico começar. O plano não foi alterado.
+
+### Outros
+
+- «Nova conversa» abre um formulário de 3 passos (tipo, cadeira, título) antes de se poder escrever.
+- Na conversa de TEP, a primeira sugestão é «Revê comigo a matéria alinhada de **Fab. Aditivo** para o teste».
+- O contador «15/15 msgs» aparece duas vezes no cabeçalho do Tutor.
+- No Hoje, os testes sem título próprio aparecem como «Teste / Teste».
