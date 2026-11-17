@@ -493,6 +493,8 @@ export interface DocumentContextOptions {
   resolvedExcerpts?: Array<{ title: string; provider: string; content: string }>;
   notebookNotes?: string;
   maxFiles?: number;
+  /** Títulos cujo conteúdo foi mesmo enviado nesta mensagem (anexo ou texto extraído). */
+  readTitles?: string[];
 }
 
 const CATEGORY_LABELS_BY_LANG: Record<AppLanguage, Record<string, string>> = {
@@ -571,8 +573,23 @@ export function buildDocumentContext(
   }
 
   if (materials && materials.length > 0) {
-    sections.push('DOCUMENTOS E REFERÊNCIAS SELECIONADOS NESTA CONVERSA:');
-    for (const m of materials) {
+    const read = options?.readTitles ? new Set(options.readTitles) : null;
+    const listOnly = read ? materials.filter((m) => !read.has(m.title)) : [];
+    const shown = read ? materials.filter((m) => read.has(m.title)) : materials;
+    sections.push(
+      read
+        ? 'DOCUMENTOS QUE RECEBESTE NESTA MENSAGEM (o conteúdo vai em anexo ou acima — só destes podes citar enunciados, dados e páginas):'
+        : 'DOCUMENTOS E REFERÊNCIAS SELECIONADOS NESTA CONVERSA:',
+    );
+    if (read && listOnly.length > 0) {
+      sections.push(
+        `DOCUMENTOS QUE CONHECES SÓ PELO NOME (NÃO recebeste o conteúdo nesta mensagem): ${listOnly
+          .map((m) => cleanMaterialTitleForPrompt(m.title))
+          .join('; ')}.
+Se o estudante perguntar por um destes, diz claramente que não tens o conteúdo dele nesta mensagem e pede-lhe que o volte a pedir pelo nome exato ou que o escolha nas fontes. NUNCA inventes o enunciado, os dados nem as alíneas.`,
+      );
+    }
+    for (const m of shown) {
       const catLabel = m.category ? (catLabels[m.category] ?? m.category) : '';
       const flags = [
         m.provider.toUpperCase(),
@@ -706,6 +723,7 @@ const UNIPEDIA_CONSTITUTION = `Constituição Unipedia (regras fixas e obrigató
   • Escreve apenas no idioma solicitado, sem caracteres estranhos ou fragmentos de outros alfabetos.
   • Nunca inventes datas, notas ou pontuações: usa exatamente os dias da semana e datas indicados no contexto.
 - Rigor e citação: baseia o ensino nas fichas e nos materiais/anexos fornecidos. Cita com página/slide quando visível no material (\`[Fonte: nome do ficheiro, p. X]\` ou \`Slide Y\`), mantendo o nome limpo sem etiquetas internas. Se algo não estiver nos anexos, diz com transparência "Isto não está nos teus materiais".
+- Exercícios de testes, exames e fichas: antes de resolver, encontra o enunciado no ficheiro recebido e transcreve-o (com fonte e página). Se não o encontrares nos ficheiros que recebeste, diz isso e pede ao estudante o nome exato do ficheiro ou uma foto do enunciado. NUNCA inventes nem «adivinhes pelo padrão» um enunciado, uma alínea ou os dados, e nunca troques um teste por outro.
 - Usa Markdown limpo e LaTeX padrão (\`$...$\` ou \`$$...$$\` numa linha própria) quando houver matemática/fórmulas.
 - Em quizzes: faz UMA pergunta de cada vez e espera pela resposta antes de corrigir.
 - Se a conversa sair do estudo, brinca brevemente e redireciona para a cadeira ou plano.`;

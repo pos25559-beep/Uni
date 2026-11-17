@@ -548,6 +548,7 @@ export function useAssistantChat({
           courseMaterials: availableMaterials,
           resolvedExcerpts: resolvedMaterials.textExcerpts,
           maxFiles: maxAiFiles,
+          readTitles: resolvedMaterials.readTitles,
         });
         const system = SYSTEM_PROMPT(studyContext, docContext, {
           persona: uniPersona,
@@ -618,15 +619,8 @@ export function useAssistantChat({
           at: now,
           sourceDocTitles: [
             ...retrievedSheets.map((s) => tr('assistant:chat.sheetPrefix', { title: s.title })),
+            // Só o que foi mesmo lido: listar ficheiros não enviados fazia parecer que o Uni os tinha.
             ...resolvedMaterials.readTitles,
-            ...attachedMaterials
-              .filter(
-                (m) =>
-                  !resolvedMaterials.readTitles.includes(m.title) &&
-                  m.provider !== 'notebooklm',
-              )
-              .slice(0, maxAiFiles)
-              .map((m) => m.title),
             ...(attachments?.map((a) => a.name) ?? []),
           ].filter((title, i, arr) => Boolean(title) && arr.indexOf(title) === i),
         };

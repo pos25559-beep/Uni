@@ -89,3 +89,36 @@ describe('prioritizeMaterialsForQuery', () => {
     expect(ranked[0]?.title).toBe('Aula T08 Método do Limite Superior');
   });
 });
+
+describe('escolha das fontes para perguntas sobre testes antigos', () => {
+  const titles = [
+    'Aula T05   Aspetos Fenomenológicos de Plasticidade  Pt+Ing',
+    '1º Teste TMIII 2009 2010 (1)',
+    '1º Teste TMIII 2009 2010',
+    '2º Exame TMIII 2009 2010',
+    '1º Exame TMIII 2009 2010',
+    'Problemas Aulas Práticas PT',
+    '2º Exame TMIII 2011 2012',
+    '1º Exame TMIII 2010',
+    'IMG 2913',
+    '2º Teste TMIII 2009 2010',
+  ].map((title) => ({ title }));
+
+  it('põe o 2.º teste de 2009-10 em primeiro quando o estudante diz «2 teste de 2009-10»', () => {
+    const ranked = prioritizeMaterialsForQuery(titles, 'No 2 teste de 2009-10 a unica questão que cai é a c do grupo 1');
+    expect(ranked[0].title).toBe('2º Teste TMIII 2009 2010');
+    expect(ranked.slice(0, 3).map((m) => m.title)).not.toContain('Aula T05   Aspetos Fenomenológicos de Plasticidade  Pt+Ing');
+  });
+
+  it('reconhece «segundo teste», «2.º teste» e «teste 2»', () => {
+    for (const q of ['segundo teste de 2009/2010', '2.º teste 09/10', 'o teste 2 de 2009']) {
+      expect(prioritizeMaterialsForQuery(titles, q)[0].title).toBe('2º Teste TMIII 2009 2010');
+    }
+  });
+
+  it('o nome exato do ficheiro ganha sempre', () => {
+    expect(prioritizeMaterialsForQuery(titles, 'Mas tu tens sim, está no 2º Teste TMIII 2009 2010')[0].title).toBe(
+      '2º Teste TMIII 2009 2010',
+    );
+  });
+});

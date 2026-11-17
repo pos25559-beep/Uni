@@ -144,6 +144,47 @@ function queryTokens(text: string): string[] {
     .filter((tok) => tok.length >= 2 && !STOP_WORDS.has(tok));
 }
 
+
+const ORDINAL_WORDS: Record<string, string> = {
+  primeiro: '1', primeira: '1', segundo: '2', segunda: '2', terceiro: '3', terceira: '3', quarto: '4', quarta: '4',
+  first: '1', second: '2', third: '3', primer: '1', segundo_es: '2',
+};
+const ASSESSMENT_KINDS = '(teste|exame|frequencia|mini teste|minitest|test|exam|prova)';
+
+/**
+ * «2 teste», «2º teste», «2.º teste», «segundo teste», «teste 2» → {"2:teste"}.
+ * Serve para não confundir o 1.º com o 2.º teste do mesmo ano.
+ */
+export function ordinalAssessmentKeys(text: string): Set<string> {
+  const norm = normalizeSourceText(text)
+    .replace(/\b(primeiro|primeira|segundo|segunda|terceiro|terceira|quarto|quarta|first|second|third)\b/g, (w) => ORDINAL_WORDS[w] ?? w);
+  const keys = new Set<string>();
+  const kindOf = (k: string) => (k.startsWith('exam') || k === 'exame' ? 'exame' : k.startsWith('freq') ? 'frequencia' : 'teste');
+  for (const m of norm.matchAll(new RegExp(`\\b([1-4])\\s*o?\\s+${ASSESSMENT_KINDS}\\b`, 'g'))) keys.add(`${m[1]}:${kindOf(m[2])}`);
+  for (const m of norm.matchAll(new RegExp(`\\b${ASSESSMENT_KINDS}\\s+([1-4])\\b(?!\\s*\\d)`, 'g'))) keys.add(`${m[2]}:${kindOf(m[1])}`);
+  return keys;
+}
+
+/** «2009-10», «09/10», «2009/2010» → ["2009", "2010"]. */
+export function academicYearTokens(text: string): string[] {
+  const norm = normalizeSourceText(text);
+  const out = new Set<string>();
+  for (const m of norm.matchAll(/\b(20\d\d)\s+(\d\d)\b/g)) {
+    out.add(m[1]);
+    out.add(`20${m[2]}`);
+  }
+  for (const m of norm.matchAll(/\b(\d\d)\s+(\d\d)\b/g)) {
+    const a = Number(m[1]);
+    const b = Number(m[2]);
+    if (b === (a + 1) % 100) {
+      out.add(`20${m[1]}`);
+      out.add(`20${m[2]}`);
+    }
+  }
+  for (const m of norm.matchAll(/\b(20\d\d)\b/g)) out.add(m[1]);
+  return [...out];
+}
+
 /**
  * Ordena materiais por relevância para a mensagem atual (e contexto recente) para que,
  * com dezenas de fontes ligadas, os anexos mais prováveis entrem nos primeiros slots binários.
@@ -160,6 +201,8 @@ export function prioritizeMaterialsForQuery<
   }
 
   const qTokens = queryTokens(queryText);
+  const qYears = academicYearTokens(queryText);
+  const qOrdinals = ordinalAssessmentKeys(queryText);
   const rTokens = queryTokens(recentText).filter((t) => !qTokens.includes(t));
   const wantsTests = /\b(teste|exame|frequencia|recurso|grupo|alinea|prova|exam|test)\b/.test(combinedNorm);
   const wantsProblems = /\b(ficha|problema|exercicio|folha|tp|homework|problem)\b/.test(combinedNorm);
@@ -167,13 +210,27 @@ export function prioritizeMaterialsForQuery<
 
   return materials
     .map((m, idx) => {
-      const titleNorm = normalizeSourceText(stripExtension(m.title));
+      const titleNorm = normalizeSourceText(stripExtension(m.title)).replace(/\s+1$/, '');
       const group = sourceGroupKey(m);
       let score = m.pinned ? 1 : 0;
 
       for (const tok of qTokens) {
         if (titleNorm.includes(tok)) score += /^\d{4}$/.test(tok) ? 10 : 6;
       }
+      // «2009-10» também conta como 2010.
+      for (const year of qYears) {
+        if (!qTokens.includes(year) && titleNorm.includes(year)) score += 8;
+      }
+      // Ordinal + tipo («2.º teste»): o certo sobe muito, o do mesmo tipo com outro número desce.
+      if (qOrdinals.size > 0) {
+        const tOrdinals = ordinalAssessmentKeys(m.title);
+        for (const key of tOrdinals) {
+          if (qOrdinals.has(key)) score += 25;
+          else if ([...qOrdinals].some((q) => q.split(':')[1] === key.split(':')[1])) score -= 10;
+        }
+      }
+      // O estudante escreveu o nome do ficheiro: entra de certeza.
+      if (titleNorm.length >= 6 && currentNorm.includes(titleNorm)) score += 60;
       for (const tok of rTokens) {
         if (titleNorm.includes(tok)) score += /^\d{4}$/.test(tok) ? 5 : 2;
       }
