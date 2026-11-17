@@ -200,6 +200,13 @@ function convertLatexFragment(expr: string, lang: AppLanguage): string {
 
   let out = expr.trim();
 
+  // Índices e expoentes primeiro: libertam as chavetas para \frac e \sqrt apanharem o conteúdo.
+  out = out
+    .replace(/\^\{2\}|\^2\b/g, ` ${sqWord} `)
+    .replace(/\^\{3\}|\^3\b/g, ` ${cubeWord} `)
+    .replace(/\^\{([^{}]+)\}/g, ` ${powWord} $1 `)
+    .replace(/_\{([^{}]+)\}/g, ' $1 ');
+
   // Nested or flat \frac{a}{b}
   for (let i = 0; i < 3; i++) {
     out = out.replace(/\\d?frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}/g, (_, a: string, b: string) => `${a} ${overWord} ${b}`);
@@ -255,7 +262,7 @@ export function markdownLatexToSpeechText(raw: string, language?: string): strin
 
   // Code blocks -> short pause
   text = text.replace(/```[\s\S]*?```/g, '. ');
-  text = text.replace(/`([^`]+)`/g, '$1');
+  text = text.replace(/`([^`]+)`/g, (_, code: string) => code.replace(/_/g, ' '));
 
   // Block and inline LaTeX
   text = text.replace(/\$\$([\s\S]+?)\$\$/g, (_, expr: string) => ` ${convertLatexFragment(expr, lang)}. `);

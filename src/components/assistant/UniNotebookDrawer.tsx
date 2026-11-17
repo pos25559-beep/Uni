@@ -731,7 +731,7 @@ export default function UniNotebookDrawer({
                       type="button"
                       onClick={() => {
                         setActiveSheetId(sheet.id);
-                        setMode(sheet.mode);
+                        if (sheet.mode !== 'podcast') setMode(sheet.mode);
                         setOutput(sheet.summary);
                         const stored = sheet.mode === 'guide' ? loadSheetGuide(sheet.id) : null;
                         setGuide(stored);
