@@ -15,7 +15,7 @@ import {
   X,
 } from 'lucide-react';
 import { addDays, format } from 'date-fns';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { generateUniExpeditionQuestions } from '../../integrations/gemini';
@@ -94,6 +94,8 @@ interface FocusTimerProps {
   onExpand?: () => void;
 }
 
+const FocusUniChat = lazy(() => import('./FocusUniChat'));
+
 export default function FocusTimer({
   session,
   course,
@@ -133,6 +135,7 @@ export default function FocusTimer({
     () => Boolean(initialRecovery && (initialRecovery.accumulatedMs > 0 || initialRecovery.distractionCount > 0)),
   );
   const [confirmEarlyFinish, setConfirmEarlyFinish] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const [confidenceSet, setConfidenceSet] = useState<Topic['confidence'] | null>(null);
   const [showManualConfidence, setShowManualConfidence] = useState(false);
   const [practiceMode, setPracticeMode] = useState<'uni_recall' | 'cards'>('uni_recall');
@@ -350,11 +353,14 @@ export default function FocusTimer({
   // Tecla Escape fecha o overlay.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !minimized) handleClose();
+      if (e.key !== 'Escape' || minimized) return;
+      // Com o chat aberto, Escape fecha só o chat.
+      if (chatOpen) setChatOpen(false);
+      else handleClose();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [handleClose, minimized]);
+  }, [chatOpen, handleClose, minimized]);
 
   const engageRunningShieldAndAudio = async (prefs: FocusShieldDevicePrefs) => {
     const engaged = await engagePlatformFocusShield(prefs);
@@ -593,6 +599,10 @@ export default function FocusTimer({
 
   const progress = budgetMs > 0 ? elapsedMs / budgetMs : 0;
   const finished = phase === 'finished';
+  // Em ecrã inteiro (ou com a app fixada no Android) o estudante escolheu concentrar-se aqui:
+  // o Uni abre dentro do foco em vez de mudar de ecrã.
+  const immersive = shieldPrefs.fullscreen || (shieldCaps.nativeAndroid && shieldPrefs.androidPinning);
+  const showChat = chatOpen && !finished && Boolean(course);
   const elapsedMin = Math.round(elapsedMs / 60_000);
   const recordedMin = Math.max(1, elapsedMin);
   const remainingBudgetMin = Math.max(0, Math.round(budgetMs / 60_000) - recordedMin);
@@ -631,7 +641,36 @@ export default function FocusTimer({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center overflow-y-auto bg-bg/95 px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] backdrop-blur-md">
+    <div
+      className={cx(
+        'fixed inset-0 z-50 flex flex-col items-center overflow-y-auto bg-bg/95 px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] backdrop-blur-md',
+        showChat && 'lg:pr-[452px]',
+      )}
+    >
+      {showChat && course && (
+        <>
+          {/* Telemóvel: faixa compacta com o tempo enquanto o chat ocupa o resto do ecrã. */}
+          <div className="fixed inset-x-0 top-0 z-20 flex items-center justify-center gap-2 bg-bg px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-2 lg:hidden">
+            <span className={cx('size-2 rounded-full', courseColors[course.color].dot)} aria-hidden="true" />
+            <span className="max-w-[8rem] truncate text-xs font-semibold text-fg">{course.shortName}</span>
+            <span className="tabular font-mono text-lg font-semibold text-fg">{formatClock(remainingMs)}</span>
+            <button
+              type="button"
+              onClick={running ? pause : start}
+              aria-label={running ? t('plan:focus.ui.pause') : t('plan:focus.ui.resume')}
+              className="flex size-11 items-center justify-center rounded-full text-fg hover:bg-surface-2"
+            >
+              {running ? <Pause size={18} /> : <Play size={18} />}
+            </button>
+          </div>
+          <div className="fixed inset-x-0 bottom-0 top-[calc(max(0.75rem,env(safe-area-inset-top))+3.5rem)] z-30 lg:inset-y-4 lg:right-4 lg:left-auto lg:top-4 lg:w-[420px]">
+            <Suspense fallback={null}>
+              <FocusUniChat course={course} onClose={() => setChatOpen(false)} />
+            </Suspense>
+          </div>
+        </>
+      )}
+
       {onMinimize && !finished && phase !== 'idle' && (
         <button
           type="button"
@@ -803,10 +842,14 @@ export default function FocusTimer({
                   onOpenDndSettings={handleOpenDndSettings}
                 />
 
-                {uniAgent && course && phase !== 'idle' && (
+                {course && (uniAgent || immersive) && phase !== 'idle' && !showChat && (
                   <button
                     type="button"
                     onClick={() => {
+                      if (immersive) {
+                        setChatOpen(true);
+                        return;
+                      }
                       // O foco continua a contar numa pílula enquanto o estudante fala com o Uni.
                       if (onMinimize) onMinimize();
                       else {
@@ -821,11 +864,19 @@ export default function FocusTimer({
                       size={22}
                       mood={phase === 'running' ? 'sleeping' : 'calm'}
                       dormant={phase === 'running'}
-                      form={uniAgent.formId}
-                      stage={uniAgent.stage}
+                      {...(uniAgent ? { form: uniAgent.formId, stage: uniAgent.stage } : {})}
                       accessory={inferAccessoryFromCourses([course])}
                     />
-                    <span>{t(onMinimize ? 'plan:focus.askUniKeepRunning' : 'plan:focus.silentStatus', { name: uniAgent.name })}</span>
+                    <span>
+                      {t(
+                        immersive
+                          ? 'plan:focus.chat.open'
+                          : onMinimize
+                            ? 'plan:focus.askUniKeepRunning'
+                            : 'plan:focus.silentStatus',
+                        { name: uniAgent?.name ?? course.shortName },
+                      )}
+                    </span>
                   </button>
                 )}
               </>

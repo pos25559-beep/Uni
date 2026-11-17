@@ -74,6 +74,8 @@ export default function UniNotebookDrawer({
   const [mode, setMode] = useState<'guide' | 'quiz' | 'summary'>('guide');
   const [selectedTopicId, setSelectedTopicId] = useState<string>('');
   const [busy, setBusy] = useState(false);
+  const [progressLabel, setProgressLabel] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [output, setOutput] = useState<string | null>(null);
@@ -140,6 +142,7 @@ export default function UniNotebookDrawer({
   const handleGenerate = async () => {
     setBusy(true);
     setError(null);
+    setNotice(null);
     try {
       const resolved =
         attachedMaterials.length > 0
@@ -194,9 +197,16 @@ export default function UniNotebookDrawer({
           persona,
           accessory,
           assessment: findNextAssessment(),
+          onProgress: (p) =>
+            setProgressLabel(
+              p.phase === 'mapping'
+                ? t('notebook.guide.mapping')
+                : t('notebook.guide.building', { done: p.done, total: p.total }),
+            ),
         });
         result = generated.markdown;
         structured = generated.guide;
+        if (generated.failedTopics > 0) setNotice(t('notebook.guide.partial', { count: generated.failedTopics }));
       } else {
         result = await generateNotebookBrief({
           mode,
@@ -230,6 +240,7 @@ export default function UniNotebookDrawer({
       setError(e instanceof Error ? e.message : t('notebook.genError'));
     } finally {
       setBusy(false);
+      setProgressLabel(null);
     }
   };
 
@@ -250,9 +261,23 @@ export default function UniNotebookDrawer({
     setExportingPdf(true);
     try {
       const modeTitle = t(`notebook.mode.${mode}`);
-      const bytes = await buildNotebookPdfBytes({
+      const subtitle = t('notebook.generatedOn', { date: new Date().toLocaleDateString(resolveIntlLocale(i18n.language)) });
+      let bytes: Uint8Array | null = null;
+      if (guide && mode === 'guide') {
+        // Guia estruturado: PDF com o aspeto da app (fórmulas reais); se falhar, cai no PDF de texto.
+        try {
+          const [{ rasterizeStudyGuide }, { buildStudyGuidePdfBytes }] = await Promise.all([
+            import('./StudyGuidePrintHost'),
+            import('../../lib/studyGuidePdf'),
+          ]);
+          bytes = await buildStudyGuidePdfBytes(await rasterizeStudyGuide(guide, subtitle));
+        } catch {
+          bytes = null;
+        }
+      }
+      bytes ??= await buildNotebookPdfBytes({
         title: courseName ? `${modeTitle} · ${courseName}` : `${t('notebook.title')} · ${modeTitle}`,
-        subtitle: t('notebook.generatedOn', { date: new Date().toLocaleDateString(resolveIntlLocale(i18n.language)) }),
+        subtitle,
         markdown: exportableMarkdown,
       });
       const slug = (courseName || 'caderno-uni').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -500,8 +525,16 @@ export default function UniNotebookDrawer({
           className="w-full"
         >
           {busy ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
-          {busy ? t('notebook.busy') : t('notebook.generate')}
+          {busy ? (progressLabel ?? t('notebook.busy')) : t('notebook.generate')}
         </Button>
+        {busy && progressLabel && (
+          <p role="status" className="sr-only">
+            {progressLabel}
+          </p>
+        )}
+        {notice && !busy && (
+          <p className="rounded-xl bg-surface-2 px-3 py-2 text-xs font-medium text-muted">{notice}</p>
+        )}
 
         {error && (
           <p className="rounded-xl bg-coral-soft px-3 py-2 text-xs font-medium text-coral">{error}</p>

@@ -129,7 +129,15 @@
       "topicClose": "Fechar {{title}}",
       "doneStep": "Marcar como feito: {{task}}",
       "noPlan": "Sem plano de revisão.",
-      "minutes": "{{count}} min"
+      "minutes": "{{count}} min",
+      "units": "Unidades",
+      "validity": "Quando se aplica",
+      "workedExample": "Exemplo resolvido",
+      "examPattern": "Como costuma cair na prova",
+      "practice": "Treine este tópico",
+      "building": "Preparando o guia: {{done}} de {{total}} tópicos…",
+      "mapping": "Lendo os materiais e mapeando a prova…",
+      "partial": "Não consegui gerar {{count}} tópico(s); o resto do guia está completo."
     }
   },
   "page": {

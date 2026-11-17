@@ -6,7 +6,9 @@ import type { Content, GenerationConfig } from 'firebase/ai';
 import { tr } from '../i18n/tr';
 import {
   parseStudyGuide,
+  parseStudyGuideTopic,
   studyGuideToMarkdown,
+  type StudyGuideTopic,
   type StudyGuide,
   type StudyGuideLabels,
 } from '../lib/studyGuide';
@@ -66,6 +68,7 @@ import {
   CHAT_ATTACHMENT_PRIMARY_TIMEOUT_MS,
   PRIMARY_TIMEOUT_MS,
   THINKING_BALANCED,
+  THINKING_DEEP,
   THINKING_FAST,
   resolveChatThinkingConfig,
 } from './gemini/models';
@@ -74,6 +77,7 @@ import {
   PRACTICE_SET_SCHEMA,
   RECALL_CHALLENGE_SCHEMA,
   STUDY_GUIDE_SCHEMA,
+  STUDY_GUIDE_TOPIC_SCHEMA,
   TOPIC_SHEET_SCHEMA,
   UNI_EXPEDITION_SCHEMA,
   UNI_RECALL_EVAL_SCHEMA,
@@ -856,6 +860,11 @@ export function getStudyGuideLabels(): StudyGuideLabels {
     revisionPlan: tr('assistant:notebook.guide.revisionPlan'),
     selfCheck: tr('assistant:notebook.guide.selfCheck'),
     answer: tr('assistant:notebook.guide.answer'),
+    units: tr('assistant:notebook.guide.units'),
+    validity: tr('assistant:notebook.guide.validity'),
+    workedExample: tr('assistant:notebook.guide.workedExample'),
+    examPattern: tr('assistant:notebook.guide.examPattern'),
+    practice: tr('assistant:notebook.guide.practice'),
     minutes: (n) => tr('assistant:notebook.guide.minutes', { count: n }),
     page: (p) => tr('assistant:notebook.guide.page', { page: p }),
   };
@@ -874,10 +883,10 @@ ${target}
 
 Regras do JSON:
 - "title": título curto e útil para o guia (sem prefixos numerados).
-- "topics": um por tópico a estudar, com ideias-chave, fórmulas (LaTeX permitido, sem cifrões à volta), armadilhas e fontes.
+- "topics": um por tópico a estudar (no máximo 6, pela ordem em que convém estudar), com 2 a 3 ideias-chave, as fórmulas principais em LaTeX (sem cifrões à volta), armadilhas e as fontes onde o tópico está. Cada tópico vai ser aprofundado a seguir, por isso aqui o essencial é acertar nos tópicos e nas fontes (incluindo testes e exames antigos que tenham perguntas sobre ele).
 - Em "sources" cita o título da fonte e, quando visível, a página ou o slide em "page". Nunca inventes fontes nem páginas.
 - Se faltar matéria importante nos materiais, diz o que falta em "goal" ou nas "examTraps".
-- "examTraps": erros típicos em testes. "revisionPlan": "day" em data ISO (aaaa-mm-dd), "task" concreta, "minutes" realistas. "selfCheck": perguntas com resposta curta.
+- "examTraps": erros típicos em testes. "revisionPlan": "day" em data ISO (aaaa-mm-dd), "task" concreta, "minutes" realistas. "selfCheck": 4 a 6 perguntas que misturem tópicos, com resposta curta.
 - Nunca coloques JSON nem blocos de código dentro dos campos de texto.`;
 }
 
@@ -887,6 +896,7 @@ async function runNotebookText(
   model: string,
   goalPrompt: string,
   asJson: boolean,
+  options?: { schema?: typeof STUDY_GUIDE_SCHEMA; deep?: boolean },
 ): Promise<string> {
   const formattedSources = args.sources
     .filter((s) => s.content.trim())
@@ -909,8 +919,10 @@ Regras estritas:
   const contents = buildContentsWithAttachments([{ role: 'user', text: userPrompt }], args.attachments);
   const generationConfig: GenerationConfig = {
     temperature: asJson ? 0.35 : 0.45,
-    thinkingConfig: resolveChatThinkingConfig(model),
-    ...(asJson ? { responseMimeType: 'application/json', responseSchema: STUDY_GUIDE_SCHEMA } : {}),
+    thinkingConfig: options?.deep ? THINKING_DEEP : resolveChatThinkingConfig(model),
+    ...(asJson
+      ? { responseMimeType: 'application/json', responseSchema: options?.schema ?? STUDY_GUIDE_SCHEMA }
+      : {}),
   };
 
   return customKey
@@ -933,17 +945,141 @@ const GUIDE_MARKDOWN_PROMPT =
  * Guia de Estudo estruturado (JSON estrito). Se o modelo devolver JSON inválido, recorre ao
  * caminho antigo em Markdown dentro da mesma quota (só se cobra uma geração).
  */
-export async function generateStudyGuide(args: Omit<NotebookBriefArgs, 'mode'>): Promise<StudyGuideResult> {
+/** Máximo de tópicos aprofundados num guia (um pedido ao modelo por tópico). */
+const STUDY_GUIDE_MAX_DEEP_TOPICS = 6;
+/** Pedidos de secção em paralelo (equilíbrio entre rapidez e limites de pedidos por minuto). */
+const STUDY_GUIDE_CONCURRENCY = 3;
+
+function buildStudyGuideTopicPrompt(
+  topic: StudyGuideTopic,
+  others: string[],
+  assessment: NotebookAssessmentContext | null | undefined,
+  courseName?: string,
+): string {
+  const target = assessment
+    ? `para a avaliação "${assessment.title}" de ${assessment.date.slice(0, 10)}${assessment.weight ? ` (peso ${assessment.weight}%)` : ''}`
+    : 'para o próximo teste';
+  const sourcesHint = topic.sources.length
+    ? `Fontes indicadas no mapa do guia: ${topic.sources.map((src) => (src.page ? `${src.title} (p. ${src.page})` : src.title)).join('; ')}.`
+    : '';
+  return `Escreve a secção COMPLETA do Guia de Estudo sobre o tópico «${topic.title}»${courseName ? ` da cadeira ${courseName}` : ''}, ${target}.
+${others.length ? `Os outros tópicos têm secção própria; não os repitas: ${others.join('; ')}.` : ''}
+${sourcesHint}
+
+O objetivo é que o estudante consiga resolver as perguntas de teste deste tópico só com esta secção e os seus apontamentos. Profundidade de um bom professor, não de um resumo.
+
+Campos:
+- "title": exatamente «${topic.title}».
+- "summary": 5 a 8 frases. Explica o conceito, a intuição física e quando se usa, com a notação das fontes.
+- "keyIdeas": 3 a 6 ideias que caem no teste, cada uma numa frase concreta.
+- "formulaDetails": TODAS as fórmulas necessárias para resolver exercícios deste tópico, cada uma completa em LaTeX (sem "...", sem cifrões à volta, sem texto como "sigma1": usa \\sigma_1). Em "meaning" explica cada símbolo; em "units" as unidades SI; em "validity" as hipóteses (por exemplo estado plano de tensão, material isotrópico, atrito nulo, deformação homogénea).
+- "workedExample": um exercício típico resolvido. Prefere um exercício de um teste/exame antigo ou de uma ficha das fontes e indica-o em "source" com a página quando visível; se não houver, cria um exemplo representativo e deixa "source" vazio. "steps": passos numerados com as contas e as unidades, já verificadas. "result": valor final com unidades e a conclusão.
+- "examPattern": como este tópico aparece nos testes/exames antigos das fontes (tipo de pergunta, o que pedem, cotação se visível). Se não houver testes antigos nas fontes, diz isso numa frase.
+- "pitfalls": 3 a 5 erros concretos que custam pontos.
+- "practice": 3 a 5 perguntas ao estilo do teste com resposta (numérica com unidades quando aplicável).
+- "sources": só documentos que usaste, com página ou slide quando visíveis. Nunca inventes fontes nem páginas.
+
+Usa $...$ para matemática dentro do texto (summary, keyIdeas, steps, practice). Verifica todas as contas e unidades antes de responder. Não escrevas JSON nem blocos de código dentro dos campos.`;
+}
+
+/** Junta a secção aprofundada ao tópico do mapa, mantendo as fontes de ambos. */
+function mergeGuideTopic(outline: StudyGuideTopic, deep: StudyGuideTopic | null): StudyGuideTopic {
+  if (!deep) return outline;
+  const seen = new Set<string>();
+  const sources = [...deep.sources, ...outline.sources].filter((src) => {
+    const key = `${src.title.toLowerCase()}|${src.page ?? ''}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  return {
+    ...deep,
+    title: outline.title,
+    keyIdeas: deep.keyIdeas.length ? deep.keyIdeas : outline.keyIdeas,
+    formulas: deep.formulaDetails?.length ? [] : outline.formulas,
+    pitfalls: deep.pitfalls.length ? deep.pitfalls : outline.pitfalls,
+    sources,
+  };
+}
+
+async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i], i);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
+export interface StudyGuideProgress {
+  phase: 'mapping' | 'topics';
+  done: number;
+  total: number;
+}
+
+/**
+ * Guia de Estudo em duas fases: primeiro um mapa do teste (tópicos, fontes, plano, perguntas
+ * gerais) e depois uma secção completa por tópico, com fórmulas explicadas, exemplo resolvido
+ * e como sai no teste. Conta como uma única geração do caderno. Se o JSON do mapa falhar,
+ * recorre ao Markdown; se uma secção falhar, esse tópico fica com a versão do mapa.
+ */
+export async function generateStudyGuide(
+  args: Omit<NotebookBriefArgs, 'mode'> & { onProgress?: (p: StudyGuideProgress) => void },
+): Promise<StudyGuideResult & { failedTopics: number }> {
   const { customKey, model } = resolveGeminiConfig();
-  const full: NotebookBriefArgs = { ...args, mode: 'guide' };
+  const { onProgress, ...rest } = args;
+  const full: NotebookBriefArgs = { ...rest, mode: 'guide' };
   assertNotebookInputs(full);
 
-  const result = await withQuotaAndFallback('notebook', customKey, async (): Promise<StudyGuideResult> => {
+  const result = await withQuotaAndFallback('notebook', customKey, async () => {
+    onProgress?.({ phase: 'mapping', done: 0, total: 0 });
     const raw = await runNotebookText(full, customKey, model, buildStudyGuidePrompt(args.assessment), true);
-    const guide = parseStudyGuide(raw);
-    if (guide) return { guide, markdown: studyGuideToMarkdown(guide, getStudyGuideLabels()) };
-    const markdown = await runNotebookText(full, customKey, model, GUIDE_MARKDOWN_PROMPT, false);
-    return { guide: null, markdown };
+    const outline = parseStudyGuide(raw);
+    if (!outline) {
+      const markdown = await runNotebookText(full, customKey, model, GUIDE_MARKDOWN_PROMPT, false);
+      return { guide: null, markdown, failedTopics: 0 };
+    }
+
+    const deepTopics = outline.topics.slice(0, STUDY_GUIDE_MAX_DEEP_TOPICS);
+    const titles = outline.topics.map((tp) => tp.title);
+    let done = 0;
+    onProgress?.({ phase: 'topics', done, total: deepTopics.length });
+    let failed = 0;
+    const sections = await mapWithConcurrency(deepTopics, STUDY_GUIDE_CONCURRENCY, async (topic) => {
+      let section: StudyGuideTopic | null = null;
+      try {
+        const sectionRaw = await runNotebookText(
+          full,
+          customKey,
+          model,
+          buildStudyGuideTopicPrompt(
+            topic,
+            titles.filter((x) => x !== topic.title),
+            args.assessment,
+            args.courseName,
+          ),
+          true,
+          { schema: STUDY_GUIDE_TOPIC_SCHEMA, deep: true },
+        );
+        section = parseStudyGuideTopic(sectionRaw);
+      } catch {
+        section = null;
+      }
+      if (!section) failed += 1;
+      done += 1;
+      onProgress?.({ phase: 'topics', done, total: deepTopics.length });
+      return section;
+    });
+
+    const guide: StudyGuide = {
+      ...outline,
+      topics: outline.topics.map((tp, i) => (i < sections.length ? mergeGuideTopic(tp, sections[i]) : tp)),
+    };
+    return { guide, markdown: studyGuideToMarkdown(guide, getStudyGuideLabels()), failedTopics: failed };
   });
 
   if (!result.markdown) throw new Error(tr('common:errors.notebookGenFail'));

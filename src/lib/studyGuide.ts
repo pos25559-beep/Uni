@@ -5,11 +5,35 @@ export interface StudyGuideSource {
   page?: string;
 }
 
+/** Fórmula explicada: LaTeX, o que é cada símbolo, unidades e quando se pode usar. */
+export interface StudyGuideFormula {
+  latex: string;
+  meaning: string;
+  units?: string;
+  validity?: string;
+}
+
+/** Exemplo resolvido tirado dos materiais (enunciado, passos e resultado). */
+export interface StudyGuideWorkedExample {
+  statement: string;
+  steps: string[];
+  result: string;
+  source?: StudyGuideSource;
+}
+
 export interface StudyGuideTopic {
   title: string;
+  /** Explicação de 5 a 8 linhas do tópico. */
+  summary?: string;
   keyIdeas: string[];
+  /** Fórmulas simples (formato antigo); as novas vêm em formulaDetails. */
   formulas: string[];
+  formulaDetails?: StudyGuideFormula[];
+  workedExample?: StudyGuideWorkedExample;
+  /** Como o tópico costuma aparecer nos testes antigos. */
+  examPattern?: string;
   pitfalls: string[];
+  practice?: StudyGuideCheck[];
   sources: StudyGuideSource[];
 }
 
@@ -43,6 +67,11 @@ export interface StudyGuideLabels {
   revisionPlan: string;
   selfCheck: string;
   answer: string;
+  units?: string;
+  validity?: string;
+  workedExample?: string;
+  examPattern?: string;
+  practice?: string;
   minutes: (n: number) => string;
   page: (p: string) => string;
 }
@@ -81,13 +110,59 @@ function parseTopic(x: unknown): StudyGuideTopic | null {
   if (!title) return null;
   return {
     title,
+    ...(str(x.summary) ? { summary: str(x.summary) } : {}),
     keyIdeas: strList(x.keyIdeas),
     formulas: strList(x.formulas),
+    ...(parseFormulas(x.formulaDetails).length ? { formulaDetails: parseFormulas(x.formulaDetails) } : {}),
+    ...(parseExample(x.workedExample) ? { workedExample: parseExample(x.workedExample)! } : {}),
+    ...(str(x.examPattern) ? { examPattern: str(x.examPattern) } : {}),
     pitfalls: strList(x.pitfalls),
+    ...(parseChecks(x.practice).length ? { practice: parseChecks(x.practice) } : {}),
     sources: (Array.isArray(x.sources) ? x.sources : [])
       .map(parseSource)
       .filter((s): s is StudyGuideSource => s !== null),
   };
+}
+
+function parseFormulas(v: unknown): StudyGuideFormula[] {
+  if (!Array.isArray(v)) return [];
+  return v
+    .map((f): StudyGuideFormula | null => {
+      if (!isRecord(f)) return null;
+      const latex = str(f.latex);
+      const meaning = str(f.meaning);
+      if (!latex) return null;
+      return {
+        latex,
+        meaning,
+        ...(str(f.units) ? { units: str(f.units) } : {}),
+        ...(str(f.validity) ? { validity: str(f.validity) } : {}),
+      };
+    })
+    .filter((f): f is StudyGuideFormula => f !== null);
+}
+
+function parseExample(v: unknown): StudyGuideWorkedExample | null {
+  if (!isRecord(v)) return null;
+  const statement = str(v.statement);
+  const steps = strList(v.steps);
+  if (!statement || steps.length === 0) return null;
+  const source = parseSource(v.source);
+  return { statement, steps, result: str(v.result), ...(source ? { source } : {}) };
+}
+
+function parseChecks(v: unknown): StudyGuideCheck[] {
+  return (Array.isArray(v) ? v : []).map(parseCheck).filter((x): x is StudyGuideCheck => x !== null);
+}
+
+/** Junta a secção de um tópico (gerada à parte) ao guia, sem duplicar títulos. */
+export function parseStudyGuideTopic(raw: string | null | undefined): StudyGuideTopic | null {
+  if (!raw || !raw.trim()) return null;
+  try {
+    return parseTopic(JSON.parse(extractJsonText(raw)));
+  } catch {
+    return null;
+  }
 }
 
 function parseStep(x: unknown): StudyGuideRevisionStep | null {
@@ -157,14 +232,40 @@ export function studyGuideToMarkdown(guide: StudyGuide, labels: StudyGuideLabels
 
   for (const topic of guide.topics) {
     out.push(`## ${topic.title}`, '');
+    if (topic.summary) out.push(topic.summary, '');
     if (topic.keyIdeas.length) {
       out.push(`**${labels.keyIdeas}**`, ...topic.keyIdeas.map((i) => `- ${i}`), '');
     }
-    if (topic.formulas.length) {
+    if (topic.formulaDetails?.length) {
+      out.push(`**${labels.formulas}**`, '');
+      for (const f of topic.formulaDetails) {
+        out.push(asDisplayMath(f.latex), '');
+        if (f.meaning) out.push(f.meaning, '');
+        if (f.units) out.push(`- ${labels.units ?? 'Unidades'}: ${f.units}`);
+        if (f.validity) out.push(`- ${labels.validity ?? 'Quando se aplica'}: ${f.validity}`);
+        if (f.units || f.validity) out.push('');
+      }
+    } else if (topic.formulas.length) {
       out.push(`**${labels.formulas}**`, '', ...topic.formulas.flatMap((f) => [asDisplayMath(f), '']));
+    }
+    if (topic.workedExample) {
+      const ex = topic.workedExample;
+      out.push(`**${labels.workedExample ?? 'Exemplo resolvido'}**`, '', ex.statement, '');
+      ex.steps.forEach((step, i) => out.push(`${i + 1}. ${step}`));
+      out.push('');
+      if (ex.result) out.push(`**${ex.result}**`, '');
+      if (ex.source) out.push(`*${formatSourceChip(ex.source, labels.page)}*`, '');
+    }
+    if (topic.examPattern) {
+      out.push(`**${labels.examPattern ?? 'Como costuma sair no teste'}:** ${topic.examPattern}`, '');
     }
     if (topic.pitfalls.length) {
       out.push(`**${labels.pitfalls}**`, ...topic.pitfalls.map((i) => `- ${i}`), '');
+    }
+    if (topic.practice?.length) {
+      out.push(`**${labels.practice ?? 'Treina este tópico'}**`, '');
+      topic.practice.forEach((c, i) => out.push(`${i + 1}. ${c.question}`, `   - ${labels.answer}: ${c.answer}`));
+      out.push('');
     }
     if (topic.sources.length) {
       out.push(

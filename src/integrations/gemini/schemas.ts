@@ -147,6 +147,64 @@ export const STUDY_GUIDE_SCHEMA: SchemaRequest = {
   required: ['title', 'goal', 'topics', 'examTraps', 'revisionPlan', 'selfCheck'],
 };
 
+const GUIDE_SOURCE = {
+  type: SchemaType.OBJECT,
+  properties: {
+    title: { type: SchemaType.STRING },
+    page: { type: SchemaType.STRING, nullable: true },
+  },
+  required: ['title'],
+};
+
+/** Secção completa de um tópico do Guia de Estudo (gerada uma por tópico). */
+export const STUDY_GUIDE_TOPIC_SCHEMA: SchemaRequest = {
+  type: SchemaType.OBJECT,
+  properties: {
+    title: { type: SchemaType.STRING },
+    summary: { type: SchemaType.STRING },
+    keyIdeas: STRING_LIST,
+    formulaDetails: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          latex: { type: SchemaType.STRING },
+          meaning: { type: SchemaType.STRING },
+          units: { type: SchemaType.STRING, nullable: true },
+          validity: { type: SchemaType.STRING, nullable: true },
+        },
+        required: ['latex', 'meaning'],
+      },
+    },
+    workedExample: {
+      type: SchemaType.OBJECT,
+      nullable: true,
+      properties: {
+        statement: { type: SchemaType.STRING },
+        steps: STRING_LIST,
+        result: { type: SchemaType.STRING },
+        source: { ...GUIDE_SOURCE, nullable: true },
+      },
+      required: ['statement', 'steps', 'result'],
+    },
+    examPattern: { type: SchemaType.STRING },
+    pitfalls: STRING_LIST,
+    practice: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          question: { type: SchemaType.STRING },
+          answer: { type: SchemaType.STRING },
+        },
+        required: ['question', 'answer'],
+      },
+    },
+    sources: { type: SchemaType.ARRAY, items: GUIDE_SOURCE },
+  },
+  required: ['title', 'summary', 'keyIdeas', 'formulaDetails', 'examPattern', 'pitfalls', 'practice', 'sources'],
+};
+
 export const RECALL_CHALLENGE_SCHEMA: SchemaRequest = {
   type: SchemaType.OBJECT,
   properties: {

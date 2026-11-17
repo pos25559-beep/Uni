@@ -136,6 +136,15 @@
       "expand": "Back to the focus screen",
       "back": "Focus",
       "minimize": "Keep the timer running and use the app"
+    },
+    "chat": {
+      "open": "Ask {{name}} here without leaving focus",
+      "region": "Chat with {{name}}",
+      "subtitle": "The timer keeps running",
+      "close": "Close the chat",
+      "empty": "Ask {{name}} what is blocking you. The conversation is saved in the Tutor.",
+      "placeholder": "Ask {{name}}…",
+      "needConsent": "Turn on Uni to chat here."
     }
   },
   "ui": {

@@ -136,6 +136,15 @@
       "expand": "Voltar à tela de foco",
       "back": "Foco",
       "minimize": "Continuar contando e usar o app"
+    },
+    "chat": {
+      "open": "Perguntar a {{name}} aqui, sem sair do foco",
+      "region": "Chat com {{name}}",
+      "subtitle": "O tempo continua contando",
+      "close": "Fechar o chat",
+      "empty": "Pergunte a {{name}} o que está travando você. A conversa fica salva no Tutor.",
+      "placeholder": "Pergunte a {{name}}…",
+      "needConsent": "Ative o Uni para conversar aqui."
     }
   },
   "ui": {

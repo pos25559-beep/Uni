@@ -129,7 +129,15 @@
       "topicClose": "Close {{title}}",
       "doneStep": "Mark as done: {{task}}",
       "noPlan": "No revision plan.",
-      "minutes": "{{count}} min"
+      "minutes": "{{count}} min",
+      "units": "Units",
+      "validity": "When it applies",
+      "workedExample": "Worked example",
+      "examPattern": "How it usually appears in the test",
+      "practice": "Practise this topic",
+      "building": "Building the guide: {{done}} of {{total}} topics…",
+      "mapping": "Reading your materials and mapping the test…",
+      "partial": "I could not generate {{count}} topic(s); the rest of the guide is complete."
     }
   },
   "page": {

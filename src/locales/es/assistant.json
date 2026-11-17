@@ -129,7 +129,15 @@
       "topicClose": "Cerrar {{title}}",
       "doneStep": "Marcar como hecho: {{task}}",
       "noPlan": "Sin plan de repaso.",
-      "minutes": "{{count}} min"
+      "minutes": "{{count}} min",
+      "units": "Unidades",
+      "validity": "Cuándo se aplica",
+      "workedExample": "Ejemplo resuelto",
+      "examPattern": "Cómo suele salir en el examen",
+      "practice": "Practica este tema",
+      "building": "Preparando la guía: {{done}} de {{total}} temas…",
+      "mapping": "Leyendo los materiales y mapeando el examen…",
+      "partial": "No pude generar {{count}} tema(s); el resto de la guía está completo."
     }
   },
   "page": {
