@@ -24,7 +24,12 @@ import {
   type Conversation,
 } from '../../lib/geminiConversations';
 import { getAiMaterialLimit, resolveMaterialsForAI } from '../../lib/materialContent';
-import { prioritizeMaterialsForQuery } from '../../lib/tutorSources';
+import {
+  findAssessmentCandidates,
+  findTargetAssessmentDocument,
+  focusMaterialsOnTarget,
+  prioritizeMaterialsForQuery,
+} from '../../lib/tutorSources';
 import { collectKnownCourseCandidates, getDegreeCurriculum } from '../../lib/portugalCurriculum';
 import {
   resolveExtractedScheduleBundle,
@@ -512,11 +517,17 @@ export function useAssistantChat({
           .slice(-4)
           .map((m) => m.text)
           .join(' ');
-        const prioritizedMaterials = prioritizeMaterialsForQuery(
+        const rankedMaterials = prioritizeMaterialsForQuery(
           attachedMaterials,
           lastUserText,
           recentTurnsText,
         );
+        // Pergunta sobre um teste concreto: só esse teste vai (mais aulas e fichas). Com vários
+        // testes quase iguais anexados, o modelo resolvia o enunciado de outro sem avisar.
+        const targetDoc =
+          findTargetAssessmentDocument(attachedMaterials, lastUserText) ??
+          findTargetAssessmentDocument(attachedMaterials, recentTurnsText);
+        const prioritizedMaterials = targetDoc ? focusMaterialsOnTarget(rankedMaterials, targetDoc) : rankedMaterials;
         const chatBinaryCap = hasCustomKey ? Math.min(maxAiFiles, 8) : maxAiFiles;
 
         const resolvedMaterials =
@@ -543,13 +554,21 @@ export function useAssistantChat({
         const activeCourseName = activeCourse?.shortName || activeCourse?.name;
         const courseSheets = activeCourse ? await listTopicSheetsByCourse(activeCourse.id) : [];
         const retrievedSheets = retrieveRelevantSheets(lastUserText, courseSheets, undefined, 4);
-        const docContext = buildDocumentContext(prioritizedMaterials, {
+        // Vários testes possíveis e nenhum claro: o Uni pergunta qual é antes de resolver.
+        const candidates = targetDoc ? [] : findAssessmentCandidates(attachedMaterials, lastUserText);
+        const focusNote = targetDoc
+          ? tr('assistant:chat.focusDocNote', { title: targetDoc.title })
+          : candidates.length > 1
+            ? tr('assistant:chat.ambiguousDocNote', { titles: candidates.map((m) => `«${m.title}»`).join(', ') })
+            : '';
+        const baseDocContext = buildDocumentContext(prioritizedMaterials, {
           activeCourseName,
           courseMaterials: availableMaterials,
           resolvedExcerpts: resolvedMaterials.textExcerpts,
           maxFiles: maxAiFiles,
           readTitles: resolvedMaterials.readTitles,
         });
+        const docContext = focusNote ? `${focusNote}\n\n${baseDocContext}` : baseDocContext;
         const system = SYSTEM_PROMPT(studyContext, docContext, {
           persona: uniPersona,
           accessory: uniAccessory,

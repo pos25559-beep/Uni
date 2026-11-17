@@ -621,6 +621,8 @@
     "replyErr": "Uni tuvo un contratiempo al responder.",
     "sendErr": "No se pudo guardar ni enviar el mensaje ahora. Inténtalo de nuevo.",
     "syncNoneFound": "No encontré fechas exactas de exámenes o clases en esta respuesta.",
-    "syncPrepErr": "No se pudo preparar la sincronización ahora."
+    "syncPrepErr": "No se pudo preparar la sincronización ahora.",
+    "focusDocNote": "DOCUMENTO PEDIDO POR EL ESTUDIANTE: «{{title}}». El enunciado viene de este archivo; los demás exámenes no se enviaron. Empieza transcribiendo el apartado pedido, con la página.",
+    "ambiguousDocNote": "El estudiante no dijo con certeza cuál es el documento. Posibles: {{titles}}. Pregúntale cuál es antes de resolver (una pregunta corta con estas opciones)."
   }
 }

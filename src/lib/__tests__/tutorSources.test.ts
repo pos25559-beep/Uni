@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   citedSources,
+  findAssessmentCandidates,
+  findTargetAssessmentDocument,
+  focusMaterialsOnTarget,
   groupSources,
   matchesSourceQuery,
   prioritizeMaterialsForQuery,
@@ -120,5 +123,41 @@ describe('escolha das fontes para perguntas sobre testes antigos', () => {
     expect(prioritizeMaterialsForQuery(titles, 'Mas tu tens sim, está no 2º Teste TMIII 2009 2010')[0].title).toBe(
       '2º Teste TMIII 2009 2010',
     );
+  });
+});
+
+describe('documento-alvo de uma pergunta sobre um teste', () => {
+  const titles = [
+    'Aula T03a Revisão Critérios de Plasticidade (TRESCA) Pt+Ing',
+    '1º Teste TMIII 2009 2010 (1)',
+    '1º Teste TMIII 2009 2010',
+    '2º Exame TMIII 2009 2010',
+    '1º Exame TMIII 2009 2010',
+    '2º Exame TMIII 2011 2012',
+    'Problemas Aulas Práticas PT',
+    '2º Teste TMIII 2009 2010',
+  ].map((title) => ({ title }));
+
+  it('encontra o teste pedido e tira os outros testes e exames', () => {
+    const target = findTargetAssessmentDocument(titles, 'eu estava a me referir a c do grupo 1 do teste 2 de 2009-2010.');
+    expect(target?.title).toBe('2º Teste TMIII 2009 2010');
+    const focused = focusMaterialsOnTarget(titles, target!).map((m) => m.title);
+    expect(focused[0]).toBe('2º Teste TMIII 2009 2010');
+    expect(focused).not.toContain('2º Exame TMIII 2009 2010');
+    expect(focused).toContain('Aula T03a Revisão Critérios de Plasticidade (TRESCA) Pt+Ing');
+    expect(focused).toContain('Problemas Aulas Práticas PT');
+  });
+
+  it('não escolhe nada quando a pergunta é ambígua', () => {
+    expect(findTargetAssessmentDocument(titles, 'explica o critério de Tresca')).toBeNull();
+    expect(findTargetAssessmentDocument(titles, 'o teste de 2009-2010')).toBeNull();
+    // Os dois ficheiros do 1.º teste são o mesmo documento duplicado.
+    expect(findTargetAssessmentDocument(titles, '1.º teste de 2009/10')?.title).toBe('1º Teste TMIII 2009 2010 (1)');
+  });
+
+  it('lista os candidatos quando a pergunta é ambígua, para o Uni perguntar', () => {
+    const c = findAssessmentCandidates(titles, 'resolve o grupo 2 do teste de 2009-2010').map((m) => m.title);
+    expect(c).toEqual(['1º Teste TMIII 2009 2010 (1)', '2º Teste TMIII 2009 2010']);
+    expect(findAssessmentCandidates(titles, 'explica Tresca')).toEqual([]);
   });
 });

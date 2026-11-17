@@ -247,3 +247,58 @@ export function prioritizeMaterialsForQuery<
     .sort((a, b) => b.score - a.score || a.idx - b.idx)
     .map((entry) => entry.m);
 }
+
+/**
+ * O estudante refere-se a um teste/exame concreto («alínea c do grupo 1 do teste 2 de 2009-2010»)?
+ * Devolve esse material só quando há exatamente um que bate no tipo, no número e nos anos.
+ * Com vários testes quase iguais anexados, o modelo confunde-os e resolve o enunciado errado.
+ */
+export function findAssessmentCandidates<
+  T extends Pick<Material, 'title'> & Partial<Pick<Material, 'category' | 'mimeType'>>,
+>(materials: readonly T[], queryText: string): T[] {
+  const qKeys = ordinalAssessmentKeys(queryText);
+  const qYears = new Set([
+    ...academicYearTokens(queryText),
+    ...(normalizeSourceText(queryText).match(/\b20\d\d\b/g) ?? []),
+  ]);
+  const norm = normalizeSourceText(queryText);
+  const mentionsAssessment = /\b(teste|exame|frequencia|recurso|prova|exam|test)\b/.test(norm);
+  if (!mentionsAssessment || (qKeys.size === 0 && qYears.size === 0)) return [];
+  // «teste» não é «exame»: se a pergunta diz o tipo, só esse tipo conta.
+  const kinds = ['teste', 'exame', 'frequencia', 'recurso'].filter((k) => new RegExp(`\\b${k}`).test(norm));
+  const matches = materials.filter((m) => {
+    if (sourceGroupKey(m) !== 'tests') return false;
+    const titleKindNorm = normalizeSourceText(m.title);
+    if (kinds.length > 0 && !kinds.some((k) => new RegExp(`\\b${k}`).test(titleKindNorm))) return false;
+    if (qKeys.size > 0 && ![...ordinalAssessmentKeys(m.title)].some((k) => qKeys.has(k))) return false;
+    const titleNorm = normalizeSourceText(m.title);
+    return [...qYears].every((y) => titleNorm.includes(y));
+  });
+  // Duplicados do mesmo ficheiro («… 2009 2010» e «… 2009 2010 (1)») contam como um.
+  const distinct = new Map<string, T>();
+  for (const m of matches) {
+    const key = normalizeSourceText(stripExtension(m.title)).replace(/\s+1$/, '');
+    if (!distinct.has(key)) distinct.set(key, m);
+  }
+  return [...distinct.values()];
+}
+
+/**
+ * O estudante refere-se a um teste/exame concreto («alínea c do grupo 1 do teste 2 de 2009-2010»)?
+ * Devolve esse material só quando há exatamente um que bate no tipo, no número e nos anos.
+ * Com vários testes quase iguais anexados, o modelo confunde-os e resolve o enunciado errado.
+ */
+export function findTargetAssessmentDocument<
+  T extends Pick<Material, 'title'> & Partial<Pick<Material, 'category' | 'mimeType'>>,
+>(materials: readonly T[], queryText: string): T | null {
+  if (ordinalAssessmentKeys(queryText).size === 0) return null;
+  const candidates = findAssessmentCandidates(materials, queryText);
+  return candidates.length === 1 ? candidates[0] : null;
+}
+
+/** Quando há um documento-alvo, tira os outros testes/exames (as aulas e fichas ficam). */
+export function focusMaterialsOnTarget<
+  T extends Pick<Material, 'title'> & Partial<Pick<Material, 'category' | 'mimeType'>>,
+>(materials: readonly T[], target: T): T[] {
+  return [target, ...materials.filter((m) => m !== target && sourceGroupKey(m) !== 'tests')];
+}

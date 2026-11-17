@@ -621,6 +621,8 @@
     "replyErr": "O Uni teve um percalço ao responder.",
     "sendErr": "Não foi possível guardar ou enviar a mensagem agora. Tenta novamente.",
     "syncNoneFound": "Não encontrei datas exatas de provas ou aulas nesta resposta.",
-    "syncPrepErr": "Não foi possível preparar a sincronização agora."
+    "syncPrepErr": "Não foi possível preparar a sincronização agora.",
+    "focusDocNote": "DOCUMENTO PEDIDO PELO ESTUDANTE: «{{title}}». É deste ficheiro que vem o enunciado; os outros testes e exames não foram enviados. Começa por transcrever a alínea pedida, com a página.",
+    "ambiguousDocNote": "O estudante não disse ao certo qual é o documento. Possíveis: {{titles}}. Pergunta-lhe qual é antes de resolver (uma pergunta curta com estas opções)."
   }
 }
