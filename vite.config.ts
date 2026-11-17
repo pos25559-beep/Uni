@@ -1,9 +1,15 @@
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
+import { readFileSync } from 'node:fs'
 import { defineConfig } from 'vite'
+
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   server: {
     host: '0.0.0.0',
     port: 3000,
@@ -30,7 +36,6 @@ export default defineConfig({
             return 'vendor-firebase-ai'
           }
           if (id.includes('firebase') || id.includes('@firebase')) return 'vendor-firebase-core'
-          if (id.includes('@azure/msal-browser')) return 'vendor-msal'
           if (
             id.includes('node_modules/react/') ||
             id.includes('node_modules/react-dom/') ||

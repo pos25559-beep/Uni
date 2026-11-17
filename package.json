@@ -1,10 +1,11 @@
 {
   "name": "unipedia",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --port 3000 --host 0.0.0.0",
+    "dev": "vite --port 5173",
+    "dev:lan": "vite --port 3000 --host 0.0.0.0",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test": "vitest run src",
@@ -17,7 +18,6 @@
     "test:legacy": "npx --yes tsx --test tests/planner.test.ts"
   },
   "dependencies": {
-    "@azure/msal-browser": "^5.29.0",
     "@capacitor/android": "^8.6.2",
     "@capacitor/app": "^8.1.2",
     "@capacitor/browser": "^8.0.5",
