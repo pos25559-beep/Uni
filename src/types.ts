@@ -130,6 +130,12 @@ export interface ClassSlot {
   source: Source;
 }
 
+export interface StudySessionReason {
+  code: 'exam_prep' | 'exam_eve' | 'srs_due' | 'weak_topic' | 'coverage' | 'starter';
+  examDays?: number;
+  weight?: number;
+}
+
 export interface StudySession {
   id: ID;
   courseId: ID;
@@ -145,6 +151,8 @@ export interface StudySession {
   /** Minutos realmente estudados (preenchido ao concluir / pelo temporizador). */
   actualMinutes?: number;
   notes?: string;
+  /** Explicação estruturada do motivo pelo qual este bloco foi agendado. */
+  reason?: StudySessionReason;
   /** true = criada pelo gerador de plano (pode ser substituída ao regenerar). */
   generated: boolean;
   /** N.º de saídas do ecrã/separador durante o Modo Foco (opcional). */

@@ -10,8 +10,13 @@ import {
   resolveIntlLocale,
 } from '../../lib/grading';
 import { getLocalizedAccessories, getLocalizedPersonas } from '../../lib/uniAccessories';
+import {
+  getUniCollectibleStates,
+  getUniPetStates,
+  readCollectibleTelemetry,
+} from '../../lib/uniCollectibles';
 import type { AppLanguage, GradingScale } from '../../types';
-import { UniBuddy } from '../brand/UnipediaMarks';
+import { UniBuddy, UniPetBuddy } from '../brand/UnipediaMarks';
 import { Button, Card, DateField, Field, Input } from '../ui';
 import { cx } from '../../lib/uiHelpers';
 
@@ -24,12 +29,18 @@ interface BeforeInstallPromptEvent extends Event {
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
 export default function ProfileCard() {
-  const { t, i18n } = useTranslation(['settings', 'common']);
+  const { t, i18n } = useTranslation(['settings', 'common', 'uni']);
   const appLang: AppLanguage = normalizeAppLanguage(i18n.language);
   const settings = useStore((s) => s.settings);
+  const sessions = useStore((s) => s.sessions);
+  const courses = useStore((s) => s.courses);
+  const weeklyCheckIns = useStore((s) => s.weeklyCheckIns);
   const updateSettings = useStore((s) => s.updateSettings);
   const personas = getLocalizedPersonas(appLang);
   const accessories = getLocalizedAccessories(appLang);
+  const telemetry = readCollectibleTelemetry(sessions, courses, weeklyCheckIns);
+  const skinStates = getUniCollectibleStates(telemetry);
+  const petStates = getUniPetStates(telemetry);
   const currentLang: AppLanguage = normalizeAppLanguage(settings.language ?? appLang);
   const currentScale: GradingScale = settings.gradingScale ?? 'pt20';
   const weekdayFmt = new Intl.DateTimeFormat(resolveIntlLocale(appLang), { weekday: 'short' });
@@ -255,6 +266,87 @@ export default function ProfileCard() {
                 </button>
               );
             })}
+          </div>
+        </div>
+
+        {/* 12 Cores do Uni & 5 Micropets companheiros */}
+        <div className="space-y-3 border-t border-line pt-4">
+          <div className="space-y-2">
+            <span className="text-xs font-medium text-muted">
+              {t('uni:shelf.tabLooks', { count: skinStates.filter((s) => s.unlocked).length })}
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {skinStates.map((item) => {
+                const active = (settings.uniSkin ?? 'classic') === item.skin.id;
+                return (
+                  <button
+                    key={item.skin.id}
+                    type="button"
+                    disabled={!item.unlocked}
+                    onClick={() => {
+                      if (item.unlocked) updateSettings({ uniSkin: item.skin.id });
+                    }}
+                    title={item.unlocked ? item.skin.name : item.skin.unlockHint}
+                    className={cx(
+                      'flex min-h-[44px] items-center gap-1.5 rounded-2xl border px-3 py-1.5 text-xs font-medium transition',
+                      active
+                        ? 'border-accent bg-accent-soft text-accent-ink'
+                        : item.unlocked
+                          ? 'border-line bg-surface-2/60 text-fg hover:bg-surface-2'
+                          : 'cursor-not-allowed border-line/50 bg-surface-2/30 opacity-55',
+                    )}
+                  >
+                    <UniBuddy mood="happy" skin={item.skin.id} size={26} interactive={false} />
+                    <span>{item.skin.name.replace(/^Uni\s+/i, '')}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="space-y-2 pt-1">
+            <span className="text-xs font-medium text-muted">
+              {t('uni:shelf.petsTitle', { defaultValue: 'Micropets Companheiros' })}
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {petStates.map((pState) => {
+                const active = (settings.uniPet ?? 'cat') === pState.pet.id;
+                return (
+                  <button
+                    key={pState.pet.id}
+                    type="button"
+                    disabled={!pState.unlocked}
+                    onClick={() => {
+                      if (pState.unlocked) updateSettings({ uniPet: pState.pet.id });
+                    }}
+                    title={pState.unlocked ? pState.pet.tagline : pState.pet.unlockHint}
+                    className={cx(
+                      'flex min-h-[44px] items-center gap-1.5 rounded-2xl border px-3 py-1.5 text-xs font-medium transition',
+                      active
+                        ? 'border-accent bg-accent-soft text-accent-ink'
+                        : pState.unlocked
+                          ? 'border-line bg-surface-2/60 text-fg hover:bg-surface-2'
+                          : 'cursor-not-allowed border-line/50 bg-surface-2/30 opacity-55',
+                    )}
+                  >
+                    <UniPetBuddy pet={pState.pet.id} size={26} />
+                    <span>{pState.pet.name}</span>
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => updateSettings({ uniPet: 'none' })}
+                className={cx(
+                  'flex min-h-[44px] items-center rounded-2xl border px-3 py-1.5 text-xs font-medium transition',
+                  (settings.uniPet ?? 'cat') === 'none'
+                    ? 'border-accent bg-accent-soft text-accent-ink'
+                    : 'border-line bg-surface-2/60 text-muted hover:text-fg',
+                )}
+              >
+                {t('uni:shelf.noPetBtn', { defaultValue: 'Sem micropet' })}
+              </button>
+            </div>
           </div>
         </div>
 

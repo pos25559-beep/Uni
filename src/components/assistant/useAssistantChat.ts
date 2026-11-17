@@ -46,6 +46,52 @@ import type { AcademicProfile, Course, IntegrationKey, IntegrationStatus, Materi
 const MAX_SENT = 20;
 const PENDING_SYNC_STORAGE_KEY = 'unipedia-pending-sync-v1';
 const PENDING_TOOLS_STORAGE_KEY = 'unipedia-pending-uni-tools-v1';
+const TUTOR_SESSION_STATE_KEY = 'unipedia-tutor-session-state-v1';
+
+export interface StoredTutorSessionState {
+  activeConvId: string;
+  activeCourseId: string;
+  activeSubject: string;
+  selectedMaterialIds: string[];
+  dismissedAutoMaterialIds: string[];
+}
+
+export function readStoredTutorSessionState(): StoredTutorSessionState | null {
+  try {
+    const raw = localStorage.getItem(TUTOR_SESSION_STATE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<StoredTutorSessionState>;
+    if (!parsed || typeof parsed !== 'object') return null;
+    return {
+      activeConvId: typeof parsed.activeConvId === 'string' && parsed.activeConvId ? parsed.activeConvId : 'default',
+      activeCourseId: typeof parsed.activeCourseId === 'string' && parsed.activeCourseId ? parsed.activeCourseId : 'all',
+      activeSubject: typeof parsed.activeSubject === 'string' && parsed.activeSubject ? parsed.activeSubject : 'all',
+      selectedMaterialIds: Array.isArray(parsed.selectedMaterialIds)
+        ? parsed.selectedMaterialIds.filter((id): id is string => typeof id === 'string')
+        : [],
+      dismissedAutoMaterialIds: Array.isArray(parsed.dismissedAutoMaterialIds)
+        ? parsed.dismissedAutoMaterialIds.filter((id): id is string => typeof id === 'string')
+        : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredTutorSessionState(patch: Partial<StoredTutorSessionState>): void {
+  try {
+    const prev = readStoredTutorSessionState() ?? {
+      activeConvId: 'default',
+      activeCourseId: 'all',
+      activeSubject: 'all',
+      selectedMaterialIds: [],
+      dismissedAutoMaterialIds: [],
+    };
+    localStorage.setItem(TUTOR_SESSION_STATE_KEY, JSON.stringify({ ...prev, ...patch }));
+  } catch {
+    // ignore storage quota
+  }
+}
 
 function readStoredPendingTools(): Record<string, UniToolProposal[]> {
   try {
@@ -117,10 +163,18 @@ export function useAssistantChat({
 }: UseAssistantChatArgs) {
   const [user, setUser] = useState<User | null>(() => auth.currentUser);
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeConvId, setActiveConvId] = useState<string>('default');
-  const [selectedMaterialIds, setSelectedMaterialIds] = useState<string[]>([]);
-  const [dismissedAutoMaterialIds, setDismissedAutoMaterialIds] = useState<string[]>([]);
+  const [activeConvId, setActiveConvId] = useState<string>(
+    () => readStoredTutorSessionState()?.activeConvId ?? 'default',
+  );
+  const [selectedMaterialIds, setSelectedMaterialIds] = useState<string[]>(
+    () => readStoredTutorSessionState()?.selectedMaterialIds ?? [],
+  );
+  const [dismissedAutoMaterialIds, setDismissedAutoMaterialIds] = useState<string[]>(
+    () => readStoredTutorSessionState()?.dismissedAutoMaterialIds ?? [],
+  );
   const autoPinnedIdsRef = useRef<string[]>([]);
+  const restoredConvIdRef = useRef<string | null>(null);
+  const sentBinarySignatureByConvRef = useRef<Record<string, string>>({});
   const [driveAuthNeeded, setDriveAuthNeeded] = useState(false);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -178,6 +232,67 @@ export function useAssistantChat({
     [conversations, activeConvId],
   );
 
+  // Restaura a cadeira e os materiais anexados guardados na conversa ativa ao abrir/trocar de conversa
+  useEffect(() => {
+    if (!currentConv) return;
+    if (restoredConvIdRef.current === currentConv.id) return;
+    restoredConvIdRef.current = currentConv.id;
+
+    if (currentConv.courseId) {
+      setActiveCourseId(currentConv.courseId);
+    }
+    if (Array.isArray(currentConv.materialIds) && currentConv.materialIds.length > 0) {
+      setSelectedMaterialIds((prev) => {
+        const merged = [...new Set([...currentConv.materialIds!, ...prev])];
+        return merged;
+      });
+    }
+  }, [currentConv, setActiveCourseId]);
+
+  // Mantém a cadeira da conversa ativa sincronizada quando o estudante muda o seletor de cadeira
+  useEffect(() => {
+    if (!currentConv || restoredConvIdRef.current !== currentConv.id) return;
+    const normalizedCourse = activeCourseId === 'all' ? undefined : activeCourseId;
+    if (normalizedCourse !== currentConv.courseId) {
+      void upsertConversation({
+        ...currentConv,
+        courseId: normalizedCourse,
+      });
+    }
+  }, [activeCourseId, currentConv]);
+
+  // Persiste o estado ativo da sessão do Tutor em localStorage para sobreviver à troca de abas
+  useEffect(() => {
+    writeStoredTutorSessionState({
+      activeConvId,
+      activeCourseId,
+      activeSubject,
+      selectedMaterialIds,
+      dismissedAutoMaterialIds,
+    });
+  }, [activeConvId, activeCourseId, activeSubject, selectedMaterialIds, dismissedAutoMaterialIds]);
+
+  const syncCurrentConvMeta = useCallback(
+    (patch: { courseId?: string; materialIds?: string[] }) => {
+      if (!currentConv) return;
+      const nextCourseId = patch.courseId !== undefined ? patch.courseId : currentConv.courseId;
+      const nextMaterials = patch.materialIds !== undefined ? patch.materialIds : currentConv.materialIds;
+      const sameCourse = nextCourseId === currentConv.courseId;
+      const sameMaterials =
+        Array.isArray(nextMaterials) &&
+        Array.isArray(currentConv.materialIds) &&
+        nextMaterials.length === currentConv.materialIds.length &&
+        nextMaterials.every((id, idx) => id === currentConv.materialIds?.[idx]);
+      if (sameCourse && sameMaterials) return;
+      void upsertConversation({
+        ...currentConv,
+        courseId: nextCourseId,
+        materialIds: nextMaterials,
+      });
+    },
+    [currentConv],
+  );
+
   const availableMaterials = useMemo(() => {
     if (activeCourseId === 'all') return materials;
     return materials.filter((m) => m.courseId === activeCourseId);
@@ -229,19 +344,23 @@ export function useAssistantChat({
             : [...dismissed, id]
           : dismissed.filter((x) => x !== id),
       );
-      return removing ? prev.filter((x) => x !== id) : [...prev, id];
+      const next = removing ? prev.filter((x) => x !== id) : [...prev, id];
+      syncCurrentConvMeta({ materialIds: next });
+      return next;
     });
   };
 
   const selectAllMaterials = (picked: string[]) => {
     setDismissedAutoMaterialIds((prev) => prev.filter((id) => !picked.includes(id)));
     setSelectedMaterialIds(picked);
+    syncCurrentConvMeta({ materialIds: picked });
   };
 
   const clearAttachedMaterials = () => {
     if (selectedMaterialIds.length === 0) return;
     setDismissedAutoMaterialIds((prev) => [...new Set([...prev, ...selectedMaterialIds])]);
     setSelectedMaterialIds([]);
+    syncCurrentConvMeta({ materialIds: [] });
   };
 
   const handleCreateConversation = async (opts?: {
@@ -400,8 +519,25 @@ export function useAssistantChat({
               };
         setDriveAuthNeeded(resolvedMaterials.needsDriveAuth);
 
+        const materialSignature = attachedMaterials
+          .map((m) => `${m.id}:${m.modifiedAt ?? ''}`)
+          .sort()
+          .join('|');
+        const alreadySentThisBundleInConv =
+          materialSignature.length > 0 &&
+          payload.some((m) => m.role === 'model') &&
+          sentBinarySignatureByConvRef.current[targetConvId] === materialSignature;
+
+        const binaryAttachmentsFromMaterials = alreadySentThisBundleInConv
+          ? resolvedMaterials.attachments.filter((a) => Boolean(a.fileUri))
+          : resolvedMaterials.attachments;
+
+        if (materialSignature.length > 0) {
+          sentBinarySignatureByConvRef.current[targetConvId] = materialSignature;
+        }
+
         const mergedAttachments: ChatAttachment[] = [
-          ...resolvedMaterials.attachments,
+          ...binaryAttachmentsFromMaterials,
           ...(attachments ?? []),
         ].slice(0, hasCustomKey ? maxAiFiles + 2 : 4);
 

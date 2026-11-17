@@ -217,6 +217,38 @@ export default function Dashboard() {
     applySessionToggle(s, true);
   };
 
+  const startQuickMinutesBlock = (minutes: 10 | 25 | 50) => {
+    void hapticTap();
+    const pendingToday = todaySessions.find((s) => !s.done);
+    if (pendingToday) {
+      if (minutes < pendingToday.minutes) {
+        patch('sessions', pendingToday.id, { minutes });
+      }
+      navigate(`/plano?focus=${encodeURIComponent(pendingToday.id)}`);
+      return;
+    }
+    const targetCourse = nextCourse ?? courses[0];
+    if (!targetCourse) {
+      navigate('/cadeiras');
+      return;
+    }
+    const targetTopic =
+      targetCourse.topics.find((tp) => tp.status !== 'done') ?? targetCourse.topics[0];
+    const id = newId();
+    upsert('sessions', {
+      id,
+      courseId: targetCourse.id,
+      topicId: targetTopic?.id,
+      date: today,
+      start: nowTime,
+      minutes,
+      done: false,
+      generated: false,
+      notes: minutes === 10 ? 'Revisão espaçada' : 'Consolidação',
+    });
+    navigate(`/plano?focus=${encodeURIComponent(id)}`);
+  };
+
   const addTask = () => {
     const title = draft.trim();
     if (!title) return;
@@ -501,6 +533,29 @@ export default function Dashboard() {
             onOpenPlan={() => navigate('/plano')}
             uniAccessory={uniAccessory}
           >
+            {courses.length > 0 && (
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-white/65 px-3 py-2 text-xs dark:bg-black/20">
+                <span className="font-semibold text-fg">
+                  {appLang === 'en'
+                    ? 'I have:'
+                    : appLang === 'es'
+                      ? 'Tengo:'
+                      : 'Tenho agora:'}
+                </span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {([10, 25, 50] as const).map((mins) => (
+                    <button
+                      key={mins}
+                      type="button"
+                      onClick={() => startQuickMinutesBlock(mins)}
+                      className="min-h-[36px] rounded-full border border-line bg-surface px-3 py-1 text-xs font-semibold text-fg transition hover:border-accent hover:bg-accent-soft/50"
+                    >
+                      ⚡ {mins} min
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {todaySessions.length > 0 ? (
               <ul className="space-y-2">
                 {todaySessions.map((s) => (
@@ -748,7 +803,7 @@ export default function Dashboard() {
             </ol>
           </AgendaRibbonCard>
 
-          <AcademicGmailWidget />
+          <AcademicGmailWidget hideWhenEmpty />
         </div>
       </div>
       </StaggerItem>

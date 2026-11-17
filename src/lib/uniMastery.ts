@@ -211,10 +211,11 @@ export function computeCourseMilestones(
   sessions: StudySession[],
   assessments: Assessment[],
   existing: UniAgentMilestone[] = [],
-  nowIso = new Date().toISOString(),
+  nowIso?: string,
   gradingScale: GradingScale = 'pt20',
   lang: AppLanguage = 'pt-PT',
 ): { milestones: UniAgentMilestone[]; items: string[] } {
+  const effectiveNowIso = nowIso ?? new Date().toISOString();
   const byId = new Map<string, UniAgentMilestone>();
   for (const m of existing) {
     byId.set(m.id, m);
@@ -222,7 +223,7 @@ export function computeCourseMilestones(
 
   const addIfMissing = (id: string, label: string) => {
     if (!byId.has(id)) {
-      byId.set(id, { id, label, at: nowIso });
+      byId.set(id, { id, label, at: effectiveNowIso });
     }
   };
 
@@ -286,7 +287,13 @@ export function computeCourseMilestones(
     );
   }
 
-  const mastery = computeCourseMastery(course, assessments, todayStr(), gradingScale);
+  const latestStudied = course.topics
+    .map((t) => t.lastStudied)
+    .filter((d): d is string => Boolean(d))
+    .sort()
+    .pop();
+  const dayKey = (nowIso ? nowIso.slice(0, 10) : latestStudied) || todayStr();
+  const mastery = computeCourseMastery(course, assessments, dayKey, gradingScale);
   const stage = stageFromMastery(mastery);
   const items: string[] = [];
   if (stage >= 2) {

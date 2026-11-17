@@ -46,10 +46,17 @@ function clampBudget(value: number): number {
   );
 }
 
+/** Orçamento de tokens de materiais no modo partilhado (ADR-001: 60k tokens). */
+export const SHARED_CONTEXT_TOKEN_BUDGET = 60_000;
+
+let memoryContextBudget: number | null = null;
+
 /** Orçamento de tokens de materiais por pergunta quando há chave pessoal. */
 export function getKeyContextTokenBudget(): number {
+  if (memoryContextBudget !== null) return memoryContextBudget;
   try {
-    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(CONTEXT_BUDGET_STORAGE_KEY) : null;
+    const storage = (globalThis as { localStorage?: Storage }).localStorage;
+    const raw = storage && typeof storage.getItem === 'function' ? storage.getItem(CONTEXT_BUDGET_STORAGE_KEY) : null;
     const parsed = raw ? Number(raw) : NaN;
     return Number.isFinite(parsed) ? clampBudget(parsed) : DEFAULT_KEY_CONTEXT_TOKEN_BUDGET;
   } catch {
@@ -58,11 +65,14 @@ export function getKeyContextTokenBudget(): number {
 }
 
 export function setKeyContextTokenBudget(tokens: number | null): void {
+  memoryContextBudget = tokens === null ? null : clampBudget(tokens);
   try {
-    if (tokens === null) localStorage.removeItem(CONTEXT_BUDGET_STORAGE_KEY);
-    else localStorage.setItem(CONTEXT_BUDGET_STORAGE_KEY, String(clampBudget(tokens)));
+    const storage = (globalThis as { localStorage?: Storage }).localStorage;
+    if (!storage || typeof storage.setItem !== 'function') return;
+    if (tokens === null) storage.removeItem(CONTEXT_BUDGET_STORAGE_KEY);
+    else storage.setItem(CONTEXT_BUDGET_STORAGE_KEY, String(memoryContextBudget));
   } catch {
-    // armazenamento indisponível: fica o valor por omissão
+    // armazenamento indisponível: fica o valor em memória / por omissão
   }
 }
 
@@ -575,10 +585,10 @@ export async function resolveMaterialsForAI(
   }));
   let needsDriveAuth = false;
   let inlineBytesUsed = 0;
-  const tokenBudget = customKey ? getKeyContextTokenBudget() : null;
+  const tokenBudget = customKey ? getKeyContextTokenBudget() : SHARED_CONTEXT_TOKEN_BUDGET;
   let tokensUsed = 0;
 
-  /** Com chave pessoal, o limite é o orçamento de tokens; o primeiro material entra sempre. */
+  /** O limite é o orçamento de tokens (60k no modo partilhado, 240k–900k com chave pessoal); o primeiro material entra sempre. */
   const fitsTokenBudget = (m: Material, resolved: CachedMaterialResolution): boolean => {
     const cost =
       (resolved.attachment ? attachmentTokens(resolved.attachment) : 0) +

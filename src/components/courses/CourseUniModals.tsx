@@ -41,11 +41,16 @@ import {
   type UniAccessoryId,
   type UniPersonaMode,
 } from '../../lib/uniAccessories';
+import {
+  getUniCollectibleStates,
+  getUniPetStates,
+  readCollectibleTelemetry,
+} from '../../lib/uniCollectibles';
 import { cx, showToast } from '../../lib/uiHelpers';
 import { newId, useStore } from '../../store/useStore';
-import type { AppLanguage, Course, Material } from '../../types';
+import type { AppLanguage, Course, Material, UniPetId, UniSkinId } from '../../types';
 import { Markdown } from '../assistant/Markdown';
-import { UniBuddy } from '../brand/UnipediaMarks';
+import { UniBuddy, UniPetBuddy } from '../brand/UnipediaMarks';
 import { Button, Field, Input, Modal, SegmentedControl, Select, Switch, Textarea } from '../ui';
 
 const FORM_IDS: UniFormId[] = ['nuvem', 'gota', 'estrela', 'cristal', 'folha'];
@@ -73,6 +78,8 @@ export function AdoptUniModal({
   onSave: (payload: {
     name: string;
     formId: UniFormId;
+    skinId?: UniSkinId;
+    petId?: UniPetId;
     personaId: UniPersonaMode;
     language: AppLanguage;
     memoryEnabled: boolean;
@@ -84,10 +91,25 @@ export function AdoptUniModal({
 }) {
   const { t, i18n } = useTranslation(['uni', 'common']);
   const appLang: AppLanguage = normalizeAppLanguage(i18n.language);
+  const globalSkin = useStore((s) => s.settings.uniSkin ?? 'classic');
+  const globalPet = useStore((s) => s.settings.uniPet ?? 'cat');
+  const sessions = useStore((s) => s.sessions);
+  const allCourses = useStore((s) => s.courses);
+  const weeklyCheckIns = useStore((s) => s.weeklyCheckIns);
+  const telemetry = readCollectibleTelemetry(sessions, allCourses, weeklyCheckIns);
+  const skinStates = getUniCollectibleStates(telemetry);
+  const petStates = getUniPetStates(telemetry);
+
   const defaultName = (initialAgent?.name || course.shortName || course.code || 'Uni').slice(0, 30);
   const [name, setName] = useState(defaultName);
   const [formId, setFormId] = useState<UniFormId>(
     () => initialAgent?.formId ?? suggestFormForCourse(course),
+  );
+  const [skinId, setSkinId] = useState<UniSkinId>(
+    () => initialAgent?.skinId ?? globalSkin,
+  );
+  const [petId, setPetId] = useState<UniPetId>(
+    () => initialAgent?.petId ?? globalPet,
   );
   const [personaId, setPersonaId] = useState<UniPersonaMode>(initialAgent?.personaId ?? 'amigo');
   const [agentLanguage, setAgentLanguage] = useState<AppLanguage>(() =>
@@ -109,6 +131,8 @@ export function AdoptUniModal({
       await onSave({
         name: name.trim() || defaultName,
         formId,
+        skinId,
+        petId,
         personaId,
         language: agentLanguage,
         memoryEnabled,
@@ -165,14 +189,18 @@ export function AdoptUniModal({
     >
       <div className="space-y-4">
         <div className="flex items-center gap-4 rounded-[20px] border border-line bg-surface-2/60 p-3.5">
-          <UniBuddy
-            form={formId}
-            stage={initialAgent ? initialAgent.stage : 1}
-            accessory={accessory}
-            mood={personaId === 'calmo' ? 'calm' : personaId === 'exigente' || personaId === 'curioso' ? 'curious' : 'happy'}
-            size={60}
-            interactive={false}
-          />
+          <div className="flex items-end gap-1.5">
+            <UniBuddy
+              form={formId}
+              stage={initialAgent ? initialAgent.stage : 1}
+              accessory={accessory}
+              skin={skinId}
+              mood={personaId === 'calmo' ? 'calm' : personaId === 'exigente' || personaId === 'curioso' ? 'curious' : 'happy'}
+              size={60}
+              interactive={false}
+            />
+            {petId !== 'none' && <UniPetBuddy pet={petId} size={34} />}
+          </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-fg">{name.trim() || defaultName}</p>
             <p className="text-xs text-muted">
@@ -198,7 +226,7 @@ export function AdoptUniModal({
                       : 'border-line bg-surface-2/60 text-muted hover:text-fg',
                   )}
                 >
-                  <UniBuddy form={fId} stage={1} size={34} interactive={false} />
+                  <UniBuddy form={fId} stage={1} skin={skinId} size={34} interactive={false} />
                   <div className="min-w-0">
                     <p className="text-xs font-semibold text-fg">{t(`uni:forms.${fId}.label`)}</p>
                     <p className="text-xs leading-snug text-muted">{t(`uni:forms.${fId}.hint`)}</p>
@@ -206,6 +234,89 @@ export function AdoptUniModal({
                 </button>
               );
             })}
+          </div>
+        </div>
+
+        <div>
+          <p className="mb-2 text-xs font-semibold text-muted">
+            {t('uni:shelf.skinsTitle', { defaultValue: 'Cor do Uni desta cadeira' })}
+          </p>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+            {skinStates.map((item) => {
+              const selected = skinId === item.skin.id;
+              return (
+                <button
+                  key={item.skin.id}
+                  type="button"
+                  disabled={!item.unlocked}
+                  onClick={() => {
+                    if (item.unlocked) setSkinId(item.skin.id);
+                  }}
+                  title={item.unlocked ? item.skin.name : item.skin.unlockHint}
+                  className={cx(
+                    'flex min-h-11 items-center gap-2 rounded-2xl border p-2 text-left transition',
+                    selected
+                      ? 'border-accent bg-accent-soft/60 text-fg'
+                      : item.unlocked
+                        ? 'border-line bg-surface-2/60 text-muted hover:text-fg'
+                        : 'cursor-not-allowed border-line/50 bg-surface-2/30 opacity-55',
+                  )}
+                >
+                  <UniBuddy form={formId} stage={1} skin={item.skin.id} size={28} interactive={false} />
+                  <span className="truncate text-xs font-semibold text-fg">
+                    {item.skin.name.replace(/^Uni\s+/i, '')}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div>
+          <p className="mb-2 text-xs font-semibold text-muted">
+            {t('uni:shelf.petsTitle', { defaultValue: 'Micropet companheiro' })}
+          </p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {petStates.map((pState) => {
+              const selected = petId === pState.pet.id;
+              return (
+                <button
+                  key={pState.pet.id}
+                  type="button"
+                  disabled={!pState.unlocked}
+                  onClick={() => {
+                    if (pState.unlocked) setPetId(pState.pet.id);
+                  }}
+                  title={pState.unlocked ? pState.pet.tagline : pState.pet.unlockHint}
+                  className={cx(
+                    'flex min-h-11 items-center gap-2 rounded-2xl border p-2 text-left transition',
+                    selected
+                      ? 'border-accent bg-accent-soft/60 text-fg'
+                      : pState.unlocked
+                        ? 'border-line bg-surface-2/60 text-muted hover:text-fg'
+                        : 'cursor-not-allowed border-line/50 bg-surface-2/30 opacity-55',
+                  )}
+                >
+                  <UniPetBuddy pet={pState.pet.id} size={28} />
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-semibold text-fg">{pState.pet.name}</p>
+                    <p className="truncate text-xs text-muted">{pState.pet.species}</p>
+                  </div>
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setPetId('none')}
+              className={cx(
+                'flex min-h-11 items-center justify-center rounded-2xl border p-2 text-xs font-semibold transition',
+                petId === 'none'
+                  ? 'border-accent bg-accent-soft/60 text-fg'
+                  : 'border-line bg-surface-2/60 text-muted hover:text-fg',
+              )}
+            >
+              {t('uni:shelf.noPetBtn', { defaultValue: 'Sem micropet' })}
+            </button>
           </div>
         </div>
 

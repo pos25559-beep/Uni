@@ -31,8 +31,8 @@ import {
 } from '../../lib/uniMastery';
 import { showToast } from '../../lib/uiHelpers';
 import { useStore } from '../../store/useStore';
-import type { AppLanguage, Course } from '../../types';
-import { UniBuddy } from '../brand/UnipediaMarks';
+import type { AppLanguage, Course, UniPetId, UniSkinId } from '../../types';
+import { UniBuddy, UniPetBuddy } from '../brand/UnipediaMarks';
 import { Badge, Button, Card, Progress } from '../ui';
 import {
   AdoptUniModal,
@@ -120,6 +120,8 @@ export default function CourseUniCard({ course }: { course: Course }) {
   const handleSaveAdoption = async (payload: {
     name: string;
     formId: UniFormId;
+    skinId?: UniSkinId;
+    petId?: UniPetId;
     personaId: UniPersonaMode;
     language: AppLanguage;
     memoryEnabled: boolean;
@@ -145,6 +147,8 @@ export default function CourseUniCard({ course }: { course: Course }) {
           ...agent,
           name: payload.name,
           formId: payload.formId,
+          skinId: payload.skinId,
+          petId: payload.petId,
           personaId: payload.personaId,
           language: payload.language,
           memoryEnabled: payload.memoryEnabled,
@@ -158,6 +162,8 @@ export default function CourseUniCard({ course }: { course: Course }) {
           courseId: course.id,
           name: payload.name,
           formId: payload.formId,
+          skinId: payload.skinId,
+          petId: payload.petId,
           personaId: payload.personaId,
           language: payload.language,
           memoryEnabled: payload.memoryEnabled,
@@ -285,15 +291,24 @@ export default function CourseUniCard({ course }: { course: Course }) {
       <Card className="space-y-4">
         <div className="flex items-start justify-between gap-2.5">
           <div className="flex min-w-0 flex-1 items-center gap-3.5">
-            <div className="grid size-16 shrink-0 place-items-center rounded-2xl border border-line bg-surface-2/70">
+            <div className="relative grid size-16 shrink-0 place-items-center rounded-2xl border border-line bg-surface-2/70">
               <UniBuddy
                 form={agent.formId}
                 stage={agent.stage}
                 accessory={accessory}
+                skin={agent.skinId ?? settings.uniSkin}
                 mood={agent.stage >= 2 ? 'happy' : 'calm'}
                 size={54}
                 interactive={false}
               />
+              {(agent.petId ?? settings.uniPet ?? 'none') !== 'none' && (
+                <span className="absolute -bottom-1.5 -right-1.5 rounded-full bg-surface p-0.5 shadow-xs">
+                  <UniPetBuddy
+                    pet={(agent.petId ?? settings.uniPet ?? 'cat') as Exclude<UniPetId, 'none'>}
+                    size={22}
+                  />
+                </span>
+              )}
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1.5">

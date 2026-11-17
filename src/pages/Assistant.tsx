@@ -29,8 +29,11 @@ import { QuickActions } from '../components/assistant/QuickActions';
 import UniLiveVoiceModal from '../components/assistant/UniLiveVoiceModal';
 import UniSyncCard from '../components/assistant/UniSyncCard';
 import UniToolProposalCard from '../components/assistant/UniToolProposalCard';
-import { useAssistantChat } from '../components/assistant/useAssistantChat';
-import { UniBuddy } from '../components/brand/UnipediaMarks';
+import {
+  readStoredTutorSessionState,
+  useAssistantChat,
+} from '../components/assistant/useAssistantChat';
+import { UniBuddy, UniPetBuddy } from '../components/brand/UnipediaMarks';
 import { UniNotebookMemoryModal } from '../components/courses/CourseUniModals';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import { Badge, Button, PillSelect, SegmentedControl } from '../components/ui';
@@ -65,6 +68,8 @@ export default function Assistant() {
   const studyLogs = useStore((s) => s.studyLogs);
   const academicProfile = useStore((s) => s.academicProfile);
   const uniPreference = useStore((s) => s.settings.uniAccessory);
+  const globalUniSkin = useStore((s) => s.settings.uniSkin ?? 'classic');
+  const globalUniPet = useStore((s) => s.settings.uniPet ?? 'cat');
   const uniPersona = useStore((s) => s.settings.uniPersona ?? 'amigo');
   const appTone = useStore((s) => s.settings.appTone ?? 'vibrante');
   const isMinimal = appTone === 'serio';
@@ -76,9 +81,14 @@ export default function Assistant() {
 
   const [activeCourseId, setActiveCourseId] = useState<string>(() => {
     const queryCourse = new URLSearchParams(location.search).get('course');
-    return routeState?.courseId || queryCourse || 'all';
+    if (routeState?.courseId) return routeState.courseId;
+    if (queryCourse) return queryCourse;
+    const saved = readStoredTutorSessionState()?.activeCourseId;
+    return saved || 'all';
   });
-  const [activeSubject, setActiveSubject] = useState<string>('all');
+  const [activeSubject, setActiveSubject] = useState<string>(
+    () => readStoredTutorSessionState()?.activeSubject || 'all',
+  );
   const [authorizingDrive, setAuthorizingDrive] = useState(false);
   const [showDocPicker, setShowDocPicker] = useState(false);
   const [notebookOpen, setNotebookOpen] = useState(false);
@@ -544,11 +554,12 @@ export default function Assistant() {
             )}
           >
             {!isMinimal ? (
-              <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-pastel-butter/75 shadow-card dark:bg-surface-2 sm:size-20">
+              <div className="relative flex size-16 shrink-0 items-center justify-center rounded-full bg-pastel-butter/75 shadow-card dark:bg-surface-2 sm:size-20">
                 <UniBuddy
                   mood={uniWelcomeMood}
                   form={courseUniAgent?.formId}
                   stage={courseUniAgent?.stage}
+                  skin={courseUniAgent?.skinId ?? globalUniSkin}
                   accessory={uniAccessory}
                   size={44}
                   onClick={() =>
@@ -560,6 +571,14 @@ export default function Assistant() {
                       : t('page.uniAria')
                   }
                 />
+                {(courseUniAgent?.petId ?? globalUniPet) !== 'none' && (
+                  <span className="absolute -bottom-1 -right-1 rounded-full bg-surface p-0.5 shadow-xs">
+                    <UniPetBuddy
+                      pet={(courseUniAgent?.petId ?? globalUniPet) as Exclude<typeof globalUniPet, 'none'>}
+                      size={22}
+                    />
+                  </span>
+                )}
               </div>
             ) : (
               <div className="grid size-12 shrink-0 place-items-center rounded-full border border-line bg-surface text-accent">

@@ -40,6 +40,7 @@ import { hapticTap } from '../lib/nativeBridge';
 import { analyzeTestMode, generatePlan, planSummary, rescheduleOverdueSessions } from '../lib/planner';
 import { getDueReviewQueue } from '../lib/spacedRepetition';
 import { capitalizeFirst, fmtMinutes, formatSessionDisplay, sessionMinutes, todayStr } from '../lib/selectors';
+import { useHubUiStore } from '../store/useHubUiStore';
 import { useStore } from '../store/useStore';
 import type { PlannerPreferences, StudySession } from '../types';
 
@@ -421,7 +422,11 @@ export default function Planner() {
           <div className="min-w-0 flex-1 text-xs leading-relaxed">
             <span className="font-bold">{t('starterModeTitle')}</span> {t('starterModeBody')}
           </div>
-          <Button size="sm" variant="secondary" onClick={() => navigate('/cadeiras')}>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => useHubUiStore.getState().openModal('assessments')}
+          >
             {t('addExamsBtn')}
           </Button>
         </div>

@@ -1,4 +1,4 @@
-import type { ID } from '../types';
+import type { ID, UniPetId, UniSkinId } from '../types';
 import type { UniPersonaMode } from './uniAccessories';
 
 export type TopicSheetMode = 'guide' | 'quiz' | 'summary';
@@ -82,6 +82,8 @@ export interface UniAgentRecord {
   courseId: ID;
   name: string;
   formId: UniFormId;
+  skinId?: UniSkinId;
+  petId?: UniPetId;
   personaId: UniPersonaMode;
   language: string;
   memoryEnabled: boolean;

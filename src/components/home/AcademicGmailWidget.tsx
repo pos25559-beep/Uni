@@ -10,7 +10,7 @@ import { newId, useStore } from '../../store/useStore';
 import { format, parseISO } from 'date-fns';
 import { appDateLocale as pt } from '../../lib/dateLocale';
 
-export default function AcademicGmailWidget() {
+export default function AcademicGmailWidget({ hideWhenEmpty = false }: { hideWhenEmpty?: boolean } = {}) {
   const courses = useStore((s) => s.courses);
   const personalEmail = useStore((s) => s.settings.personalEmail);
   const savedAcademicEmail = useStore((s) => s.settings.academicEmail);
@@ -34,6 +34,14 @@ export default function AcademicGmailWidget() {
   const emlInputRef = useRef<HTMLInputElement>(null);
 
   const combinedEmails = [...importedEmails, ...allEmails].slice(0, 5);
+
+  if (hideWhenEmpty && combinedEmails.length === 0) {
+    return null;
+  }
+
+  if (hideWhenEmpty && combinedEmails.length === 0) {
+    return null;
+  }
 
   const handleImportEml = async (file: File | undefined) => {
     if (!file) return;
