@@ -925,10 +925,20 @@ Regras estritas:
       : {}),
   };
 
+  // Pedidos grandes (muitos PDFs, raciocínio profundo): tempo próprio e novas tentativas
+  // quando a Google responde «high demand», em vez dos 10 s pensados para o chat.
+  const longCall = {
+    primaryTimeoutMs: NOTEBOOK_TIMEOUT_MS,
+    fallbackTimeoutMs: NOTEBOOK_TIMEOUT_MS,
+    overloadRetries: 2,
+  };
   return customKey
-    ? callDirectRest({ key: customKey, model, contents, system, generationConfig })
-    : runNativeGenerate({ model, contents, system, generationConfig });
+    ? callDirectRest({ key: customKey, model, contents, system, generationConfig, ...longCall })
+    : runNativeGenerate({ model, contents, system, generationConfig, ...longCall });
 }
+
+/** Tempo máximo por pedido do caderno/guia (cada modelo da cadeia). */
+const NOTEBOOK_TIMEOUT_MS = 150_000;
 
 function assertNotebookInputs(args: NotebookBriefArgs): void {
   const hasText = args.sources.some((s) => s.content.trim());

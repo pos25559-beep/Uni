@@ -1,4 +1,5 @@
 // Guia de Estudo estruturado: tipos, leitura segura do JSON do modelo e conversão para Markdown.
+import { normalizeLatexFormula, normalizePlainMathText } from './plainMath';
 
 export interface StudyGuideSource {
   title: string;
@@ -159,7 +160,8 @@ function parseChecks(v: unknown): StudyGuideCheck[] {
 export function parseStudyGuideTopic(raw: string | null | undefined): StudyGuideTopic | null {
   if (!raw || !raw.trim()) return null;
   try {
-    return parseTopic(JSON.parse(extractJsonText(raw)));
+    const topic = parseTopic(JSON.parse(extractJsonText(raw)));
+    return topic ? normalizeTopicMath(topic) : null;
   } catch {
     return null;
   }
@@ -200,7 +202,7 @@ export function parseStudyGuide(raw: string | null | undefined): StudyGuide | nu
     .filter((t): t is StudyGuideTopic => t !== null);
   if (topics.length === 0) return null;
 
-  return {
+  return normalizeGuideMath({
     title: str(data.title),
     goal: str(data.goal),
     topics,
@@ -211,7 +213,7 @@ export function parseStudyGuide(raw: string | null | undefined): StudyGuide | nu
     selfCheck: (Array.isArray(data.selfCheck) ? data.selfCheck : [])
       .map(parseCheck)
       .filter((x): x is StudyGuideCheck => x !== null),
-  };
+  });
 }
 
 export function formatSourceChip(src: StudyGuideSource, pageLabel: (p: string) => string): string {
@@ -295,4 +297,53 @@ export function studyGuideToMarkdown(guide: StudyGuide, labels: StudyGuideLabels
     out.push('');
   }
   return out.join('\n').trim();
+}
+
+const m = normalizePlainMathText;
+const mList = (xs: string[]) => xs.map(m);
+const mChecks = (xs: StudyGuideCheck[]) => xs.map((c) => ({ question: m(c.question), answer: m(c.answer) }));
+
+/**
+ * O modelo às vezes escreve «sigma_y», «sqrt(3)» ou «integral(...)» em texto simples.
+ * Converte para LaTeX antes de mostrar, para o KaTeX desenhar as fórmulas.
+ */
+export function normalizeTopicMath(topic: StudyGuideTopic): StudyGuideTopic {
+  return {
+    ...topic,
+    ...(topic.summary ? { summary: m(topic.summary) } : {}),
+    keyIdeas: mList(topic.keyIdeas),
+    formulas: topic.formulas.map(normalizeLatexFormula),
+    ...(topic.formulaDetails
+      ? {
+          formulaDetails: topic.formulaDetails.map((f) => ({
+            ...f,
+            latex: normalizeLatexFormula(f.latex),
+            meaning: m(f.meaning),
+            ...(f.validity ? { validity: m(f.validity) } : {}),
+          })),
+        }
+      : {}),
+    ...(topic.workedExample
+      ? {
+          workedExample: {
+            ...topic.workedExample,
+            statement: m(topic.workedExample.statement),
+            steps: mList(topic.workedExample.steps),
+            result: m(topic.workedExample.result),
+          },
+        }
+      : {}),
+    ...(topic.examPattern ? { examPattern: m(topic.examPattern) } : {}),
+    pitfalls: mList(topic.pitfalls),
+    ...(topic.practice ? { practice: mChecks(topic.practice) } : {}),
+  };
+}
+
+export function normalizeGuideMath(guide: StudyGuide): StudyGuide {
+  return {
+    ...guide,
+    topics: guide.topics.map(normalizeTopicMath),
+    examTraps: mList(guide.examTraps),
+    selfCheck: mChecks(guide.selfCheck),
+  };
 }

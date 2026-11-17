@@ -8,6 +8,7 @@ import {
 } from '../../lib/aiQuota';
 import { tr } from '../../i18n/tr';
 import { friendlyCustomKeyError, HttpStatusError, ModelTimeoutError } from '../../lib/geminiErrors';
+import { isOverloadError, overloadBackoffMs } from '../../lib/aiAccess';
 import { hasAiAccess } from '../../lib/aiAccess';
 import { getNativeAI } from '../../lib/firebase';
 import { useStore } from '../../store/useStore';
@@ -143,6 +144,30 @@ function runWithTimeout<T>(args: {
 async function runModelChain<T>(args: {
   primaryModel: string;
   primaryTimeoutMs?: number;
+  fallbackTimeoutMs?: number;
+  /** Quantas vezes repetir a cadeia inteira quando a Google está sobrecarregada (por omissão 0). */
+  overloadRetries?: number;
+  idleTimeoutMs?: number;
+  outerSignal?: AbortSignal;
+  attempt: (model: string, ctx: { signal: AbortSignal; bumpIdle: () => void }) => Promise<T>;
+}): Promise<T> {
+  const retries = Math.max(0, args.overloadRetries ?? 0);
+  for (let round = 0; ; round++) {
+    try {
+      return await runModelChainOnce(args);
+    } catch (err) {
+      if (round >= retries || args.outerSignal?.aborted || !isOverloadError(err)) throw err;
+      // Pedidos longos (guias, cadernos): não desistir à primeira «procura alta».
+      modelCooldownUntil.clear();
+      await new Promise((resolve) => setTimeout(resolve, overloadBackoffMs(round + 1)));
+    }
+  }
+}
+
+async function runModelChainOnce<T>(args: {
+  primaryModel: string;
+  primaryTimeoutMs?: number;
+  fallbackTimeoutMs?: number;
   idleTimeoutMs?: number;
   outerSignal?: AbortSignal;
   attempt: (model: string, ctx: { signal: AbortSignal; bumpIdle: () => void }) => Promise<T>;
@@ -155,7 +180,7 @@ async function runModelChain<T>(args: {
     const hasMore = i < candidates.length - 1;
     const timeoutMs = hasMore
       ? (args.primaryTimeoutMs ?? PRIMARY_TIMEOUT_MS)
-      : FALLBACK_TIMEOUT_MS;
+      : (args.fallbackTimeoutMs ?? FALLBACK_TIMEOUT_MS);
 
     try {
       const result = await runWithTimeout({
@@ -261,11 +286,15 @@ export async function callDirectRest(args: {
   generationConfig?: GenerationConfig;
   signal?: AbortSignal;
   primaryTimeoutMs?: number;
+  fallbackTimeoutMs?: number;
+  overloadRetries?: number;
 }): Promise<string> {
   try {
     return await runModelChain({
       primaryModel: args.model,
       primaryTimeoutMs: args.primaryTimeoutMs,
+      fallbackTimeoutMs: args.fallbackTimeoutMs,
+      overloadRetries: args.overloadRetries,
       outerSignal: args.signal,
       attempt: async (targetModel, ctx) => {
         const safeConfig = sanitizeGenerationConfigForModel(targetModel, args.generationConfig);
@@ -423,12 +452,16 @@ export async function runNativeGenerate(args: {
   generationConfig?: GenerationConfig;
   signal?: AbortSignal;
   primaryTimeoutMs?: number;
+  fallbackTimeoutMs?: number;
+  overloadRetries?: number;
 }): Promise<string> {
   const [ai, { getGenerativeModel }] = await Promise.all([getNativeAI(), import('firebase/ai')]);
   try {
     return await runModelChain({
       primaryModel: args.model,
       primaryTimeoutMs: args.primaryTimeoutMs,
+      fallbackTimeoutMs: args.fallbackTimeoutMs,
+      overloadRetries: args.overloadRetries,
       outerSignal: args.signal,
       attempt: async (targetModel, ctx) => {
         const safeConfig = sanitizeGenerationConfigForModel(targetModel, args.generationConfig);
@@ -439,7 +472,10 @@ export async function runNativeGenerate(args: {
         });
         const result = await gm.generateContent(
           { contents: args.contents },
-          { signal: ctx.signal, timeout: FALLBACK_TIMEOUT_MS },
+          {
+            signal: ctx.signal,
+            timeout: Math.max(FALLBACK_TIMEOUT_MS, args.primaryTimeoutMs ?? 0, args.fallbackTimeoutMs ?? 0),
+          },
         );
         const usage = (
           result.response as { usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number } }

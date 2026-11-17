@@ -19,3 +19,27 @@ export function isRetryableAiStatus(statusCode: number | undefined): boolean {
     statusCode === 504
   );
 }
+
+/**
+ * Erro de sobrecarga momentânea do Gemini («high demand», 429, 503, tempo esgotado):
+ * vale a pena esperar uns segundos e tentar de novo a cadeia de modelos.
+ */
+export function isOverloadError(err: unknown): boolean {
+  const status = (err as { statusCode?: unknown } | null)?.statusCode;
+  if (status === 429 || status === 503 || status === 504) return true;
+  const name = (err as { name?: unknown } | null)?.name;
+  if (name === 'ModelTimeoutError') return true;
+  const lower = (err instanceof Error ? err.message : String(err ?? '')).toLowerCase();
+  return (
+    lower.includes('high demand') ||
+    lower.includes('overloaded') ||
+    lower.includes('unavailable') ||
+    lower.includes('try again later') ||
+    lower.includes('deadline')
+  );
+}
+
+/** Espera antes da tentativa n (1, 2, …): 3 s, 8 s, 15 s. */
+export function overloadBackoffMs(attempt: number): number {
+  return [3_000, 8_000, 15_000][Math.min(attempt, 3) - 1] ?? 15_000;
+}
