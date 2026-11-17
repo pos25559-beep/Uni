@@ -31,10 +31,8 @@ jobs:
         run: |
           if [ -f bun.lock ] || [ -f bun.lockb ]; then
             bun install --frozen-lockfile
-          elif [ -f package-lock.json ]; then
-            npm ci
           else
-            npm install --no-audit --no-fund
+            bun install --no-save
           fi
 
       - name: Verify 4-locale i18n parity
