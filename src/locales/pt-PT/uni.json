@@ -444,5 +444,43 @@
     "needCourseFocus": "Seleciona uma cadeira para focar o plano.",
     "planFocusApplied": "Plano focado em «{{course}}» e sessões futuras atualizadas.",
     "invalidProposal": "Proposta inválida ou incompleta."
+  },
+  "voice": {
+    "voices": {
+      "aoede": {
+        "name": "Aoede",
+        "desc": "Quente e próxima, ideal para o dia a dia"
+      },
+      "puck": {
+        "name": "Puck",
+        "desc": "Viva e animada, para manter o ritmo"
+      },
+      "kore": {
+        "name": "Kore",
+        "desc": "Calma e serena, para explicar com tempo"
+      },
+      "fenrir": {
+        "name": "Fenrir",
+        "desc": "Firme e segura, para rever com exigência"
+      },
+      "charon": {
+        "name": "Charon",
+        "desc": "Grave e pausada, para treinar em tom sério"
+      },
+      "zephyr": {
+        "name": "Zephyr",
+        "desc": "Clara e direta, para ir ao essencial"
+      }
+    },
+    "presets": {
+      "calmDidactic": "Calmo e didático",
+      "fastRevision": "Revisão rápida",
+      "directDemanding": "Direto e exigente"
+    },
+    "course": {
+      "label": "Voz deste Uni",
+      "sameAsGlobal": "Igual à voz geral",
+      "hint": "Escolhe uma voz só para este Uni, ou usa a voz geral das Definições."
+    }
   }
 }

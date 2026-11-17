@@ -444,5 +444,43 @@
     "needCourseFocus": "Select a course to focus the plan on.",
     "planFocusApplied": "Plan focused on “{{course}}” and upcoming sessions updated.",
     "invalidProposal": "Invalid or incomplete proposal."
+  },
+  "voice": {
+    "voices": {
+      "aoede": {
+        "name": "Aoede",
+        "desc": "Warm and friendly, great for everyday study"
+      },
+      "puck": {
+        "name": "Puck",
+        "desc": "Lively and upbeat, keeps the pace going"
+      },
+      "kore": {
+        "name": "Kore",
+        "desc": "Calm and steady, takes time to explain"
+      },
+      "fenrir": {
+        "name": "Fenrir",
+        "desc": "Firm and confident, for demanding revision"
+      },
+      "charon": {
+        "name": "Charon",
+        "desc": "Deep and measured, for a serious coaching tone"
+      },
+      "zephyr": {
+        "name": "Zephyr",
+        "desc": "Clear and direct, straight to the point"
+      }
+    },
+    "presets": {
+      "calmDidactic": "Calm and didactic",
+      "fastRevision": "Quick revision",
+      "directDemanding": "Direct and demanding"
+    },
+    "course": {
+      "label": "This Uni's voice",
+      "sameAsGlobal": "Same as the general voice",
+      "hint": "Pick a voice just for this Uni, or use the general voice from Settings."
+    }
   }
 }

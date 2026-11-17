@@ -3,14 +3,16 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SUPPORTED_LANGUAGES } from '../../../i18n';
 import { normalizeAppLanguage } from '../../../lib/grading';
-import type { UniAgentRecord, UniFormId } from '../../../lib/localDb';
+import { getUniAgent, type UniAgentRecord, type UniFormId } from '../../../lib/localDb';
+import { saveUniAgent } from '../../../lib/uniAgents';
 import { type UniAccessoryId, type UniPersonaMode, getLocalizedPersonas, suggestFormForCourse } from '../../../lib/uniAccessories';
 import { getUniCollectibleStates, getUniPetStates, readCollectibleTelemetry } from '../../../lib/uniCollectibles';
 import { cx } from '../../../lib/uiHelpers';
+import { UNI_VOICES, isValidUniVoiceName } from '../../../lib/uniVoice';
 import { useStore } from '../../../store/useStore';
 import type { AppLanguage, Course, UniPetId, UniSkinId } from '../../../types';
 import { UniBuddy, UniPetBuddy } from '../../brand/UnipediaMarks';
-import { Button, Field, Input, Modal, Switch } from '../../ui';
+import { Button, Field, Input, Modal, PillSelect, Switch } from '../../ui';
 
 const FORM_IDS: UniFormId[] = ['nuvem', 'gota', 'estrela', 'cristal', 'folha'];
 
@@ -65,6 +67,12 @@ export function AdoptUniModal({
     () => initialAgent?.petId ?? globalPet,
   );
   const [personaId, setPersonaId] = useState<UniPersonaMode>(initialAgent?.personaId ?? 'amigo');
+  // '' = usar a voz geral das Definições (sem voiceConfig próprio neste curso).
+  const [voiceName, setVoiceName] = useState<string>(initialAgent?.voiceConfig?.voiceName ?? '');
+  const voiceOptions = [
+    { value: '', label: t('uni:voice.course.sameAsGlobal') },
+    ...UNI_VOICES.map((v) => ({ value: v.id, label: t(v.labelKey), hint: t(v.descKey) })),
+  ];
   const [agentLanguage, setAgentLanguage] = useState<AppLanguage>(() =>
     initialAgent?.language ? normalizeAppLanguage(initialAgent.language) : appLang,
   );
@@ -93,6 +101,20 @@ export function AdoptUniModal({
         goal: goal.trim() || undefined,
         firstDifficulty: firstDifficulty.trim() || undefined,
       });
+      // A voz deste curso é gravada depois de o agente existir (o onSave não a transporta).
+      if (voiceName !== (initialAgent?.voiceConfig?.voiceName ?? '')) {
+        const current = await getUniAgent(course.id);
+        if (current) {
+          await saveUniAgent({
+            ...current,
+            voiceConfig:
+              voiceName && isValidUniVoiceName(voiceName)
+                ? { ...current.voiceConfig, voiceName }
+                : undefined,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      }
       onClose();
     } finally {
       setSaving(false);
@@ -297,6 +319,17 @@ export function AdoptUniModal({
               );
             })}
           </div>
+        </div>
+
+        <div>
+          <p className="mb-1.5 text-xs font-semibold text-muted">{t('uni:voice.course.label')}</p>
+          <p className="mb-2 text-xs text-muted">{t('uni:voice.course.hint')}</p>
+          <PillSelect
+            value={voiceName}
+            options={voiceOptions}
+            onChange={setVoiceName}
+            ariaLabel={t('uni:voice.course.label')}
+          />
         </div>
 
         <Field label={t('uni:adoptModal.stepName')}>

@@ -472,5 +472,22 @@
     "cancel": "Cancelar",
     "confirmRemove": "Remover Ficheiros",
     "confirmBody": "Esta ação remove os {{count}} ficheiros guardados no armazenamento local do navegador. Os materiais do Google Drive não serão afetados."
+  },
+  "uniVoice": {
+    "title": "Voz do Uni",
+    "desc": "Escolhe a voz com que o Uni te fala e, se quiseres, o estilo de fala.",
+    "voiceGroup": "Voz do Uni",
+    "styleLabel": "Estilo de fala (opcional)",
+    "stylePlaceholder": "Ex.: calmo, com pausas entre as ideias",
+    "styleCount": "{{count}} de 120 caracteres",
+    "presetsLabel": "Estilos rápidos",
+    "clearStyle": "Limpar estilo",
+    "listen": "Ouvir exemplo",
+    "listening": "A ouvir…",
+    "save": "Guardar voz",
+    "saved": "Voz do Uni guardada.",
+    "sample": "Olá, sou o teu Uni. Vamos rever este tema juntos, passo a passo.",
+    "deviceNote": "Estás a ouvir a voz do dispositivo. A voz neural do Uni precisa de uma chave pessoal: Definições → Tutor → Avançado.",
+    "previewError": "Não foi possível ouvir o exemplo. Tenta outra vez."
   }
 }

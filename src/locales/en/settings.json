@@ -472,5 +472,22 @@
     "cancel": "Cancel",
     "confirmRemove": "Remove Files",
     "confirmBody": "This removes the {{count}} files saved in your browser's local storage. Google Drive materials will not be affected."
+  },
+  "uniVoice": {
+    "title": "Uni's voice",
+    "desc": "Choose the voice Uni speaks with and, if you like, a speaking style.",
+    "voiceGroup": "Uni's voice",
+    "styleLabel": "Speaking style (optional)",
+    "stylePlaceholder": "E.g. calm, with pauses between ideas",
+    "styleCount": "{{count}} of 120 characters",
+    "presetsLabel": "Quick styles",
+    "clearStyle": "Clear style",
+    "listen": "Listen to sample",
+    "listening": "Playing…",
+    "save": "Save voice",
+    "saved": "Uni's voice saved.",
+    "sample": "Hi, I'm your Uni. Let's review this topic together, step by step.",
+    "deviceNote": "You are hearing the device voice. Uni's neural voice needs a personal key: Settings → Tutor → Advanced.",
+    "previewError": "Could not play the sample. Please try again."
   }
 }

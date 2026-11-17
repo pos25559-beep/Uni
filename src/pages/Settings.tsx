@@ -29,6 +29,7 @@ import GoogleCard from '../components/settings/GoogleCard';
 import NotebookCard from '../components/settings/NotebookCard';
 import NotificationsCard from '../components/settings/NotificationsCard';
 import ProfileCard from '../components/settings/ProfileCard';
+import UniVoiceCard from '../components/settings/UniVoiceCard';
 import { Badge, Button, ListGroup, ListRow, PageHeader, SegmentedControl, SubpageHeader, Switch } from '../components/ui';
 import { showToast } from '../lib/uiHelpers';
 import { APP_PALETTES } from '../lib/academicCredits';
@@ -140,6 +141,7 @@ export default function SettingsPage() {
           />
         </ListGroup>
         <GeminiCard />
+        <UniVoiceCard />
       </AnimatedPage>
     );
   }
