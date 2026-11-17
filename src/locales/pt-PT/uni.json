@@ -163,5 +163,189 @@
     "close": "Fechar",
     "quizErr": "Erro ao importar quiz",
     "mentorErr": "Erro ao ensinar cadeira seguinte"
+  },
+  "collectibles": {
+    "skins": {
+      "classic": {
+        "name": "Uni Salva Clássica",
+        "tagline": "Papel salva e marcador coral de origem",
+        "unlockHint": "Disponível desde o primeiro dia",
+        "badgeText": "Inicial"
+      },
+      "sky": {
+        "name": "Uni Céu de Abril",
+        "tagline": "Azul claro de manhã tranquila de biblioteca",
+        "unlockHint": "Disponível desde o primeiro dia",
+        "badgeText": "Inicial"
+      },
+      "peach": {
+        "name": "Uni Pêssego Caderno",
+        "tagline": "Tom pêssego quente para leituras leves",
+        "unlockHint": "Disponível desde o primeiro dia",
+        "badgeText": "Inicial"
+      },
+      "blush": {
+        "name": "Uni Rosa Papelaria",
+        "tagline": "Nota adesiva rosada de rascunho gentil",
+        "unlockHint": "Disponível desde o primeiro dia",
+        "badgeText": "Inicial"
+      },
+      "mint": {
+        "name": "Uni Menta Suave",
+        "tagline": "Verde-água calmo para resumos e fichas",
+        "unlockHint": "Disponível desde o primeiro dia",
+        "badgeText": "Inicial"
+      },
+      "cream": {
+        "name": "Uni Papel Creme",
+        "tagline": "Papel de algodão minimalista com tinta nítida",
+        "unlockHint": "Disponível desde o primeiro dia",
+        "badgeText": "Inicial"
+      },
+      "butter": {
+        "name": "Uni Manteiga Solar",
+        "tagline": "Tom de post-it luminoso para semanas bem planeadas",
+        "unlockHint": "Faz 1 Check-in Semanal ou 3 sessões de estudo",
+        "badgeText": "Plano"
+      },
+      "crimson": {
+        "name": "Uni Coral Vivo",
+        "tagline": "Edição viva com marcador creme, marca de ritmo aceso",
+        "unlockHint": "Conclui 3 recalls ativos ou 3 dias seguidos",
+        "badgeText": "Ritmo"
+      },
+      "sage": {
+        "name": "Uni Botânico SRS",
+        "tagline": "Esmeralda botânica de revisão espaçada",
+        "unlockHint": "Completa 5 revisões de recall ativo em tópicos",
+        "badgeText": "Memória"
+      },
+      "terracotta": {
+        "name": "Uni Terracota",
+        "tagline": "Barro quente de fim de tarde no campus",
+        "unlockHint": "Conclui 6 sessões de estudo",
+        "badgeText": "Constância"
+      },
+      "espresso": {
+        "name": "Uni Café de Estudo",
+        "tagline": "Castanho expresso para longas horas focadas",
+        "unlockHint": "Acumula 150 minutos de estudo concluídos",
+        "badgeText": "Foco"
+      },
+      "ink": {
+        "name": "Uni Noturno Dourado",
+        "tagline": "Edição escura dourada para domínio completo",
+        "unlockHint": "Alcança 1 tópico em nível 21d (ou 7 dias seguidos)",
+        "badgeText": "Mestre"
+      }
+    },
+    "pets": {
+      "cat": {
+        "name": "Miau",
+        "species": "Gatinho de Tinta",
+        "tagline": "Enrola-se perto do caderno enquanto organizas ideias",
+        "unlockHint": "Disponível desde o primeiro dia"
+      },
+      "owl": {
+        "name": "Pio",
+        "species": "Mochinho da Sebenta",
+        "tagline": "Adora revisões rápidas e apontamentos bem resumidos",
+        "unlockHint": "Completa 2 sessões ou 2 recalls ativos"
+      },
+      "fox": {
+        "name": "Kiko",
+        "species": "Raposa Origami",
+        "tagline": "Salta alegre entre prazos sem deixar acumular matéria",
+        "unlockHint": "Mantém 3 dias seguidos ou 4 sessões"
+      },
+      "turtle": {
+        "name": "Tuga",
+        "species": "Tartaruga Pomodoro",
+        "tagline": "Carapaça de papel firme para ritmo constante sem pressa",
+        "unlockHint": "Conclui 5 sessões de estudo"
+      },
+      "rabbit": {
+        "name": "Lino",
+        "species": "Coelhinho de Post-it",
+        "tagline": "Saltita em blocos curtos quando dominas os tópicos",
+        "unlockHint": "Conclui 8 sessões ou 1 tópico nível 21d"
+      }
+    },
+    "progress": {
+      "unlocked": "Desbloqueado",
+      "sessionsOrCheckin": "{{current}}/{{target}} sessões ou 1 check-in",
+      "recallsOrDays": "{{current}}/{{target}} recalls ou dias",
+      "recalls": "{{current}}/{{target}} recalls ativos",
+      "sessions": "{{current}}/{{target}} sessões",
+      "minutes": "{{current}}/{{target}} min",
+      "daysOrSrs": "{{current}}/{{target}} dias ou nível SRS 21d",
+      "sessionsOrRecalls": "{{current}}/{{target}} sessões ou recalls",
+      "streakDays": "{{current}}/{{target}} dias seguidos"
+    },
+    "growth": {
+      "semente": "Semente",
+      "explorador": "Explorador",
+      "estudioso": "Estudioso",
+      "sabio": "Sábio do Campus"
+    },
+    "discoveries": {
+      "d0": "Encontrou uma mesa ao sol perto da biblioteca com tomada livre!",
+      "d1": "Observou uma família de pardais no jardim entre aulas.",
+      "d2": "Guardou um marcador amarelo novo para a tua próxima ficha.",
+      "d3": "Descobriu um atalho silencioso para os apontamentos da semana.",
+      "d4": "Anotou três fórmulas difíceis num post-it bem arrumado.",
+      "d5": "Celebrou o teu ritmo com uma chávena imaginária de chá de menta."
+    }
+  },
+  "collectiblesModal": {
+    "title": "Ninho & Vitrina do Uni",
+    "close": "Fechar",
+    "footerCount": "{{skins}}/{{totalSkins}} cores · {{pets}}/{{totalPets}} pets",
+    "hugAria": "Fazer carinho no Uni",
+    "totalMinutes": "{{time}} totais",
+    "energyToday": "Energia hoje:",
+    "nextLevel": "Próximo nível ({{label}}): {{time}}",
+    "hugLoved": "Adorou! +3 ⚡",
+    "hugDone": "Carinho dado",
+    "hugAction": "Fazer carinho ({{done}}/{{max}})",
+    "discoveryToday": "Descoberta de hoje: {{note}}",
+    "energyHint": "Conclui sessões, tarefas ou faz carinho para encher a energia do dia.",
+    "tabColors": "Cores ({{count}})",
+    "tabPets": "Micropets ({{count}})",
+    "tabDiscreet": "Discreto nos ecrãs",
+    "surpriseTitle": "Cor surpresa nos ecrãs",
+    "surpriseHint": "Alterna a cor dos companheiros discretos entre as cores que já tens abertas.",
+    "surpriseOn": "Ativo",
+    "surpriseOff": "Cor fixa",
+    "equipped": "Equipado",
+    "equipColor": "Equipar esta cor",
+    "petsIntro": "Os Micropets caminham ao lado do teu Uni no Ninho e pelos cantos do ecrã.",
+    "stowPet": "Guardar pet",
+    "petWithYou": "A acompanhar-te",
+    "adoptPet": "Adotar {{name}}",
+    "discreetIntro": "Os Unis discretos agora passeiam por diferentes cantos e margens (esquerda, direita e bordas laterais) tanto no computador como no telemóvel, escondendo-se ao escrever ou fazer scroll.",
+    "amountTitle": "Quantidade no ecrã",
+    "amountHint": "No modo «Até 2», um amigo de cor diferente vem espreitar contigo.",
+    "amountAll": "Até 2",
+    "amountSolo": "Só 1",
+    "amountOff": "Desligado"
+  },
+  "uniTools": {
+    "requiresConfirmation": "A ferramenta {{name}} requer confirmação explícita do estudante antes de gravar.",
+    "planSummary": "{{sessions}} sessão(ões) pendente(s) · {{exams}} avaliação(ões) próxima(s)",
+    "sheetsSummary": "{{count}} ficha(s) encontrada(s)",
+    "recallDefaultTopic": "Revisão em conversa",
+    "noCourseForRecall": "Nenhuma cadeira selecionada para registar o recall.",
+    "noTopicForRecall": "Não foi possível localizar ou criar o tópico para registar recall.",
+    "recallSummary": "Recall ({{score}}/3) registado para «{{topic}}» · próxima revisão {{date}}.",
+    "defaultLabel": "Estudo",
+    "needCourseSession": "Seleciona primeiro uma cadeira para guardar esta sessão.",
+    "sessionAdded": "Sessão de {{minutes}} min adicionada para {{date}}.",
+    "needCourseCards": "Seleciona uma cadeira para guardar flashcards.",
+    "noTopicForCards": "Não foi possível criar ou localizar o tópico para os flashcards.",
+    "cardsSaved": "{{count}} flashcard(s) guardado(s) em «{{topic}}».",
+    "doubtTask": "Dúvida ({{topic}}): {{note}}",
+    "doubtSaved": "Dúvida guardada para levar à aula ({{topic}}).",
+    "invalidProposal": "Proposta inválida ou incompleta."
   }
 }

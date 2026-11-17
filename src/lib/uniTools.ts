@@ -1,4 +1,5 @@
 import { Behavior, Type, type FunctionDeclaration } from '@google/genai';
+import { tr } from '../i18n/tr';
 import { newId, useStore } from '../store/useStore';
 import type { Course, PracticeCard, StudySession, Task, Topic } from '../types';
 import {
@@ -285,7 +286,7 @@ export async function executeReadOnlyOrRecallUniTool(
     return {
       ok: false,
       requiresConfirmation: true,
-      summary: `A ferramenta ${call.name} requer confirmação explícita do estudante antes de gravar.`,
+      summary: tr('uni:uniTools.requiresConfirmation', { name: call.name }),
     };
   }
 
@@ -309,14 +310,13 @@ export async function executeReadOnlyOrRecallUniTool(
       .sort((a, b) => a.date.localeCompare(b.date))
       .slice(0, 5);
 
-    const summaryParts = [
-      `${scopedSessions.length} sessão(ões) pendente(s)`,
-      `${upcomingExams.length} avaliação(ões) próxima(s)`,
-    ];
     return {
       ok: true,
       requiresConfirmation: false,
-      summary: summaryParts.join(' · '),
+      summary: tr('uni:uniTools.planSummary', {
+        sessions: scopedSessions.length,
+        exams: upcomingExams.length,
+      }),
       data: {
         course: targetCourse ? targetCourse.shortName : 'all',
         sessions: scopedSessions.map((s) => ({
@@ -351,7 +351,7 @@ export async function executeReadOnlyOrRecallUniTool(
     return {
       ok: true,
       requiresConfirmation: false,
-      summary: `${picked.length} ficha(s) encontrada(s)`,
+      summary: tr('uni:uniTools.sheetsSummary', { count: picked.length }),
       data: {
         sheets: picked.map((s) => ({
           title: s.title,
@@ -369,13 +369,13 @@ export async function executeReadOnlyOrRecallUniTool(
   const rawConf = Number(call.args.confidence);
   const confidence: Topic['confidence'] =
     rawConf >= 5 ? 5 : rawConf === 4 ? 4 : rawConf === 2 ? 2 : rawConf === 1 ? 1 : score === 3 ? 4 : score === 1 ? 2 : 3;
-  const topicTitle = String(call.args.topicTitle ?? '').trim() || 'Revisão em conversa';
+  const topicTitle = String(call.args.topicTitle ?? '').trim() || tr('uni:uniTools.recallDefaultTopic');
 
   if (!targetCourse) {
     return {
       ok: false,
       requiresConfirmation: false,
-      summary: 'Nenhuma cadeira selecionada para registar o recall.',
+      summary: tr('uni:uniTools.noCourseForRecall'),
     };
   }
 
@@ -387,7 +387,7 @@ export async function executeReadOnlyOrRecallUniTool(
     return {
       ok: false,
       requiresConfirmation: false,
-      summary: 'Não foi possível localizar ou criar o tópico para registar recall.',
+      summary: tr('uni:uniTools.noTopicForRecall'),
     };
   }
 
@@ -398,7 +398,11 @@ export async function executeReadOnlyOrRecallUniTool(
   return {
     ok: true,
     requiresConfirmation: false,
-    summary: `Recall (${score}/3) registado para «${topic.title}» · próxima revisão ${nextSrs.nextReviewDate}.`,
+    summary: tr('uni:uniTools.recallSummary', {
+      score,
+      topic: topic.title,
+      date: nextSrs.nextReviewDate ?? '',
+    }),
     data: {
       courseId: targetCourse.id,
       topicId: topic.id,
@@ -421,7 +425,7 @@ export function buildUniToolProposal(
   const toolName = call.name as UniWriteToolName;
   const today = ctx?.today ?? todayStr();
   const targetCourse = resolveCourse(call.args, ctx);
-  const topicTitle = String(call.args.topicTitle ?? call.args.topic ?? '').trim() || (targetCourse?.shortName ?? 'Estudo');
+  const topicTitle = String(call.args.topicTitle ?? call.args.topic ?? '').trim() || (targetCourse?.shortName ?? tr('uni:uniTools.defaultLabel'));
   const matchedTopic = matchTopic(targetCourse, topicTitle);
   const id = call.id || newId();
 
@@ -438,7 +442,7 @@ export function buildUniToolProposal(
       id,
       toolName,
       courseId: targetCourse?.id,
-      courseLabel: targetCourse?.shortName ?? targetCourse?.name ?? 'Estudo',
+      courseLabel: targetCourse?.shortName ?? targetCourse?.name ?? tr('uni:uniTools.defaultLabel'),
       topicId: matchedTopic?.id,
       topicTitle,
       status: 'pending',
@@ -469,7 +473,7 @@ export function buildUniToolProposal(
       id,
       toolName,
       courseId: targetCourse?.id,
-      courseLabel: targetCourse?.shortName ?? targetCourse?.name ?? 'Estudo',
+      courseLabel: targetCourse?.shortName ?? targetCourse?.name ?? tr('uni:uniTools.defaultLabel'),
       topicId: matchedTopic?.id,
       topicTitle,
       status: 'pending',
@@ -484,7 +488,7 @@ export function buildUniToolProposal(
     id,
     toolName: 'marcar_duvida',
     courseId: targetCourse?.id,
-    courseLabel: targetCourse?.shortName ?? targetCourse?.name ?? 'Estudo',
+    courseLabel: targetCourse?.shortName ?? targetCourse?.name ?? tr('uni:uniTools.defaultLabel'),
     topicId: matchedTopic?.id,
     topicTitle,
     status: 'pending',
@@ -508,7 +512,7 @@ export async function commitUniToolProposal(
   if (proposal.toolName === 'criar_sessao' && proposal.session) {
     const targetCourseId = course?.id ?? proposal.courseId;
     if (!targetCourseId) {
-      throw new Error('Seleciona primeiro uma cadeira para guardar esta sessão.');
+      throw new Error(tr('uni:uniTools.needCourseSession'));
     }
     const newSession: StudySession = {
       id: newId(),
@@ -522,13 +526,16 @@ export async function commitUniToolProposal(
     };
     store.upsert('sessions', newSession);
     return {
-      summary: `Sessão de ${proposal.session.minutes} min adicionada para ${proposal.session.date}.`,
+      summary: tr('uni:uniTools.sessionAdded', {
+        minutes: proposal.session.minutes,
+        date: proposal.session.date,
+      }),
     };
   }
 
   if (proposal.toolName === 'criar_flashcards' && proposal.flashcards && proposal.flashcards.length > 0) {
     if (!course) {
-      throw new Error('Seleciona uma cadeira para guardar flashcards.');
+      throw new Error(tr('uni:uniTools.needCourseCards'));
     }
     let topic = proposal.topicId
       ? course.topics.find((t) => t.id === proposal.topicId)
@@ -537,7 +544,7 @@ export async function commitUniToolProposal(
       topic = store.ensureCourseTopic(course.id, proposal.topicTitle) ?? undefined;
     }
     if (!topic) {
-      throw new Error('Não foi possível criar ou localizar o tópico para os flashcards.');
+      throw new Error(tr('uni:uniTools.noTopicForCards'));
     }
     const created: PracticeCard[] = proposal.flashcards.map((fc) => ({
       id: newId(),
@@ -549,7 +556,7 @@ export async function commitUniToolProposal(
     const merged = [...created, ...(topic.practiceCards ?? [])].slice(0, 8);
     store.updateTopic(course.id, topic.id, { practiceCards: merged });
     return {
-      summary: `${created.length} flashcard(s) guardado(s) em «${topic.title}».`,
+      summary: tr('uni:uniTools.cardsSaved', { count: created.length, topic: topic.title }),
     };
   }
 
@@ -573,15 +580,15 @@ export async function commitUniToolProposal(
     const task: Task = {
       id: newId(),
       ...(course ? { courseId: course.id } : {}),
-      title: `Dúvida (${proposal.topicTitle}): ${proposal.doubt.note}`,
+      title: tr('uni:uniTools.doubtTask', { topic: proposal.topicTitle, note: proposal.doubt.note }),
       done: false,
       priority: 2,
     };
     store.upsert('tasks', task);
     return {
-      summary: `Dúvida guardada para levar à aula (${proposal.topicTitle}).`,
+      summary: tr('uni:uniTools.doubtSaved', { topic: proposal.topicTitle }),
     };
   }
 
-  throw new Error('Proposta inválida ou incompleta.');
+  throw new Error(tr('uni:uniTools.invalidProposal'));
 }

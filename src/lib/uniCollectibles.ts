@@ -1,3 +1,4 @@
+import { tr } from '../i18n/tr';
 import { sessionMinutes, studyStreak } from './selectors';
 import type {
   Course,
@@ -21,7 +22,7 @@ export interface UniSkinMeta {
   starter?: boolean;
 }
 
-export const UNI_SKINS: UniSkinMeta[] = [
+const BASE_SKINS: UniSkinMeta[] = [
   {
     id: 'classic',
     name: 'Uni Salva Clássica',
@@ -87,7 +88,7 @@ export const UNI_SKINS: UniSkinMeta[] = [
   {
     id: 'crimson',
     name: 'Uni Coral Vivo',
-    tagline: 'Edição viva com marcador creme — marca de ritmo aceso',
+    tagline: 'Edição viva com marcador creme, marca de ritmo aceso',
     unlockHint: 'Conclui 3 recalls ativos ou 3 dias seguidos',
     swatchHex: '#EF6249',
     badgeText: 'Ritmo',
@@ -126,6 +127,34 @@ export const UNI_SKINS: UniSkinMeta[] = [
   },
 ];
 
+/**
+ * Texto localizado de um campo de metadados. O texto pt-PT escrito no próprio array serve de
+ * reserva quando a chave ainda não existe numa língua.
+ */
+function metaText(key: string, fallback: string): string {
+  const text = tr(key);
+  return text === key ? fallback : text;
+}
+
+/** Devolve uma cópia cujos campos de texto são resolvidos na língua ativa a cada leitura. */
+function localizeMeta<T extends object>(base: T, prefix: string, fields: Array<keyof T & string>): T {
+  const out = { ...base };
+  for (const field of fields) {
+    const fallback = String(base[field]);
+    Object.defineProperty(out, field, {
+      enumerable: true,
+      configurable: true,
+      get: () => metaText(`${prefix}.${field}`, fallback),
+    });
+  }
+  return out;
+}
+
+/** Cores do Uni com nome, frase e pista de desbloqueio na língua ativa (resolvidos ao ler). */
+export const UNI_SKINS: UniSkinMeta[] = BASE_SKINS.map((skin) =>
+  localizeMeta(skin, `uni:collectibles.skins.${skin.id}`, ['name', 'tagline', 'unlockHint', 'badgeText']),
+);
+
 export interface UniPetMeta {
   id: Exclude<UniPetId, 'none'>;
   name: string;
@@ -136,7 +165,7 @@ export interface UniPetMeta {
   starter?: boolean;
 }
 
-export const UNI_PETS: UniPetMeta[] = [
+const BASE_PETS: UniPetMeta[] = [
   {
     id: 'cat',
     name: 'Miau',
@@ -179,6 +208,11 @@ export const UNI_PETS: UniPetMeta[] = [
     accentHex: '#FCE99F',
   },
 ];
+
+/** Micropets com texto na língua ativa (resolvido ao ler). */
+export const UNI_PETS: UniPetMeta[] = BASE_PETS.map((pet) =>
+  localizeMeta(pet, `uni:collectibles.pets.${pet.id}`, ['name', 'species', 'tagline', 'unlockHint']),
+);
 
 export interface UniCollectibleProgress {
   skin: UniSkinMeta;
@@ -238,7 +272,7 @@ function makeProgress(
     unlocked,
     progressCurrent: bounded,
     progressTarget: target,
-    progressLabel: unlocked ? 'Desbloqueado' : lockedText,
+    progressLabel: unlocked ? tr('uni:collectibles.progress.unlocked') : lockedText,
   };
 }
 
@@ -255,37 +289,37 @@ export function getUniCollectibleStates(telemetry: CollectibleTelemetry): UniCol
 
   return UNI_SKINS.map((skin) => {
     if (skin.starter) {
-      return { skin, ...makeProgress(1, 1, true, 'Desbloqueado') };
+      return { skin, ...makeProgress(1, 1, true, '') };
     }
     if (skin.id === 'butter') {
       const unlocked = checkInsCount >= 1 || completedSessions >= 3;
       const cur = Math.max(checkInsCount >= 1 ? 3 : 0, Math.min(3, completedSessions));
-      return { skin, ...makeProgress(cur, 3, unlocked, `${completedSessions}/3 sessões ou 1 check-in`) };
+      return { skin, ...makeProgress(cur, 3, unlocked, tr('uni:collectibles.progress.sessionsOrCheckin', { current: completedSessions, target: 3 })) };
     }
     if (skin.id === 'crimson') {
       const unlocked = totalRecalls >= 3 || streakDays >= 3;
       const cur = Math.max(totalRecalls, streakDays);
-      return { skin, ...makeProgress(cur, 3, unlocked, `${Math.min(3, cur)}/3 recalls ou dias`) };
+      return { skin, ...makeProgress(cur, 3, unlocked, tr('uni:collectibles.progress.recallsOrDays', { current: Math.min(3, cur), target: 3 })) };
     }
     if (skin.id === 'sage') {
       const unlocked = totalRecalls >= 5;
-      return { skin, ...makeProgress(totalRecalls, 5, unlocked, `${Math.min(5, totalRecalls)}/5 recalls ativos`) };
+      return { skin, ...makeProgress(totalRecalls, 5, unlocked, tr('uni:collectibles.progress.recalls', { current: Math.min(5, totalRecalls), target: 5 })) };
     }
     if (skin.id === 'terracotta') {
       const unlocked = completedSessions >= 6;
-      return { skin, ...makeProgress(completedSessions, 6, unlocked, `${Math.min(6, completedSessions)}/6 sessões`) };
+      return { skin, ...makeProgress(completedSessions, 6, unlocked, tr('uni:collectibles.progress.sessions', { current: Math.min(6, completedSessions), target: 6 })) };
     }
     if (skin.id === 'espresso') {
       const unlocked = totalStudyMinutes >= 150;
       return {
         skin,
-        ...makeProgress(totalStudyMinutes, 150, unlocked, `${Math.min(150, totalStudyMinutes)}/150 min`),
+        ...makeProgress(totalStudyMinutes, 150, unlocked, tr('uni:collectibles.progress.minutes', { current: Math.min(150, totalStudyMinutes), target: 150 })),
       };
     }
     // 'ink'
     const unlocked = mastered21dCount >= 1 || streakDays >= 7 || completedSessions >= 10;
     const cur = mastered21dCount >= 1 ? 7 : Math.max(streakDays, Math.round((completedSessions / 10) * 7));
-    return { skin, ...makeProgress(cur, 7, unlocked, `${streakDays}/7 dias ou nível SRS 21d`) };
+    return { skin, ...makeProgress(cur, 7, unlocked, tr('uni:collectibles.progress.daysOrSrs', { current: streakDays, target: 7 })) };
   });
 }
 
@@ -294,26 +328,26 @@ export function getUniPetStates(telemetry: CollectibleTelemetry): UniPetProgress
   const { completedSessions, totalRecalls, streakDays, mastered21dCount } = telemetry;
   return UNI_PETS.map((pet) => {
     if (pet.starter) {
-      return { pet, ...makeProgress(1, 1, true, 'Desbloqueado') };
+      return { pet, ...makeProgress(1, 1, true, '') };
     }
     if (pet.id === 'owl') {
       const unlocked = completedSessions >= 2 || totalRecalls >= 2;
       const cur = Math.max(completedSessions, totalRecalls);
-      return { pet, ...makeProgress(cur, 2, unlocked, `${Math.min(2, cur)}/2 sessões ou recalls`) };
+      return { pet, ...makeProgress(cur, 2, unlocked, tr('uni:collectibles.progress.sessionsOrRecalls', { current: Math.min(2, cur), target: 2 })) };
     }
     if (pet.id === 'fox') {
       const unlocked = streakDays >= 3 || completedSessions >= 4;
       const cur = Math.max(streakDays, Math.round((completedSessions / 4) * 3));
-      return { pet, ...makeProgress(cur, 3, unlocked, `${Math.min(3, streakDays)}/3 dias seguidos`) };
+      return { pet, ...makeProgress(cur, 3, unlocked, tr('uni:collectibles.progress.streakDays', { current: Math.min(3, streakDays), target: 3 })) };
     }
     if (pet.id === 'turtle') {
       const unlocked = completedSessions >= 5;
-      return { pet, ...makeProgress(completedSessions, 5, unlocked, `${Math.min(5, completedSessions)}/5 sessões`) };
+      return { pet, ...makeProgress(completedSessions, 5, unlocked, tr('uni:collectibles.progress.sessions', { current: Math.min(5, completedSessions), target: 5 })) };
     }
     // 'rabbit'
     const unlocked = completedSessions >= 8 || mastered21dCount >= 1;
     const cur = mastered21dCount >= 1 ? 8 : completedSessions;
-    return { pet, ...makeProgress(cur, 8, unlocked, `${Math.min(8, cur)}/8 sessões`) };
+    return { pet, ...makeProgress(cur, 8, unlocked, tr('uni:collectibles.progress.sessions', { current: Math.min(8, cur), target: 8 })) };
   });
 }
 
@@ -344,14 +378,7 @@ export const DAILY_ENERGY_GOAL = 40;
 export const MAX_DAILY_HUGS = 3;
 const CARE_STORAGE_KEY = 'uni-companion-care-v1';
 
-const CAMPUS_DISCOVERIES = [
-  'Encontrou uma mesa ao sol perto da biblioteca com tomada livre!',
-  'Observou uma família de pardais no jardim entre aulas.',
-  'Guardou um marcador amarelo novo para a tua próxima ficha.',
-  'Descobriu um atalho silencioso para os apontamentos da semana.',
-  'Anotou três fórmulas difíceis num post-it bem arrumado.',
-  'Celebrou o teu ritmo com uma chávena imaginária de chá de menta.',
-];
+const CAMPUS_DISCOVERY_COUNT = 6;
 
 export function readDailyPetCareCount(todayKey: string): number {
   if (typeof window === 'undefined') return 0;
@@ -380,13 +407,13 @@ export function recordUniPetCare(todayKey: string): number {
 
 export function computeGrowthStage(totalStudyMinutes: number): UniGrowthStage {
   if (totalStudyMinutes >= 900) {
-    return { id: 'sabio', label: 'Sábio do Campus', minutesRequired: 900 };
+    return { id: 'sabio', label: tr('uni:collectibles.growth.sabio'), minutesRequired: 900 };
   }
   if (totalStudyMinutes >= 360) {
     return {
       id: 'estudioso',
-      label: 'Estudioso',
-      nextLabel: 'Sábio do Campus',
+      label: tr('uni:collectibles.growth.estudioso'),
+      nextLabel: tr('uni:collectibles.growth.sabio'),
       minutesRequired: 360,
       nextMinutesRequired: 900,
     };
@@ -394,16 +421,16 @@ export function computeGrowthStage(totalStudyMinutes: number): UniGrowthStage {
   if (totalStudyMinutes >= 120) {
     return {
       id: 'explorador',
-      label: 'Explorador',
-      nextLabel: 'Estudioso',
+      label: tr('uni:collectibles.growth.explorador'),
+      nextLabel: tr('uni:collectibles.growth.estudioso'),
       minutesRequired: 120,
       nextMinutesRequired: 360,
     };
   }
   return {
     id: 'semente',
-    label: 'Semente',
-    nextLabel: 'Explorador',
+    label: tr('uni:collectibles.growth.semente'),
+    nextLabel: tr('uni:collectibles.growth.explorador'),
     minutesRequired: 0,
     nextMinutesRequired: 120,
   };
@@ -439,7 +466,7 @@ export function computeUniCompanionState(args: {
 
   const dayHash = today.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
   const discoveryNote = adventureDone
-    ? CAMPUS_DISCOVERIES[dayHash % CAMPUS_DISCOVERIES.length]
+    ? tr(`uni:collectibles.discoveries.d${dayHash % CAMPUS_DISCOVERY_COUNT}`)
     : undefined;
 
   return {

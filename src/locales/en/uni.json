@@ -163,5 +163,189 @@
     "close": "Close",
     "quizErr": "Couldn't import the quiz",
     "mentorErr": "Couldn't teach the next course"
+  },
+  "collectibles": {
+    "skins": {
+      "classic": {
+        "name": "Classic Sage Uni",
+        "tagline": "Sage paper with the original coral marker",
+        "unlockHint": "Available from day one",
+        "badgeText": "Starter"
+      },
+      "sky": {
+        "name": "April Sky Uni",
+        "tagline": "Light blue of a calm library morning",
+        "unlockHint": "Available from day one",
+        "badgeText": "Starter"
+      },
+      "peach": {
+        "name": "Notebook Peach Uni",
+        "tagline": "Warm peach tone for light reading",
+        "unlockHint": "Available from day one",
+        "badgeText": "Starter"
+      },
+      "blush": {
+        "name": "Stationery Pink Uni",
+        "tagline": "Pink sticky note for gentle drafting",
+        "unlockHint": "Available from day one",
+        "badgeText": "Starter"
+      },
+      "mint": {
+        "name": "Soft Mint Uni",
+        "tagline": "Calm aqua green for summaries and flashcards",
+        "unlockHint": "Available from day one",
+        "badgeText": "Starter"
+      },
+      "cream": {
+        "name": "Cream Paper Uni",
+        "tagline": "Minimalist cotton paper with crisp ink",
+        "unlockHint": "Available from day one",
+        "badgeText": "Starter"
+      },
+      "butter": {
+        "name": "Sunny Butter Uni",
+        "tagline": "Bright sticky-note tone for well-planned weeks",
+        "unlockHint": "Do 1 Weekly Check-in or 3 study sessions",
+        "badgeText": "Plan"
+      },
+      "crimson": {
+        "name": "Vivid Coral Uni",
+        "tagline": "Vivid edition with a cream marker, the mark of a rhythm on fire",
+        "unlockHint": "Complete 3 active recalls or a 3-day streak",
+        "badgeText": "Rhythm"
+      },
+      "sage": {
+        "name": "Botanical SRS Uni",
+        "tagline": "Botanical emerald of spaced review",
+        "unlockHint": "Complete 5 active recall reviews on topics",
+        "badgeText": "Memory"
+      },
+      "terracotta": {
+        "name": "Terracotta Uni",
+        "tagline": "Warm clay of a late afternoon on campus",
+        "unlockHint": "Complete 6 study sessions",
+        "badgeText": "Consistency"
+      },
+      "espresso": {
+        "name": "Study Coffee Uni",
+        "tagline": "Espresso brown for long, focused hours",
+        "unlockHint": "Accumulate 150 completed study minutes",
+        "badgeText": "Focus"
+      },
+      "ink": {
+        "name": "Golden Night Uni",
+        "tagline": "Dark golden edition for complete mastery",
+        "unlockHint": "Reach 1 topic at level 21d (or a 7-day streak)",
+        "badgeText": "Master"
+      }
+    },
+    "pets": {
+      "cat": {
+        "name": "Miau",
+        "species": "Ink Kitten",
+        "tagline": "Curls up next to the notebook while you organise your ideas",
+        "unlockHint": "Available from day one"
+      },
+      "owl": {
+        "name": "Pio",
+        "species": "Study-Notes Owlet",
+        "tagline": "Loves quick reviews and well-summarised notes",
+        "unlockHint": "Complete 2 sessions or 2 active recalls"
+      },
+      "fox": {
+        "name": "Kiko",
+        "species": "Origami Fox",
+        "tagline": "Hops happily between deadlines without letting the material pile up",
+        "unlockHint": "Keep a 3-day streak or complete 4 sessions"
+      },
+      "turtle": {
+        "name": "Tuga",
+        "species": "Pomodoro Turtle",
+        "tagline": "A firm paper shell for a steady, unhurried pace",
+        "unlockHint": "Complete 5 study sessions"
+      },
+      "rabbit": {
+        "name": "Lino",
+        "species": "Post-it Bunny",
+        "tagline": "Hops in short bursts when you master your topics",
+        "unlockHint": "Complete 8 sessions or reach 1 topic at level 21d"
+      }
+    },
+    "progress": {
+      "unlocked": "Unlocked",
+      "sessionsOrCheckin": "{{current}}/{{target}} sessions or 1 check-in",
+      "recallsOrDays": "{{current}}/{{target}} recalls or days",
+      "recalls": "{{current}}/{{target}} active recalls",
+      "sessions": "{{current}}/{{target}} sessions",
+      "minutes": "{{current}}/{{target}} min",
+      "daysOrSrs": "{{current}}/{{target}} days or SRS level 21d",
+      "sessionsOrRecalls": "{{current}}/{{target}} sessions or recalls",
+      "streakDays": "{{current}}/{{target}} days in a row"
+    },
+    "growth": {
+      "semente": "Seedling",
+      "explorador": "Explorer",
+      "estudioso": "Scholar",
+      "sabio": "Campus Sage"
+    },
+    "discoveries": {
+      "d0": "Found a sunny table near the library with a free power outlet!",
+      "d1": "Watched a family of sparrows in the garden between classes.",
+      "d2": "Saved a new yellow highlighter for your next study sheet.",
+      "d3": "Discovered a quiet shortcut to this week's notes.",
+      "d4": "Jotted down three tricky formulas on a neatly arranged sticky note.",
+      "d5": "Celebrated your rhythm with an imaginary cup of mint tea."
+    }
+  },
+  "collectiblesModal": {
+    "title": "Uni Nest & Showcase",
+    "close": "Close",
+    "footerCount": "{{skins}}/{{totalSkins}} colours · {{pets}}/{{totalPets}} pets",
+    "hugAria": "Pet the Uni",
+    "totalMinutes": "{{time}} total",
+    "energyToday": "Energy today:",
+    "nextLevel": "Next level ({{label}}): {{time}}",
+    "hugLoved": "Loved it! +3 ⚡",
+    "hugDone": "Petted",
+    "hugAction": "Pet ({{done}}/{{max}})",
+    "discoveryToday": "Today's discovery: {{note}}",
+    "energyHint": "Complete sessions or tasks, or give some love, to fill up the day's energy.",
+    "tabColors": "Colours ({{count}})",
+    "tabPets": "Micropets ({{count}})",
+    "tabDiscreet": "Discreet on screen",
+    "surpriseTitle": "Surprise colour on screen",
+    "surpriseHint": "Rotates the colour of the discreet companions among the colours you have already unlocked.",
+    "surpriseOn": "On",
+    "surpriseOff": "Fixed colour",
+    "equipped": "Equipped",
+    "equipColor": "Equip this colour",
+    "petsIntro": "Micropets walk beside your Uni in the Nest and around the corners of the screen.",
+    "stowPet": "Put pet away",
+    "petWithYou": "Keeping you company",
+    "adoptPet": "Adopt {{name}}",
+    "discreetIntro": "Discreet Unis now wander around different corners and edges (left, right and sides) on both desktop and mobile, hiding when you type or scroll.",
+    "amountTitle": "Amount on screen",
+    "amountHint": "In «Up to 2» mode, a friend of a different colour comes to peek along with you.",
+    "amountAll": "Up to 2",
+    "amountSolo": "Just 1",
+    "amountOff": "Off"
+  },
+  "uniTools": {
+    "requiresConfirmation": "The {{name}} tool requires explicit confirmation from the student before saving.",
+    "planSummary": "{{sessions}} pending session(s) · {{exams}} upcoming assessment(s)",
+    "sheetsSummary": "{{count}} sheet(s) found",
+    "recallDefaultTopic": "Review in conversation",
+    "noCourseForRecall": "No course selected to record the recall.",
+    "noTopicForRecall": "Could not find or create the topic to record the recall.",
+    "recallSummary": "Recall ({{score}}/3) recorded for «{{topic}}» · next review {{date}}.",
+    "defaultLabel": "Study",
+    "needCourseSession": "Select a course first to save this session.",
+    "sessionAdded": "{{minutes}}-min session added for {{date}}.",
+    "needCourseCards": "Select a course to save flashcards.",
+    "noTopicForCards": "Could not create or find the topic for the flashcards.",
+    "cardsSaved": "{{count}} flashcard(s) saved in «{{topic}}».",
+    "doubtTask": "Question ({{topic}}): {{note}}",
+    "doubtSaved": "Question saved to bring to class ({{topic}}).",
+    "invalidProposal": "Invalid or incomplete proposal."
   }
 }

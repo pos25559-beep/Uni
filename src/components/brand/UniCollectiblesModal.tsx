@@ -1,5 +1,6 @@
 import { Check, Heart, Lock, Shuffle, Sparkles, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { hapticTap } from '../../lib/nativeBridge';
 import { fmtMinutes, todayStr } from '../../lib/selectors';
 import { resolveUniAccessory } from '../../lib/uniAccessories';
@@ -25,6 +26,7 @@ interface Props {
 type ModalTab = 'cores' | 'pets' | 'discreto';
 
 export default function UniCollectiblesModal({ open, onClose }: Props) {
+  const { t } = useTranslation('uni');
   const sessions = useStore((s) => s.sessions);
   const courses = useStore((s) => s.courses);
   const tasks = useStore((s) => s.tasks);
@@ -84,15 +86,20 @@ export default function UniCollectiblesModal({ open, onClose }: Props) {
     <Modal
       open={open}
       onClose={onClose}
-      title="Ninho & Vitrina do Uni"
+      title={t('collectiblesModal.title')}
       maxWidthClass="sm:max-w-2xl"
       footer={
         <div className="flex w-full items-center justify-between gap-2 text-xs text-muted">
           <span>
-            {unlockedSkinsCount}/{skinItems.length} cores · {unlockedPetsCount}/{petItems.length} pets
+            {t('collectiblesModal.footerCount', {
+              skins: unlockedSkinsCount,
+              totalSkins: skinItems.length,
+              pets: unlockedPetsCount,
+              totalPets: petItems.length,
+            })}
           </span>
           <Button variant="primary" onClick={onClose}>
-            Fechar
+            {t('collectiblesModal.close')}
           </Button>
         </div>
       }
@@ -109,7 +116,7 @@ export default function UniCollectiblesModal({ open, onClose }: Props) {
                   mood={justPetted || companion.adventureDone ? 'celebrate' : 'happy'}
                   size={60}
                   onClick={handlePetHug}
-                  ariaLabel="Fazer carinho no Uni"
+                  ariaLabel={t('collectiblesModal.hugAria')}
                 />
                 {activePet !== 'none' && (
                   <UniPetBuddy pet={activePet} size={34} className="mb-0.5" />
@@ -119,16 +126,19 @@ export default function UniCollectiblesModal({ open, onClose }: Props) {
                 <div className="flex flex-wrap items-center gap-1.5">
                   <Badge tone="ok">{companion.stage.label}</Badge>
                   <span className="text-xs font-medium opacity-75 tabular">
-                    {fmtMinutes(companion.totalStudyMinutes)} totais
+                    {t('collectiblesModal.totalMinutes', { time: fmtMinutes(companion.totalStudyMinutes) })}
                   </span>
                 </div>
                 <p className="text-xs font-semibold">
                   <Zap size={13} className="mr-1 inline text-coral" />
-                  Energia hoje: <span className="font-mono tabular">{companion.dailyEnergy}/{companion.dailyEnergyGoal}</span>
+                  {t('collectiblesModal.energyToday')} <span className="font-mono tabular">{companion.dailyEnergy}/{companion.dailyEnergyGoal}</span>
                 </p>
                 {companion.stage.nextLabel && companion.stage.nextMinutesRequired && (
                   <p className="text-xs opacity-70">
-                    Próximo nível ({companion.stage.nextLabel}): {fmtMinutes(companion.stage.nextMinutesRequired)}
+                    {t('collectiblesModal.nextLevel', {
+                      label: companion.stage.nextLabel,
+                      time: fmtMinutes(companion.stage.nextMinutesRequired),
+                    })}
                   </p>
                 )}
               </div>
@@ -137,10 +147,10 @@ export default function UniCollectiblesModal({ open, onClose }: Props) {
             <Button size="sm" variant="secondary" onClick={handlePetHug}>
               <Heart size={14} className={justPetted ? 'fill-coral text-coral' : undefined} />
               {justPetted
-                ? 'Adorou! +3 ⚡'
+                ? t('collectiblesModal.hugLoved')
                 : dailyHugs >= companion.maxDailyHugs
-                  ? 'Carinho dado'
-                  : `Fazer carinho (${dailyHugs}/${companion.maxDailyHugs})`}
+                  ? t('collectiblesModal.hugDone')
+                  : t('collectiblesModal.hugAction', { done: dailyHugs, max: companion.maxDailyHugs })}
             </Button>
           </div>
 
@@ -148,8 +158,8 @@ export default function UniCollectiblesModal({ open, onClose }: Props) {
             <Progress value={energyPct} color="bg-[#157F58] dark:bg-accent" />
             <p className="text-xs opacity-80">
               {companion.adventureDone && companion.discoveryNote
-                ? `Descoberta de hoje: ${companion.discoveryNote}`
-                : 'Conclui sessões, tarefas ou faz carinho para encher a energia do dia.'}
+                ? t('collectiblesModal.discoveryToday', { note: companion.discoveryNote })
+                : t('collectiblesModal.energyHint')}
             </p>
           </div>
         </section>
@@ -160,9 +170,9 @@ export default function UniCollectiblesModal({ open, onClose }: Props) {
             value={tab}
             onChange={(v) => setTab(v as ModalTab)}
             items={[
-              { id: 'cores', label: `Cores (${skinItems.length})` },
-              { id: 'pets', label: `Micropets (${petItems.length})` },
-              { id: 'discreto', label: 'Discreto nos ecrãs' },
+              { id: 'cores', label: t('collectiblesModal.tabColors', { count: skinItems.length }) },
+              { id: 'pets', label: t('collectiblesModal.tabPets', { count: petItems.length }) },
+              { id: 'discreto', label: t('collectiblesModal.tabDiscreet') },
             ]}
           />
         </div>
@@ -172,10 +182,10 @@ export default function UniCollectiblesModal({ open, onClose }: Props) {
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line bg-surface-2/50 px-3.5 py-2.5 text-xs">
               <div className="min-w-0 flex-1">
                 <p className="flex items-center gap-1.5 font-semibold text-fg">
-                  <Shuffle size={13} className="text-accent" /> Cor surpresa nos ecrãs
+                  <Shuffle size={13} className="text-accent" /> {t('collectiblesModal.surpriseTitle')}
                 </p>
                 <p className="text-xs text-muted">
-                  Alterna a cor dos companheiros discretos entre as cores que já tens abertas.
+                  {t('collectiblesModal.surpriseHint')}
                 </p>
               </div>
               <button
@@ -190,7 +200,7 @@ export default function UniCollectiblesModal({ open, onClose }: Props) {
                     : 'border border-line bg-surface text-muted hover:text-fg',
                 )}
               >
-                {autoRotate ? 'Ativo' : 'Cor fixa'}
+                {autoRotate ? t('collectiblesModal.surpriseOn') : t('collectiblesModal.surpriseOff')}
               </button>
             </div>
 
@@ -250,10 +260,10 @@ export default function UniCollectiblesModal({ open, onClose }: Props) {
                       >
                         {equipped ? (
                           <>
-                            <Check size={14} /> Equipado
+                            <Check size={14} /> {t('collectiblesModal.equipped')}
                           </>
                         ) : unlocked ? (
-                          'Equipar esta cor'
+                          t('collectiblesModal.equipColor')
                         ) : (
                           <>
                             <Lock size={13} /> {progressLabel}
@@ -272,7 +282,7 @@ export default function UniCollectiblesModal({ open, onClose }: Props) {
           <div className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line bg-surface-2/50 px-3.5 py-2.5 text-xs">
               <span className="text-muted">
-                Os Micropets caminham ao lado do teu Uni no Ninho e pelos cantos do ecrã.
+                {t('collectiblesModal.petsIntro')}
               </span>
               {activePet !== 'none' && (
                 <button
@@ -280,7 +290,7 @@ export default function UniCollectiblesModal({ open, onClose }: Props) {
                   onClick={() => updateSettings({ uniPet: 'none' })}
                   className="font-semibold text-muted underline hover:text-fg"
                 >
-                  Guardar pet
+                  {t('collectiblesModal.stowPet')}
                 </button>
               )}
             </div>
@@ -335,10 +345,10 @@ export default function UniCollectiblesModal({ open, onClose }: Props) {
                       >
                         {equipped ? (
                           <>
-                            <Check size={14} /> A acompanhar-te
+                            <Check size={14} /> {t('collectiblesModal.petWithYou')}
                           </>
                         ) : unlocked ? (
-                          `Adotar ${pet.name}`
+                          t('collectiblesModal.adoptPet', { name: pet.name })
                         ) : (
                           <>
                             <Lock size={13} /> {progressLabel}
@@ -358,23 +368,23 @@ export default function UniCollectiblesModal({ open, onClose }: Props) {
             <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-surface-2 px-3.5 py-3 text-xs">
               <Sparkles size={16} className="shrink-0 text-accent" />
               <p className="text-muted">
-                Os Unis discretos agora passeiam por diferentes cantos e margens (esquerda, direita e bordas laterais) tanto no computador como no telemóvel, escondendo-se ao escrever ou fazer scroll.
+                {t('collectiblesModal.discreetIntro')}
               </p>
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line bg-surface px-3.5 py-3 text-xs">
               <div className="min-w-0">
-                <p className="font-semibold text-fg">Quantidade no ecrã</p>
+                <p className="font-semibold text-fg">{t('collectiblesModal.amountTitle')}</p>
                 <p className="text-xs text-muted">
-                  No modo «Até 2», um amigo de cor diferente vem espreitar contigo.
+                  {t('collectiblesModal.amountHint')}
                 </p>
               </div>
               <div className="inline-flex rounded-full bg-surface-2 p-1">
                 {(
                   [
-                    ['all', 'Até 2'],
-                    ['solo', 'Só 1'],
-                    ['off', 'Desligado'],
+                    ['all', t('collectiblesModal.amountAll')],
+                    ['solo', t('collectiblesModal.amountSolo')],
+                    ['off', t('collectiblesModal.amountOff')],
                   ] as const
                 ).map(([modeId, label]) => {
                   const modeActive = liveCompanions === modeId;
