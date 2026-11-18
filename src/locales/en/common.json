@@ -537,6 +537,7 @@
     "sheetEmptySources": "Select at least one material or attach a file before generating the sheet.",
     "sheetExtractFail": "Couldn't extract a structured study sheet from these materials right now.",
     "nativeAiTimeout": "Native Uni took too long to respond ({{seconds}}s limit). Try a shorter prompt or attach fewer files.",
+    "guideTimeout": "The guide took more than {{minutes}} min (Google is under heavy demand). Try again shortly or with fewer files.",
     "nativeAiQuota": "Uni's shared service temporarily hit its request limit. Try again shortly or use your personal Gemini key in Settings.",
     "nativeAiUnavailable": "Native Uni is temporarily unavailable or not configured in this Firebase project. Check your connection or add a personal key in Settings.",
     "nativeAiGeneric": "Native Uni couldn't reply right now. Please try again.",

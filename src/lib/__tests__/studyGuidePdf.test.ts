@@ -36,4 +36,10 @@ describe('computePageSlices', () => {
       expect(blocks.some(([, b]) => Math.abs(b - e) < 1)).toBe(true);
     }
   });
+
+  it('não cria uma página só com a margem de baixo do guia', () => {
+    expect(computePageSlices([[0, 60], [64, 100]], 100, 102)).toEqual([[0, 100]]);
+    // Um resto com conteúdo real continua a ter página.
+    expect(computePageSlices([[0, 60], [64, 100], [100, 130]], 100, 132)).toEqual([[0, 100], [100, 132]]);
+  });
 });

@@ -141,6 +141,25 @@ function runWithTimeout<T>(args: {
   });
 }
 
+/** Espera que termina logo (com AbortError) se o pedido for cancelado entretanto. */
+function abortableDelay(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException('Aborted', 'AbortError'));
+      return;
+    }
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(new DOMException('Aborted', 'AbortError'));
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
 async function runModelChain<T>(args: {
   primaryModel: string;
   primaryTimeoutMs?: number;
@@ -158,8 +177,9 @@ async function runModelChain<T>(args: {
     } catch (err) {
       if (round >= retries || args.outerSignal?.aborted || !isOverloadError(err)) throw err;
       // Pedidos longos (guias, cadernos): não desistir à primeira «procura alta».
-      modelCooldownUntil.clear();
-      await new Promise((resolve) => setTimeout(resolve, overloadBackoffMs(round + 1)));
+      // Não se limpa o arrefecimento dos modelos: é partilhado com outros pedidos a correr ao mesmo tempo
+      // (a cadeia tenta sempre todos os modelos; o arrefecimento só muda a ordem).
+      await abortableDelay(overloadBackoffMs(round + 1), args.outerSignal);
     }
   }
 }

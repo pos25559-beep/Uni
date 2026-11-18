@@ -18,7 +18,8 @@ import {
   runNativeGenerate,
   withQuotaAndFallback,
 } from './core';
-import { THINKING_BALANCED, THINKING_DEEP, resolveChatThinkingConfig } from './models';
+import { AiConsentRequiredError, THINKING_BALANCED, THINKING_DEEP, resolveChatThinkingConfig } from './models';
+import { isDailyQuotaError } from '../../lib/aiAccess';
 import {
   AREA_VOICE_HINTS,
   PERSONA_INSTRUCTIONS_BY_LANG,
@@ -50,6 +51,8 @@ export interface NotebookBriefArgs {
   persona?: UniPersonaMode;
   accessory?: UniAccessoryId;
   assessment?: NotebookAssessmentContext | null;
+  /** Cancela o pedido (ex.: o estudante fechou o Caderno). */
+  signal?: AbortSignal;
 }
 
 export interface StudyGuideResult {
@@ -72,6 +75,8 @@ export interface ExtractedTopicSheetResult {
 
 /** Tempo máximo por pedido do caderno/guia (cada modelo da cadeia). */
 const NOTEBOOK_TIMEOUT_MS = 150_000;
+/** Tempo máximo do guia inteiro (mapa + secções, com as novas tentativas): acima disto desiste com aviso. */
+const STUDY_GUIDE_TOTAL_BUDGET_MS = 240_000;
 const STUDY_GUIDE_MAX_DEEP_TOPICS = 6;
 const STUDY_GUIDE_CONCURRENCY = 3;
 const GUIDE_MARKDOWN_PROMPT =
@@ -154,6 +159,7 @@ Regras estritas:
   };
 
   const longCall = {
+    signal: args.signal,
     primaryTimeoutMs: NOTEBOOK_TIMEOUT_MS,
     fallbackTimeoutMs: NOTEBOOK_TIMEOUT_MS,
     overloadRetries: 2,
@@ -244,59 +250,99 @@ export async function generateStudyGuide(
   args: Omit<NotebookBriefArgs, 'mode'> & { onProgress?: (p: StudyGuideProgress) => void },
 ): Promise<StudyGuideResult & { failedTopics: number }> {
   const { customKey, model } = resolveGeminiConfig();
-  const { onProgress, ...rest } = args;
-  const full: NotebookBriefArgs = { ...rest, mode: 'guide' };
-  assertNotebookInputs(full);
+  const { onProgress, signal: outerSignal, ...rest } = args;
 
-  const result = await withQuotaAndFallback('notebook', customKey, async () => {
-    onProgress?.({ phase: 'mapping', done: 0, total: 0 });
-    const raw = await runNotebookText(full, customKey, model, buildStudyGuidePrompt(args.assessment), true);
-    const outline = parseStudyGuide(raw);
-    if (!outline) {
-      const markdown = await runNotebookText(full, customKey, model, GUIDE_MARKDOWN_PROMPT, false);
-      return { guide: null, markdown, failedTopics: 0 };
-    }
+  // Um só sinal para tudo: cancela quando o estudante fecha o Caderno ou quando passa o tempo máximo.
+  const budget = new AbortController();
+  let budgetExceeded = false;
+  const onOuterAbort = () => budget.abort();
+  if (outerSignal?.aborted) budget.abort();
+  outerSignal?.addEventListener('abort', onOuterAbort, { once: true });
+  const budgetTimer = setTimeout(() => {
+    budgetExceeded = true;
+    budget.abort();
+  }, STUDY_GUIDE_TOTAL_BUDGET_MS);
 
-    const deepTopics = outline.topics.slice(0, STUDY_GUIDE_MAX_DEEP_TOPICS);
-    const titles = outline.topics.map((tp) => tp.title);
-    let done = 0;
-    onProgress?.({ phase: 'topics', done, total: deepTopics.length });
-    let failed = 0;
-    const sections = await mapWithConcurrency(deepTopics, STUDY_GUIDE_CONCURRENCY, async (topic) => {
-      let section: StudyGuideTopic | null = null;
-      try {
-        const sectionRaw = await runNotebookText(
-          full,
-          customKey,
-          model,
-          buildStudyGuideTopicPrompt(
-            topic,
-            titles.filter((x) => x !== topic.title),
-            args.assessment,
-            args.courseName,
-          ),
-          true,
-          { schema: STUDY_GUIDE_TOPIC_SCHEMA, deep: true },
-        );
-        section = parseStudyGuideTopic(sectionRaw);
-      } catch {
-        section = null;
+  const full: NotebookBriefArgs = { ...rest, mode: 'guide', signal: budget.signal };
+  try {
+    assertNotebookInputs(full);
+    const result = await withQuotaAndFallback('notebook', customKey, async () => {
+      onProgress?.({ phase: 'mapping', done: 0, total: 0 });
+      const raw = await runNotebookText(full, customKey, model, buildStudyGuidePrompt(args.assessment), true);
+      const outline = parseStudyGuide(raw);
+      if (!outline) {
+        const markdown = await runNotebookText(full, customKey, model, GUIDE_MARKDOWN_PROMPT, false);
+        return { guide: null, markdown, failedTopics: 0 };
       }
-      if (!section) failed += 1;
-      done += 1;
+
+      const deepTopics = outline.topics.slice(0, STUDY_GUIDE_MAX_DEEP_TOPICS);
+      const titles = outline.topics.map((tp) => tp.title);
+      let done = 0;
       onProgress?.({ phase: 'topics', done, total: deepTopics.length });
-      return section;
+      let failed = 0;
+      const sections = await mapWithConcurrency(deepTopics, STUDY_GUIDE_CONCURRENCY, async (topic) => {
+        if (budget.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+        let section: StudyGuideTopic | null = null;
+        try {
+          const sectionRaw = await runNotebookText(
+            full,
+            customKey,
+            model,
+            buildStudyGuideTopicPrompt(
+              topic,
+              titles.filter((x) => x !== topic.title),
+              args.assessment,
+              args.courseName,
+            ),
+            true,
+            { schema: STUDY_GUIDE_TOPIC_SCHEMA, deep: true },
+          );
+          section = parseStudyGuideTopic(sectionRaw);
+        } catch (err) {
+          // Cancelamento, consentimento e chave não são «falha de um tópico»: param o guia todo.
+          if (budget.signal.aborted || isGuideFatalError(err)) throw err;
+          section = null;
+        }
+        if (!section) failed += 1;
+        done += 1;
+        onProgress?.({ phase: 'topics', done, total: deepTopics.length });
+        return section;
+      });
+
+      // Se nenhuma secção saiu, o guia seria só o mapa: falha (e a quota é devolvida) em vez de o gravar.
+      if (deepTopics.length > 0 && failed === deepTopics.length) {
+        throw new Error(tr('common:errors.notebookGenFail'));
+      }
+
+      const guide: StudyGuide = {
+        ...outline,
+        topics: outline.topics.map((tp, i) => (i < sections.length ? mergeGuideTopic(tp, sections[i]) : tp)),
+      };
+      return { guide, markdown: studyGuideToMarkdown(guide, getStudyGuideLabels()), failedTopics: failed };
     });
 
-    const guide: StudyGuide = {
-      ...outline,
-      topics: outline.topics.map((tp, i) => (i < sections.length ? mergeGuideTopic(tp, sections[i]) : tp)),
-    };
-    return { guide, markdown: studyGuideToMarkdown(guide, getStudyGuideLabels()), failedTopics: failed };
-  });
+    if (!result.markdown) throw new Error(tr('common:errors.notebookGenFail'));
+    return result;
+  } catch (err) {
+    if (budgetExceeded && !outerSignal?.aborted) {
+      throw new Error(
+        tr('common:errors.guideTimeout', { minutes: Math.round(STUDY_GUIDE_TOTAL_BUDGET_MS / 60_000) }),
+      );
+    }
+    throw err;
+  } finally {
+    clearTimeout(budgetTimer);
+    outerSignal?.removeEventListener('abort', onOuterAbort);
+  }
+}
 
-  if (!result.markdown) throw new Error(tr('common:errors.notebookGenFail'));
-  return result;
+/** Erros que não se resolvem tentando o tópico seguinte. */
+function isGuideFatalError(err: unknown): boolean {
+  if (err instanceof AiConsentRequiredError) return true;
+  const name = (err as { name?: unknown } | null)?.name;
+  if (name === 'AbortError') return true;
+  const status = (err as { statusCode?: unknown } | null)?.statusCode;
+  return status === 400 || status === 401 || status === 403 || isDailyQuotaError(err);
 }
 
 /**

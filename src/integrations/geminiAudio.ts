@@ -185,6 +185,7 @@ export async function generatePodcastScript(args: {
   persona?: UniPersonaMode;
   language?: string;
   assessment?: NotebookAssessmentContext | null;
+  signal?: AbortSignal;
 }): Promise<PodcastScript> {
   const { customKey, model } = resolveGeminiConfig();
   const fullArgs = {
@@ -194,6 +195,7 @@ export async function generatePodcastScript(args: {
     courseName: args.courseName,
     persona: args.persona,
     assessment: args.assessment,
+    signal: args.signal,
   };
   assertNotebookInputs(fullArgs);
 

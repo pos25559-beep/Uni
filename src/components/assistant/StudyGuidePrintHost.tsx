@@ -1,10 +1,11 @@
 // Renderiza o Guia de Estudo fora do ecrã (tema claro, largura de uma página A4) e converte-o
-// em fatias JPEG, uma por página, cortadas só entre blocos [data-guide-block].
+// em fatias JPEG, uma por página (capturadas uma a uma), cortadas só entre blocos [data-guide-block].
 
 import type { CSSProperties } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { computePageSlices, PAGE_CONTENT_H_PX, PAGE_CONTENT_W_PX, type PdfSliceImage } from '../../lib/studyGuidePdf';
+import { groupSlicesForCapture, pageCaptureRatio } from '../../lib/studyGuideRaster';
 import type { StudyGuide } from '../../lib/studyGuide';
 import StudyGuideView from './StudyGuideView';
 
@@ -34,10 +35,7 @@ const LIGHT_TOKENS: Record<string, string> = {
   '--shadow-dock': 'none',
 };
 
-const PIXEL_RATIO = 2;
 const JPEG_QUALITY = 0.92;
-const MAX_CANVAS_SIDE = 16000;
-const MAX_CANVAS_AREA = 16_000_000;
 
 const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
 
@@ -221,34 +219,49 @@ export async function rasterizeStudyGuide(guide: StudyGuide, subtitle: string): 
     if (slices.length === 0) throw new Error('empty');
 
     const fontEmbedCSS = await buildFontEmbedCss(content);
-    // Uma só rasterização (o html-to-image clona todos os estilos: fazê-lo por página é lento);
-    // depois recorta-se cada página. O pixelRatio desce em guias muito longos para respeitar
-    // os limites de canvas (lado <= 16384 px, área <= ~16 M px, por causa do iOS).
-    const ratio = Math.max(
-      1,
-      Math.min(PIXEL_RATIO, MAX_CANVAS_SIDE / totalHeight, Math.sqrt(MAX_CANVAS_AREA / (PAGE_CONTENT_W_PX * totalHeight))),
-    );
-    const full = await toCanvas(content, {
-      width: PAGE_CONTENT_W_PX,
-      height: Math.ceil(totalHeight),
-      pixelRatio: ratio,
-      backgroundColor: '#ffffff',
-      fontEmbedCSS,
-    });
-    const scale = full.width / PAGE_CONTENT_W_PX;
+    // Nunca o guia inteiro num só canvas: ultrapassava os limites do Safari/iOS e dava páginas em
+    // branco sem erro. Agrupa páginas seguidas até ao limite de canvas (poucas capturas, porque cada
+    // uma clona o guia inteiro) e corta cada grupo em páginas. Cada canvas é libertado logo a seguir.
     const images: PdfSliceImage[] = [];
-    for (const [start, end] of slices) {
-      const heightPx = Math.max(1, Math.ceil(end - start));
-      const page = document.createElement('canvas');
-      page.width = full.width;
-      page.height = Math.max(1, Math.round(heightPx * scale));
-      const ctx = page.getContext('2d');
-      if (!ctx) throw new Error('canvas');
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, page.width, page.height);
-      ctx.drawImage(full, 0, Math.round(start * scale), full.width, page.height, 0, 0, page.width, page.height);
-      images.push({ jpeg: await canvasToJpeg(page), widthPx: PAGE_CONTENT_W_PX, heightPx: page.height / scale });
-      page.width = page.height = 0;
+    for (const group of groupSlicesForCapture(slices, PAGE_CONTENT_W_PX)) {
+      const groupStart = group[0][0];
+      const groupHeight = Math.max(1, Math.ceil(group[group.length - 1][1] - groupStart));
+      const ratio = pageCaptureRatio(PAGE_CONTENT_W_PX, groupHeight);
+      if (!(ratio > 0)) throw new Error('canvas');
+      const chunk = await toCanvas(content, {
+        width: PAGE_CONTENT_W_PX,
+        height: groupHeight,
+        pixelRatio: ratio,
+        backgroundColor: '#ffffff',
+        fontEmbedCSS,
+        style: {
+          transform: `translateY(${-groupStart}px)`,
+          transformOrigin: 'top left',
+          width: `${PAGE_CONTENT_W_PX}px`,
+          height: `${Math.ceil(totalHeight)}px`,
+        },
+      });
+      try {
+        const scale = chunk.width / PAGE_CONTENT_W_PX;
+        for (const [start, end] of group) {
+          const page = document.createElement('canvas');
+          const sy = Math.round((start - groupStart) * scale);
+          page.width = chunk.width;
+          page.height = Math.max(1, Math.min(chunk.height - sy, Math.round((end - start) * scale)));
+          const ctx = page.getContext('2d');
+          if (!ctx) throw new Error('canvas');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, page.width, page.height);
+          ctx.drawImage(chunk, 0, sy, page.width, page.height, 0, 0, page.width, page.height);
+          try {
+            images.push({ jpeg: await canvasToJpeg(page), widthPx: PAGE_CONTENT_W_PX, heightPx: page.height / scale });
+          } finally {
+            page.width = page.height = 0;
+          }
+        }
+      } finally {
+        chunk.width = chunk.height = 0;
+      }
     }
     return images;
   } finally {

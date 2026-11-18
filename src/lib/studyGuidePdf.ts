@@ -78,6 +78,12 @@ export function computePageSlices(
   } else if (finalEnd > pageStart + EPS) {
     slices.push([pageStart, finalEnd]);
   }
+  // Última página sem nenhum bloco (só a margem de baixo do guia): não vale uma página quase em branco.
+  const TAIL_PADDING_MAX = 48;
+  const tail = slices[slices.length - 1];
+  if (slices.length > 1 && tail[0] >= lastEnd - EPS && tail[1] - tail[0] < TAIL_PADDING_MAX) {
+    slices.pop();
+  }
   return slices;
 }
 

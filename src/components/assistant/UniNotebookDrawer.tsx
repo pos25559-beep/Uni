@@ -144,6 +144,10 @@ export default function UniNotebookDrawer({
   const [readerOpen, setReaderOpen] = useState(false);
   const guideRef = useRef<StudyGuide | null>(null);
   const generationRef = useRef<GenerationContext | null>(null);
+  /** Pedido de geração em curso: fechar o Caderno cancela-o (deixa de gastar pedidos e tempo). */
+  const generateAbortRef = useRef<AbortController | null>(null);
+  /** Ficha mostrada agora, lida dentro de pedidos assíncronos (o estado da closure pode estar velho). */
+  const activeSheetIdRef = useRef<string | null>(null);
   const [savedSheets, setSavedSheets] = useState<TopicSheetRecord[]>([]);
   const [activeSheetId, setActiveSheetId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -168,6 +172,12 @@ export default function UniNotebookDrawer({
   useEffect(() => {
     guideRef.current = guide;
   }, [guide]);
+
+  useEffect(() => {
+    activeSheetIdRef.current = activeSheetId;
+  }, [activeSheetId]);
+
+  useEffect(() => () => generateAbortRef.current?.abort(), []);
 
   useEffect(() => {
     if (!open || !courseId) return;
@@ -284,6 +294,7 @@ export default function UniNotebookDrawer({
   };
 
   const handleClose = () => {
+    generateAbortRef.current?.abort();
     handleCancelRecording();
     setReaderOpen(false);
     onClose();
@@ -372,6 +383,10 @@ export default function UniNotebookDrawer({
   };
 
   const handleGenerate = async () => {
+    generateAbortRef.current?.abort();
+    const controller = new AbortController();
+    generateAbortRef.current = controller;
+    const { signal } = controller;
     setBusy(true);
     setError(null);
     setNotice(null);
@@ -393,6 +408,7 @@ export default function UniNotebookDrawer({
           persona: uniAgent?.personaId ?? persona,
           language: appLanguage,
           assessment,
+          signal,
         });
         result = podcastScriptToMarkdown(script);
       } else if (mode === 'guide') {
@@ -403,6 +419,7 @@ export default function UniNotebookDrawer({
           persona,
           accessory,
           assessment,
+          signal,
           onProgress: (p) =>
             setProgressLabel(
               p.phase === 'mapping'
@@ -421,8 +438,10 @@ export default function UniNotebookDrawer({
           courseName,
           persona,
           accessory,
+          signal,
         });
       }
+      if (signal.aborted) return;
       setOutput(result);
       setGuide(structured);
       setPodcast(script);
@@ -447,10 +466,14 @@ export default function UniNotebookDrawer({
       setReaderOpen(true);
       setSavedSheets((prev) => [saved, ...prev.filter((item) => item.id !== saved.id)]);
     } catch (e) {
+      if (signal.aborted) return;
       setError(e instanceof Error ? e.message : t('notebook.genError'));
     } finally {
-      setBusy(false);
-      setProgressLabel(null);
+      if (generateAbortRef.current === controller) {
+        generateAbortRef.current = null;
+        setBusy(false);
+        setProgressLabel(null);
+      }
     }
   };
 
@@ -514,6 +537,9 @@ export default function UniNotebookDrawer({
   const handleRefineTopic = async (idx: number, instruction: string): Promise<string | null> => {
     const current = guideRef.current;
     const topic = current?.topics[idx];
+    // A ficha a que o pedido pertence fica fixada já: se o estudante mudar de ficha a meio,
+    // o resultado vai para esta e não para a que estiver aberta quando a resposta chegar.
+    const sheetIdAtStart = activeSheetIdRef.current;
     if (!current || !topic) return t('notebook.reader.refineFail');
     try {
       let ctx = generationRef.current;
@@ -536,12 +562,17 @@ export default function UniNotebookDrawer({
         otherTopicTitles: current.topics.filter((_, i) => i !== idx).map((x) => x.title),
       });
       if (!next) return t('notebook.reader.refineFail');
-      const latest = guideRef.current ?? current;
+      const stillShowing = activeSheetIdRef.current === sheetIdAtStart;
+      const latest = stillShowing
+        ? guideRef.current ?? current
+        : (sheetIdAtStart ? loadSheetGuide(sheetIdAtStart) : null) ?? current;
       const nextGuide: StudyGuide = { ...latest, topics: latest.topics.map((x, i) => (i === idx ? next : x)) };
       const markdown = studyGuideToMarkdown(nextGuide, getStudyGuideLabels());
-      setGuide(nextGuide);
-      setOutput(markdown);
-      const sheet = savedSheets.find((item) => item.id === activeSheetId);
+      if (stillShowing) {
+        setGuide(nextGuide);
+        setOutput(markdown);
+      }
+      const sheet = sheetIdAtStart ? savedSheets.find((item) => item.id === sheetIdAtStart) : undefined;
       if (sheet) {
         const updated = await putTopicSheet({ ...sheet, summary: markdown, updatedAt: new Date().toISOString() });
         saveSheetGuide(updated.id, nextGuide);

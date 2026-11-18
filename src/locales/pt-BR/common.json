@@ -537,6 +537,7 @@
     "sheetEmptySources": "Selecione pelo menos um material ou anexe um arquivo antes de gerar a ficha.",
     "sheetExtractFail": "Não consegui extrair uma ficha estruturada destes materiais agora.",
     "nativeAiTimeout": "O Uni Nativo demorou tempo demais para responder (limite {{seconds}}s). Tente perguntar algo mais curto ou anexe menos arquivos.",
+    "guideTimeout": "O guia demorou mais de {{minutes}} min (o Google está com muita demanda). Tente daqui a pouco ou com menos arquivos.",
     "nativeAiQuota": "O serviço compartilhado do Uni atingiu temporariamente o limite de requisições. Tente em instantes ou use sua chave pessoal Gemini nas Configurações.",
     "nativeAiUnavailable": "O serviço nativo do Uni está temporariamente indisponível ou não configurado neste projeto Firebase. Verifique a conexão ou configure uma chave pessoal nas Configurações.",
     "nativeAiGeneric": "O Uni Nativo não conseguiu responder agora. Tente novamente.",

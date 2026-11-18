@@ -25,6 +25,8 @@ export function isRetryableAiStatus(statusCode: number | undefined): boolean {
  * vale a pena esperar uns segundos e tentar de novo a cadeia de modelos.
  */
 export function isOverloadError(err: unknown): boolean {
+  // A quota diária esgotada não passa com uns segundos de espera: repetir só gasta pedidos.
+  if (isDailyQuotaError(err)) return false;
   const status = (err as { statusCode?: unknown } | null)?.statusCode;
   if (status === 429 || status === 503 || status === 504) return true;
   const name = (err as { name?: unknown } | null)?.name;
@@ -36,6 +38,18 @@ export function isOverloadError(err: unknown): boolean {
     lower.includes('unavailable') ||
     lower.includes('try again later') ||
     lower.includes('deadline')
+  );
+}
+
+/** 429 por quota diária (ex.: «…PerDay», «per day», «daily limit»), diferente de «procura alta» momentânea. */
+export function isDailyQuotaError(err: unknown): boolean {
+  const lower = (err instanceof Error ? err.message : String(err ?? '')).toLowerCase();
+  return (
+    lower.includes('perday') ||
+    lower.includes('per day') ||
+    lower.includes('per_day') ||
+    lower.includes('daily limit') ||
+    lower.includes('daily quota')
   );
 }
 
