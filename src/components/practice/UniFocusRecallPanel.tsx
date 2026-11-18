@@ -28,6 +28,7 @@ import {
 import { useStore } from '../../store/useStore';
 import { normalizeAppLanguage } from '../../lib/grading';
 import type { AppLanguage, Course, Topic } from '../../types';
+import LoadingUnis from '../brand/LoadingUnis';
 import { UniBuddy } from '../brand/UnipediaMarks';
 import { Button, Textarea } from '../ui';
 import type { PracticeOutcomeSummary } from './ActivePracticeDeck';
@@ -241,9 +242,12 @@ export default function UniFocusRecallPanel({
       </div>
 
       {loadingPrompt ? (
-        <div className="mt-4 flex items-center gap-2 rounded-xl border border-line bg-surface-2/60 px-3.5 py-4 text-xs text-muted">
-          <Loader2 size={15} className="animate-spin text-accent-ink" />
-          {t('focus.preparingTopic', { topic: topic.title })}
+        <div className="mt-4 rounded-xl border border-line bg-surface-2/60 px-3 py-2">
+          <LoadingUnis
+            variant="grades"
+            compact
+            label={t('focus.preparingTopic', { topic: topic.title })}
+          />
         </div>
       ) : (
         <>

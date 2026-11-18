@@ -56,22 +56,27 @@ export function LoadingUnis({
         typeof window.matchMedia === 'function' &&
         window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
-    void import('lottie-web/build/player/lottie_light').then((mod) => {
-      if (cancelled || !containerRef.current) return;
-      const lottie = mod.default ?? mod;
-      const anim = lottie.loadAnimation({
-        container: containerRef.current,
-        renderer: 'svg',
-        loop: !prefersReduced,
-        autoplay: !prefersReduced,
-        animationData: UNI_DUO_LOTTIE_ASSETS[variant],
+    void import('lottie-web/build/player/lottie_light')
+      .then((mod) => {
+        if (cancelled || !containerRef.current) return;
+        const lottie = mod.default ?? mod;
+        if (typeof lottie?.loadAnimation !== 'function') return;
+        const anim = lottie.loadAnimation({
+          container: containerRef.current,
+          renderer: 'svg',
+          loop: !prefersReduced,
+          autoplay: !prefersReduced,
+          animationData: structuredClone(UNI_DUO_LOTTIE_ASSETS[variant]),
+        });
+        if (prefersReduced) {
+          const restFrame = Math.max(0, Math.round(anim.totalFrames * 0.5));
+          anim.goToAndStop(restFrame, true);
+        }
+        destroyFn = () => anim.destroy();
+      })
+      .catch(() => {
+        // Fallback silencioso caso o player SVG não esteja disponível neste ambiente
       });
-      if (prefersReduced) {
-        const restFrame = Math.max(0, Math.round(anim.totalFrames * 0.5));
-        anim.goToAndStop(restFrame, true);
-      }
-      destroyFn = () => anim.destroy();
-    });
 
     return () => {
       cancelled = true;
@@ -100,7 +105,7 @@ export function LoadingUnis({
         ref={containerRef}
         aria-hidden="true"
         className={cx(
-          'pointer-events-none shrink-0 select-none',
+          'pointer-events-none shrink-0 select-none [&>svg]:block [&>svg]:size-full',
           compact ? 'h-16 w-32' : 'h-[88px] w-[176px]',
         )}
       />

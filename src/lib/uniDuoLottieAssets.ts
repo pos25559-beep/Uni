@@ -837,8 +837,42 @@ const MATERIALS_DUO_LOTTIE = {
   ],
 };
 
+const LOTTIE_EASE_IN = { x: [0.42], y: [1] };
+const LOTTIE_EASE_OUT = { x: [0.58], y: [0] };
+
+function withLottieEasing<T>(node: T): T {
+  if (Array.isArray(node)) {
+    return node.map((item) => withLottieEasing(item)) as unknown as T;
+  }
+  if (!node || typeof node !== 'object') {
+    return node;
+  }
+  const obj = node as Record<string, unknown>;
+  if (obj.a === 1 && Array.isArray(obj.k)) {
+    const frames = obj.k as Array<Record<string, unknown>>;
+    return {
+      ...obj,
+      k: frames.map((kf, idx) => {
+        if (idx >= frames.length - 1 || kf.h === 1 || (kf.i && kf.o)) {
+          return kf;
+        }
+        return {
+          ...kf,
+          i: LOTTIE_EASE_IN,
+          o: LOTTIE_EASE_OUT,
+        };
+      }),
+    } as unknown as T;
+  }
+  const next: Record<string, unknown> = {};
+  for (const [key, val] of Object.entries(obj)) {
+    next[key] = withLottieEasing(val);
+  }
+  return next as T;
+}
+
 export const UNI_DUO_LOTTIE_ASSETS: Record<LoadingUnisVariant, object> = {
-  courses: COURSES_DUO_LOTTIE,
-  grades: GRADES_DUO_LOTTIE,
-  materials: MATERIALS_DUO_LOTTIE,
+  courses: withLottieEasing(COURSES_DUO_LOTTIE),
+  grades: withLottieEasing(GRADES_DUO_LOTTIE),
+  materials: withLottieEasing(MATERIALS_DUO_LOTTIE),
 };

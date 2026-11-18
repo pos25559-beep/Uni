@@ -24,6 +24,7 @@ import { computeNextSrsState, type RecallScore } from '../../lib/spacedRepetitio
 import { cx } from '../../lib/uiHelpers';
 import { newId, useStore } from '../../store/useStore';
 import type { Course, PracticeCard, Topic } from '../../types';
+import LoadingUnis from '../brand/LoadingUnis';
 import { Button, Input, Textarea } from '../ui';
 
 export interface PracticeOutcomeSummary {
@@ -325,9 +326,8 @@ export default function ActivePracticeDeck({
       {error && <p className="text-xs text-danger">{error}</p>}
 
       {busy && cards.length === 0 ? (
-        <div className="flex items-center gap-2 rounded-xl bg-surface-2/70 p-4 text-xs text-muted">
-          <Loader2 size={15} className="animate-spin text-accent-ink" />
-          {t('practice.preparing')}
+        <div className="rounded-xl bg-surface-2/70 p-2">
+          <LoadingUnis variant="grades" compact label={t('practice.preparing')} />
         </div>
       ) : completedSummary ? (
         <div className="space-y-2.5 rounded-xl border border-ok/30 bg-ok/10 p-3.5">
