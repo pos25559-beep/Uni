@@ -24,11 +24,17 @@ function formatShortDate(isoDate: string, locale: ReturnType<typeof resolveDateF
 interface WeekCheckCardProps {
   /** Se verdadeiro, abre logo na caixa de texto quando montado. */
   initialOpen?: boolean;
+  /** Quando montado dentro de um Modal/Bottom Sheet, remove a moldura e o título duplicados. */
+  inModal?: boolean;
   /** Chamado quando o utilizador retrai o cartão para o atalho compacto. */
   onCollapse?: () => void;
 }
 
-export default function WeekCheckCard({ initialOpen = false, onCollapse }: WeekCheckCardProps) {
+export default function WeekCheckCard({
+  initialOpen = false,
+  inModal = false,
+  onCollapse,
+}: WeekCheckCardProps) {
   const { t, i18n } = useTranslation('plan');
   const dfLocale = resolveDateFnsLocale(i18n.language);
   const courses = useStore((s) => s.courses);
@@ -48,7 +54,7 @@ export default function WeekCheckCard({ initialOpen = false, onCollapse }: WeekC
     reset,
   } = usePlanBriefing();
 
-  const [editing, setEditing] = useState(initialOpen);
+  const [editing, setEditing] = useState(initialOpen || inModal);
   const [draft, setDraft] = useState(() => lastBriefingNote);
   const [appliedCount, setAppliedCount] = useState(0);
 
@@ -231,7 +237,12 @@ export default function WeekCheckCard({ initialOpen = false, onCollapse }: WeekC
   if (status === 'review' && intent && !editing) {
     const items = intent.items;
     return (
-      <section className="space-y-3 rounded-2xl border border-line bg-surface p-4 shadow-card">
+      <section
+        className={cx(
+          'space-y-3',
+          !inModal && 'rounded-2xl border border-line bg-surface p-4 shadow-card',
+        )}
+      >
         <div>
           <h2 className="flex items-center gap-1.5 font-display text-sm font-bold text-fg">
             <Sparkles size={15} className="text-accent" aria-hidden="true" />
@@ -323,21 +334,28 @@ export default function WeekCheckCard({ initialOpen = false, onCollapse }: WeekC
   // Aberto: caixa de texto + Ler + Cancelar
   const reading = status === 'reading';
   return (
-    <section className="space-y-3 rounded-2xl border border-line bg-surface p-4 shadow-card">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-semibold text-fg">{t('weekCheck.title')}</p>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => {
-            setEditing(false);
-            if (status === 'reading') reset();
-            if (initialOpen && onCollapse) onCollapse();
-          }}
-        >
-          {t('weekCheck.cancel')}
-        </Button>
-      </div>
+    <section
+      className={cx(
+        'space-y-3',
+        !inModal && 'rounded-2xl border border-line bg-surface p-4 shadow-card',
+      )}
+    >
+      {!inModal && (
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm font-semibold text-fg">{t('weekCheck.title')}</p>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              setEditing(false);
+              if (status === 'reading') reset();
+              if (initialOpen && onCollapse) onCollapse();
+            }}
+          >
+            {t('weekCheck.cancel')}
+          </Button>
+        </div>
+      )}
 
       <Textarea
         rows={3}
@@ -349,19 +367,34 @@ export default function WeekCheckCard({ initialOpen = false, onCollapse }: WeekC
       />
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-muted">{t('weekCheck.hintEmpty')}</p>
-        <Button
-          size="sm"
-          variant="primary"
-          disabled={reading || draft.trim().length < 2}
-          onClick={() => {
-            setEditing(false);
-            void read(draft);
-          }}
-        >
-          <Sparkles size={14} aria-hidden="true" />{' '}
-          {reading ? t('weekCheck.reading') : t('weekCheck.read')}
-        </Button>
+        <p className="min-w-0 flex-1 text-xs text-muted">{t('weekCheck.hintEmpty')}</p>
+        <div className="flex shrink-0 items-center gap-2">
+          {inModal && onCollapse && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setEditing(false);
+                if (status === 'reading') reset();
+                onCollapse();
+              }}
+            >
+              {t('weekCheck.cancel')}
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="primary"
+            disabled={reading || draft.trim().length < 2}
+            onClick={() => {
+              setEditing(false);
+              void read(draft);
+            }}
+          >
+            <Sparkles size={14} aria-hidden="true" />{' '}
+            {reading ? t('weekCheck.reading') : t('weekCheck.read')}
+          </Button>
+        </div>
       </div>
     </section>
   );

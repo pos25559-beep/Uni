@@ -27,6 +27,8 @@ interface PlanConscienceCardProps {
   dismissedIds?: Set<string>;
   onDismiss?: (id: string) => void;
   onCollapse?: () => void;
+  /** Quando montado dentro de um Modal/Bottom Sheet, remove a moldura e o título duplicados. */
+  inModal?: boolean;
 }
 
 export default function PlanConscienceCard({
@@ -35,6 +37,7 @@ export default function PlanConscienceCard({
   dismissedIds: externalDismissed,
   onDismiss: externalOnDismiss,
   onCollapse,
+  inModal = false,
 }: PlanConscienceCardProps) {
   const { t, i18n } = useTranslation('plan');
   const dfLocale = resolveDateFnsLocale(i18n.language);
@@ -149,6 +152,7 @@ export default function PlanConscienceCard({
           onPress: () => upsertMany('sessions', removed),
         },
       });
+      if (inModal) onCollapse?.();
       return;
     }
 
@@ -178,6 +182,7 @@ export default function PlanConscienceCard({
           },
         },
       );
+      if (inModal) onCollapse?.();
       return;
     }
 
@@ -200,6 +205,7 @@ export default function PlanConscienceCard({
           },
         },
       );
+      if (inModal) onCollapse?.();
     }
   };
 
@@ -250,13 +256,16 @@ export default function PlanConscienceCard({
     <section
       aria-label={t('conscience.title')}
       className={cx(
-        'space-y-3 rounded-2xl border px-4 py-3 shadow-card',
-        isAllGood
-          ? 'border-line bg-surface'
-          : 'border-warn/35 bg-pastel-butter/35 dark:bg-surface',
+        inModal
+          ? 'space-y-4'
+          : 'space-y-3 rounded-2xl border px-4 py-3 shadow-card',
+        !inModal &&
+          (isAllGood
+            ? 'border-line bg-surface'
+            : 'border-warn/35 bg-pastel-butter/35 dark:bg-surface'),
       )}
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
           <div className="grid size-9 shrink-0 place-items-center rounded-full bg-pastel-butter/75 dark:bg-surface-2">
             <UniBuddy
@@ -268,8 +277,8 @@ export default function PlanConscienceCard({
             />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-fg">{t('conscience.title')}</p>
-            <p className="text-xs text-muted">
+            {!inModal && <p className="text-xs font-semibold text-fg">{t('conscience.title')}</p>}
+            <p className={inModal ? 'text-sm font-medium text-fg' : 'text-xs text-muted'}>
               {isAllGood
                 ? t('conscience.status.aligned')
                 : t('conscience.status.needsAttention', { count: visibleOpinions.length })}
@@ -289,7 +298,7 @@ export default function PlanConscienceCard({
               {aiLoading ? t('conscience.aiLoading') : t('conscience.aiButton')}
             </Button>
           )}
-          {onCollapse && (
+          {!inModal && onCollapse && (
             <button
               type="button"
               onClick={onCollapse}
@@ -308,19 +317,19 @@ export default function PlanConscienceCard({
           {visibleOpinions.map((op) => (
             <li
               key={op.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line/80 bg-surface/90 px-3 py-2.5"
+              className="flex flex-col gap-2.5 rounded-2xl border border-line/80 bg-surface-2/40 p-3 sm:flex-row sm:items-center sm:justify-between"
             >
-              <div className="flex min-w-[200px] flex-1 items-start gap-2">
+              <div className="flex min-w-0 flex-1 items-start gap-2.5">
                 {op.severity === 'warn' ? (
-                  <AlertTriangle size={15} className="mt-0.5 shrink-0 text-warn" aria-hidden="true" />
+                  <AlertTriangle size={16} className="mt-0.5 shrink-0 text-warn" aria-hidden="true" />
                 ) : (
-                  <Lightbulb size={15} className="mt-0.5 shrink-0 text-accent" aria-hidden="true" />
+                  <Lightbulb size={16} className="mt-0.5 shrink-0 text-accent" aria-hidden="true" />
                 )}
-                <p className="min-w-0 flex-1 text-xs leading-relaxed text-fg">
+                <p className="min-w-0 flex-1 text-xs leading-relaxed text-fg sm:text-sm">
                   {formatOpinionMessage(op)}
                 </p>
               </div>
-              <div className="flex shrink-0 items-center gap-1 self-end sm:self-center">
+              <div className="flex shrink-0 items-center justify-end gap-1">
                 {op.action && (
                   <Button
                     size="sm"

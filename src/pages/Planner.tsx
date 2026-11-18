@@ -13,7 +13,6 @@ import {
   Plus,
   SlidersHorizontal,
   Sparkles,
-  X,
 } from 'lucide-react';
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -38,8 +37,8 @@ const PlanPreferencesSheet = lazy(() => import('../components/planner/PlanPrefer
 const SessionModal = lazy(() => import('../components/planner/SessionModal'));
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import { openUniCheckIn } from '../lib/uniCheckInBus';
-import { ActionSheet, Badge, Button, Card, CourseChip, EmptyState, PageHeader, SegmentedControl } from '../components/ui';
-import { showToast } from '../lib/uiHelpers';
+import { ActionSheet, Badge, Button, Card, CourseChip, EmptyState, Modal, PageHeader, SegmentedControl } from '../components/ui';
+import { cx, showToast } from '../lib/uiHelpers';
 import { weekdayShort } from '../lib/colors';
 import { hapticTap } from '../lib/nativeBridge';
 import { computeExtraActivityPenaltyByWeekday } from '../lib/academicCredits';
@@ -180,26 +179,20 @@ export default function Planner() {
     [testMode.urgentAssessments],
   );
   const [ackedTestSig, setAckedTestSig] = useState(() => readStoredFlag(TEST_MODE_ACK_KEY));
-  const [testModeOpenOverride, setTestModeOpenOverride] = useState<boolean | null>(null);
-  const testModeExpanded =
-    testMode.mode !== 'normal' &&
-    (testModeOpenOverride ?? (Boolean(urgentSignature) && ackedTestSig !== urgentSignature));
+  const [ackedWeekSig, setAckedWeekSig] = useState(() => readStoredFlag(WEEK_CHECK_ACK_KEY));
+  const [activeSheet, setActiveSheet] = useState<'testMode' | 'weekCheck' | 'conscience' | null>(null);
   const acknowledgeTestMode = () => {
     if (urgentSignature) {
       writeStoredFlag(TEST_MODE_ACK_KEY, urgentSignature);
       setAckedTestSig(urgentSignature);
     }
-    setTestModeOpenOverride(false);
   };
 
-  const [ackedWeekSig, setAckedWeekSig] = useState(() => readStoredFlag(WEEK_CHECK_ACK_KEY));
-  const [weekCheckOpenOverride, setWeekCheckOpenOverride] = useState<boolean | null>(null);
   const [mountNowMinutes] = useState(() => {
     const d = new Date();
     return d.getHours() * 60 + d.getMinutes();
   });
   const [conscienceDismissedIds, setConscienceDismissedIds] = useState<Set<string>>(() => new Set());
-  const [conscienceOpenOverride, setConscienceOpenOverride] = useState<boolean | null>(null);
   const conscienceReport = useMemo(
     () =>
       analyzePlanConscience({
@@ -233,8 +226,6 @@ export default function Planner() {
     () => conscienceReport.opinions.filter((op) => !conscienceDismissedIds.has(op.id)).length,
     [conscienceReport.opinions, conscienceDismissedIds],
   );
-  const conscienceExpanded =
-    conscienceReport.status !== 'empty' && Boolean(conscienceOpenOverride);
   const uniAccessory = resolveUniAccessory(
     settings.uniAccessory,
     academicProfile?.degreeName,
@@ -321,14 +312,13 @@ export default function Planner() {
   const noPlanInputs = courses.length === 0;
   const starterOnlyMode = courses.length > 0 && !assessments.some((a) => a.grade === undefined);
   const currentWeekAckSig = weekKeys[0] ?? today;
-  const weekCheckExpanded =
-    !noPlanInputs &&
-    (weekCheckOpenOverride ??
-      (!plannerPrefs?.briefingAppliedAt && ackedWeekSig !== currentWeekAckSig));
+  const weekCheckNeedsAttention =
+    !noPlanInputs && !plannerPrefs?.briefingAppliedAt && ackedWeekSig !== currentWeekAckSig;
+  const testModeNeedsAttention =
+    testMode.mode !== 'normal' && Boolean(urgentSignature) && ackedTestSig !== urgentSignature;
   const acknowledgeWeekCheck = () => {
     writeStoredFlag(WEEK_CHECK_ACK_KEY, currentWeekAckSig);
     setAckedWeekSig(currentWeekAckSig);
-    setWeekCheckOpenOverride(false);
   };
   // Disponibilidade legível («Seg–Sáb · até 5 h por dia»), sempre a partir do horário por dia.
   const resolvedSchedule = resolvePlannerPrefs(settings).weekdaySchedule ?? {};
@@ -585,41 +575,66 @@ export default function Planner() {
       {!noPlanInputs && (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-1.5">
-            {testMode.mode !== 'normal' && !testModeExpanded && (
+            {testMode.mode !== 'normal' && (
               <button
                 type="button"
-                onClick={() => setTestModeOpenOverride(true)}
+                onClick={() => {
+                  acknowledgeTestMode();
+                  setActiveSheet((cur) => (cur === 'testMode' ? null : 'testMode'));
+                }}
+                aria-expanded={activeSheet === 'testMode'}
                 aria-label={t('ui.testModeExpandAria', { count: testMode.urgentAssessments.length })}
                 title={t('ui.testModeExpandAria', { count: testMode.urgentAssessments.length })}
-                className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border border-coral/40 bg-pastel-blush/75 px-3 text-xs font-semibold text-[#141312] transition hover:border-coral dark:bg-surface-2 dark:text-[#FAF6EC]"
+                className={cx(
+                  'relative inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border border-coral/40 bg-pastel-blush/75 px-3 text-xs font-semibold text-[#141312] transition hover:border-coral dark:bg-surface-2 dark:text-[#FAF6EC]',
+                  activeSheet === 'testMode' && 'border-coral ring-2 ring-coral/30',
+                )}
               >
                 <Flame size={16} className="text-coral" aria-hidden="true" />
                 <span className="tabular">{testMode.urgentAssessments.length}</span>
-              </button>
-            )}
-
-            {!weekCheckExpanded && (
-              <button
-                type="button"
-                onClick={() => setWeekCheckOpenOverride(true)}
-                aria-label={t('weekCheck.compactOpenAria')}
-                title={t('weekCheck.compactOpenAria')}
-                className="relative inline-flex size-11 items-center justify-center rounded-xl border border-line bg-surface text-xs font-medium text-fg transition hover:border-accent"
-              >
-                <MessageSquareText size={16} className="text-accent" aria-hidden="true" />
-                {plannerPrefs?.briefingNote && (
-                  <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-ok" aria-hidden="true" />
+                {testModeNeedsAttention && (
+                  <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-coral" aria-hidden="true" />
                 )}
               </button>
             )}
 
-            {conscienceReport.status !== 'empty' && !conscienceExpanded && (
+            <button
+              type="button"
+              onClick={() => {
+                acknowledgeWeekCheck();
+                setActiveSheet((cur) => (cur === 'weekCheck' ? null : 'weekCheck'));
+              }}
+              aria-expanded={activeSheet === 'weekCheck'}
+              aria-label={t('weekCheck.compactOpenAria')}
+              title={t('weekCheck.compactOpenAria')}
+              className={cx(
+                'relative inline-flex size-11 items-center justify-center rounded-xl border border-line bg-surface text-xs font-medium text-fg transition hover:border-accent',
+                activeSheet === 'weekCheck' && 'border-accent ring-2 ring-accent/25',
+              )}
+            >
+              <MessageSquareText size={16} className="text-accent" aria-hidden="true" />
+              {(plannerPrefs?.briefingNote || weekCheckNeedsAttention) && (
+                <span
+                  className={cx(
+                    'absolute right-1.5 top-1.5 size-1.5 rounded-full',
+                    plannerPrefs?.briefingNote ? 'bg-ok' : 'bg-accent',
+                  )}
+                  aria-hidden="true"
+                />
+              )}
+            </button>
+
+            {conscienceReport.status !== 'empty' && (
               <button
                 type="button"
-                onClick={() => setConscienceOpenOverride(true)}
+                onClick={() => setActiveSheet((cur) => (cur === 'conscience' ? null : 'conscience'))}
+                aria-expanded={activeSheet === 'conscience'}
                 aria-label={t('conscience.compactAria')}
                 title={t('conscience.compactAria')}
-                className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border border-line bg-surface px-2.5 text-xs font-medium text-fg transition hover:border-accent"
+                className={cx(
+                  'inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border border-line bg-surface px-2.5 text-xs font-medium text-fg transition hover:border-accent',
+                  activeSheet === 'conscience' && 'border-accent ring-2 ring-accent/25',
+                )}
               >
                 <UniBuddy
                   size={20}
@@ -649,80 +664,6 @@ export default function Planner() {
         </div>
       )}
 
-      {testModeExpanded && (
-        <section
-          className={
-            testMode.mode === 'single_test'
-              ? 'space-y-2.5 rounded-3xl bg-pastel-butter/85 px-4 py-3.5 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]'
-              : 'space-y-2.5 rounded-3xl bg-pastel-blush/85 px-4 py-3.5 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]'
-          }
-        >
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className="grid size-8 place-items-center rounded-full bg-surface/80 text-coral dark:bg-black/25">
-                <Flame size={16} aria-hidden="true" />
-              </span>
-              <span className="text-sm font-semibold">
-                {testMode.mode === 'single_test'
-                  ? t('testModeSingleTitle')
-                  : t('testModeMultiTitle', { count: testMode.urgentCourseIds.length })}
-              </span>
-              <Badge tone={testMode.mode === 'single_test' ? 'warn' : 'danger'}>
-                {testMode.mode === 'single_test' ? t('testModeFocusBadge') : t('testModeBalanceBadge')}
-              </Badge>
-            </div>
-            <button
-              type="button"
-              onClick={acknowledgeTestMode}
-              aria-label={t('ui.testModeCollapseAria')}
-              title={t('ui.testModeCollapseAria')}
-              className="-mr-1 grid size-11 shrink-0 place-items-center rounded-full text-[#141312]/70 transition hover:bg-black/10 hover:text-[#141312] dark:text-[#FAF6EC]/70 dark:hover:bg-white/10 dark:hover:text-[#FAF6EC]"
-            >
-              <X size={16} />
-            </button>
-          </div>
-
-          <ul className="space-y-1.5">
-            {testMode.urgentAssessments.map((u) => {
-              const when =
-                u.daysLeft === 0
-                  ? t('session.today')
-                  : u.daysLeft === 1
-                    ? t('session.tomorrow')
-                    : t('session.inDays', { n: u.daysLeft });
-              return (
-                <li
-                  key={u.assessment.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-surface/75 px-3 py-1.5 dark:bg-black/20"
-                >
-                  <span className="min-w-0 flex-1 truncate text-xs font-medium text-fg">
-                    {t('testModeLine', {
-                      course: u.course.shortName,
-                      title: u.assessment.title,
-                      when,
-                    })}
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => {
-                      acknowledgeTestMode();
-                      openUniCheckIn({
-                        kind: 'exam_prep',
-                        assessmentId: u.assessment.id,
-                        courseId: u.course.id,
-                      });
-                    }}
-                  >
-                    {t('alignShort')}
-                  </Button>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
-
       {starterOnlyMode && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl bg-pastel-sage/75 px-4 py-3 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]">
           <div className="min-w-0 flex-1 text-xs leading-relaxed">
@@ -739,29 +680,6 @@ export default function Planner() {
       )}
 
       <FocusResumeCard />
-
-      {weekCheckExpanded && (
-        <WeekCheckCard
-          initialOpen={Boolean(weekCheckOpenOverride)}
-          onCollapse={acknowledgeWeekCheck}
-        />
-      )}
-
-      {!noPlanInputs && conscienceExpanded && (
-        <PlanConscienceCard
-          today={today}
-          report={conscienceReport}
-          dismissedIds={conscienceDismissedIds}
-          onDismiss={(id) =>
-            setConscienceDismissedIds((prev) => {
-              const next = new Set(prev);
-              next.add(id);
-              return next;
-            })
-          }
-          onCollapse={() => setConscienceOpenOverride(false)}
-        />
-      )}
 
       {sessions.length === 0 ? (
         <EmptyState
@@ -1130,6 +1048,116 @@ export default function Planner() {
           <PlanPreferencesSheet open={prefsOpen} onClose={() => setPrefsOpen(false)} />
         </Suspense>
       )}
+
+      <Modal
+        open={activeSheet === 'testMode' && testMode.mode !== 'normal'}
+        onClose={() => setActiveSheet(null)}
+        title={
+          testMode.mode === 'single_test'
+            ? t('testModeSingleTitle')
+            : t('testModeMultiTitle', { count: testMode.urgentCourseIds.length })
+        }
+      >
+        <div className="space-y-4">
+          <div
+            className={cx(
+              'flex items-center gap-2.5 rounded-2xl px-3.5 py-2.5',
+              testMode.mode === 'single_test'
+                ? 'bg-pastel-butter/75 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]'
+                : 'bg-pastel-blush/75 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]',
+            )}
+          >
+            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-surface/80 text-coral dark:bg-black/25">
+              <Flame size={16} aria-hidden="true" />
+            </span>
+            <span className="min-w-0 flex-1 text-xs leading-relaxed">
+              {testMode.mode === 'single_test'
+                ? t('testModeSingleTitle')
+                : t('testModeMultiTitle', { count: testMode.urgentCourseIds.length })}
+            </span>
+            <Badge tone={testMode.mode === 'single_test' ? 'warn' : 'danger'}>
+              {testMode.mode === 'single_test' ? t('testModeFocusBadge') : t('testModeBalanceBadge')}
+            </Badge>
+          </div>
+
+          <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface-2/40">
+            {testMode.urgentAssessments.map((u) => {
+              const when =
+                u.daysLeft === 0
+                  ? t('session.today')
+                  : u.daysLeft === 1
+                    ? t('session.tomorrow')
+                    : t('session.inDays', { n: u.daysLeft });
+              return (
+                <li
+                  key={u.assessment.id}
+                  className="flex min-h-[54px] items-center justify-between gap-3 px-3.5 py-2.5"
+                >
+                  <span className="min-w-0 flex-1 text-xs font-semibold leading-snug text-fg sm:text-sm">
+                    {t('testModeLine', {
+                      course: u.course.shortName,
+                      title: u.assessment.title,
+                      when,
+                    })}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="shrink-0"
+                    onClick={() => {
+                      acknowledgeTestMode();
+                      setActiveSheet(null);
+                      openUniCheckIn({
+                        kind: 'exam_prep',
+                        assessmentId: u.assessment.id,
+                        courseId: u.course.id,
+                      });
+                    }}
+                  >
+                    {t('alignShort')}
+                  </Button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </Modal>
+
+      <Modal
+        open={activeSheet === 'weekCheck'}
+        onClose={() => setActiveSheet(null)}
+        title={t('weekCheck.title')}
+      >
+        <WeekCheckCard
+          initialOpen
+          inModal
+          onCollapse={() => {
+            acknowledgeWeekCheck();
+            setActiveSheet(null);
+          }}
+        />
+      </Modal>
+
+      <Modal
+        open={activeSheet === 'conscience' && conscienceReport.status !== 'empty'}
+        onClose={() => setActiveSheet(null)}
+        title={t('conscience.title')}
+      >
+        <PlanConscienceCard
+          today={today}
+          report={conscienceReport}
+          dismissedIds={conscienceDismissedIds}
+          inModal
+          onDismiss={(id) =>
+            setConscienceDismissedIds((prev) => {
+              const next = new Set(prev);
+              next.add(id);
+              return next;
+            })
+          }
+          onCollapse={() => setActiveSheet(null)}
+        />
+      </Modal>
     </AnimatedPage>
   );
 }
