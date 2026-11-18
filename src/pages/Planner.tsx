@@ -1,4 +1,4 @@
-import { addDays, addWeeks, format, parseISO, startOfWeek } from 'date-fns';
+import { addDays, format, parseISO } from 'date-fns';
 import {
   AlertTriangle,
   Brain,
@@ -245,7 +245,7 @@ export default function Planner() {
 
   const [anchorDate] = useState(() => new Date());
   const weekDays = useMemo(() => {
-    const start = addWeeks(startOfWeek(anchorDate, { weekStartsOn: 1 }), weekOffset);
+    const start = addDays(anchorDate, weekOffset * 7);
     return Array.from({ length: 7 }, (_, i) => addDays(start, i));
   }, [anchorDate, weekOffset]);
 
@@ -555,7 +555,7 @@ export default function Planner() {
                 onClick={() => setTestModeOpenOverride(true)}
                 aria-label={t('ui.testModeExpandAria', { count: testMode.urgentAssessments.length })}
                 title={t('ui.testModeExpandAria', { count: testMode.urgentAssessments.length })}
-                className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-coral/40 bg-pastel-blush/75 px-3 text-xs font-semibold text-[#141312] transition hover:border-coral dark:bg-surface-2 dark:text-[#FAF6EC]"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border border-coral/40 bg-pastel-blush/75 px-3 text-xs font-semibold text-[#141312] transition hover:border-coral dark:bg-surface-2 dark:text-[#FAF6EC]"
               >
                 <Flame size={16} className="text-coral" aria-hidden="true" />
                 <span className="tabular">{testMode.urgentAssessments.length}</span>
@@ -568,11 +568,11 @@ export default function Planner() {
                 onClick={() => setWeekCheckOpenOverride(true)}
                 aria-label={t('weekCheck.compactOpenAria')}
                 title={t('weekCheck.compactOpenAria')}
-                className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-surface px-3 text-xs font-medium text-fg transition hover:border-accent"
+                className="relative inline-flex size-11 items-center justify-center rounded-xl border border-line bg-surface text-xs font-medium text-fg transition hover:border-accent"
               >
                 <MessageSquareText size={16} className="text-accent" aria-hidden="true" />
                 {plannerPrefs?.briefingNote && (
-                  <span className="size-1.5 rounded-full bg-ok" aria-hidden="true" />
+                  <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-ok" aria-hidden="true" />
                 )}
               </button>
             )}
@@ -583,7 +583,7 @@ export default function Planner() {
                 onClick={() => setConscienceOpenOverride(true)}
                 aria-label={t('conscience.compactAria')}
                 title={t('conscience.compactAria')}
-                className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-surface px-3 text-xs font-medium text-fg transition hover:border-accent"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border border-line bg-surface px-2.5 text-xs font-medium text-fg transition hover:border-accent"
               >
                 <UniBuddy
                   size={20}
@@ -593,7 +593,7 @@ export default function Planner() {
                   interactive={false}
                 />
                 {visibleConscienceCount > 0 && (
-                  <span className="rounded-full bg-warn/20 px-1.5 py-0.5 text-xs font-bold text-warn tabular">
+                  <span className="rounded-md bg-warn/20 px-1.5 py-0.5 text-xs font-bold text-warn tabular">
                     {visibleConscienceCount}
                   </span>
                 )}
@@ -922,8 +922,8 @@ export default function Planner() {
             <div
               className={
                 viewMode === 'week'
-                  ? 'grid gap-3 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7'
-                  : 'hidden lg:grid lg:grid-cols-4 lg:gap-3 xl:grid-cols-7'
+                  ? 'grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+                  : 'hidden lg:grid lg:grid-cols-3 lg:gap-3 xl:grid-cols-4'
               }
             >
               {weekDays.map((d, i) => {
