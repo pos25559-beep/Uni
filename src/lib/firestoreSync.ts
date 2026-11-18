@@ -19,6 +19,12 @@ import {
   type User,
 } from './firebase';
 import { useStore } from '../store/useStore';
+import {
+  OPTIONAL_EMAIL_OR_URL_KEYS,
+  buildFirestorePatch,
+  buildFirestoreWrite,
+  stripUndefined,
+} from './firestoreWrite';
 import { clearLocalDb, listUniAgents, type UniAgentRecord } from './localDb';
 import {
   applyRemoteUniAgents,
@@ -116,12 +122,6 @@ function sanitizeVoiceConfig(raw: UniVoiceConfig | undefined): UniVoiceConfig | 
   };
 }
 
-const OPTIONAL_EMAIL_OR_URL_KEYS = new Set<string>([
-  'academicEmail',
-  'personalEmail',
-  'personalNotebookUrl',
-  'photoURL',
-]);
 
 let activeUnsubscribers: (() => void)[] = [];
 let isApplyingRemote = false;
@@ -132,22 +132,6 @@ export function isRemoteSyncing() {
   return isApplyingRemote;
 }
 
-/** Remove `undefined` recursivamente para nunca quebrar `setDoc` no Firestore. */
-function stripUndefined<T>(value: T): T {
-  if (Array.isArray(value)) {
-    return value.map((item) => stripUndefined(item)) as unknown as T;
-  }
-  if (value && typeof value === 'object') {
-    const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      if (v === undefined) continue;
-      if (OPTIONAL_EMAIL_OR_URL_KEYS.has(k) && v === '') continue;
-      out[k] = stripUndefined(v);
-    }
-    return out as T;
-  }
-  return value;
-}
 
 export function sanitizeSettingsPayload(
   changes: Partial<Settings>,
@@ -639,7 +623,8 @@ export function syncCollectionDiff<K extends CollectionKey>(
           ops.push({
             type: 'set',
             ref: doc(db, 'users', user.uid, key, item.id),
-            data: stripUndefined(item) as unknown as Record<string, unknown>,
+            // Campos removidos face à versão anterior viram deleteField().
+            data: buildFirestoreWrite(prev, item),
           });
         }
       }
@@ -674,7 +659,10 @@ export async function syncUpsert<K extends CollectionKey>(key: K, item: Collecti
   const user = auth.currentUser;
   if (!user || isApplyingRemote) return;
   const docRef = doc(db, 'users', user.uid, key, item.id);
-  await setDoc(docRef, stripUndefined(item) as unknown as Record<string, unknown>, { merge: true });
+  // A versão anterior ainda está no store (o upsert sincroniza antes de atualizar o estado local).
+  const list = useStore.getState()[key] as ReadonlyArray<{ id: ID }>;
+  const prev = list.find((x) => x.id === item.id);
+  await setDoc(docRef, buildFirestoreWrite(prev, item), { merge: true });
 }
 
 /** Atualiza campos de um item numa coleção do utilizador atual. */
@@ -682,7 +670,7 @@ export async function syncPatch<K extends CollectionKey>(key: K, id: ID, changes
   const user = auth.currentUser;
   if (!user || isApplyingRemote) return;
   const docRef = doc(db, 'users', user.uid, key, id);
-  await setDoc(docRef, stripUndefined(changes), { merge: true });
+  await setDoc(docRef, buildFirestorePatch(changes), { merge: true });
 }
 
 /** Remove um item do Firestore do utilizador atual. */
