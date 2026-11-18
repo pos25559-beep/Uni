@@ -13,7 +13,7 @@ import {
   Target,
 } from 'lucide-react';
 import { AnimatePresence, MotionConfig, motion } from 'motion/react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { APP_VERSION_LABEL } from '../lib/appVersion';
@@ -22,20 +22,22 @@ import { hapticTap, syncNativeTheme } from '../lib/nativeBridge';
 import { initNotificationListeners, syncScheduledUniNotifications } from '../lib/notificationBridge';
 import { UNI_CHECKIN_EVENT, type UniCheckInRequest } from '../lib/uniCheckInBus';
 import { googleService } from '../services/googleService';
+import { useAiConsentStore } from '../store/useAiConsentStore';
 import { useHubUiStore } from '../store/useHubUiStore';
 import { useStore } from '../store/useStore';
 import type { StudyLogKind } from '../types';
-import AiConsentDialog from './AiConsentDialog';
 import FocusHost from './planner/FocusHost';
 import AuthStatus from './auth/AuthStatus';
-import UniCheckInModal from './assistant/UniCheckInModal';
 import { UnipediaLogoMark } from './brand/UnipediaMarks';
 import { UNIPEDIA_BOUNCE_SPRING, UNIPEDIA_SPRING } from '../lib/motionTokens';
-import PostOnboardingHubModal from './onboarding/PostOnboardingHubModal';
-import UniHubInviteOverlay from './onboarding/UniHubInviteOverlay';
 import { ToastViewport } from './ui';
 import { cx } from '../lib/uiHelpers';
 import { useSheetSwipeDismiss } from '../lib/useSheetSwipeDismiss';
+
+const AiConsentDialog = lazy(() => import('./AiConsentDialog'));
+const UniCheckInModal = lazy(() => import('./assistant/UniCheckInModal'));
+const PostOnboardingHubModal = lazy(() => import('./onboarding/PostOnboardingHubModal'));
+const UniHubInviteOverlay = lazy(() => import('./onboarding/UniHubInviteOverlay'));
 
 const desktopNav = [
   { to: '/', key: 'nav.today', icon: LayoutDashboard, end: true, tour: 'nav-today' },
@@ -117,6 +119,7 @@ export default function AppShell() {
   const closeHubModal = useHubUiStore((s) => s.closeModal);
   const sidebarCollapsed = useHubUiStore((s) => s.sidebarCollapsed);
   const toggleSidebarCollapsed = useHubUiStore((s) => s.toggleSidebarCollapsed);
+  const aiConsentOpen = useAiConsentStore((s) => s.open);
 
   const isBypassRoute = BYPASS_ONBOARDING_PATHS.some((p) => location.pathname.startsWith(p));
   const isFullBleedRoute =
@@ -315,7 +318,11 @@ export default function AppShell() {
         {t('nav.skipToContent')}
       </a>
       <ToastViewport />
-      <AiConsentDialog />
+      {aiConsentOpen && (
+        <Suspense fallback={null}>
+          <AiConsentDialog />
+        </Suspense>
+      )}
       <FocusHost />
 
       {/* Navegação lateral (Desktop & Tablet) — expansível ou recolhida numa fila de ícones */}
@@ -609,27 +616,37 @@ export default function AppShell() {
       </AnimatePresence>
 
       {/* Diário & Check-in Guiado do Uni (Pós-aula, Fim do dia, Domingo, Modo Teste) */}
-      <UniCheckInModal
-        open={effectiveCheckInModal.open}
-        onClose={closeCheckInModal}
-        initialKind={effectiveCheckInModal.kind}
-        initialCourseId={effectiveCheckInModal.courseId}
-        initialClassSlotId={effectiveCheckInModal.classSlotId}
-        initialAssessmentId={effectiveCheckInModal.assessmentId}
-      />
+      {effectiveCheckInModal.open && (
+        <Suspense fallback={null}>
+          <UniCheckInModal
+            open={effectiveCheckInModal.open}
+            onClose={closeCheckInModal}
+            initialKind={effectiveCheckInModal.kind}
+            initialCourseId={effectiveCheckInModal.courseId}
+            initialClassSlotId={effectiveCheckInModal.classSlotId}
+            initialAssessmentId={effectiveCheckInModal.assessmentId}
+          />
+        </Suspense>
+      )}
 
       {/* Regra de lugar: sem mascote flutuante sobre controlos ou calendário */}
 
       {/* Convite flutuante do Uni após explorar + Hub global acessível em qualquer ecrã */}
       {!isBypassRoute && (
         <>
-          <UniHubInviteOverlay />
+          {!fullSettings.hubSetupCompleted && !fullSettings.hubSetupDismissed && (
+            <Suspense fallback={null}>
+              <UniHubInviteOverlay />
+            </Suspense>
+          )}
           {hubModalOpen && (
-            <PostOnboardingHubModal
-              open={hubModalOpen}
-              initialFocusStep={hubModalStep}
-              onClose={closeHubModal}
-            />
+            <Suspense fallback={null}>
+              <PostOnboardingHubModal
+                open={hubModalOpen}
+                initialFocusStep={hubModalStep}
+                onClose={closeHubModal}
+              />
+            </Suspense>
           )}
         </>
       )}

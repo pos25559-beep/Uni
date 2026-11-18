@@ -12,12 +12,10 @@ import {
   Plus,
   Sparkles,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { resolveDateFnsLocale } from '../lib/grading';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import WeeklyTutorModal from '../components/assistant/WeeklyTutorModal';
-import ActiveReviewModal from '../components/practice/ActiveReviewModal';
 import {
   AnimatedPage,
   BentoMetricTile,
@@ -27,20 +25,31 @@ import { celebrateStationery } from '../lib/motionTokens';
 import CourseDistribution from '../components/planner/CourseDistribution';
 import DayColumn from '../components/planner/DayColumn';
 import FocusResumeCard from '../components/planner/FocusResumeCard';
-import PlanBuilderModal from '../components/planner/PlanBuilderModal';
-import SessionModal from '../components/planner/SessionModal';
+import StudyBriefingCard from '../components/planner/StudyBriefingCard';
+
+const WeeklyTutorModal = lazy(() => import('../components/assistant/WeeklyTutorModal'));
+const ActiveReviewModal = lazy(() => import('../components/practice/ActiveReviewModal'));
+const PlanBuilderModal = lazy(() => import('../components/planner/PlanBuilderModal'));
+const SessionModal = lazy(() => import('../components/planner/SessionModal'));
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import { openUniCheckIn } from '../lib/uniCheckInBus';
 import { ActionSheet, Badge, Button, Card, CourseChip, EmptyState, PageHeader, SegmentedControl } from '../components/ui';
 import { showToast } from '../lib/uiHelpers';
 import { weekdayShort } from '../lib/colors';
 import { hapticTap } from '../lib/nativeBridge';
-import { analyzeTestMode, generatePlan, planSummary, rescheduleOverdueSessions } from '../lib/planner';
+import {
+  analyzeTestMode,
+  findFirstFreeSlotOnDate,
+  generatePlan,
+  planSummary,
+  rescheduleOverdueSessions,
+  resolveDayPlanProfile,
+} from '../lib/planner';
 import { getDueReviewQueue } from '../lib/spacedRepetition';
 import { capitalizeFirst, fmtMinutes, formatSessionDisplay, sessionMinutes, todayStr } from '../lib/selectors';
 import { useHubUiStore } from '../store/useHubUiStore';
 import { useStore } from '../store/useStore';
-import type { PlannerPreferences, StudySession } from '../types';
+import type { ID, PlannerPreferences, StudySession, Topic } from '../types';
 
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
@@ -62,6 +71,7 @@ export default function Planner() {
   const assessments = useStore((s) => s.assessments);
   const classes = useStore((s) => s.classes);
   const events = useStore((s) => s.events);
+  const materials = useStore((s) => s.materials);
   const sessions = useStore((s) => s.sessions);
   const settings = useStore((s) => s.settings);
   const academicProfile = useStore((s) => s.academicProfile);
@@ -69,6 +79,7 @@ export default function Planner() {
   const studyLogs = useStore((s) => s.studyLogs);
   const replaceGeneratedSessions = useStore((s) => s.replaceGeneratedSessions);
   const reconcileFuturePlan = useStore((s) => s.reconcileFuturePlan);
+  const batchUpdateTopicStates = useStore((s) => s.batchUpdateTopicStates);
   const upsertMany = useStore((s) => s.upsertMany);
   const patch = useStore((s) => s.patch);
   const remove = useStore((s) => s.remove);
@@ -143,6 +154,7 @@ export default function Planner() {
     [courses],
   );
   const assessmentById = useMemo(() => new Map(assessments.map((a) => [a.id, a])), [assessments]);
+  const materialById = useMemo(() => new Map(materials.map((m) => [m.id, m])), [materials]);
 
   const sorted = useMemo(
     () => [...sessions].sort((a, b) => a.date.localeCompare(b.date) || (a.start ?? '').localeCompare(b.start ?? '')),
@@ -196,11 +208,12 @@ export default function Planner() {
       assessments,
       classes,
       events,
+      materials,
       settings,
       from: today,
       nowMinutes: now.getHours() * 60 + now.getMinutes(),
       days: plannerPrefs?.horizonDays ?? 14,
-      existing: sessions.filter((s) => !s.generated || s.done || s.date < today),
+      existing: sessions.filter((s) => !s.generated || s.done || s.locked || s.date < today),
       difficultCourseIds: academicProfile.difficultCourseIds,
       weeklyCheckIns,
       studyLogs,
@@ -211,6 +224,11 @@ export default function Planner() {
       boostCourseIds: plannerPrefs?.boostCourseIds,
       pausedCourseIds: plannerPrefs?.pausedCourseIds,
       exclusiveTestFocus: plannerPrefs?.exclusiveTestFocus,
+      weekdaySchedule: plannerPrefs?.weekdaySchedule,
+      fillClassGaps: plannerPrefs?.fillClassGaps,
+      preExamMarathon: plannerPrefs?.preExamMarathon,
+      contentMix: plannerPrefs?.contentMix,
+      briefingCourseFocus: plannerPrefs?.briefingCourseFocus,
     });
     replaceGeneratedSessions(today, plan);
     setBuilderOpen(false);
@@ -223,13 +241,18 @@ export default function Planner() {
     dailyStudyMinutes,
     studyDays,
     plan,
+    topicUpdates,
   }: {
     prefs: PlannerPreferences;
     dailyStudyMinutes: number;
     studyDays: number[];
     plan: StudySession[];
+    topicUpdates?: Array<{ courseId: ID; topicId: ID; changes: Partial<Topic> }>;
   }) => {
     void hapticTap();
+    if (topicUpdates && topicUpdates.length > 0) {
+      batchUpdateTopicStates(topicUpdates);
+    }
     updateSettings({
       plannerPrefs: prefs,
       dailyStudyMinutes,
@@ -241,16 +264,21 @@ export default function Planner() {
       const { updated } = rescheduleOverdueSessions({
         overdue,
         existing: [
-          ...sessions.filter((s) => !s.generated || s.done || s.date < today).filter((s) => s.date >= today),
+          ...sessions
+            .filter((s) => !s.generated || s.done || s.locked || s.date < today)
+            .filter((s) => s.date >= today),
           ...plan,
         ],
         classes,
         events,
+        assessments,
         settings: { ...settings, dailyStudyMinutes, studyDays },
         from: today,
         nowMinutes: now.getHours() * 60 + now.getMinutes(),
         days: prefs.horizonDays,
         preferredPeriod: prefs.preferredPeriod,
+        weekdaySchedule: prefs.weekdaySchedule,
+        preExamMarathon: prefs.preExamMarathon,
       });
       if (updated.length > 0) upsertMany('sessions', updated);
     }
@@ -259,7 +287,64 @@ export default function Planner() {
     showToast(t('ui.toastApplied', { count: plan.length }), 'ok');
   };
 
+  const toggleSessionLock = (session: StudySession) => {
+    void hapticTap();
+    patch('sessions', session.id, { locked: !session.locked });
+  };
+
+  const quickMoveSession = (session: StudySession, targetDate: string) => {
+    void hapticTap();
+    const wd = parseISO(targetDate).getDay();
+    const avail = plannerPrefs?.weekdaySchedule?.[String(wd)];
+    const now = new Date();
+    const slot = findFirstFreeSlotOnDate({
+      dateKey: targetDate,
+      minutes: session.minutes,
+      preferredPeriod: avail?.window ?? plannerPrefs?.preferredPeriod ?? 'auto',
+      nowMinutes: targetDate === today ? now.getHours() * 60 + now.getMinutes() : undefined,
+      classes,
+      events,
+      existingSessions: sessions.filter((x) => x.id !== session.id),
+      blockedPeriods: avail?.blockedPeriods,
+    });
+    if (!slot) {
+      showToast(
+        t('session.noSlotDay', { date: format(parseISO(targetDate), 'd MMM', { locale: dfLocale }) }),
+        'neutral',
+      );
+      return;
+    }
+    patch('sessions', session.id, { date: targetDate, start: slot, locked: true });
+    showToast(
+      t('session.movedTo', {
+        date: format(parseISO(targetDate), 'd MMM', { locale: dfLocale }),
+        time: slot,
+      }),
+      'ok',
+    );
+  };
+
   const onGenerate = () => setBuilderOpen(true);
+
+  const applyBriefingPlan = (briefingSessions: StudySession[], briefingNote: string) => {
+    void hapticTap();
+    replaceGeneratedSessions(today, briefingSessions);
+    updateSettings({
+      plannerPrefs: {
+        horizonDays: plannerPrefs?.horizonDays ?? 14,
+        preferredPeriod: plannerPrefs?.preferredPeriod ?? 'auto',
+        blockMinutes: plannerPrefs?.blockMinutes ?? 50,
+        strategy: plannerPrefs?.strategy ?? 'balanced',
+        boostCourseIds: plannerPrefs?.boostCourseIds ?? [],
+        pausedCourseIds: plannerPrefs?.pausedCourseIds ?? [],
+        includeOverdue: plannerPrefs?.includeOverdue ?? true,
+        ...(plannerPrefs ?? {}),
+        ...(briefingNote ? { briefingNote } : {}),
+      },
+    });
+    celebrateStationery();
+    showToast(t('ui.toastApplied', { count: briefingSessions.length }), 'ok');
+  };
 
   const moveAllToToday = () => {
     void hapticTap();
@@ -275,11 +360,14 @@ export default function Planner() {
       existing: sessions.filter((s) => s.date >= today),
       classes,
       events,
+      assessments,
       settings,
       from: today,
       nowMinutes: now.getHours() * 60 + now.getMinutes(),
       days: plannerPrefs?.horizonDays ?? 14,
       preferredPeriod: plannerPrefs?.preferredPeriod ?? 'auto',
+      weekdaySchedule: plannerPrefs?.weekdaySchedule,
+      preExamMarathon: plannerPrefs?.preExamMarathon,
     });
     if (updated.length > 0) {
       upsertMany('sessions', updated);
@@ -423,6 +511,26 @@ export default function Planner() {
 
       <FocusResumeCard />
 
+      {!noPlanInputs && (
+        <StudyBriefingCard
+          courses={courses}
+          assessments={assessments}
+          classes={classes}
+          events={events}
+          materials={materials}
+          sessions={sessions}
+          settings={settings}
+          today={today}
+          difficultCourseIds={academicProfile.difficultCourseIds}
+          weeklyCheckIns={weeklyCheckIns}
+          studyLogs={studyLogs}
+          extraActivities={academicProfile.extraActivities}
+          hasExistingPlan={sessions.length > 0}
+          onApplyPlan={applyBriefingPlan}
+          onOpenStudio={onGenerate}
+        />
+      )}
+
       {sessions.length === 0 ? (
         <EmptyState
           icon={<CalendarDays size={28} />}
@@ -548,19 +656,38 @@ export default function Planner() {
 
             {/* Mobile: por defeito apenas o dia selecionado; opcionalmente semana completa */}
             <div className={viewMode === 'day' ? 'lg:hidden' : 'hidden'}>
-              <DayColumn
-                date={selectedDate}
-                sessions={byDay.get(activeDayKey) ?? []}
-                budget={settings.dailyStudyMinutes}
-                isToday={activeDayKey === today}
-                isStudyDay={settings.studyDays.includes(selectedDate.getDay())}
-                courseById={courseById}
-                topicById={topicById}
-                assessmentById={assessmentById}
-                onFocus={(s) => setFocusId(s.id)}
-                onEdit={(s) => setModal({ session: s, date: s.date })}
-                onAdd={(date) => setModal({ date })}
-              />
+              {(() => {
+                const profile = resolveDayPlanProfile({
+                  dateKey: activeDayKey,
+                  weekday: selectedDate.getDay(),
+                  settings,
+                  assessments,
+                  pausedCourseIds: plannerPrefs?.pausedCourseIds,
+                  weekdaySchedule: plannerPrefs?.weekdaySchedule,
+                  preferredPeriod: plannerPrefs?.preferredPeriod,
+                  preExamMarathon: plannerPrefs?.preExamMarathon,
+                });
+                return (
+                  <DayColumn
+                    date={selectedDate}
+                    sessions={byDay.get(activeDayKey) ?? []}
+                    budget={profile.baseBudget}
+                    isToday={activeDayKey === today}
+                    isStudyDay={profile.enabled}
+                    isMarathonDay={profile.isMarathonDay}
+                    weekDates={weekKeys}
+                    courseById={courseById}
+                    topicById={topicById}
+                    assessmentById={assessmentById}
+                    materialById={materialById}
+                    onFocus={(s) => setFocusId(s.id)}
+                    onEdit={(s) => setModal({ session: s, date: s.date })}
+                    onAdd={(date) => setModal({ date })}
+                    onToggleLock={toggleSessionLock}
+                    onQuickMove={quickMoveSession}
+                  />
+                );
+              })()}
             </div>
 
             <div
@@ -572,20 +699,35 @@ export default function Planner() {
             >
               {weekDays.map((d, i) => {
                 const key = weekKeys[i];
+                const profile = resolveDayPlanProfile({
+                  dateKey: key,
+                  weekday: d.getDay(),
+                  settings,
+                  assessments,
+                  pausedCourseIds: plannerPrefs?.pausedCourseIds,
+                  weekdaySchedule: plannerPrefs?.weekdaySchedule,
+                  preferredPeriod: plannerPrefs?.preferredPeriod,
+                  preExamMarathon: plannerPrefs?.preExamMarathon,
+                });
                 return (
                   <DayColumn
                     key={key}
                     date={d}
                     sessions={byDay.get(key) ?? []}
-                    budget={settings.dailyStudyMinutes}
+                    budget={profile.baseBudget}
                     isToday={key === today}
-                    isStudyDay={settings.studyDays.includes(d.getDay())}
+                    isStudyDay={profile.enabled}
+                    isMarathonDay={profile.isMarathonDay}
+                    weekDates={weekKeys}
                     courseById={courseById}
                     topicById={topicById}
                     assessmentById={assessmentById}
+                    materialById={materialById}
                     onFocus={(s) => setFocusId(s.id)}
                     onEdit={(s) => setModal({ session: s, date: s.date })}
                     onAdd={(date) => setModal({ date })}
+                    onToggleLock={toggleSessionLock}
+                    onQuickMove={quickMoveSession}
                   />
                 );
               })}
@@ -671,36 +813,51 @@ export default function Planner() {
       />
 
       {modal && (
-        <SessionModal
-          courses={courses}
-          session={modal.session}
-          defaultDate={modal.date}
-          onClose={() => setModal(null)}
-        />
+        <Suspense fallback={null}>
+          <SessionModal
+            courses={courses}
+            session={modal.session}
+            defaultDate={modal.date}
+            onClose={() => setModal(null)}
+          />
+        </Suspense>
       )}
 
-      <WeeklyTutorModal open={tutorOpen} onClose={() => setTutorOpen(false)} />
+      {tutorOpen && (
+        <Suspense fallback={null}>
+          <WeeklyTutorModal open={tutorOpen} onClose={() => setTutorOpen(false)} />
+        </Suspense>
+      )}
 
-      <ActiveReviewModal open={reviewOpen} onClose={() => setReviewOpen(false)} />
+      {reviewOpen && (
+        <Suspense fallback={null}>
+          <ActiveReviewModal open={reviewOpen} onClose={() => setReviewOpen(false)} />
+        </Suspense>
+      )}
 
-      <PlanBuilderModal
-        open={builderOpen}
-        onClose={() => setBuilderOpen(false)}
-        courses={courses}
-        assessments={assessments}
-        classes={classes}
-        events={events}
-        sessions={sessions}
-        settings={settings}
-        difficultCourseIds={academicProfile.difficultCourseIds}
-        weeklyCheckIns={weeklyCheckIns}
-        studyLogs={studyLogs}
-        extraActivities={academicProfile.extraActivities}
-        today={today}
-        overdueCount={overdue.length}
-        hasPendingGenerated={hasPendingGenerated}
-        onApply={applyCustomPlan}
-      />
+      {builderOpen && (
+        <Suspense fallback={null}>
+          <PlanBuilderModal
+            open
+            onClose={() => setBuilderOpen(false)}
+            courses={courses}
+            assessments={assessments}
+            classes={classes}
+            events={events}
+            materials={materials}
+            sessions={sessions}
+            settings={settings}
+            difficultCourseIds={academicProfile.difficultCourseIds}
+            weeklyCheckIns={weeklyCheckIns}
+            studyLogs={studyLogs}
+            extraActivities={academicProfile.extraActivities}
+            today={today}
+            overdueCount={overdue.length}
+            hasPendingGenerated={hasPendingGenerated}
+            onApply={applyCustomPlan}
+          />
+        </Suspense>
+      )}
     </AnimatedPage>
   );
 }

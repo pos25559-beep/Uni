@@ -1,9 +1,10 @@
-import { useCallback, useMemo, useState } from 'react';
+import { Suspense, lazy, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BookOpen, ChevronDown, ChevronRight, ChevronUp, FileUp, FolderOpen, HardDrive, HelpCircle, Link2, Loader2, Pin, Plus, Search, Sparkles, X } from 'lucide-react';
 import { AnimatedPage } from '../components/motion/Primitives';
-import LoadingUnis from '../components/brand/LoadingUnis';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
+
+const LoadingUnis = lazy(() => import('../components/brand/LoadingUnis'));
 import { ActionSheet, Button, CourseChip, EmptyState, Input, PageHeader, PillSelect } from '../components/ui';
 import { cx, showToast } from '../lib/uiHelpers';
 import { useStore } from '../store/useStore';
@@ -363,19 +364,21 @@ export default function Materials() {
 
             {scanningDrive && (
               <div className="rounded-2xl bg-white/80 px-4 py-2 text-[#141312] dark:bg-black/25 dark:text-[#FAF6EC]">
-                <LoadingUnis
-                  variant="materials"
-                  compact
-                  label={scanProgress?.stage || t('courses:materialsPage.scanning')}
-                  sublabel={
-                    scanProgress
-                      ? t('courses:materialsPage.progress', {
-                          folders: scanProgress.foldersScanned,
-                          files: scanProgress.filesFound,
-                        })
-                      : undefined
-                  }
-                />
+                <Suspense fallback={null}>
+                  <LoadingUnis
+                    variant="materials"
+                    compact
+                    label={scanProgress?.stage || t('courses:materialsPage.scanning')}
+                    sublabel={
+                      scanProgress
+                        ? t('courses:materialsPage.progress', {
+                            folders: scanProgress.foldersScanned,
+                            files: scanProgress.filesFound,
+                          })
+                        : undefined
+                    }
+                  />
+                </Suspense>
               </div>
             )}
 

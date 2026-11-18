@@ -256,3 +256,78 @@ export function formatSessionDisplay(
     isPersonalized: false,
   };
 }
+
+/** Explica de forma transparente e localizada o "Porquê" de cada sessão agendada. */
+export function formatSessionReason(
+  session: StudySession,
+  assessment: Assessment | undefined,
+  lang: AppLanguage | string = 'pt-PT',
+): string | undefined {
+  const code = session.reason?.code;
+  if (!code) return undefined;
+  const l = normalizeAppLanguage(lang);
+  const days = session.reason?.examDays;
+  const weight = session.reason?.weight ?? assessment?.weight;
+  const testTitle = assessment?.title;
+  const examWord = l === 'pt-BR' ? 'prova' : l === 'es' ? 'examen' : l === 'en' ? 'exam' : 'teste';
+
+  switch (code) {
+    case 'exam_marathon': {
+      const when =
+        days === 0
+          ? l === 'en' ? 'today' : l === 'es' ? 'hoy' : 'hoje'
+          : days === 1
+            ? l === 'en' ? 'tomorrow' : l === 'es' ? 'mañana' : 'amanhã'
+            : days !== undefined
+              ? l === 'en' ? `in ${days}d` : l === 'es' ? `en ${days}d` : `em ${days}d`
+              : '';
+      if (l === 'en') return `Pre-exam marathon${when ? ` (${examWord} ${when})` : ''}`;
+      if (l === 'es') return `Maratón pre-examen${when ? ` (${examWord} ${when})` : ''}`;
+      return `Maratona pré-${examWord}${when ? ` (${when})` : ''}`;
+    }
+    case 'exam_eve': {
+      const label = testTitle || examWord;
+      if (l === 'en') return `Final review · ${label} tomorrow`;
+      if (l === 'es') return `Repaso general · ${label} mañana`;
+      return `Revisão final · ${label} amanhã`;
+    }
+    case 'exam_prep': {
+      const weightPart = weight ? ` (${weight}%)` : '';
+      if (days !== undefined) {
+        if (l === 'en') return `${testTitle || 'Exam'} in ${days}d${weightPart}`;
+        if (l === 'es') return `${testTitle || 'Examen'} en ${days}d${weightPart}`;
+        return `${testTitle || (l === 'pt-BR' ? 'Prova' : 'Teste')} em ${days}d${weightPart}`;
+      }
+      if (l === 'en') return `Priority exam prep${weightPart}`;
+      if (l === 'es') return `Prioridad por evaluación${weightPart}`;
+      return `Prioridade de avaliação${weightPart}`;
+    }
+    case 'srs_due':
+      if (l === 'en') return 'Spaced recall due';
+      if (l === 'es') return 'Repaso espaciado pendiente';
+      return 'Revisão espaçada vencida';
+    case 'weak_topic':
+      if (l === 'en') return 'Reinforce low-confidence topic';
+      if (l === 'es') return 'Reforzar tema con dudas';
+      return 'Reforçar tópico com dúvidas';
+    case 'briefing':
+      if (session.reason?.label) return session.reason.label;
+      if (l === 'en') return 'Based on your Uni briefing';
+      if (l === 'es') return 'Según tus indicaciones al Uni';
+      return l === 'pt-BR' ? 'Pelo seu pedido ao Uni' : 'Pelo teu pedido ao Uni';
+    case 'overdue':
+      if (l === 'en') return 'Rescheduled overdue block';
+      if (l === 'es') return 'Reprogramado de días anteriores';
+      return 'Recuperação de sessão em atraso';
+    case 'starter':
+      if (l === 'en') return 'Steady semester rhythm';
+      if (l === 'es') return 'Ritmo continuo del semestre';
+      return 'Ritmo contínuo do semestre';
+    case 'coverage':
+    default:
+      if (l === 'en') return 'Syllabus progression';
+      if (l === 'es') return 'Avance de temario';
+      return 'Avanço da matéria';
+  }
+}
+

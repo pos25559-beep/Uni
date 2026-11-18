@@ -1,1145 +1,33 @@
-import { requestAiConsent } from '../../store/useAiConsentStore';
-import { OnboardingProvider, useOnboarding } from '@onboardjs/react';
 import type { OnboardingStep } from '@onboardjs/core';
-import { ArrowRight, ChevronLeft, ChevronRight, ExternalLink, X } from 'lucide-react';
+import { OnboardingProvider } from '@onboardjs/react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useTranslation } from 'react-i18next';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useAcademicEmails } from '../../hooks/useGoogleData';
-import { matchCourse } from '../../integrations/clip';
-import {
-  parseAcademicHistoryFromScreenshot,
-  parseTimetableFromScreenshot,
-  type ExtractedHistoryItem,
-  type ExtractedScheduleAssessment,
-  type ExtractedScheduleSlot,
-} from '../../integrations/gemini';
-import {
-  defaultTargetEctsForCycle,
-  EXTRA_ACTIVITY_PRESETS,
-  inferAcademicStageFromEcts,
-} from '../../lib/academicCredits';
-import { colorNames, weekdayLong } from '../../lib/colors';
-import { parseCurriculumFromText } from '../../lib/curriculumParser';
+import { lazy, Suspense } from 'react';
 import { auth } from '../../lib/firebase';
-import {
-  fetchSharedCurriculaFromCloud,
-  publishSharedCurriculum,
-} from '../../lib/firestoreSync';
-import { readNormalizedScreenshot } from '../../lib/imageUpload';
 import { LEGAL_INFO } from '../../lib/legal';
-import { hapticSuccess, hapticTap, syncNativeTheme } from '../../lib/nativeBridge';
-import { useSheetSwipeDismiss } from '../../lib/useSheetSwipeDismiss';
-import {
-  applyImportedScheduleRecords,
-  buildInitialCompletedRecords,
-  collectKnownCourseCandidates,
-  computeWeightedAverage,
-  defaultScaleForUniversity,
-  deriveCourseAcronym,
-  getUniversityById,
-  mergeCurriculumCatalog,
-  PORTUGAL_CURRICULA,
-  resolveKnownCourseIdentity,
-  type ImportedRecordCourseInput,
-} from '../../lib/portugalCurriculum';
-import { parsePtGrade } from '../../lib/selectors';
-import type { UniAccessoryId, UniPersonaMode } from '../../lib/uniAccessories';
-import { newId, useStore } from '../../store/useStore';
-import type {
-  AcademicProfile,
-  AppTone,
-  Assessment,
-  ClassSlot,
-  CompletedCourseRecord,
-  Course,
-  CourseColor,
-  ExtraActivity,
-  Settings,
-  ThemePalette,
-  UniLiveCompanionsMode,
-} from '../../types';
-import { UnipediaLogoMark } from '../brand/UnipediaMarks';
-import SmartScheduleImportModal, {
-  type SmartImportInitialMode,
-  type SmartScheduleImportSummary,
-} from '../courses/SmartScheduleImportModal';
-import { celebrateStationery, UNIPEDIA_SPRING } from '../../lib/motionTokens';
-import { Button } from '../ui';
 import { cx } from '../../lib/uiHelpers';
+import { requestAiConsent } from '../../store/useAiConsentStore';
+import { useStore } from '../../store/useStore';
+import type { SmartScheduleImportSummary } from '../courses/SmartScheduleImportModal';
+import {
+  ONBOARDING_STEPS,
+  type OnboardingContextData,
+  type OnboardingExperienceProps,
+} from './onboardingMeta';
+import { OnboardingLegalModal } from './OnboardingLegalModal';
+import { OnboardingFooter, OnboardingHeader } from './OnboardingShellChrome';
 import Step1Identity from './steps/Step1Identity';
-import Step2Academic, { type AcademicCycleMode } from './steps/Step2Academic';
+import Step2Academic from './steps/Step2Academic';
 import Step3Courses from './steps/Step3Courses';
 import Step4RhythmPrivacy from './steps/Step4RhythmPrivacy';
+import { useOnboardingState } from './useOnboardingState';
 
-export type OnboardingStepId = 'identidade' | 'curso' | 'cadeiras' | 'ritmo';
+export type { OnboardingExperienceProps, OnboardingStepId } from './onboardingMeta';
+export type { OnboardingStep };
 
-type OnboardingContextData = {
-  flowData: Record<string, unknown>;
-  flowVersion: string;
-};
-
-const ONBOARDING_STEPS: OnboardingStep<OnboardingContextData>[] = [
-  { id: 'curso', type: 'INFORMATION', nextStep: 'cadeiras' },
-  { id: 'cadeiras', type: 'INFORMATION', previousStep: 'curso', nextStep: 'identidade' },
-  { id: 'identidade', type: 'INFORMATION', previousStep: 'cadeiras', nextStep: 'ritmo' },
-  { id: 'ritmo', type: 'CONFIRMATION', previousStep: 'identidade', nextStep: null },
-];
-
-const STEP_META: Array<{ id: OnboardingStepId; label: string }> = [
-  { id: 'curso', label: 'Curso & Semestre' },
-  { id: 'cadeiras', label: 'Cadeiras' },
-  { id: 'identidade', label: 'Tu & Estilo' },
-  { id: 'ritmo', label: 'Ritmo & Privacidade' },
-];
-
-export interface OnboardingExperienceProps {
-  onClose: () => void;
-  fullScreen?: boolean;
-  initialStepId?: OnboardingStepId;
-}
+const SmartScheduleImportModal = lazy(() => import('../courses/SmartScheduleImportModal'));
 
 function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperienceProps) {
-  const { t } = useTranslation('onboarding');
-  const settings = useStore((s) => s.settings);
-  const existingCourses = useStore((s) => s.courses);
-  const storedProfile = useStore((s) => s.academicProfile);
-  const updateSettings = useStore((s) => s.updateSettings);
-  const saveAcademicProfile = useStore((s) => s.saveAcademicProfile);
-  const applyCurriculumCourses = useStore((s) => s.applyCurriculumCourses);
-
-  const {
-    connected: academicMailConnected,
-    academicEmail,
-    connect: connectAcademicMail,
-  } = useAcademicEmails('onboarding');
-
-  const { currentStep, next, previous } = useOnboarding<OnboardingContextData>();
-  const activeStepId = (currentStep?.id as OnboardingStepId) ?? 'curso';
-  const stepIndex = Math.max(0, STEP_META.findIndex((s) => s.id === activeStepId));
-  const [direction, setDirection] = useState(1);
-  const [finishingWipe, setFinishingWipe] = useState(false);
-
-  // Passo 1: Identidade, Paleta, Tom & Personalidade do Uni
-  const [userName, setUserName] = useState(settings.userName);
-  const [themePref, setThemePref] = useState<Settings['theme']>(settings.theme ?? 'system');
-  const [themePalette, setThemePalette] = useState<ThemePalette>(settings.themePalette ?? 'caderno');
-  const [appTone, setAppTone] = useState<AppTone>(settings.appTone ?? 'vibrante');
-  const [uniAccessory, setUniAccessory] = useState<'auto' | UniAccessoryId>(
-    settings.uniAccessory ?? 'auto',
-  );
-  const [uniPersona, setUniPersona] = useState<UniPersonaMode>(settings.uniPersona ?? 'amigo');
-  const [uniLiveCompanions, setUniLiveCompanions] = useState<UniLiveCompanionsMode>(
-    settings.uniLiveCompanions ?? 'all',
-  );
-
-  useEffect(() => {
-    void syncNativeTheme(themePref, themePalette, appTone);
-  }, [themePref, themePalette, appTone]);
-
-  // Passo 2: Instituição, Curso, Ciclo, Ano/Semestre e ECTS
-  const isFreshUnconfigured = !storedProfile.onboardingCompleted;
-  const initialUniversityId = isFreshUnconfigured
-    ? 'outra'
-    : storedProfile.universityId || 'outra';
-  const initialDegreeId = isFreshUnconfigured
-    ? 'outro'
-    : storedProfile.degreeId || 'outro';
-
-  const [universityId, setUniversityId] = useState(initialUniversityId);
-  const [customUniversity, setCustomUniversity] = useState(
-    initialUniversityId === 'outra' ? storedProfile.universityName : '',
-  );
-  const [degreeId, setDegreeId] = useState(initialDegreeId);
-  const [customDegree, setCustomDegree] = useState(
-    initialDegreeId === 'outro' ? storedProfile.degreeName : '',
-  );
-  const [entryYear, setEntryYear] = useState<number>(
-    () => storedProfile.entryYear || new Date().getFullYear(),
-  );
-  const [academicCycle, setAcademicCycle] = useState<AcademicCycleMode>(() => {
-    if (storedProfile.academicCycle) return storedProfile.academicCycle;
-    if (storedProfile.activeYears && storedProfile.activeYears.length > 1) return 'misto';
-    if ((storedProfile.currentAcademicYear || 1) > 3) return 'mestrado';
-    return 'licenciatura';
-  });
-  const [activeYears, setActiveYears] = useState<number[]>(() => {
-    if (storedProfile.activeYears && storedProfile.activeYears.length > 0) {
-      return storedProfile.activeYears;
-    }
-    return [storedProfile.currentAcademicYear || 1];
-  });
-  const [currentSemester, setCurrentSemester] = useState<1 | 2>(
-    storedProfile.currentSemester || 1,
-  );
-
-  const primaryAcademicYear = (
-    Math.min(5, Math.max(1, activeYears[activeYears.length - 1] ?? 1))
-  ) as 1 | 2 | 3 | 4 | 5;
-
-  const [catalog, setCatalog] = useState(PORTUGAL_CURRICULA);
-  const [records, setRecords] = useState<CompletedCourseRecord[]>(() =>
-    storedProfile.completedCourses.length > 0
-      ? storedProfile.completedCourses
-      : buildInitialCompletedRecords(
-          initialUniversityId,
-          initialDegreeId,
-          (storedProfile.currentAcademicYear || 1) as 1 | 2 | 3 | 4 | 5,
-          storedProfile.currentSemester || 1,
-          PORTUGAL_CURRICULA,
-          storedProfile.activeYears,
-        ),
-  );
-
-  const [targetTotalEcts, setTargetTotalEcts] = useState<number>(() => {
-    if (typeof storedProfile.targetTotalEcts === 'number' && storedProfile.targetTotalEcts > 0) {
-      return storedProfile.targetTotalEcts;
-    }
-    return defaultTargetEctsForCycle(
-      storedProfile.academicCycle ?? 'licenciatura',
-      initialDegreeId,
-    );
-  });
-  const [completedEcts, setCompletedEcts] = useState<number>(() => {
-    if (typeof storedProfile.completedEcts === 'number') return storedProfile.completedEcts;
-    return storedProfile.completedCourses
-      .filter((c) => c.status === 'aprovada')
-      .reduce((sum, c) => sum + (c.ects || 6), 0);
-  });
-  const [learningChallenges, setLearningChallenges] = useState<string[]>(
-    storedProfile.learningChallenges ?? [],
-  );
-  const [extraActivities, setExtraActivities] = useState<ExtraActivity[]>(
-    storedProfile.extraActivities ?? [],
-  );
-  const [customExtraLabel, setCustomExtraLabel] = useState('');
-  const [customExtraHours, setCustomExtraHours] = useState(4);
-
-  const ectsStage = useMemo(
-    () => inferAcademicStageFromEcts(completedEcts, targetTotalEcts),
-    [completedEcts, targetTotalEcts],
-  );
-
-  // Passo 3: Cadeiras
-  const [yearFilter, setYearFilter] = useState<number | 'all'>('all');
-  const [showOtherTermsHistory, setShowOtherTermsHistory] = useState(false);
-  const [showOptionalCourses, setShowOptionalCourses] = useState(false);
-  const [optionalSearch, setOptionalSearch] = useState('');
-  const [replaceCoursesWithCurriculum, setReplaceCoursesWithCurriculum] = useState(true);
-  const [newCourseCode, setNewCourseCode] = useState('');
-  const [newCourseName, setNewCourseName] = useState('');
-  const [newCourseYear, setNewCourseYear] = useState<number>(primaryAcademicYear);
-  const [newCourseEcts, setNewCourseEcts] = useState<number>(6);
-  const [ocrBusy, setOcrBusy] = useState(false);
-  const [ocrFeedback, setOcrFeedback] = useState<string | null>(null);
-  const [ocrError, setOcrError] = useState<string | null>(null);
-  const [pendingPrintFilesForConsent, setPendingPrintFilesForConsent] = useState<File[] | null>(null);
-  const [scheduleDoneInfo, setScheduleDoneInfo] = useState<{
-    classesCount: number;
-    assessmentsCount?: number;
-    source: 'photo' | 'gcal' | 'print';
-    courseLabels?: string[];
-    slotSummaries?: string[];
-  } | null>(null);
-  const [scheduleImportMode, setScheduleImportMode] = useState<SmartImportInitialMode | null>(null);
-  const [scheduleImportBaseline, setScheduleImportBaseline] = useState<{
-    courses: number;
-    classes: number;
-    assessments: number;
-  } | null>(null);
-  const [showPastePlan, setShowPastePlan] = useState(false);
-  const [pastedPlanText, setPastedPlanText] = useState('');
-
-  // Passo 4: Ritmo, Email Académico & Privacidade (aiConsent opt-in explícito: false por defeito!)
-  const [academicHint, setAcademicHint] = useState(settings.academicEmail ?? '');
-  const [academicBusy, setAcademicBusy] = useState(false);
-  const [difficultKeys, setDifficultKeys] = useState<string[]>(storedProfile.difficultCourseIds);
-  const [difficultNotes, setDifficultNotes] = useState(storedProfile.difficultTopicsNotes ?? '');
-  const [dailyMinutes, setDailyMinutes] = useState<number>(settings.dailyStudyMinutes || 180);
-  const [studyDays, setStudyDays] = useState<number[]>(settings.studyDays);
-  const [ageConfirmed, setAgeConfirmed] = useState<boolean>(
-    Boolean(settings.ageConfirmed13Plus || storedProfile.onboardingCompleted),
-  );
-  const [aiConsent, setAiConsent] = useState<boolean>(Boolean(settings.aiConsent));
-  const [cloudSyncConsent, setCloudSyncConsent] = useState<boolean>(
-    Boolean(settings.cloudSyncConsent),
-  );
-  const [legalPreview, setLegalPreview] = useState<'privacy' | 'terms' | null>(null);
-  const legalSheetRef = useRef<HTMLDivElement>(null);
-  useSheetSwipeDismiss({
-    ref: legalSheetRef,
-    open: Boolean(legalPreview),
-    onClose: () => setLegalPreview(null),
-    maxViewportWidth: 640,
-  });
-  const [submitAttempted, setSubmitAttempted] = useState(false);
-
-  useEffect(() => {
-    if (!auth.currentUser) return;
-    let active = true;
-    fetchSharedCurriculaFromCloud()
-      .then((shared) => {
-        if (active && shared.length > 0) {
-          setCatalog(mergeCurriculumCatalog(PORTUGAL_CURRICULA, shared));
-        }
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const selectedUniversity = useMemo(
-    () => getUniversityById(universityId, catalog),
-    [universityId, catalog],
-  );
-  const availableDegrees = useMemo(() => selectedUniversity?.degrees ?? [], [selectedUniversity]);
-  const currentDegreeTemplates = useMemo(
-    () => availableDegrees.find((d) => d.id === degreeId)?.courses ?? [],
-    [availableDegrees, degreeId],
-  );
-  const isSecondarySchool = universityId === 'escola-secundario';
-
-  const yearChoices = useMemo(() => {
-    if (isSecondarySchool) return [1, 2, 3];
-    if (academicCycle === 'licenciatura') return [1, 2, 3];
-    if (academicCycle === 'mestrado') return [4, 5];
-    return [1, 2, 3, 4, 5];
-  }, [isSecondarySchool, academicCycle]);
-
-  const rebuildRecords = (
-    nextUniId: string,
-    nextDegId: string,
-    nextYears: number[],
-    nextSem: 1 | 2,
-  ) => {
-    setScheduleDoneInfo(null);
-    if (nextUniId !== 'outra' && nextDegId !== 'outro') {
-      const leadYear = (nextYears[nextYears.length - 1] ?? 1) as 1 | 2 | 3 | 4 | 5;
-      const built = buildInitialCompletedRecords(
-        nextUniId,
-        nextDegId,
-        leadYear,
-        nextSem,
-        catalog,
-        nextYears,
-      );
-      setRecords(built);
-      // Deduz ECTS aprovados automaticamente a partir dos anos anteriores selecionados
-      const deducedEcts = built
-        .filter((c) => c.status === 'aprovada')
-        .reduce((sum, c) => sum + (c.ects || 6), 0);
-      setCompletedEcts(deducedEcts);
-    } else {
-      setRecords([]);
-    }
-  };
-
-  const resetRecordsToDegreeDefaults = () => {
-    void hapticTap();
-    rebuildRecords(universityId, degreeId, activeYears, currentSemester);
-    setOcrFeedback(null);
-    setOcrError(null);
-  };
-
-  const applyScheduleScopeToRecords = (
-    importedCourses: ImportedRecordCourseInput[],
-    meta: {
-      classesCount: number;
-      assessmentsCount: number;
-      source: 'photo' | 'gcal' | 'print';
-      slotSummaries?: string[];
-    },
-  ) => {
-    const hasActiveItems = importedCourses.some(
-      (item) =>
-        item.status === 'a_fazer' &&
-        (item.semester === undefined || item.semester === currentSemester),
-    );
-    setRecords((prev) =>
-      applyImportedScheduleRecords(prev, importedCourses, {
-        primaryAcademicYear,
-        activeYears,
-        currentSemester,
-        defaultEcts: isSecondarySchool ? 4 : 6,
-        templates: currentDegreeTemplates,
-        replaceActiveScope: hasActiveItems,
-      }),
-    );
-
-    const activeCourseLabels = Array.from(
-      new Set(
-        importedCourses
-          .filter(
-            (item) =>
-              item.status === 'a_fazer' &&
-              (item.semester === undefined || item.semester === currentSemester),
-          )
-          .map((item) => (item.code && item.code !== item.name ? `${item.code} (${item.name})` : item.name)),
-      ),
-    );
-
-    if (hasActiveItems || meta.classesCount > 0 || meta.assessmentsCount > 0) {
-      setYearFilter('all');
-      setScheduleDoneInfo({
-        classesCount: meta.classesCount,
-        assessmentsCount: meta.assessmentsCount,
-        source: meta.source,
-        courseLabels: activeCourseLabels,
-        slotSummaries: meta.slotSummaries,
-      });
-    }
-
-    const parts: string[] = [];
-    if (importedCourses.length > 0) parts.push(t('shell.rec', { count: importedCourses.length }));
-    if (meta.classesCount > 0) parts.push(t('shell.classes', { count: meta.classesCount }));
-    if (meta.assessmentsCount > 0) parts.push(t('shell.assess', { count: meta.assessmentsCount }));
-    setOcrError(null);
-    setOcrFeedback(
-      hasActiveItems
-        ? t('shell.readyBySchedule', { parts: parts.join(', ') })
-        : t('shell.imported', { parts: parts.join(', ') }),
-    );
-    void hapticSuccess();
-  };
-
-  const handleUniversityChange = (nextUniId: string) => {
-    setUniversityId(nextUniId);
-    const uni = getUniversityById(nextUniId, catalog);
-    const firstDegreeId = uni?.degrees[0]?.id ?? 'outro';
-    setDegreeId(firstDegreeId);
-    let nextCycle = academicCycle;
-    let nextYears = activeYears;
-    if (nextUniId === 'escola-secundario') {
-      nextCycle = 'licenciatura';
-      nextYears = [1];
-      setAcademicCycle(nextCycle);
-      setActiveYears(nextYears);
-    } else if (firstDegreeId === 'memec') {
-      nextCycle = 'mestrado';
-      nextYears = [4];
-      setAcademicCycle(nextCycle);
-      setActiveYears(nextYears);
-    } else if (firstDegreeId === 'lemc-memec') {
-      nextCycle = 'misto';
-      nextYears = [3, 4];
-      setAcademicCycle(nextCycle);
-      setActiveYears(nextYears);
-    }
-    setTargetTotalEcts(defaultTargetEctsForCycle(nextCycle, firstDegreeId));
-    rebuildRecords(nextUniId, firstDegreeId, nextYears, currentSemester);
-    const hasGraded = useStore.getState().assessments.some((a) => typeof a.grade === 'number');
-    if (!hasGraded && nextUniId !== 'outra') {
-      updateSettings({ gradingScale: defaultScaleForUniversity(nextUniId, catalog) });
-    }
-  };
-
-  const handleDegreeChange = (nextDegId: string) => {
-    setDegreeId(nextDegId);
-    let nextCycle = academicCycle;
-    let nextYears = activeYears;
-    if (nextDegId === 'memec') {
-      nextCycle = 'mestrado';
-      setAcademicCycle(nextCycle);
-      nextYears = activeYears.filter((y) => y >= 4);
-      if (nextYears.length === 0) nextYears = [4];
-      setActiveYears(nextYears);
-    } else if (nextDegId === 'lemc-memec') {
-      nextCycle = 'misto';
-      setAcademicCycle(nextCycle);
-    } else if (nextDegId === 'lemc' && academicCycle === 'mestrado') {
-      nextCycle = 'licenciatura';
-      nextYears = [1];
-      setAcademicCycle(nextCycle);
-      setActiveYears(nextYears);
-    }
-    setTargetTotalEcts(defaultTargetEctsForCycle(nextCycle, nextDegId));
-    rebuildRecords(universityId, nextDegId, nextYears, currentSemester);
-  };
-
-  const handleCycleChange = (nextCycle: AcademicCycleMode) => {
-    void hapticTap();
-    setAcademicCycle(nextCycle);
-    let nextDeg = degreeId;
-    let nextYears = [...activeYears];
-
-    if (nextCycle === 'mestrado') {
-      nextYears = nextYears.filter((y) => y >= 4);
-      if (nextYears.length === 0) nextYears = [4];
-      if (universityId === 'nova-fct' && degreeId === 'lemc') nextDeg = 'memec';
-    } else if (nextCycle === 'misto') {
-      if (nextYears.length === 0) nextYears = [2, 3, 4];
-      if (universityId === 'nova-fct' && (degreeId === 'lemc' || degreeId === 'memec')) nextDeg = 'lemc-memec';
-    } else {
-      nextYears = nextYears.filter((y) => y <= 3);
-      if (nextYears.length === 0) nextYears = [1];
-      if (universityId === 'nova-fct' && (degreeId === 'memec' || degreeId === 'lemc-memec')) nextDeg = 'lemc';
-    }
-
-    setDegreeId(nextDeg);
-    setActiveYears(nextYears);
-    setTargetTotalEcts(defaultTargetEctsForCycle(nextCycle, nextDeg));
-    setNewCourseYear(nextYears[nextYears.length - 1] ?? 1);
-    rebuildRecords(universityId, nextDeg, nextYears, currentSemester);
-  };
-
-  const handleSelectEctsTarget = (total: number) => {
-    void hapticTap();
-    setTargetTotalEcts(total);
-    setCompletedEcts((prev) => Math.min(total, prev));
-    if (total === 300) {
-      if (academicCycle !== 'misto') handleCycleChange('misto');
-    } else if (total === 120) {
-      if (academicCycle !== 'mestrado') handleCycleChange('mestrado');
-    } else if (academicCycle === 'mestrado') {
-      handleCycleChange('licenciatura');
-    }
-  };
-
-  const handleApplyEctsStage = () => {
-    void hapticTap();
-    const inferred = inferAcademicStageFromEcts(completedEcts, targetTotalEcts);
-    const nextCycle = inferred.recommendedCycle;
-    const nextYears = nextCycle === 'misto' ? [3, 4] : [inferred.estimatedYear];
-    let nextDeg = degreeId;
-    if (universityId === 'nova-fct') {
-      if (nextCycle === 'mestrado') nextDeg = 'memec';
-      else if (nextCycle === 'misto') nextDeg = 'lemc-memec';
-      else nextDeg = 'lemc';
-    }
-    setAcademicCycle(nextCycle);
-    setDegreeId(nextDeg);
-    setActiveYears(nextYears);
-    setNewCourseYear(inferred.estimatedYear);
-    rebuildRecords(universityId, nextDeg, nextYears, currentSemester);
-  };
-
-  const toggleLearningChallenge = (id: string) => {
-    void hapticTap();
-    setLearningChallenges((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
-    );
-  };
-
-  const toggleExtraPreset = (preset: (typeof EXTRA_ACTIVITY_PRESETS)[number]) => {
-    void hapticTap();
-    const exists = extraActivities.find((a) => a.kind === preset.kind || a.label === preset.label);
-    if (exists) {
-      setExtraActivities((prev) => prev.filter((a) => a.id !== exists.id));
-      return;
-    }
-    setExtraActivities((prev) => [...prev, { id: newId(), ...preset }]);
-  };
-
-  const handleAddCustomExtra = () => {
-    const label = customExtraLabel.trim();
-    if (!label) return;
-    void hapticTap();
-    setExtraActivities((prev) => [
-      ...prev,
-      {
-        id: newId(),
-        label,
-        kind: 'outro',
-        hoursPerWeek: Math.max(1, Math.min(40, customExtraHours || 3)),
-        weekdays: [2, 4],
-      },
-    ]);
-    setCustomExtraLabel('');
-  };
-
-  const toggleYearPill = (year: number) => {
-    void hapticTap();
-    let nextYears: number[];
-    if (academicCycle === 'misto') {
-      if (activeYears.includes(year)) {
-        if (activeYears.length === 1) return;
-        nextYears = activeYears.filter((y) => y !== year);
-      } else {
-        nextYears = [...activeYears, year].sort((a, b) => a - b);
-      }
-    } else {
-      nextYears = [year];
-    }
-    setActiveYears(nextYears);
-    setNewCourseYear(nextYears[nextYears.length - 1] ?? year);
-    rebuildRecords(universityId, degreeId, nextYears, currentSemester);
-  };
-
-  const handleSemesterChange = (semester: 1 | 2) => {
-    void hapticTap();
-    setCurrentSemester(semester);
-    rebuildRecords(universityId, degreeId, activeYears, semester);
-  };
-
-  const templateEligibleYearsByCode = useMemo(() => {
-    const map = new Map<string, number[]>();
-    for (const tpl of currentDegreeTemplates) {
-      if (tpl.eligibleYears && tpl.eligibleYears.length > 0) {
-        map.set(tpl.code.toLowerCase(), tpl.eligibleYears);
-      }
-    }
-    return map;
-  }, [currentDegreeTemplates]);
-
-  const getRecordEligibleYears = useCallback(
-    (r: CompletedCourseRecord): number[] => {
-      if (r.eligibleYears && r.eligibleYears.length > 0) return r.eligibleYears;
-      const fromTpl = templateEligibleYearsByCode.get(r.code.toLowerCase());
-      if (fromTpl && fromTpl.length > 0) return fromTpl;
-      return [r.year];
-    },
-    [templateEligibleYearsByCode],
-  );
-
-  const updateRecordStatus = (id: string, status: CompletedCourseRecord['status']) => {
-    void hapticTap();
-    setRecords((prev) =>
-      prev.map((r) => {
-        if (r.id !== id) return r;
-        const targetYear = yearFilter !== 'all' ? yearFilter : primaryAcademicYear;
-        const eligible = getRecordEligibleYears(r);
-        const alignedYear =
-          status === 'a_fazer' && r.isOptional && eligible.includes(targetYear)
-            ? targetYear
-            : r.year;
-        return {
-          ...r,
-          year: alignedYear,
-          status,
-          ...(status !== 'aprovada' ? { grade: undefined } : {}),
-        };
-      }),
-    );
-  };
-
-  const removeRecord = (record: CompletedCourseRecord) => {
-    void hapticTap();
-    if (record.isOptional) {
-      setRecords((prev) =>
-        prev.map((r) => (r.id === record.id ? { ...r, status: 'por_fazer', grade: undefined } : r)),
-      );
-      return;
-    }
-    setRecords((prev) => prev.filter((r) => r.id !== record.id));
-  };
-
-  const updateRecordGrade = (id: string, raw: string) => {
-    const val = parsePtGrade(raw);
-    if (val === 'invalid') return;
-    setRecords((prev) =>
-      prev.map((r) =>
-        r.id === id
-          ? {
-              ...r,
-              grade: val ?? undefined,
-              status: val !== null && val >= 10 ? 'aprovada' : r.status,
-            }
-          : r,
-      ),
-    );
-  };
-
-  const handleApplyPastedCurriculum = (mode: 'replace' | 'merge') => {
-    const parsed = parseCurriculumFromText(pastedPlanText, primaryAcademicYear, currentSemester);
-    if (parsed.length === 0) {
-      setOcrError(
-        t('shell.noCoursesText'),
-      );
-      return;
-    }
-
-    const targetYears = activeYears.length > 0 ? activeYears : [primaryAcademicYear];
-    const minY = Math.min(...targetYears);
-    const mapped: CompletedCourseRecord[] = parsed.map((c, idx) => {
-      const isSelected = targetYears.includes(c.year);
-      const isCur = isSelected && c.semester === currentSemester;
-      const isPast = c.year < minY || (isSelected && c.semester < currentSemester);
-      return {
-        id: `hist-paste-${c.code.toLowerCase()}-${c.year}-${c.semester}-${idx}`,
-        code: c.code,
-        name: c.name,
-        year: c.year,
-        semester: c.semester,
-        ects: c.ects,
-        ...(c.optional ? { isOptional: true } : {}),
-        status: c.optional ? 'por_fazer' : isPast ? 'aprovada' : isCur ? 'a_fazer' : 'por_fazer',
-      };
-    });
-
-    if (mode === 'replace') {
-      setRecords(mapped);
-    } else {
-      setRecords((prev) => {
-        const seen = new Set(prev.map((r) => `${r.year}:${r.name.toLowerCase()}`));
-        const additions = mapped.filter((m) => !seen.has(`${m.year}:${m.name.toLowerCase()}`));
-        return [...prev, ...additions];
-      });
-    }
-
-    setOcrError(null);
-    setOcrFeedback(
-      t('shell.pastedN', { count: parsed.length }),
-    );
-    setShowPastePlan(false);
-    setPastedPlanText('');
-    setYearFilter('all');
-    void hapticSuccess();
-  };
-
-  const addCustomRecord = () => {
-    const name = newCourseName.trim();
-    if (!name) return;
-    const code = (newCourseCode.trim() || name.slice(0, 5)).toUpperCase();
-    const chosenYear = Math.min(5, Math.max(1, Number(newCourseYear) || primaryAcademicYear));
-    setRecords((prev) => [
-      {
-        id: `hist-custom-${Date.now().toString(36)}`,
-        code,
-        name,
-        year: chosenYear,
-        semester: currentSemester,
-        ects: Math.max(1, Math.min(30, Number(newCourseEcts) || (isSecondarySchool ? 4 : 6))),
-        status: 'a_fazer',
-      },
-      ...prev,
-    ]);
-    setNewCourseCode('');
-    setNewCourseName('');
-    void hapticSuccess();
-  };
-
-  const handleScreenshotUpload = async (
-    files: FileList | File[] | null,
-    bypassConsentCheck = false,
-  ) => {
-    const pickedFiles = files ? Array.from(files) : [];
-    if (pickedFiles.length === 0) return;
-    const imageFiles = pickedFiles.filter((f) => {
-      if (f.type.startsWith('image/')) return true;
-      return /\.(png|jpe?g|webp|gif|heic|heif|bmp)$/i.test(f.name);
-    });
-    if (imageFiles.length === 0) {
-      setOcrError(t('shell.badImage'));
-      return;
-    }
-
-    if (!aiConsent && !bypassConsentCheck) {
-      setOcrError(null);
-      setPendingPrintFilesForConsent(imageFiles);
-      return;
-    }
-    setPendingPrintFilesForConsent(null);
-
-    setOcrBusy(true);
-    setOcrError(null);
-    setOcrFeedback(null);
-
-    try {
-      const storeState = useStore.getState();
-      const knownCourses = collectKnownCourseCandidates({
-        courses: storeState.courses,
-        completedCourses: records,
-        degreeTemplates: currentDegreeTemplates,
-      });
-
-      const historyItems: ExtractedHistoryItem[] = [];
-      const scheduleSlots: ExtractedScheduleSlot[] = [];
-      const scheduleAssessments: ExtractedScheduleAssessment[] = [];
-      let firstError: Error | null = null;
-      let anySucceeded = false;
-
-      for (const file of imageFiles) {
-        const { base64, mimeType } = await readNormalizedScreenshot(file);
-
-        try {
-          const scheduleRes = await parseTimetableFromScreenshot(base64, mimeType, {
-            focus: 'schedule',
-            knownCourses,
-          });
-          anySucceeded = true;
-          scheduleSlots.push(...scheduleRes.slots);
-          scheduleAssessments.push(...scheduleRes.assessments);
-        } catch (err) {
-          if (!firstError) firstError = err instanceof Error ? err : new Error(String(err));
-        }
-
-        try {
-          const historyRes = await parseAcademicHistoryFromScreenshot(base64, mimeType, {
-            currentSemester,
-            knownCourses,
-          });
-          anySucceeded = true;
-          historyItems.push(...historyRes);
-        } catch (err) {
-          if (!firstError) firstError = err instanceof Error ? err : new Error(String(err));
-        }
-      }
-
-      if (!anySucceeded && firstError) throw firstError;
-
-      if (historyItems.length === 0 && scheduleSlots.length === 0 && scheduleAssessments.length === 0) {
-        setOcrError(
-          t('shell.noRecognise'),
-        );
-        return;
-      }
-
-      const resolvedHistory = historyItems.map((item) => {
-        const resolved = resolveKnownCourseIdentity(
-          { code: item.code, name: item.name },
-          knownCourses,
-          currentDegreeTemplates,
-        );
-        return resolved
-          ? {
-              ...item,
-              code: resolved.shortName || resolved.code || item.code,
-              name: resolved.name,
-              ects: item.ects ?? resolved.ects,
-            }
-          : item;
-      });
-
-      const resolvedSlots = scheduleSlots.map((slot) => {
-        const resolved = resolveKnownCourseIdentity(
-          { code: slot.courseCode, name: slot.courseName },
-          knownCourses,
-          currentDegreeTemplates,
-        );
-        return resolved
-          ? {
-              ...slot,
-              courseCode: resolved.shortName || resolved.code || slot.courseCode,
-              courseName: resolved.name,
-            }
-          : slot;
-      });
-
-      const resolvedAssessments = scheduleAssessments.map((a) => {
-        const resolved = resolveKnownCourseIdentity(
-          { name: a.courseName },
-          knownCourses,
-          currentDegreeTemplates,
-        );
-        return resolved ? { ...a, courseName: resolved.name } : a;
-      });
-
-      const importedCourses: ImportedRecordCourseInput[] = [
-        ...resolvedHistory.map((item) => ({
-          code: item.code,
-          name: item.name,
-          ects: item.ects,
-          semester: item.semester,
-          status: item.status,
-          grade: item.grade,
-        })),
-        ...resolvedSlots.map((slot) => ({
-          code: slot.courseCode,
-          name: slot.courseName,
-          ects: isSecondarySchool ? 4 : 6,
-          semester: currentSemester,
-          status: 'a_fazer' as const,
-        })),
-        ...resolvedAssessments.map((a) => ({
-          name: a.courseName,
-          ects: isSecondarySchool ? 4 : 6,
-          semester: currentSemester,
-          status: 'a_fazer' as const,
-        })),
-      ];
-
-      let slotSummaries: string[] | undefined;
-      if (resolvedSlots.length > 0 || resolvedAssessments.length > 0) {
-        const state = useStore.getState();
-        const currentCourses = [...state.courses];
-        const createdCourses: Course[] = [];
-        let colorIdx = currentCourses.length;
-        const palette =
-          colorNames.length > 0 ? colorNames : (['emerald', 'sky', 'amber'] as CourseColor[]);
-
-        const ensureCourseId = (courseName: string, courseCode?: string): string => {
-          const matched = matchCourse(courseName, [...currentCourses, ...createdCourses], courseCode);
-          if (matched) return matched.id;
-
-          const code = deriveCourseAcronym(courseName, courseCode);
-          const created: Course = {
-            id: newId(),
-            code,
-            name: courseName,
-            shortName: code.slice(0, 12),
-            ects: isSecondarySchool ? 4 : 6,
-            color: palette[colorIdx++ % palette.length] ?? 'emerald',
-            targetGrade: 14,
-            topics: [],
-          };
-          createdCourses.push(created);
-          return created.id;
-        };
-
-        const importedClasses: ClassSlot[] = resolvedSlots.map((s) => ({
-          id: newId(),
-          courseId: ensureCourseId(s.courseName, s.courseCode),
-          type: s.type,
-          weekday: s.weekday,
-          start: s.start,
-          end: s.end,
-          room: s.room,
-          source: 'local',
-        }));
-
-        const allKnown = [...currentCourses, ...createdCourses];
-        slotSummaries = resolvedSlots.map((s, idx) => {
-          const cls = importedClasses[idx];
-          const crs = cls ? allKnown.find((c) => c.id === cls.courseId) : undefined;
-          const dayLabel = weekdayLong[s.weekday]?.slice(0, 3) ?? '';
-          return `${dayLabel} ${s.start}–${s.end} · ${crs?.shortName || crs?.name || s.courseName} (${s.type})`;
-        });
-
-        const importedAssessments: Assessment[] = resolvedAssessments.map((a) => ({
-          id: newId(),
-          courseId: ensureCourseId(a.courseName),
-          kind: a.kind,
-          title: a.title,
-          date: a.date,
-          weight: 30,
-          topicIds: [],
-          source: 'local',
-        }));
-
-        if (createdCourses.length > 0) state.upsertMany('courses', createdCourses);
-        if (importedClasses.length > 0) state.upsertMany('classes', importedClasses);
-        if (importedAssessments.length > 0) state.upsertMany('assessments', importedAssessments);
-      }
-
-      applyScheduleScopeToRecords(importedCourses, {
-        classesCount: resolvedSlots.length,
-        assessmentsCount: resolvedAssessments.length,
-        source: 'print',
-        slotSummaries,
-      });
-    } catch (err) {
-      setOcrError(err instanceof Error ? err.message : t('shell.ocrError'));
-    } finally {
-      setOcrBusy(false);
-    }
-  };
-
-  const handleConnectAcademic = async () => {
-    setAcademicBusy(true);
-    try {
-      const cleaned = academicHint.trim();
-      if (cleaned) updateSettings({ academicEmail: cleaned });
-      await connectAcademicMail(false, cleaned || undefined);
-      void hapticSuccess();
-    } finally {
-      setAcademicBusy(false);
-    }
-  };
-
-  const scopedRecords = useMemo(() => {
-    if (showOtherTermsHistory) return records;
-    return records.filter((r) => {
-      if (r.status === 'a_fazer') return true;
-      if (r.semester !== currentSemester) return false;
-      const eligibleYears = getRecordEligibleYears(r);
-      return activeYears.some((y) => eligibleYears.includes(y));
-    });
-  }, [records, showOtherTermsHistory, activeYears, currentSemester, getRecordEligibleYears]);
-
-  const availableRecordYears = useMemo(() => {
-    const set = new Set<number>(scopedRecords.map((r) => r.year));
-    return Array.from(set).sort((a, b) => a - b);
-  }, [scopedRecords]);
-
-  const effectiveYearFilter: number | 'all' =
-    yearFilter === 'all' || availableRecordYears.includes(yearFilter) ? yearFilter : 'all';
-
-  const filteredRecords = useMemo(() => {
-    if (effectiveYearFilter === 'all') return scopedRecords;
-    return scopedRecords.filter((r) =>
-      r.isOptional && r.status === 'por_fazer'
-        ? getRecordEligibleYears(r).includes(effectiveYearFilter)
-        : r.year === effectiveYearFilter,
-    );
-  }, [scopedRecords, effectiveYearFilter, getRecordEligibleYears]);
-
-  const mainFilteredRecords = useMemo(
-    () => filteredRecords.filter((r) => !(r.isOptional && r.status === 'por_fazer')),
-    [filteredRecords],
-  );
-
-  const optionalAvailableRecords = useMemo(() => {
-    const q = optionalSearch.trim().toLowerCase();
-    return filteredRecords.filter((r) => {
-      if (!(r.isOptional && r.status === 'por_fazer')) return false;
-      if (!q) return true;
-      return r.name.toLowerCase().includes(q) || r.code.toLowerCase().includes(q);
-    });
-  }, [filteredRecords, optionalSearch]);
-
-  const approvedEctsFromList = useMemo(
-    () => records.filter((r) => r.status === 'aprovada').reduce((sum, r) => sum + (r.ects || 6), 0),
-    [records],
-  );
-  const activeEctsFromList = useMemo(
-    () => records.filter((r) => r.status === 'a_fazer').reduce((sum, r) => sum + (r.ects || 6), 0),
-    [records],
-  );
-
-  const activeCandidates = useMemo(() => {
-    const activeFromRecords = records.filter((r) => r.status === 'a_fazer');
-    if (replaceCoursesWithCurriculum && activeFromRecords.length > 0) {
-      return activeFromRecords.map((r) => ({ key: r.code, label: `${r.code} · ${r.name}` }));
-    }
-    return existingCourses.map((c) => ({ key: c.id, label: `${c.shortName} · ${c.name}` }));
-  }, [records, replaceCoursesWithCurriculum, existingCourses]);
-
-  const toggleDifficult = (key: string) => {
-    void hapticTap();
-    setDifficultKeys((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
-  };
-
-  const toggleStudyDay = (day: number) => {
-    void hapticTap();
-    setStudyDays((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort((a, b) => a - b),
-    );
-  };
-
-  const weightedAvg = useMemo(() => computeWeightedAverage(records), [records]);
-  const approvedCount = records.filter((r) => r.status === 'aprovada').length;
-  const doingCount = records.filter((r) => r.status === 'a_fazer').length;
-
-  const handleGoNext = async () => {
-    setDirection(1);
-    void hapticTap();
-    await next();
-  };
-
-  const handleGoPrev = async () => {
-    setDirection(-1);
-    void hapticTap();
-    await previous();
-  };
-
-  const handleFinish = () => {
-    setSubmitAttempted(true);
-    if (!ageConfirmed) {
-      requestAnimationFrame(() => {
-        const el = document.getElementById('onboarding-age-confirm');
-        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        el?.focus({ preventScroll: true });
-      });
-      return;
-    }
-
-    const uniName =
-      universityId === 'outra'
-        ? customUniversity.trim() || t('shell.fallback.otherUni')
-        : selectedUniversity?.name ?? t('shell.fallback.ptUni');
-    const degName =
-      degreeId === 'outro'
-        ? customDegree.trim() || t('shell.fallback.customPlan')
-        : availableDegrees.find((d) => d.id === degreeId)?.name ?? t('shell.fallback.academicPath');
-
-    const profile: AcademicProfile = {
-      onboardingCompleted: true,
-      universityId,
-      universityName: uniName,
-      degreeId,
-      degreeName: degName,
-      entryYear,
-      currentAcademicYear: primaryAcademicYear,
-      academicCycle,
-      activeYears,
-      currentSemester,
-      targetTotalEcts,
-      completedEcts,
-      learningChallenges,
-      extraActivities,
-      difficultCourseIds: difficultKeys,
-      difficultTopicsNotes: difficultNotes.trim(),
-      completedCourses: records,
-    };
-
-    updateSettings({
-      userName: userName.trim() || t('shell.fallback.student'),
-      theme: themePref,
-      themePalette,
-      appTone,
-      uniAccessory,
-      uniPersona,
-      uniLiveCompanions,
-      dailyStudyMinutes: Math.max(30, Math.min(900, dailyMinutes || 180)),
-      studyDays: studyDays.length > 0 ? studyDays : [1, 2, 3, 4, 5, 6],
-      ageConfirmed13Plus: ageConfirmed,
-      gdprAcceptedAt: settings.gdprAcceptedAt || new Date().toISOString(),
-      gdprPolicyVersion: LEGAL_INFO.policyVersion,
-      aiConsent,
-      cloudSyncConsent,
-      // Sem auto-arranque intrusivo de Driver.js; o estudante pode sempre abrir o tour em Definições.
-      tourCompleted: true,
-      hasSeenWelcome: true,
-      ...(!auth.currentUser ? { guestMode: true } : {}),
-    });
-
-    if (replaceCoursesWithCurriculum && doingCount > 0) {
-      applyCurriculumCourses(profile);
-    } else {
-      saveAcademicProfile(profile);
-    }
-
-    if (auth.currentUser && (universityId === 'outra' || degreeId === 'outro') && records.length > 0) {
-      const customUniSlug =
-        (uniName || 'outra')
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/(^-|-$)/g, '')
-          .slice(0, 40) || 'outra';
-      const customDegSlug =
-        (degName || 'curso')
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/(^-|-$)/g, '')
-          .slice(0, 40) || 'curso';
-      publishSharedCurriculum({
-        id: `${customUniSlug}-${customDegSlug}`,
-        universityId: customUniSlug,
-        universityName: uniName,
-        degreeId: customDegSlug,
-        degreeName: degName,
-        courses: records.slice(0, 60).map((r) => ({
-          code: r.code,
-          name: r.name,
-          shortName: r.code,
-          year: ([1, 2, 3, 4, 5].includes(r.year) ? r.year : 1) as 1 | 2 | 3 | 4 | 5,
-          semester: r.semester,
-          ects: r.ects || 6,
-          topics: [r.name],
-        })),
-      }).catch(() => {});
-    }
-
-    celebrateStationery();
-    void hapticSuccess();
-
-    const prefersReduced =
-      typeof window !== 'undefined' &&
-      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-
-    if (fullScreen && !prefersReduced) {
-      setFinishingWipe(true);
-      window.setTimeout(() => {
-        onClose();
-      }, 360);
-    } else {
-      onClose();
-    }
-  };
-
-  const canSkipDirectly = storedProfile.onboardingCompleted && ageConfirmed;
-  const activePersonalEmail = settings.personalEmail || auth.currentUser?.email || '';
+  const s = useOnboardingState({ onClose, fullScreen });
 
   return (
     <div
@@ -1149,7 +37,7 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
       )}
     >
       <AnimatePresence>
-        {finishingWipe && (
+        {s.finishingWipe && (
           <motion.div
             aria-hidden="true"
             initial={{ clipPath: 'circle(0% at 86% 92%)' }}
@@ -1160,402 +48,274 @@ function OnboardingFlowBody({ onClose, fullScreen = true }: OnboardingExperience
         )}
       </AnimatePresence>
 
-      {/* Cabeçalho Estúdio Caderno Vivo */}
-      <header className="sticky top-0 z-10 border-b border-line/70 bg-bg/92 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur-md sm:px-6">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <UnipediaLogoMark size={34} />
-            <div>
-              <p className="font-display text-sm font-extrabold leading-tight text-fg">
-                Unipedia
-              </p>
-              <p className="font-mono text-xs text-muted tabular">
-                {t('shell.stepOf', { n: stepIndex + 1, total: STEP_META.length, label: t(`shell.step.${STEP_META[stepIndex]?.id ?? 'curso'}`) })}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5" aria-hidden="true">
-              {STEP_META.map((item, idx) => {
-                const isActive = idx === stepIndex;
-                return (
-                  <motion.span
-                    key={item.id}
-                    layout
-                    transition={UNIPEDIA_SPRING}
-                    className={cx(
-                      'h-2 rounded-full transition-colors',
-                      isActive
-                        ? 'w-7 bg-accent'
-                        : idx < stepIndex
-                          ? 'w-2.5 bg-accent/45'
-                          : 'w-2 bg-line',
-                    )}
-                  />
-                );
-              })}
-            </div>
-
-            {canSkipDirectly && (
-              <Button variant="ghost" size="sm" onClick={onClose}>
-                {t('shell.close')}
-              </Button>
-            )}
-          </div>
-        </div>
-      </header>
+      <OnboardingHeader
+        stepIndex={s.stepIndex}
+        canSkipDirectly={s.canSkipDirectly}
+        onClose={onClose}
+      />
 
       {/* Corpo em 4 passos curtos */}
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">
         <motion.div
-          key={activeStepId}
-          initial={{ opacity: 0, x: direction * 20 }}
+          key={s.activeStepId}
+          initial={{ opacity: 0, x: s.direction * 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
           className="space-y-5"
         >
-          {activeStepId === 'identidade' && (
+          {s.activeStepId === 'identidade' && (
             <Step1Identity
-              userName={userName}
-              setUserName={setUserName}
-              themePref={themePref}
-              setThemePref={setThemePref}
-              themePalette={themePalette}
-              setThemePalette={setThemePalette}
-              appTone={appTone}
-              setAppTone={setAppTone}
-              uniAccessory={uniAccessory}
-              setUniAccessory={setUniAccessory}
-              uniPersona={uniPersona}
-              setUniPersona={setUniPersona}
-              uniLiveCompanions={uniLiveCompanions}
-              setUniLiveCompanions={setUniLiveCompanions}
+              userName={s.userName}
+              setUserName={s.setUserName}
+              themePref={s.themePref}
+              setThemePref={s.setThemePref}
+              themePalette={s.themePalette}
+              setThemePalette={s.setThemePalette}
+              appTone={s.appTone}
+              setAppTone={s.setAppTone}
+              uniAccessory={s.uniAccessory}
+              setUniAccessory={s.setUniAccessory}
+              uniPersona={s.uniPersona}
+              setUniPersona={s.setUniPersona}
+              uniLiveCompanions={s.uniLiveCompanions}
+              setUniLiveCompanions={s.setUniLiveCompanions}
             />
           )}
 
-          {activeStepId === 'curso' && (
+          {s.activeStepId === 'curso' && (
             <Step2Academic
-              catalog={catalog}
-              universityId={universityId}
-              onUniversityChange={handleUniversityChange}
-              customUniversity={customUniversity}
-              setCustomUniversity={setCustomUniversity}
-              degreeId={degreeId}
-              onDegreeChange={handleDegreeChange}
-              customDegree={customDegree}
-              setCustomDegree={setCustomDegree}
-              availableDegrees={availableDegrees}
-              isSecondarySchool={isSecondarySchool}
-              academicCycle={academicCycle}
-              onCycleChange={handleCycleChange}
-              yearChoices={yearChoices}
-              activeYears={activeYears}
-              onToggleYear={toggleYearPill}
-              currentSemester={currentSemester}
-              onSemesterChange={handleSemesterChange}
-              entryYear={entryYear}
-              setEntryYear={setEntryYear}
-              targetTotalEcts={targetTotalEcts}
-              onSelectEctsTarget={handleSelectEctsTarget}
-              completedEcts={completedEcts}
-              setCompletedEcts={setCompletedEcts}
-              ectsStage={ectsStage}
-              onApplyEctsStage={handleApplyEctsStage}
-              learningChallenges={learningChallenges}
-              onToggleChallenge={toggleLearningChallenge}
-              extraActivities={extraActivities}
-              onToggleExtraPreset={toggleExtraPreset}
-              onRemoveExtra={(id) => setExtraActivities((prev) => prev.filter((a) => a.id !== id))}
-              customExtraLabel={customExtraLabel}
-              setCustomExtraLabel={setCustomExtraLabel}
-              customExtraHours={customExtraHours}
-              setCustomExtraHours={setCustomExtraHours}
-              onAddCustomExtra={handleAddCustomExtra}
+              catalog={s.catalog}
+              universityId={s.universityId}
+              onUniversityChange={s.handleUniversityChange}
+              customUniversity={s.customUniversity}
+              setCustomUniversity={s.setCustomUniversity}
+              degreeId={s.degreeId}
+              onDegreeChange={s.handleDegreeChange}
+              customDegree={s.customDegree}
+              setCustomDegree={s.setCustomDegree}
+              availableDegrees={s.availableDegrees}
+              isSecondarySchool={s.isSecondarySchool}
+              academicCycle={s.academicCycle}
+              onCycleChange={s.handleCycleChange}
+              yearChoices={s.yearChoices}
+              activeYears={s.activeYears}
+              onToggleYear={s.toggleYearPill}
+              currentSemester={s.currentSemester}
+              onSemesterChange={s.handleSemesterChange}
+              entryYear={s.entryYear}
+              setEntryYear={s.setEntryYear}
+              targetTotalEcts={s.targetTotalEcts}
+              onSelectEctsTarget={s.handleSelectEctsTarget}
+              completedEcts={s.completedEcts}
+              setCompletedEcts={s.setCompletedEcts}
+              ectsStage={s.ectsStage}
+              onApplyEctsStage={s.handleApplyEctsStage}
+              learningChallenges={s.learningChallenges}
+              onToggleChallenge={s.toggleLearningChallenge}
+              extraActivities={s.extraActivities}
+              onToggleExtraPreset={s.toggleExtraPreset}
+              onRemoveExtra={(id) => s.setExtraActivities((prev) => prev.filter((a) => a.id !== id))}
+              customExtraLabel={s.customExtraLabel}
+              setCustomExtraLabel={s.setCustomExtraLabel}
+              customExtraHours={s.customExtraHours}
+              setCustomExtraHours={s.setCustomExtraHours}
+              onAddCustomExtra={s.handleAddCustomExtra}
             />
           )}
 
-          {activeStepId === 'cadeiras' && (
+          {s.activeStepId === 'cadeiras' && (
             <Step3Courses
-              records={records}
-              mainFilteredRecords={mainFilteredRecords}
-              optionalAvailableRecords={optionalAvailableRecords}
-              availableRecordYears={availableRecordYears}
-              effectiveYearFilter={effectiveYearFilter}
-              setYearFilter={setYearFilter}
-              showOtherTermsHistory={showOtherTermsHistory}
-              setShowOtherTermsHistory={setShowOtherTermsHistory}
-              showOptionalCourses={showOptionalCourses}
-              setShowOptionalCourses={setShowOptionalCourses}
-              optionalSearch={optionalSearch}
-              setOptionalSearch={setOptionalSearch}
-              isSecondarySchool={isSecondarySchool}
-              doingCount={doingCount}
-              approvedCount={approvedCount}
-              weightedAvg={weightedAvg}
-              approvedEctsFromList={approvedEctsFromList}
-              activeEctsFromList={activeEctsFromList}
-              onUpdateStatus={updateRecordStatus}
-              onUpdateGrade={updateRecordGrade}
-              onRemoveRecord={removeRecord}
-              onResetDefaults={resetRecordsToDegreeDefaults}
-              replaceCoursesWithCurriculum={replaceCoursesWithCurriculum}
-              setReplaceCoursesWithCurriculum={setReplaceCoursesWithCurriculum}
-              hasExistingCourses={existingCourses.length > 0}
-              newCourseCode={newCourseCode}
-              setNewCourseCode={setNewCourseCode}
-              newCourseName={newCourseName}
-              setNewCourseName={setNewCourseName}
-              newCourseYear={newCourseYear}
-              setNewCourseYear={setNewCourseYear}
-              newCourseEcts={newCourseEcts}
-              setNewCourseEcts={setNewCourseEcts}
-              onAddCustomRecord={addCustomRecord}
-              yearChoices={yearChoices}
+              records={s.records}
+              mainFilteredRecords={s.mainFilteredRecords}
+              optionalAvailableRecords={s.optionalAvailableRecords}
+              availableRecordYears={s.availableRecordYears}
+              effectiveYearFilter={s.effectiveYearFilter}
+              setYearFilter={s.setYearFilter}
+              showOtherTermsHistory={s.showOtherTermsHistory}
+              setShowOtherTermsHistory={s.setShowOtherTermsHistory}
+              showOptionalCourses={s.showOptionalCourses}
+              setShowOptionalCourses={s.setShowOptionalCourses}
+              optionalSearch={s.optionalSearch}
+              setOptionalSearch={s.setOptionalSearch}
+              isSecondarySchool={s.isSecondarySchool}
+              doingCount={s.doingCount}
+              approvedCount={s.approvedCount}
+              weightedAvg={s.weightedAvg}
+              approvedEctsFromList={s.approvedEctsFromList}
+              activeEctsFromList={s.activeEctsFromList}
+              onUpdateStatus={s.updateRecordStatus}
+              onUpdateGrade={s.updateRecordGrade}
+              onRemoveRecord={s.removeRecord}
+              onResetDefaults={s.resetRecordsToDegreeDefaults}
+              replaceCoursesWithCurriculum={s.replaceCoursesWithCurriculum}
+              setReplaceCoursesWithCurriculum={s.setReplaceCoursesWithCurriculum}
+              hasExistingCourses={s.existingCourses.length > 0}
+              newCourseCode={s.newCourseCode}
+              setNewCourseCode={s.setNewCourseCode}
+              newCourseName={s.newCourseName}
+              setNewCourseName={s.setNewCourseName}
+              newCourseYear={s.newCourseYear}
+              setNewCourseYear={s.setNewCourseYear}
+              newCourseEcts={s.newCourseEcts}
+              setNewCourseEcts={s.setNewCourseEcts}
+              onAddCustomRecord={s.addCustomRecord}
+              yearChoices={s.yearChoices}
               onOpenScheduleImport={(mode) => {
                 const st = useStore.getState();
-                setScheduleImportBaseline({
+                s.setScheduleImportBaseline({
                   courses: st.courses.length,
                   classes: st.classes.length,
                   assessments: st.assessments.length,
                 });
-                setScheduleImportMode(mode);
+                s.setScheduleImportMode(mode);
               }}
-              onUploadScreenshot={(files) => void handleScreenshotUpload(files)}
-              ocrBusy={ocrBusy}
-              ocrFeedback={ocrFeedback}
-              ocrError={ocrError}
-              scheduleDoneInfo={scheduleDoneInfo}
-              showPastePlan={showPastePlan}
-              setShowPastePlan={setShowPastePlan}
-              pastedPlanText={pastedPlanText}
-              setPastedPlanText={setPastedPlanText}
-              onApplyPasted={handleApplyPastedCurriculum}
-              pendingAiConsentCount={pendingPrintFilesForConsent?.length ?? 0}
+              onUploadScreenshot={(files) => void s.handleScreenshotUpload(files)}
+              ocrBusy={s.ocrBusy}
+              ocrFeedback={s.ocrFeedback}
+              ocrError={s.ocrError}
+              scheduleDoneInfo={s.scheduleDoneInfo}
+              showPastePlan={s.showPastePlan}
+              setShowPastePlan={s.setShowPastePlan}
+              pastedPlanText={s.pastedPlanText}
+              setPastedPlanText={s.setPastedPlanText}
+              onApplyPasted={s.handleApplyPastedCurriculum}
+              pendingAiConsentCount={s.pendingPrintFilesForConsent?.length ?? 0}
               onConfirmAiAndReadPrint={() => {
-                const queued = pendingPrintFilesForConsent;
+                const queued = s.pendingPrintFilesForConsent;
                 requestAiConsent(() => {
-                  setAiConsent(true);
-                  setPendingPrintFilesForConsent(null);
+                  s.setAiConsent(true);
+                  s.setPendingPrintFilesForConsent(null);
                   if (queued && queued.length > 0) {
-                    void handleScreenshotUpload(queued, true);
+                    void s.handleScreenshotUpload(queued, true);
                   }
                 });
               }}
-              onCancelAiPrintConsent={() => setPendingPrintFilesForConsent(null)}
+              onCancelAiPrintConsent={() => s.setPendingPrintFilesForConsent(null)}
             />
           )}
 
-          {activeStepId === 'ritmo' && (
+          {s.activeStepId === 'ritmo' && (
             <Step4RhythmPrivacy
-              dailyMinutes={dailyMinutes}
-              setDailyMinutes={setDailyMinutes}
-              studyDays={studyDays}
-              onToggleStudyDay={toggleStudyDay}
-              activeCandidates={activeCandidates}
-              difficultKeys={difficultKeys}
-              onToggleDifficult={toggleDifficult}
-              difficultNotes={difficultNotes}
-              setDifficultNotes={setDifficultNotes}
-              academicMailConnected={academicMailConnected}
-              academicEmail={academicEmail ?? undefined}
-              academicHint={academicHint}
-              setAcademicHint={setAcademicHint}
-              academicBusy={academicBusy}
-              onConnectAcademic={() => void handleConnectAcademic()}
-              ageConfirmed={ageConfirmed}
-              setAgeConfirmed={setAgeConfirmed}
-              aiConsent={aiConsent}
+              dailyMinutes={s.dailyMinutes}
+              setDailyMinutes={s.setDailyMinutes}
+              studyDays={s.studyDays}
+              onToggleStudyDay={s.toggleStudyDay}
+              activeCandidates={s.activeCandidates}
+              difficultKeys={s.difficultKeys}
+              onToggleDifficult={s.toggleDifficult}
+              difficultNotes={s.difficultNotes}
+              setDifficultNotes={s.setDifficultNotes}
+              academicMailConnected={s.academicMailConnected}
+              academicEmail={s.academicEmail ?? undefined}
+              academicHint={s.academicHint}
+              setAcademicHint={s.setAcademicHint}
+              academicBusy={s.academicBusy}
+              onConnectAcademic={() => void s.handleConnectAcademic()}
+              ageConfirmed={s.ageConfirmed}
+              setAgeConfirmed={s.setAgeConfirmed}
+              aiConsent={s.aiConsent}
               setAiConsent={(next) => {
                 if (next) {
-                  requestAiConsent(() => setAiConsent(true));
+                  requestAiConsent(() => s.setAiConsent(true));
                   return;
                 }
-                setAiConsent(false);
-                updateSettings({ aiConsent: false });
+                s.setAiConsent(false);
+                s.updateSettings({ aiConsent: false });
               }}
-              cloudSyncConsent={cloudSyncConsent}
-              setCloudSyncConsent={setCloudSyncConsent}
+              cloudSyncConsent={s.cloudSyncConsent}
+              setCloudSyncConsent={s.setCloudSyncConsent}
               isSignedIn={Boolean(auth.currentUser)}
-              personalEmail={activePersonalEmail}
-              submitAttempted={submitAttempted}
-              onOpenLegal={setLegalPreview}
+              personalEmail={s.activePersonalEmail}
+              submitAttempted={s.submitAttempted}
+              onOpenLegal={s.setLegalPreview}
             />
           )}
         </motion.div>
       </main>
 
-      {/* Rodapé de navegação */}
-      <footer className="sticky bottom-0 z-10 border-t border-line/70 bg-bg/92 px-4 pt-3 pb-[max(0.9rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:px-6">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
-          {stepIndex > 0 ? (
-            <Button variant="ghost" onClick={() => void handleGoPrev()}>
-              <ChevronLeft size={16} /> {t('shell.prev')}
-            </Button>
-          ) : (
-            <span className="text-xs font-medium text-muted">
-              {t('shell.later')}
-            </span>
-          )}
+      <OnboardingFooter
+        stepIndex={s.stepIndex}
+        isLastStep={s.activeStepId === 'ritmo'}
+        onPrev={() => void s.handleGoPrev()}
+        onNext={() => void s.handleGoNext()}
+        onFinish={s.handleFinish}
+      />
 
-          {activeStepId !== 'ritmo' ? (
-            <motion.button
-              type="button"
-              layoutId="onboarding-cta"
-              transition={UNIPEDIA_SPRING}
-              onClick={() => void handleGoNext()}
-              whileTap={{ scale: 0.94 }}
-              className="inline-flex min-h-[48px] items-center gap-2 rounded-full bg-ink-cta px-5 text-sm font-bold text-ink-cta-fg shadow-card transition-opacity hover:opacity-90"
-            >
-              <span>{t('shell.next')}</span>
-              <ChevronRight size={18} aria-hidden="true" />
-            </motion.button>
-          ) : (
-            <motion.button
-              type="button"
-              layoutId="onboarding-cta"
-              transition={UNIPEDIA_SPRING}
-              onClick={handleFinish}
-              whileTap={{ scale: 0.96 }}
-              className="inline-flex min-h-[48px] items-center gap-2 rounded-full bg-ink-cta px-6 text-sm font-bold text-ink-cta-fg shadow-card transition-opacity hover:opacity-90"
-            >
-              <span>{t('shell.start')}</span>
-              <ArrowRight size={17} aria-hidden="true" />
-            </motion.button>
-          )}
-        </div>
-      </footer>
+      <OnboardingLegalModal
+        legalPreview={s.legalPreview}
+        onClose={() => s.setLegalPreview(null)}
+      />
 
-      {legalPreview && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={legalPreview === 'privacy' ? t('shell.privacy') : t('shell.terms')}
-          onClick={() => setLegalPreview(null)}
-          className="fixed inset-0 z-[70] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
-        >
-          <div
-            ref={legalSheetRef}
-            onClick={(e) => e.stopPropagation()}
-            className="max-h-[85vh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-3xl border border-line bg-surface p-5 shadow-float sm:rounded-3xl sm:p-6"
-          >
-            <div data-sheet-handle="" className="-mx-5 -mt-5 px-5 pt-3 touch-none sm:mx-0 sm:mt-0 sm:p-0 sm:touch-auto">
-              <div className="mx-auto mb-3 h-1.5 w-11 rounded-full bg-line sm:hidden" aria-hidden="true" />
-              <div className="flex items-center justify-between gap-3 border-b border-line pb-3">
-                <h3 className="font-display text-lg font-bold text-fg">
-                  {legalPreview === 'privacy' ? t('shell.privacy') : t('shell.terms')}
-                </h3>
-                <button
-                  type="button"
-                  aria-label={t('shell.closeLegal')}
-                  onClick={() => setLegalPreview(null)}
-                  className="hidden size-11 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-fg sm:flex"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-            </div>
-            <div className="mt-4 space-y-3 text-xs leading-relaxed text-muted sm:text-sm">
-              {legalPreview === 'privacy' ? (
-                <>
-                  <p>
-                    <strong className="text-fg">{t('shell.legalPreview.controller')}</strong> {LEGAL_INFO.controllerName} ({LEGAL_INFO.country}) ·{' '}
-                    <span className="font-mono">{LEGAL_INFO.contactEmail}</span>
-                  </p>
-                  <p>
-                    {t('shell.legalPreview.local')}
-                  </p>
-                  <p>
-                    {t('shell.legalPreview.ai')}
-                  </p>
-                </>
-              ) : (
-                <p>
-                  {t('shell.legalPreview.terms', { app: LEGAL_INFO.appName })}
-                </p>
-              )}
-              <div className="pt-2">
-                <a
-                  href={legalPreview === 'privacy' ? '/privacidade' : '/termos'}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-accent-ink hover:underline"
-                >
-                  {t('shell.legalPreview.open')} <ExternalLink size={13} />
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {scheduleImportMode && (
-        <SmartScheduleImportModal
-          initialMode={scheduleImportMode}
-          currentSemester={currentSemester}
-          onImported={(summary: SmartScheduleImportSummary) => {
-            applyScheduleScopeToRecords(
-              [
-                ...summary.activeCourses.map((c) => ({
-                  code: c.code,
-                  name: c.name,
-                  ects: c.ects ?? (isSecondarySchool ? 4 : 6),
-                  semester: currentSemester,
-                  status: 'a_fazer' as const,
-                })),
-                ...(summary.otherSemesterCourses ?? []).map((c) => ({
-                  code: c.code,
-                  name: c.name,
-                  ects: c.ects ?? (isSecondarySchool ? 4 : 6),
-                  semester: c.semester,
-                  status: 'por_fazer' as const,
-                })),
-              ],
-              {
-                classesCount: summary.classesCount,
-                assessmentsCount: summary.assessmentsCount,
-                source: summary.source,
-                slotSummaries: summary.slotSummaries,
-              },
-            );
-            setScheduleImportMode(null);
-            setScheduleImportBaseline(null);
-          }}
-          onClose={() => {
-            setScheduleImportMode(null);
-            const state = useStore.getState();
-            const storeCourses = state.courses;
-            const addedClasses = Math.max(
-              0,
-              state.classes.length - (scheduleImportBaseline?.classes ?? 0),
-            );
-            const addedAssessments = Math.max(
-              0,
-              state.assessments.length - (scheduleImportBaseline?.assessments ?? 0),
-            );
-            const addedCourses = Math.max(
-              0,
-              storeCourses.length - (scheduleImportBaseline?.courses ?? 0),
-            );
-            setScheduleImportBaseline(null);
-
-            if (addedClasses > 0 || addedAssessments > 0 || addedCourses > 0) {
-              applyScheduleScopeToRecords(
-                storeCourses.map((c) => ({
-                  code: c.code,
-                  name: c.name,
-                  ects: c.ects,
-                  status: 'a_fazer' as const,
-                })),
+      {s.scheduleImportMode && (
+        <Suspense fallback={null}>
+          <SmartScheduleImportModal
+            initialMode={s.scheduleImportMode}
+            currentSemester={s.currentSemester}
+            onImported={(summary: SmartScheduleImportSummary) => {
+              s.applyScheduleScopeToRecords(
+                [
+                  ...summary.activeCourses.map((c) => ({
+                    code: c.code,
+                    name: c.name,
+                    ects: c.ects ?? (s.isSecondarySchool ? 4 : 6),
+                    semester: s.currentSemester,
+                    status: 'a_fazer' as const,
+                  })),
+                  ...(summary.otherSemesterCourses ?? []).map((c) => ({
+                    code: c.code,
+                    name: c.name,
+                    ects: c.ects ?? (s.isSecondarySchool ? 4 : 6),
+                    semester: c.semester,
+                    status: 'por_fazer' as const,
+                  })),
+                ],
                 {
-                  classesCount: addedClasses,
-                  assessmentsCount: addedAssessments,
-                  source: scheduleImportMode === 'gcal' ? 'gcal' : 'photo',
+                  classesCount: summary.classesCount,
+                  assessmentsCount: summary.assessmentsCount,
+                  source: summary.source,
+                  slotSummaries: summary.slotSummaries,
                 },
               );
-            }
-          }}
-        />
+              s.setScheduleImportMode(null);
+              s.setScheduleImportBaseline(null);
+            }}
+            onClose={() => {
+              const closingMode = s.scheduleImportMode;
+              s.setScheduleImportMode(null);
+              const state = useStore.getState();
+              const storeCourses = state.courses;
+              const addedClasses = Math.max(
+                0,
+                state.classes.length - (s.scheduleImportBaseline?.classes ?? 0),
+              );
+              const addedAssessments = Math.max(
+                0,
+                state.assessments.length - (s.scheduleImportBaseline?.assessments ?? 0),
+              );
+              const addedCourses = Math.max(
+                0,
+                storeCourses.length - (s.scheduleImportBaseline?.courses ?? 0),
+              );
+              s.setScheduleImportBaseline(null);
+
+              if (addedClasses > 0 || addedAssessments > 0 || addedCourses > 0) {
+                s.applyScheduleScopeToRecords(
+                  storeCourses.map((c) => ({
+                    code: c.code,
+                    name: c.name,
+                    ects: c.ects,
+                    status: 'a_fazer' as const,
+                  })),
+                  {
+                    classesCount: addedClasses,
+                    assessmentsCount: addedAssessments,
+                    source: closingMode === 'gcal' ? 'gcal' : 'photo',
+                  },
+                );
+              }
+            }}
+          />
+        </Suspense>
       )}
     </div>
   );

@@ -209,7 +209,8 @@
     "ofBudget": "of {{time}}",
     "studied": "{{time}} studied",
     "noSessions": "No sessions",
-    "offDay": "Day off"
+    "offDay": "Day off",
+    "marathon": "Marathon"
   },
   "cal": {
     "view": {
@@ -322,7 +323,16 @@
     "start": "Start",
     "startAria": "Session start time",
     "duration": "Duration (minutes)",
-    "durationHint": "Enter between 5 and 480 minutes."
+    "durationHint": "Enter between 5 and 480 minutes.",
+    "locked": "Locked",
+    "lock": "Lock block (keep on regenerate)",
+    "unlock": "Unlock block",
+    "lockLabel": "Lock block in plan",
+    "moveDay": "Move to another day",
+    "movedTo": "Block moved to {{date}} at {{time}}",
+    "noSlotDay": "No free slot long enough on {{date}}",
+    "material": "Linked material",
+    "noMaterial": "No specific material"
   },
   "builder": {
     "strategy": {
@@ -345,8 +355,87 @@
       "afternoonSub": "14:00+",
       "eveningSub": "17:30+"
     },
+    "steps": {
+      "briefing": "Briefing & Level",
+      "schedule": "Week & Marathon",
+      "strategy": "Strategy & Courses",
+      "preview": "Preview"
+    },
+    "prev": "Back",
+    "next": "Next",
+    "briefing": {
+      "title": "Explain your reality to Uni",
+      "subtitle": "Write naturally about where you are in the semester, busy days, or studying all day before tests.",
+      "placeholder": "E.g. Started mid-semester, only free weekday evenings and all day on weekends. Before exams I study all day. Already know up to topic 4 in Calculus...",
+      "sampleCatchUp": "Started mid-semester",
+      "sampleMarathon": "Study all day before exams",
+      "sampleWeekend": "Light weekdays, heavy weekends",
+      "sampleNightOnly": "Weekday nights & free weekend mornings",
+      "understoodTitle": "What Uni understood (tap to toggle)",
+      "noInsightsYet": "Type above or pick a shortcut — Uni parses everything locally with zero cost.",
+      "refineAi": "Refine with AI",
+      "refiningAi": "Refining…",
+      "aiRefinedToast": "Suggestions refined with Uni.",
+      "aiRefineError": "Could not reach AI right now — offline parser already applied the essentials.",
+      "midSemesterTitle": "Starting point (mid-semester)",
+      "midSemesterHint": "Quickly mark what you already know so we skip basic blocks.",
+      "topicsDoneCount": "{{done}}/{{total}} topics marked",
+      "mastery": {
+        "done": "Mastered",
+        "learning": "Familiar",
+        "todo": "From scratch"
+      },
+      "markFirstN": "Mark first:",
+      "noTopicsCourse": "No topics in this course yet — add them on the course page to calibrate."
+    },
+    "weekly": {
+      "presetsTitle": "Weekly rhythm",
+      "presetLightWeek": "Light weekdays, strong weekend",
+      "presetEvenings": "Weekday evenings + Saturday",
+      "presetUniform": "Uniform (Mon–Sat)",
+      "dayScheduleTitle": "Real availability per day",
+      "dayOff": "Rest day",
+      "windowAria": "Study window for {{day}}",
+      "minutesAria": "Study minutes for {{day}}",
+      "windows": {
+        "auto": "Automatic",
+        "morning": "Morning",
+        "afternoon": "Afternoon",
+        "evening": "Evening",
+        "all_day": "All day"
+      },
+      "fillClassGaps": "Use free gaps between classes (≥ 35 min)",
+      "fillClassGapsHint": "Fits short study blocks into gaps in your timetable.",
+      "marathonTitle": "Final Stretch · Pre-Exam Marathon",
+      "marathonHint": "Unlocks full-day study capacity in the days right before a test or exam.",
+      "marathonActiveLabel": "Enable full-day marathon before exams",
+      "marathonDays": "How many days before?",
+      "marathonDaysOption": "{{d}} day(s) before",
+      "marathonLoad": "Marathon daily target"
+    },
+    "mix": {
+      "title": "Theory vs. practice mix",
+      "balanced": "Balanced",
+      "balancedHint": "Theory on new topics + exercises/tests near exams",
+      "theory_first": "Foundations & slides first",
+      "theory_firstHint": "Prioritises understanding concepts before problem sets",
+      "practice_first": "Practice & past exams",
+      "practice_firstHint": "Prioritises problem sets, worked solutions and past papers",
+      "exclusiveFocus": "In single Exam Mode (> 2 days), dedicate 100% only to that exam course"
+    },
+    "previewActions": {
+      "keptLocked": "+{{count}} locked block(s) preserved",
+      "whyPrefix": "Why:",
+      "lockInPreview": "Lock",
+      "lockedInPreview": "Locked",
+      "moveDayAria": "Move block to another day",
+      "removeFromPreview": "Discard block",
+      "marathonBadge": "Marathon",
+      "resetExcluded": "Restore {{count}} discarded block(s)",
+      "noMaterial": "No suggested material"
+    },
     "title": "Study Plan Studio",
-    "keepDone": "Completed and manual sessions stay untouched.",
+    "keepDone": "Completed, locked and manual sessions stay untouched.",
     "adjustLater": "You can adjust any block after generating.",
     "cancel": "Cancel",
     "apply": "Apply ({{n}} blocks)",
@@ -395,5 +484,46 @@
     "weight": "Weight (%)",
     "dateTime": "Date and time",
     "dateTimeAria": "Assessment date and time"
+  },
+  "studyBriefing": {
+    "ariaLabel": "Study Briefing",
+    "title": "Study",
+    "titleAccent": "Briefing",
+    "subtitle": "Tell Uni what this week looks like to build a tailored 7-day plan.",
+    "collapsedHint": "Need to adjust this week? Tell Uni what's coming up.",
+    "openStudio": "4-step Studio",
+    "openStudioShort": "Studio",
+    "expandAria": "Expand Study Briefing",
+    "collapseAria": "Collapse Study Briefing",
+    "inputAria": "Describe your current study context",
+    "placeholder": "E.g. I have a math test in 3 days, I'm struggling with calculus, and I'm only free after 6pm...",
+    "sampleTest3Days": "Test in 3 days, struggling with key topics",
+    "sampleMidSemester": "Started mid-semester, behind on basics",
+    "sampleEveningsOnly": "Free weekday evenings + strong weekend",
+    "generateBtn": "Generate week",
+    "generatingBtn": "Building week…",
+    "loadingTitle": "Uni is structuring your 7-day plan…",
+    "cancel": "Cancel",
+    "aiConsentNeeded": "Turn on Uni AI in Settings to generate tailored LLM study plans, or run the offline planner below.",
+    "noFreeSlotsError": "Could not fit blocks into free slots this week — adjust your weekday availability or Studio settings.",
+    "genericError": "Could not generate the AI plan right now.",
+    "openAiSettings": "Open AI settings",
+    "retry": "Try again",
+    "useOffline": "Use offline planner",
+    "dismiss": "Dismiss",
+    "aiSummaryLabel": "Uni strategy for the next 7 days",
+    "offlineSummaryLabel": "Offline planner preview (7 days)",
+    "defaultStrategySummary": "Balanced 7-day schedule tailored to your briefing.",
+    "previewTotals": "{{count}} blocks · {{time}}",
+    "followUpTitle": "Quick follow-ups (tap to adjust)",
+    "refinementsCount": "{{count}} applied",
+    "followUpLighter": "Make it lighter",
+    "followUpPractice": "More past-exam practice",
+    "followUpEarlier": "Pull exam prep earlier",
+    "followUpWeekendLight": "Keep weekend light",
+    "dayMeta": "{{count}} blocks · {{time}}",
+    "allExcluded": "You discarded all preview blocks.",
+    "discardDraft": "Discard draft",
+    "applyWeek": "Apply to week ({{count}})"
   }
 }

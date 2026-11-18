@@ -173,6 +173,10 @@ export function sanitizeSettingsPayload(
       }
       continue;
     }
+    if (key === 'plannerPrefs') {
+      payload[key] = stripUndefined(raw);
+      continue;
+    }
     payload[key] = raw;
   }
   return payload;

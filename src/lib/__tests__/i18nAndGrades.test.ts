@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import i18n, { I18N_NAMESPACES, initAppI18n, resources, SUPPORTED_LANGUAGES } from '../../i18n';
+import { beforeAll, describe, expect, it } from 'vitest';
+import i18n, { I18N_NAMESPACES, initAppI18n, preloadAllLanguages, resources, SUPPORTED_LANGUAGES } from '../../i18n';
 import { tr } from '../../i18n/tr';
 import { fmtDec, fmtHours, periodRange, plannedByWeek, studyByBucket } from '../../components/progress/data';
 import { buildStudyContext } from '../../integrations/gemini';
@@ -33,6 +33,10 @@ function flattenEntries(obj: Record<string, unknown>, prefix = ''): Array<[strin
 }
 
 describe('i18n parity, regional vocabulary, curriculum packs, and grading scales', () => {
+  beforeAll(async () => {
+    await preloadAllLanguages();
+  });
+
   it('maintains 100% key parity and non-empty translations across pt-PT, pt-BR, es, and en in all namespaces', () => {
     const OPTIONAL_EMPTY_KEYS = new Set([
       'settings:geminiGuide.compareBodyPrefix',

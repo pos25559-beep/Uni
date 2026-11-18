@@ -18,6 +18,7 @@ import { migrateStoreState, rehydrateStoreState, sanitizeMaterials } from '../li
 import type {
   AcademicProfile,
   Collections,
+  Course,
   ID,
   IntegrationKey,
   IntegrationStatus,
@@ -29,7 +30,6 @@ import type {
 } from '../types';
 import { setAppLanguage } from '../i18n';
 import { normalizeAppLanguage } from '../lib/grading';
-import { buildActiveCoursesFromCurriculum } from '../lib/portugalCurriculum';
 import { generatePlan } from '../lib/planner';
 import { todayStr } from '../lib/selectors';
 
@@ -86,6 +86,10 @@ export interface AppState extends Collections {
   /** Regenera sessões futuras pendentes se já existir um plano gerado ativo (ou quando `force = true`). */
   reconcileFuturePlan: (force?: boolean) => void;
   updateTopic: (courseId: ID, topicId: ID, changes: Partial<Topic>) => void;
+  /** Atualiza vários tópicos em lote (ex.: calibração de meio do semestre no construtor). */
+  batchUpdateTopicStates: (
+    updates: Array<{ courseId: ID; topicId: ID; changes: Partial<Topic> }>,
+  ) => void;
   /** Garante que um tópico dado em aula / Modo Teste existe na cadeira (criando ou atualizando confiança/estado). */
   ensureCourseTopic: (
     courseId: ID,
@@ -99,6 +103,7 @@ export interface AppState extends Collections {
   addWeeklyCheckIn: (checkIn: WeeklyCheckIn) => void;
   addStudyLog: (entry: StudyLogEntry) => void;
   removeStudyLog: (id: ID) => void;
+  applyBuiltCurriculumCourses: (profile: AcademicProfile, built: Course[]) => void;
   applyCurriculumCourses: (profile: AcademicProfile) => void;
   clearAll: () => void;
 }
@@ -108,24 +113,34 @@ export const newId = (): ID => crypto.randomUUID();
 function maybeReconcileSessions(
   s: Pick<
     AppState,
-    'courses' | 'assessments' | 'classes' | 'events' | 'settings' | 'sessions' | 'academicProfile' | 'weeklyCheckIns' | 'studyLogs'
+    | 'courses'
+    | 'assessments'
+    | 'classes'
+    | 'events'
+    | 'materials'
+    | 'settings'
+    | 'sessions'
+    | 'academicProfile'
+    | 'weeklyCheckIns'
+    | 'studyLogs'
   >,
   force = false,
 ): AppState['sessions'] {
   const today = todayStr();
-  const hasPendingGenerated = s.sessions.some((x) => x.generated && !x.done && x.date >= today);
+  const hasPendingGenerated = s.sessions.some((x) => x.generated && !x.done && !x.locked && x.date >= today);
   if (!force && !hasPendingGenerated) return s.sessions;
   if (s.courses.length === 0) {
-    return s.sessions.filter((x) => !x.generated || x.done || x.date < today);
+    return s.sessions.filter((x) => !x.generated || x.done || x.locked || x.date < today);
   }
   const now = new Date();
-  const preserved = s.sessions.filter((x) => !x.generated || x.done || x.date < today);
+  const preserved = s.sessions.filter((x) => !x.generated || x.done || x.locked || x.date < today);
   const prefs = s.settings.plannerPrefs;
   const nextPlan = generatePlan({
     courses: s.courses,
     assessments: s.assessments,
     classes: s.classes,
     events: s.events,
+    materials: s.materials,
     settings: s.settings,
     from: today,
     nowMinutes: now.getHours() * 60 + now.getMinutes(),
@@ -136,6 +151,11 @@ function maybeReconcileSessions(
     boostCourseIds: prefs?.boostCourseIds,
     pausedCourseIds: prefs?.pausedCourseIds,
     exclusiveTestFocus: prefs?.exclusiveTestFocus,
+    weekdaySchedule: prefs?.weekdaySchedule,
+    fillClassGaps: prefs?.fillClassGaps,
+    preExamMarathon: prefs?.preExamMarathon,
+    contentMix: prefs?.contentMix,
+    briefingCourseFocus: prefs?.briefingCourseFocus,
     existing: preserved,
     difficultCourseIds: s.academicProfile.difficultCourseIds,
     weeklyCheckIns: s.weeklyCheckIns,
@@ -253,10 +273,11 @@ export const useStore = create<AppState>()(
         let nextSessions: Collections['sessions'] = [];
         set((s) => {
           prevSessions = s.sessions;
-          nextSessions = [
-            ...s.sessions.filter((x) => !x.generated || x.done || x.date < fromDate),
-            ...sessions,
-          ];
+          const kept = s.sessions.filter(
+            (x) => !x.generated || x.done || x.locked || x.date < fromDate,
+          );
+          const keptIds = new Set(kept.map((x) => x.id));
+          nextSessions = [...kept, ...sessions.filter((x) => !keptIds.has(x.id))];
           return { sessions: nextSessions };
         });
         syncSessionsDiff(prevSessions, nextSessions).catch(() => {});
@@ -299,6 +320,38 @@ export const useStore = create<AppState>()(
         });
         if (prevSessions !== nextSessions) {
           syncSessionsDiff(prevSessions, nextSessions).catch(() => {});
+        }
+      },
+      batchUpdateTopicStates: (updates) => {
+        if (updates.length === 0) return;
+        const byCourse = new Map<ID, Map<ID, Partial<Topic>>>();
+        for (const u of updates) {
+          let tMap = byCourse.get(u.courseId);
+          if (!tMap) {
+            tMap = new Map();
+            byCourse.set(u.courseId, tMap);
+          }
+          tMap.set(u.topicId, { ...(tMap.get(u.topicId) ?? {}), ...u.changes });
+        }
+        const touchedCourses: Collections['courses'] = [];
+        set((s) => {
+          const nextCourses = s.courses.map((c) => {
+            const tMap = byCourse.get(c.id);
+            if (!tMap) return c;
+            const updated = {
+              ...c,
+              topics: c.topics.map((t) => {
+                const ch = tMap.get(t.id);
+                return ch ? { ...t, ...ch } : t;
+              }),
+            };
+            touchedCourses.push(updated);
+            return updated;
+          });
+          return { courses: nextCourses };
+        });
+        for (const c of touchedCourses) {
+          syncUpsert('courses', c).catch(() => {});
         }
       },
       ensureCourseTopic: (courseId, rawTitle, opts) => {
@@ -431,14 +484,8 @@ export const useStore = create<AppState>()(
           studyLogs: s.studyLogs.filter((l) => l.id !== id),
         }));
       },
-      applyCurriculumCourses: (profile) =>
-        set((s) => {
-          const built = buildActiveCoursesFromCurriculum(
-            profile.universityId,
-            profile.degreeId,
-            profile.completedCourses,
-            s.courses,
-          );
+      applyBuiltCurriculumCourses: (profile, built) =>
+        set(() => {
           if (built.length === 0) {
             syncAcademicProfile(profile).catch(() => {});
             return { academicProfile: profile };
@@ -460,6 +507,17 @@ export const useStore = create<AppState>()(
             academicProfile: nextProfile,
           };
         }),
+      applyCurriculumCourses: (profile) => {
+        void import('../lib/portugalCurriculum').then(({ buildActiveCoursesFromCurriculum }) => {
+          const built = buildActiveCoursesFromCurriculum(
+            profile.universityId,
+            profile.degreeId,
+            profile.completedCourses,
+            get().courses,
+          );
+          get().applyBuiltCurriculumCourses(profile, built);
+        });
+      },
       clearAll: () => set({ ...emptyData(), weeklyCheckIns: [], studyLogs: [] }),
     }),
     {

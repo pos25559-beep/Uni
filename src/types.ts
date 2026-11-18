@@ -131,9 +131,19 @@ export interface ClassSlot {
 }
 
 export interface StudySessionReason {
-  code: 'exam_prep' | 'exam_eve' | 'srs_due' | 'weak_topic' | 'coverage' | 'starter';
+  code:
+    | 'exam_prep'
+    | 'exam_marathon'
+    | 'exam_eve'
+    | 'srs_due'
+    | 'weak_topic'
+    | 'coverage'
+    | 'starter'
+    | 'briefing'
+    | 'overdue';
   examDays?: number;
   weight?: number;
+  label?: string;
 }
 
 export interface StudySession {
@@ -141,6 +151,8 @@ export interface StudySession {
   courseId: ID;
   topicId?: ID;
   assessmentId?: ID;
+  /** Material sugerido ou associado a este bloco de estudo (opcional). */
+  materialId?: ID;
   /** yyyy-MM-dd */
   date: string;
   /** HH:mm (opcional) */
@@ -153,8 +165,10 @@ export interface StudySession {
   notes?: string;
   /** Explicação estruturada do motivo pelo qual este bloco foi agendado. */
   reason?: StudySessionReason;
-  /** true = criada pelo gerador de plano (pode ser substituída ao regenerar). */
+  /** true = criada pelo gerador de plano (pode ser substituída ao regenerar, salvo se locked). */
   generated: boolean;
+  /** true = bloco fixado manualmente pelo aluno (preservado ao recalcular o plano). */
+  locked?: boolean;
   /** N.º de saídas do ecrã/separador durante o Modo Foco (opcional). */
   focusDistractions?: number;
   /** Segundos acumulados fora do ecrã durante o Modo Foco (opcional). */
@@ -262,6 +276,21 @@ export type GradingScale = 'pt20' | 'scale10' | 'pct100';
 
 export type PlannerStrategy = 'balanced' | 'exams_first' | 'srs_focus' | 'catch_up';
 export type PlannerDayPeriod = 'auto' | 'morning' | 'afternoon' | 'evening';
+export type PlannerWindowMode = PlannerDayPeriod | 'all_day';
+export type PlannerContentMix = 'balanced' | 'theory_first' | 'practice_first';
+
+export interface WeekdayAvailability {
+  enabled: boolean;
+  minutes: number;
+  window: PlannerWindowMode;
+  blockedPeriods?: Array<'morning' | 'afternoon' | 'evening'>;
+}
+
+export interface PreExamMarathonConfig {
+  enabled: boolean;
+  daysBefore: 1 | 2 | 3;
+  dailyMinutes: 360 | 480 | 600;
+}
 
 export interface PlannerPreferences {
   horizonDays: 7 | 14 | 21;
@@ -273,6 +302,18 @@ export interface PlannerPreferences {
   includeOverdue?: boolean;
   /** Em Modo Teste único, se verdadeiro dedica 100% do tempo só à prova urgente. */
   exclusiveTestFocus?: boolean;
+  /** Disponibilidade individual por dia da semana ("0" = dom … "6" = sáb). */
+  weekdaySchedule?: Record<string, WeekdayAvailability>;
+  /** Aproveitar janelas livres >= 35m entre aulas durante o dia. */
+  fillClassGaps?: boolean;
+  /** Modo Maratona Pré-Teste: liberta carga de dia inteiro nos N dias antes de testes/exames. */
+  preExamMarathon?: PreExamMarathonConfig;
+  /** Preferência de equilíbrio entre teoria base e prática/testes antigos. */
+  contentMix?: PlannerContentMix;
+  /** Último briefing em linguagem natural explicado ao Uni no construtor. */
+  briefingNote?: string;
+  /** Foco personalizado por cadeira extraído do briefing ao Uni. */
+  briefingCourseFocus?: Record<string, string>;
 }
 
 export interface ExtraActivity {

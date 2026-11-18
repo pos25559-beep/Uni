@@ -302,3 +302,45 @@ export const PODCAST_SCRIPT_SCHEMA: SchemaRequest = {
   required: ['title', 'lines'],
 };
 
+export const WEEKLY_BRIEFING_PLAN_SCHEMA: SchemaRequest = {
+  type: SchemaType.OBJECT,
+  properties: {
+    strategySummary: { type: SchemaType.STRING },
+    focusCourseIds: {
+      type: SchemaType.ARRAY,
+      items: { type: SchemaType.STRING },
+    },
+    suggestedFollowUps: {
+      type: SchemaType.ARRAY,
+      items: { type: SchemaType.STRING },
+    },
+    blocks: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          dayOffset: { type: SchemaType.INTEGER },
+          courseId: { type: SchemaType.STRING },
+          courseShortName: { type: SchemaType.STRING, nullable: true },
+          topicId: { type: SchemaType.STRING, nullable: true },
+          topicTitle: { type: SchemaType.STRING, nullable: true },
+          window: {
+            type: SchemaType.STRING,
+            format: 'enum',
+            enum: ['auto', 'morning', 'afternoon', 'evening', 'all_day'],
+          },
+          minutes: { type: SchemaType.INTEGER },
+          focusKind: {
+            type: SchemaType.STRING,
+            format: 'enum',
+            enum: ['theory', 'practice', 'review', 'exam_prep'],
+          },
+          reasonNote: { type: SchemaType.STRING },
+        },
+        required: ['dayOffset', 'courseId', 'window', 'minutes', 'focusKind', 'reasonNote'],
+      },
+    },
+  },
+  required: ['strategySummary', 'focusCourseIds', 'suggestedFollowUps', 'blocks'],
+};
+

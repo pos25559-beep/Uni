@@ -1,4 +1,4 @@
-import i18n, { resources } from './index';
+import i18n, { resources, type I18nNamespace, type I18nResourcePack } from './index';
 
 type LangCode = keyof typeof resources;
 
@@ -18,7 +18,9 @@ function lookupInResources(
   vars: Record<string, string | number>,
 ): string {
   const [ns, path] = key.includes(':') ? key.split(':', 2) : ['common', key];
-  const nsObj = (resources[langKey] as Record<string, unknown>)?.[ns];
+  const loadedPack =
+    (resources as Partial<Record<LangCode, I18nResourcePack>>)[langKey] ?? resources['pt-PT'];
+  const nsObj = (loadedPack as Record<string, unknown>)?.[ns];
   const getPath = (p: string): unknown => {
     let node: unknown = nsObj;
     for (const part of p.split('.')) {
@@ -51,7 +53,10 @@ export function tr(
 ): string {
   if (langOverride) {
     const lng = resolveLangKey(langOverride);
-    if (i18n.isInitialized) return i18n.t(key, { ...vars, lng });
+    const ns = (key.includes(':') ? key.split(':', 2)[0] : 'common') as I18nNamespace;
+    if (i18n.isInitialized && i18n.hasResourceBundle(lng, ns)) {
+      return i18n.t(key, { ...vars, lng });
+    }
     return lookupInResources(lng, key, vars);
   }
   if (i18n.isInitialized) return i18n.t(key, vars);

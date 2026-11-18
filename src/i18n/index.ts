@@ -2,107 +2,72 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import { detectSystemLanguage, normalizeAppLanguage } from '../lib/grading';
 import type { AppLanguage } from '../types';
-
-import ptAssistant from '../locales/pt-PT/assistant.json';
-import ptCommon from '../locales/pt-PT/common.json';
-import ptCourses from '../locales/pt-PT/courses.json';
-import ptOnboarding from '../locales/pt-PT/onboarding.json';
-import ptPlan from '../locales/pt-PT/plan.json';
-import ptProgress from '../locales/pt-PT/progress.json';
-import ptSettings from '../locales/pt-PT/settings.json';
-import ptToday from '../locales/pt-PT/today.json';
-import ptUni from '../locales/pt-PT/uni.json';
-import ptLegal from '../locales/pt-PT/legal.json';
-
-import ptBrAssistant from '../locales/pt-BR/assistant.json';
-import ptBrCommon from '../locales/pt-BR/common.json';
-import ptBrCourses from '../locales/pt-BR/courses.json';
-import ptBrOnboarding from '../locales/pt-BR/onboarding.json';
-import ptBrPlan from '../locales/pt-BR/plan.json';
-import ptBrProgress from '../locales/pt-BR/progress.json';
-import ptBrSettings from '../locales/pt-BR/settings.json';
-import ptBrToday from '../locales/pt-BR/today.json';
-import ptBrUni from '../locales/pt-BR/uni.json';
-import ptBrLegal from '../locales/pt-BR/legal.json';
-
-import esAssistant from '../locales/es/assistant.json';
-import esCommon from '../locales/es/common.json';
-import esCourses from '../locales/es/courses.json';
-import esOnboarding from '../locales/es/onboarding.json';
-import esPlan from '../locales/es/plan.json';
-import esProgress from '../locales/es/progress.json';
-import esSettings from '../locales/es/settings.json';
-import esToday from '../locales/es/today.json';
-import esUni from '../locales/es/uni.json';
-import esLegal from '../locales/es/legal.json';
-
-import enAssistant from '../locales/en/assistant.json';
-import enCommon from '../locales/en/common.json';
-import enCourses from '../locales/en/courses.json';
-import enOnboarding from '../locales/en/onboarding.json';
-import enPlan from '../locales/en/plan.json';
-import enProgress from '../locales/en/progress.json';
-import enSettings from '../locales/en/settings.json';
-import enToday from '../locales/en/today.json';
-import enUni from '../locales/en/uni.json';
-import enLegal from '../locales/en/legal.json';
+import { ptPTPack } from './packs/pt-PT';
 
 export const SUPPORTED_LANGUAGES: AppLanguage[] = ['pt-PT', 'pt-BR', 'es', 'en'];
 
-export const resources = {
-  'pt-PT': {
-    common: ptCommon,
-    uni: ptUni,
-    today: ptToday,
-    courses: ptCourses,
-    plan: ptPlan,
-    progress: ptProgress,
-    assistant: ptAssistant,
-    settings: ptSettings,
-    onboarding: ptOnboarding,
-    legal: ptLegal,
-  },
-  'pt-BR': {
-    common: ptBrCommon,
-    uni: ptBrUni,
-    today: ptBrToday,
-    courses: ptBrCourses,
-    plan: ptBrPlan,
-    progress: ptBrProgress,
-    assistant: ptBrAssistant,
-    settings: ptBrSettings,
-    onboarding: ptBrOnboarding,
-    legal: ptBrLegal,
-  },
-  es: {
-    common: esCommon,
-    uni: esUni,
-    today: esToday,
-    courses: esCourses,
-    plan: esPlan,
-    progress: esProgress,
-    assistant: esAssistant,
-    settings: esSettings,
-    onboarding: esOnboarding,
-    legal: esLegal,
-  },
-  en: {
-    common: enCommon,
-    uni: enUni,
-    today: enToday,
-    courses: enCourses,
-    plan: enPlan,
-    progress: enProgress,
-    assistant: enAssistant,
-    settings: enSettings,
-    onboarding: enOnboarding,
-    legal: enLegal,
-  },
-} as const;
+export type I18nResourcePack = typeof ptPTPack;
+export type I18nNamespace = keyof I18nResourcePack;
+export type I18nResourcesMap = Record<AppLanguage, I18nResourcePack>;
 
-export const I18N_NAMESPACES = Object.keys(resources['pt-PT']) as Array<
-  keyof (typeof resources)['pt-PT']
->;
+/**
+ * Apenas `pt-PT` é carregado no arranque para reduzir o bundle inicial;
+ * `pt-BR`, `es` e `en` são injetados aqui sob demanda por `loadLanguageResources`.
+ */
+export const resources = {
+  'pt-PT': ptPTPack,
+} as unknown as I18nResourcesMap;
+
+export const I18N_NAMESPACES = Object.keys(ptPTPack) as I18nNamespace[];
+
+const pendingLanguageLoads = new Map<AppLanguage, Promise<I18nResourcePack>>();
+
+const LANGUAGE_LOADERS: Record<Exclude<AppLanguage, 'pt-PT'>, () => Promise<I18nResourcePack>> = {
+  'pt-BR': () => import('./packs/pt-BR').then((m) => m.ptBRPack as unknown as I18nResourcePack),
+  es: () => import('./packs/es').then((m) => m.esPack as unknown as I18nResourcePack),
+  en: () => import('./packs/en').then((m) => m.enPack as unknown as I18nResourcePack),
+};
+
+function registerPackInI18n(lang: AppLanguage, pack: I18nResourcePack) {
+  (resources as Record<string, I18nResourcePack>)[lang] = pack;
+  if (!i18n.isInitialized) return;
+  for (const ns of I18N_NAMESPACES) {
+    if (!i18n.hasResourceBundle(lang, ns)) {
+      i18n.addResourceBundle(lang, ns, pack[ns], true, true);
+    }
+  }
+}
+
+export async function loadLanguageResources(language: AppLanguage | string): Promise<I18nResourcePack> {
+  const normalized = normalizeAppLanguage(language);
+  const loaded = (resources as Partial<Record<AppLanguage, I18nResourcePack>>)[normalized];
+  if (loaded) {
+    registerPackInI18n(normalized, loaded);
+    return loaded;
+  }
+  const pending = pendingLanguageLoads.get(normalized);
+  if (pending) return pending;
+
+  if (normalized === 'pt-PT') {
+    registerPackInI18n('pt-PT', ptPTPack);
+    return ptPTPack;
+  }
+
+  const promise = LANGUAGE_LOADERS[normalized]()
+    .then((pack) => {
+      registerPackInI18n(normalized, pack);
+      return pack;
+    })
+    .finally(() => {
+      pendingLanguageLoads.delete(normalized);
+    });
+  pendingLanguageLoads.set(normalized, promise);
+  return promise;
+}
+
+export async function preloadAllLanguages(): Promise<void> {
+  await Promise.all(SUPPORTED_LANGUAGES.map((lang) => loadLanguageResources(lang)));
+}
 
 export { normalizeAppLanguage };
 
@@ -111,12 +76,32 @@ export function detectPreferredLanguage(explicit?: string | null): AppLanguage {
   return detectSystemLanguage();
 }
 
+function applyDocumentMeta(normalized: AppLanguage) {
+  if (typeof document === 'undefined') return;
+  document.documentElement.lang = normalized;
+  const pack = (resources as Partial<Record<AppLanguage, I18nResourcePack>>)[normalized] ?? ptPTPack;
+  document.title = pack.common.docTitle;
+}
+
+function buildInitialResourcesSnapshot(): Partial<Record<AppLanguage, I18nResourcePack>> {
+  const out: Partial<Record<AppLanguage, I18nResourcePack>> = { 'pt-PT': ptPTPack };
+  for (const lang of SUPPORTED_LANGUAGES) {
+    const pack = (resources as Partial<Record<AppLanguage, I18nResourcePack>>)[lang];
+    if (pack) out[lang] = pack;
+  }
+  return out;
+}
+
 export function initAppI18n(initialLanguage: AppLanguage = 'pt-PT') {
   const normalized = normalizeAppLanguage(initialLanguage);
+  const hasNormalizedPack = Boolean(
+    (resources as Partial<Record<AppLanguage, I18nResourcePack>>)[normalized],
+  );
+
   if (!i18n.isInitialized) {
     void i18n.use(initReactI18next).init({
-      resources,
-      lng: normalized,
+      resources: buildInitialResourcesSnapshot(),
+      lng: hasNormalizedPack ? normalized : 'pt-PT',
       fallbackLng: 'pt-PT',
       defaultNS: 'common',
       ns: I18N_NAMESPACES,
@@ -124,25 +109,50 @@ export function initAppI18n(initialLanguage: AppLanguage = 'pt-PT') {
         escapeValue: false,
       },
     });
-  } else if (i18n.language !== normalized) {
+  } else if (hasNormalizedPack && i18n.language !== normalized) {
     void i18n.changeLanguage(normalized);
   }
-  if (typeof document !== 'undefined') {
-    document.documentElement.lang = normalized;
-    document.title = resources[normalized].common.docTitle;
+
+  applyDocumentMeta(hasNormalizedPack ? normalized : 'pt-PT');
+
+  if (!hasNormalizedPack && normalized !== 'pt-PT') {
+    void loadLanguageResources(normalized).then(() => {
+      if (i18n.language !== normalized) {
+        void i18n.changeLanguage(normalized);
+      }
+      applyDocumentMeta(normalized);
+    });
   }
+
   return i18n;
+}
+
+export async function initAppI18nAsync(initialLanguage: AppLanguage = 'pt-PT') {
+  const normalized = normalizeAppLanguage(initialLanguage);
+  if (normalized !== 'pt-PT') {
+    await loadLanguageResources(normalized).catch(() => ptPTPack);
+  }
+  return initAppI18n(normalized);
 }
 
 export function setAppLanguage(language: AppLanguage | string) {
   const normalized = normalizeAppLanguage(language);
-  if (i18n.language !== normalized) {
-    void i18n.changeLanguage(normalized);
+  const existing = (resources as Partial<Record<AppLanguage, I18nResourcePack>>)[normalized];
+  if (existing) {
+    registerPackInI18n(normalized, existing);
+    if (i18n.language !== normalized) {
+      void i18n.changeLanguage(normalized);
+    }
+    applyDocumentMeta(normalized);
+    return;
   }
-  if (typeof document !== 'undefined') {
-    document.documentElement.lang = normalized;
-    document.title = resources[normalized].common.docTitle;
-  }
+
+  void loadLanguageResources(normalized).then(() => {
+    if (i18n.language !== normalized) {
+      void i18n.changeLanguage(normalized);
+    }
+    applyDocumentMeta(normalized);
+  });
 }
 
 export default i18n;

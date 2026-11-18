@@ -679,8 +679,8 @@ service cloud.firestore {
     // Validates study session document
     function isValidSession(data, userId) {
       return data.keys().hasOnly([
-          'id', 'courseId', 'topicId', 'assessmentId', 'date', 'start',
-          'minutes', 'done', 'actualMinutes', 'notes', 'reason', 'generated',
+          'id', 'courseId', 'topicId', 'assessmentId', 'materialId', 'date', 'start',
+          'minutes', 'done', 'actualMinutes', 'notes', 'reason', 'generated', 'locked',
           'focusDistractions', 'focusAwaySeconds', 'focusShieldUsed',
           'practiceHits', 'practiceTotal',
           'userId', 'createdAt', 'updatedAt'
@@ -692,12 +692,14 @@ service cloud.firestore {
         data.minutes is number && data.minutes >= 0 && data.minutes <= 1440 &&
         data.done is bool &&
         data.generated is bool &&
+        isValidOptionalBool(data, 'locked') &&
         isValidOptionalString(data, 'topicId', 1, 100) &&
         isValidOptionalString(data, 'assessmentId', 1, 100) &&
+        isValidOptionalString(data, 'materialId', 1, 100) &&
         isValidOptionalString(data, 'start', 4, 10) &&
         isValidOptionalNumber(data, 'actualMinutes', 0, 1440) &&
         isValidOptionalString(data, 'notes', 0, 2000) &&
-        (!('reason' in data) || (data.reason is map && data.reason.size() <= 5)) &&
+        (!('reason' in data) || (data.reason is map && data.reason.size() <= 8)) &&
         isValidOptionalNumber(data, 'focusDistractions', 0, 500) &&
         isValidOptionalNumber(data, 'focusAwaySeconds', 0, 86400) &&
         isValidOptionalBool(data, 'focusShieldUsed') &&

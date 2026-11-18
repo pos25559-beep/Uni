@@ -39,17 +39,18 @@ export default defineConfig({
           if (
             id.includes('node_modules/react/') ||
             id.includes('node_modules/react-dom/') ||
+            id.includes('node_modules/scheduler/') ||
+            id.includes('node_modules/use-sync-external-store/') ||
             id.includes('node_modules/react-router') ||
             id.includes('node_modules/zustand/')
           ) {
             return 'vendor-react'
           }
-          if (id.includes('recharts') || id.includes('d3-')) return 'vendor-charts'
-          if (id.includes('motion')) return 'vendor-motion'
-          if (id.includes('@onboardjs') || id.includes('driver.js')) return 'vendor-onboarding'
-          if (id.includes('pdf-lib')) return 'vendor-pdf'
-          if (id.includes('katex')) return 'vendor-math'
-          if (id.includes('lucide-react')) return 'vendor-icons'
+          if (id.includes('node_modules/motion')) return 'vendor-motion'
+          if (id.includes('node_modules/@onboardjs') || id.includes('node_modules/driver.js')) return 'vendor-onboarding'
+          if (id.includes('node_modules/pdf-lib')) return 'vendor-pdf'
+          if (id.includes('node_modules/katex')) return 'vendor-math'
+          if (id.includes('node_modules/lucide-react')) return 'vendor-icons'
           return undefined
         },
       },

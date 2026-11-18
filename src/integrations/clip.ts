@@ -2,7 +2,7 @@
 // (ficheiro .ics) ou copia (texto do horário) e convertem-nos em rascunhos
 // que o utilizador revê antes de importar. Funções puras, sem efeitos.
 import { format } from 'date-fns';
-import { isCourseIdentityMatch } from '../lib/portugalCurriculum';
+import { isCourseIdentityMatch } from '../lib/courseIdentity';
 import type {
   AssessmentKind, CalendarEvent, ClassType, Course,
 } from '../types';

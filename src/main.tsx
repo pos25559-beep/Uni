@@ -9,7 +9,7 @@ import '@fontsource/instrument-serif/400.css'
 import '@fontsource/instrument-serif/400-italic.css'
 import './index.css'
 import App from './App.tsx'
-import { detectPreferredLanguage, initAppI18n, setAppLanguage } from './i18n'
+import { detectPreferredLanguage, initAppI18n, initAppI18nAsync, setAppLanguage } from './i18n'
 import { initFirestoreSync } from './lib/firestoreSync'
 import {
   hideNativeSplash,
@@ -23,7 +23,7 @@ initFirestoreSync();
 
 // Ponte nativa (Tema Sistema/Claro/Escuro, StatusBar, Teclado virtual e Splash Screen)
 const initialSettings = useStore.getState().settings;
-initAppI18n(detectPreferredLanguage(initialSettings.language));
+const initialLanguage = detectPreferredLanguage(initialSettings.language);
 useStore.subscribe((state, prevState) => {
   const nextLang = state.settings.language ?? 'pt-PT';
   const prevLang = prevState.settings.language ?? 'pt-PT';
@@ -89,8 +89,17 @@ if (
   });
 }
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+function renderApp() {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  );
+}
+
+if (initialLanguage === 'pt-PT') {
+  initAppI18n('pt-PT');
+  renderApp();
+} else {
+  void initAppI18nAsync(initialLanguage).finally(renderApp);
+}
