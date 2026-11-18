@@ -10,6 +10,8 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { hasAiAccess } from '../../lib/aiAccess';
 import type { ParsedBriefingInsight } from '../../lib/plannerBriefing';
+import { resolveDateFnsLocale } from '../../lib/grading';
+import { fmtMinutes } from '../../lib/selectors';
 import { cx, showToast } from '../../lib/uiHelpers';
 import type { Course, ID, Settings, Topic } from '../../types';
 import { Badge, Button, CourseChip, Select, Textarea } from '../ui';
@@ -48,7 +50,52 @@ export default function BuilderStepBriefing({
   onSetTopicOverride,
   onMarkFirstNTopics,
 }: Props) {
-  const { t } = useTranslation('plan');
+  const { t, i18n } = useTranslation('plan');
+  const dfLocale = resolveDateFnsLocale(i18n.language);
+  const courseById = new Map(courses.map((c) => [c.id, c]));
+
+  const formatInsightChip = (ins: ParsedBriefingInsight): string => {
+    const courseName = ins.courseId ? (courseById.get(ins.courseId)?.shortName ?? ins.courseId) : '';
+    const dayName =
+      ins.weekday !== undefined
+        ? format(new Date(2024, 0, 7 + ins.weekday), 'EEE', { locale: dfLocale })
+        : '';
+    if (ins.kind === 'mid_semester') return t('weekCheck.strategy.catch_up');
+    if (ins.kind === 'content_mix' && ins.contentMix) return t(`weekCheck.mix.${ins.contentMix}`);
+    if (ins.kind === 'marathon' && ins.marathon) {
+      return t('weekCheck.item.marathon', {
+        time: fmtMinutes(ins.marathon.dailyMinutes),
+        days: ins.marathon.daysBefore,
+      });
+    }
+    if (ins.kind === 'course_boost') return t('weekCheck.item.boost', { course: courseName });
+    if (ins.kind === 'course_pause') return t('weekCheck.item.pause', { course: courseName });
+    if (ins.kind === 'course_focus') {
+      return t('weekCheck.item.note', { course: courseName, text: ins.focusNote ?? '' });
+    }
+    if (ins.kind === 'topic_mastered') {
+      return `${courseName}: ${(ins.topicUpdates ?? []).length} (${t('weekCheck.topicStatus.done')})`;
+    }
+    if (ins.kind === 'availability') {
+      if (ins.setEnabled === false) return t('weekCheck.item.dayOff', { day: dayName });
+      if (ins.blockedPeriod) {
+        return t('weekCheck.item.dayBlocked', {
+          day: dayName,
+          period: t(`weekCheck.period.${ins.blockedPeriod}`),
+        });
+      }
+      if (ins.setMinutes) {
+        return t('weekCheck.item.dayMinutes', { day: dayName, time: fmtMinutes(ins.setMinutes) });
+      }
+      if (ins.setWindow) {
+        return t('weekCheck.item.dayWindow', {
+          day: dayName,
+          period: t(`weekCheck.period.${ins.setWindow}`),
+        });
+      }
+    }
+    return ins.id;
+  };
   const [expandedCourseId, setExpandedCourseId] = useState<ID | null>(
     () => courses.find((c) => c.topics.length > 0)?.id ?? null,
   );
@@ -148,7 +195,7 @@ export default function BuilderStepBriefing({
                     )}
                   >
                     <Sparkles size={12} aria-hidden="true" />
-                    <span>{ins.label}</span>
+                    <span>{formatInsightChip(ins)}</span>
                   </button>
                 );
               })}

@@ -1,4 +1,66 @@
 {
+  "weekCheck": {
+    "title": "How's your week?",
+    "hintEmpty": "Tell Uni what changes this week and the plan adjusts.",
+    "hintLast": "Last request: “{{text}}”",
+    "open": "Tell Uni",
+    "close": "Close",
+    "placeholder": "E.g. I can't this Friday; TEP test on Monday, I want extra time until then.",
+    "inputAria": "What changes in your week",
+    "read": "Read",
+    "reading": "Reading…",
+    "understood": "Uni understood",
+    "understoodHint": "Turn off anything you don't want. Nothing changes until you apply.",
+    "nothing": "I found no rules in this text. Try mentioning days, hours or courses.",
+    "simpleNoConsent": "Simple reading, no AI. Turn on Uni in Settings to understand freer requests.",
+    "simpleAiFailed": "Uni didn't answer just now, so I used the simple reading.",
+    "apply": "Apply to plan",
+    "edit": "Edit text",
+    "cancel": "Cancel",
+    "applied_one": "{{count}} rule applied. The plan has been recalculated.",
+    "applied_other": "{{count}} rules applied. The plan has been recalculated.",
+    "change": "Change",
+    "everyWeek": "every week",
+    "until": "until {{date}}",
+    "onlyOn": "only {{date}}",
+    "range": "{{from}} to {{until}}",
+    "item": {
+      "boost": "More time for {{course}}",
+      "pause": "Pause {{course}}",
+      "note": "{{course}}: {{text}}",
+      "dayOff": "{{day}}: no study",
+      "dayMinutes": "{{day}}: {{time}} of study",
+      "dayWindow": "{{day}}: study in the {{period}}",
+      "dayBlocked": "{{day}}: no study in the {{period}}",
+      "marathon": "Final stretch: up to {{time}} a day, {{days}} days before tests",
+      "contentMix": "Focus: {{mix}}",
+      "topic": "{{topic}}: {{status}}"
+    },
+    "mix": {
+      "balanced": "Balance theory & practice",
+      "theory_first": "Theory first",
+      "practice_first": "Practice & problems first"
+    },
+    "strategy": {
+      "catch_up": "Catch up first",
+      "exams_first": "Tests first",
+      "srs_focus": "More reviews",
+      "balanced": "Balanced plan"
+    },
+    "topicStatus": {
+      "done": "already mastered",
+      "review": "to review",
+      "learning": "halfway",
+      "todo": "not started"
+    },
+    "period": {
+      "morning": "morning",
+      "afternoon": "afternoon",
+      "evening": "evening",
+      "all_day": "whole day",
+      "auto": "any time"
+    }
+  },
   "replan": {
       "updated": "Plan updated",
       "undo": "Undo",

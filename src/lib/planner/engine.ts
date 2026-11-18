@@ -195,6 +195,7 @@ export function generatePlan(input: PlanInput): StudySession[] {
     strategy = 'balanced',
     boostCourseIds = [],
     pausedCourseIds = [],
+    courseModeUntil = {},
     exclusiveTestFocus = false,
     weekdaySchedule,
     fillClassGaps = false,
@@ -216,7 +217,15 @@ export function generatePlan(input: PlanInput): StudySession[] {
   const start = parseDay(from);
   const pausedSet = new Set(pausedCourseIds);
   const boostSet = new Set(boostCourseIds);
-  const activeCourses = pausedSet.size > 0 ? courses.filter((c) => !pausedSet.has(c.id)) : courses;
+  const isPausedOnDay = (courseId: ID, dKey: string) =>
+    pausedSet.has(courseId) && (!courseModeUntil[courseId] || dKey <= courseModeUntil[courseId]);
+  const isBoostedOnDay = (courseId: ID, dKey: string) =>
+    boostSet.has(courseId) && (!courseModeUntil[courseId] || dKey <= courseModeUntil[courseId]);
+  // Cadeiras com pausa sem data de fim saem logo; com data de fim voltam nos dias após `until`.
+  const activeCourses =
+    pausedSet.size > 0
+      ? courses.filter((c) => !pausedSet.has(c.id) || Boolean(courseModeUntil[c.id]))
+      : courses;
   const courseById = new Map(activeCourses.map((c) => [c.id, c]));
   const difficultSet = new Set(difficultCourseIds);
   const targetBlock = Math.max(MIN_BLOCK, Math.min(75, blockMinutes));
@@ -370,6 +379,7 @@ export function generatePlan(input: PlanInput): StudySession[] {
       weekdaySchedule,
       preferredPeriod,
       preExamMarathon,
+      dateOverrides: input.dateOverrides,
     });
 
     const hasImminentOffDayExam =
@@ -466,6 +476,7 @@ export function generatePlan(input: PlanInput): StudySession[] {
     const active = items
       .map((it) => ({ ...it, daysLeft: differenceInCalendarDays(it.due, day) }))
       .filter((it) => {
+        if (isPausedOnDay(it.courseId, key)) return false;
         if (it.daysLeft < 0 || it.daysLeft > HORIZON_DAYS) return false;
         if (hasImminentOffDayExam && it.daysLeft > 2) return false;
         if (it.daysLeft === 0 && it.dueMinutes !== undefined) {
@@ -497,7 +508,9 @@ export function generatePlan(input: PlanInput): StudySession[] {
         }
       }
     }
-    const eligibleCoursesToday = activeCourses.filter((c) => !blockedAfterExamToday.has(c.id));
+    const eligibleCoursesToday = activeCourses.filter(
+      (c) => !blockedAfterExamToday.has(c.id) && !isPausedOnDay(c.id, key),
+    );
 
     const urgentToday = active.filter((it) => it.daysLeft <= TEST_MODE_DAYS);
     const urgentCourseIdsToday = new Set(urgentToday.map((u) => u.courseId));
@@ -521,8 +534,8 @@ export function generatePlan(input: PlanInput): StudySession[] {
         const aRelevant = activeCourseIds.has(a.courseId) ? 0 : 1;
         const bRelevant = activeCourseIds.has(b.courseId) ? 0 : 1;
         if (aRelevant !== bRelevant) return aRelevant - bRelevant;
-        const aBoost = boostSet.has(a.courseId) ? 0 : 1;
-        const bBoost = boostSet.has(b.courseId) ? 0 : 1;
+        const aBoost = isBoostedOnDay(a.courseId, key) ? 0 : 1;
+        const bBoost = isBoostedOnDay(b.courseId, key) ? 0 : 1;
         if (aBoost !== bBoost) return aBoost - bBoost;
         const aScore = a.topic.lastRecallScore ?? 2;
         const bScore = b.topic.lastRecallScore ?? 2;
@@ -563,7 +576,7 @@ export function generatePlan(input: PlanInput): StudySession[] {
         const cap =
           urgentCourseIdsToday.size >= 3 && dayMaxBlocks <= MAX_BLOCKS_PER_DAY
             ? 2
-            : boostSet.has(courseId)
+            : isBoostedOnDay(courseId, key)
               ? Math.min(dayMaxBlocks, balancedShare + 1)
               : balancedShare;
         return count < cap;
@@ -572,7 +585,7 @@ export function generatePlan(input: PlanInput): StudySession[] {
         dayMaxBlocks > MAX_BLOCKS_PER_DAY
           ? Math.max(MAX_BLOCKS_PER_COURSE, Math.ceil(dayMaxBlocks / Math.max(1, eligibleCoursesToday.length)))
           : MAX_BLOCKS_PER_COURSE;
-      const maxForCourse = boostSet.has(courseId) ? Math.min(dayMaxBlocks, baseCourseCap + 1) : baseCourseCap;
+      const maxForCourse = isBoostedOnDay(courseId, key) ? Math.min(dayMaxBlocks, baseCourseCap + 1) : baseCourseCap;
       return count < maxForCourse;
     };
 
@@ -665,7 +678,7 @@ export function generatePlan(input: PlanInput): StudySession[] {
           postClassHardCourseSet.has(it.courseId) ||
           examAnxiousCourseSet.has(it.courseId);
         const difficultyFactor = isDifficult ? 1.35 : 1.0;
-        const boostFactor = boostSet.has(it.courseId) ? 1.5 : 1.0;
+        const boostFactor = isBoostedOnDay(it.courseId, key) ? 1.5 : 1.0;
 
         let modeFactor = 1.0;
         if (strictSingleTestMode) {
@@ -773,7 +786,7 @@ export function generatePlan(input: PlanInput): StudySession[] {
           : 'Revisão para teste'
         : postClassFlagged
           ? 'Reforçar dúvidas'
-          : boostSet.has(best.item.courseId)
+          : isBoostedOnDay(best.item.courseId, key)
             ? 'Reforço escolhido'
             : lowConfidence
               ? 'Prática guiada'
@@ -904,7 +917,7 @@ export function generatePlan(input: PlanInput): StudySession[] {
             postClassHardCourseSet.has(c.id)
               ? 1.4
               : 1.0;
-          const chosenBoost = boostSet.has(c.id) ? 1.5 : 1.0;
+          const chosenBoost = isBoostedOnDay(c.id, key) ? 1.5 : 1.0;
           const loadPenalty = 1 + (starterMinutesByCourse.get(c.id) ?? 0) / 60;
           const topicBonus = topic
             ? (1.2 - topic.confidence * 0.1) * (isTopicHighlightedByCheckIn(topic.title, topic.id) ? 1.25 : 1)
@@ -944,7 +957,7 @@ export function generatePlan(input: PlanInput): StudySession[] {
             starterFocus ||
             (postClassHardCourseSet.has(picked.course.id)
               ? 'Reforçar dúvidas'
-              : boostSet.has(picked.course.id)
+              : isBoostedOnDay(picked.course.id, key)
                 ? 'Prática guiada'
                 : 'Consolidação'),
           reason: starterBriefing

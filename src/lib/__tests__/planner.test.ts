@@ -146,6 +146,50 @@ describe('planner.generatePlan', () => {
     expect(sessions.filter((s) => s.courseId === 'c1')).toEqual([]);
   });
 
+  it('nunca marca em dias desligados e respeita a hora do teste (acaba 30 min antes e outras cadeiras não ocupam a hora da prova)', () => {
+    const secondCourse: Course = {
+      ...baseCourse,
+      id: 'c2',
+      code: 'AL',
+      name: 'Álgebra Linear',
+      shortName: 'AL',
+    };
+    const assessments: Assessment[] = [
+      {
+        id: 'a-sat',
+        courseId: 'c1',
+        kind: 'teste',
+        title: 'Teste Sábado',
+        date: '2026-11-21T14:00:00',
+        weight: 50,
+        topicIds: ['t1', 't2'],
+        source: 'local',
+      },
+    ];
+    // 2026-11-18 quarta (3, a 3 dias do teste) desligada; quinta (4), sexta (5) e sábado (6) ligadas
+    const sessions = generatePlan({
+      courses: [baseCourse, secondCourse],
+      assessments,
+      classes: [],
+      events: [],
+      settings: { ...baseSettings, studyDays: [4, 5, 6], dailyStudyMinutes: 300 },
+      from: '2026-11-18',
+      nowMinutes: 8 * 60,
+      days: 5,
+    });
+    expect(sessions.some((s) => s.date === '2026-11-18')).toBe(false);
+    for (const s of sessions.filter((x) => x.date === '2026-11-21')) {
+      const [h, m] = (s.start ?? '00:00').split(':').map(Number);
+      const startMin = h * 60 + m;
+      if (s.courseId === 'c1') {
+        expect(startMin + s.minutes).toBeLessThanOrEqual(13 * 60 + 30);
+      } else {
+        const overlaps = startMin < 16 * 60 && startMin + s.minutes > 13 * 60 + 30;
+        expect(overlaps).toBe(false);
+      }
+    }
+  });
+
   it('aplica foco personalizado do Diário do Uni (ex.: Refazer testes antigos) nos blocos do teste', () => {
     const assessments: Assessment[] = [
       {

@@ -19,6 +19,7 @@ import type {
   WeekdayAvailability,
   WeeklyCheckIn,
   PlannerCourseNote,
+  PlannerDateOverride,
 } from '../../types';
 
 export interface PlanInput {
@@ -58,6 +59,8 @@ export interface PlanInput {
   boostCourseIds?: ID[];
   /** Cadeiras pausadas/excluídas temporariamente nesta geração. */
   pausedCourseIds?: ID[];
+  /** Data limite (yyyy-MM-dd) para reforço/pausa por cadeira. */
+  courseModeUntil?: Record<ID, string>;
   /** Em Modo Teste único (> 2 dias), se verdadeiro concentra 100% na prova sem reservar bloco para outras cadeiras. */
   exclusiveTestFocus?: boolean;
   /** Disponibilidade individual por dia da semana ("0" = dom … "6" = sáb). */
@@ -71,7 +74,8 @@ export interface PlanInput {
   /** @deprecated Foco por cadeira sem validade; usar `courseNotes`. */
   briefingCourseFocus?: Record<string, string>;
   /** Nota de foco por cadeira com validade (só aparece nos dias da janela). */
-  courseNotes?: Record<ID, PlannerCourseNote>;
+  courseNotes?: Record<ID, PlannerCourseNote>;  /** Exceções pontuais por data (yyyy-MM-dd). */
+  dateOverrides?: Record<string, PlannerDateOverride>;
 }
 
 export interface CourseMinutes {

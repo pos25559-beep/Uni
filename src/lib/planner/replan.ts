@@ -108,12 +108,14 @@ export function buildPlanInput(
     strategy: prefs.strategy,
     boostCourseIds: prefs.boostCourseIds,
     pausedCourseIds: prefs.pausedCourseIds,
+    courseModeUntil: prefs.courseModeUntil,
     exclusiveTestFocus: prefs.exclusiveTestFocus,
     weekdaySchedule: prefs.weekdaySchedule,
     fillClassGaps: prefs.fillClassGaps,
     preExamMarathon: prefs.preExamMarathon,
     contentMix: prefs.contentMix,
     courseNotes: prefs.courseNotes,
+    dateOverrides: prefs.dateOverrides,
     // Notas antigas sem validade só contam enquanto não houver notas novas.
     briefingCourseFocus: prefs.courseNotes ? undefined : prefs.briefingCourseFocus,
   };

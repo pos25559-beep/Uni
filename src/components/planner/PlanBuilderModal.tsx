@@ -12,7 +12,7 @@ import {
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { format, parseISO } from 'date-fns';
-import { refinePlanBriefingWithAi } from '../../integrations/gemini';
+import { extractPlanIntentWithAi } from '../../integrations/gemini';
 import { resolveDateFnsLocale } from '../../lib/grading';
 import { findFirstFreeSlotOnDate, generatePlan } from '../../lib/planner';
 import {
@@ -306,11 +306,41 @@ export default function PlanBuilderModal({
   const handleRefineWithAi = async () => {
     setIsRefiningAi(true);
     try {
-      const refined = await refinePlanBriefingWithAi({
+      const items = await extractPlanIntentWithAi({
         text: briefingText,
         courses,
+        assessments,
+        today,
         lang: i18n.language,
       });
+      const boostIds = new Set(deterministicParsed.boostCourseIds);
+      const pauseIds = new Set(deterministicParsed.pausedCourseIds);
+      const focusMap = { ...deterministicParsed.briefingCourseFocus };
+      let nextCatchUp = deterministicParsed.midSemesterCatchUp;
+      for (const it of items) {
+        if (it.kind === 'course_mode') {
+          if (it.mode === 'boost') {
+            boostIds.add(it.courseId);
+            pauseIds.delete(it.courseId);
+          } else {
+            pauseIds.add(it.courseId);
+            boostIds.delete(it.courseId);
+          }
+        } else if (it.kind === 'course_note') {
+          focusMap[it.courseId] = it.text;
+        } else if (it.kind === 'strategy' && it.strategy === 'catch_up') {
+          nextCatchUp = true;
+        } else if (it.kind === 'content_mix') {
+          setContentMix(it.mix);
+        }
+      }
+      const refined: ParsedPlannerBriefing = {
+        ...deterministicParsed,
+        midSemesterCatchUp: nextCatchUp,
+        boostCourseIds: [...boostIds],
+        pausedCourseIds: [...pauseIds],
+        briefingCourseFocus: focusMap,
+      };
       setParsedAiOverride(refined);
       applyParsedToBuilderState(refined, disabledInsightIds);
       showToast(t('builder.briefing.aiRefinedToast'), 'ok');

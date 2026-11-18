@@ -165,7 +165,7 @@ describe('só o motor gera planos', () => {
     const root = join(__dirname, '..', '..');
     const offenders: string[] = [];
     // PlanBuilderModal: só pré-visualização; sai na fase D (Preferências do plano).
-    const allowed = ['lib/planner/', 'lib/planner.ts', 'lib/studyBriefingPlan.ts', '__tests__', 'PlanBuilderModal.tsx'];
+    const allowed = ['lib/planner/', 'lib/planner.ts', '__tests__', 'PlanBuilderModal.tsx'];
     const walk = (dir: string) => {
       for (const name of readdirSync(dir)) {
         const full = join(dir, name);

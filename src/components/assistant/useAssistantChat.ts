@@ -245,12 +245,14 @@ export function useAssistantChat({
     restoredConvIdRef.current = currentConv.id;
 
     if (currentConv.courseId) {
-      setActiveCourseId(currentConv.courseId);
+      queueMicrotask(() => setActiveCourseId(currentConv.courseId!));
     }
     if (Array.isArray(currentConv.materialIds) && currentConv.materialIds.length > 0) {
-      setSelectedMaterialIds((prev) => {
-        const merged = [...new Set([...currentConv.materialIds!, ...prev])];
-        return merged;
+      queueMicrotask(() => {
+        setSelectedMaterialIds((prev) => {
+          const merged = [...new Set([...currentConv.materialIds!, ...prev])];
+          return merged;
+        });
       });
     }
   }, [currentConv, setActiveCourseId]);

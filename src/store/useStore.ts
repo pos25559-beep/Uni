@@ -16,6 +16,7 @@ import {
   isRemoteSyncing,
 } from '../lib/firestoreSync';
 import { computeReplan, isReplaceable, type ReplanReason } from '../lib/planner/replan';
+import { applyPlanIntent, type IntentItem } from '../lib/planner/intent';
 import { notifyPlanReplanned, recordPlanUndo, takePlanUndo } from './planUndo';
 import { migrateStoreState, rehydrateStoreState, sanitizeMaterials } from '../lib/storeMigration';
 import { reconcileAvailabilityChanges } from '../lib/planner/availability';
@@ -90,6 +91,11 @@ export interface AppState extends Collections {
    * Mostra «Plano atualizado · Desfazer» (exceto `silent`). Devolve se o plano mudou.
    */
   replan: (reason: ReplanReason, opts?: ReplanOptions) => boolean;
+  /**
+   * «Como está a tua semana?»: aplica a intenção (regras guardadas nas preferências e estado de
+   * tópicos) e recalcula o plano. Tudo conta como um só Desfazer.
+   */
+  applyBriefing: (items: IntentItem[], text: string) => boolean;
   /** Desfaz o último recálculo (sessões e, se mudaram, preferências e tópicos). */
   undoLastReplan: (token?: number) => boolean;
   /** @deprecated Usar `replan`. Mantido para chamadas antigas. */
@@ -241,6 +247,24 @@ export const useStore = create<AppState>()(
         });
         notifyPlanReplanned(token, reason, Boolean(opts.silent));
         return true;
+      },
+      applyBriefing: (items, text) => {
+        const state = get();
+        const prevPrefs = state.settings.plannerPrefs;
+        const prevCourses = state.courses;
+        const { prefs, topicUpdates } = applyPlanIntent(prevPrefs, items);
+        if (topicUpdates.length > 0) get().batchUpdateTopicStates(topicUpdates);
+        get().updateSettings(
+          {
+            plannerPrefs: {
+              ...prefs,
+              briefingNote: text.trim().slice(0, 1200),
+              briefingAppliedAt: new Date().toISOString(),
+            },
+          },
+          { replan: false },
+        );
+        return get().replan('briefing', { force: true, prevPrefs, prevCourses });
       },
       undoLastReplan: (token) => {
         const snap = takePlanUndo(token);

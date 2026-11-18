@@ -1,4 +1,66 @@
 {
+  "weekCheck": {
+    "title": "¿Cómo va tu semana?",
+    "hintEmpty": "Cuéntale a Uni qué cambia esta semana y el plan se ajusta.",
+    "hintLast": "Última petición: «{{text}}»",
+    "open": "Contarle a Uni",
+    "close": "Cerrar",
+    "placeholder": "Ej.: este viernes no puedo; examen de TEP el lunes, quiero reforzar hasta entonces.",
+    "inputAria": "Qué cambia en tu semana",
+    "read": "Leer",
+    "reading": "Leyendo…",
+    "understood": "Uni ha entendido",
+    "understoodHint": "Desactiva lo que no quieras. Nada cambia hasta que lo apliques.",
+    "nothing": "No encontré reglas en este texto. Prueba a decir días, horas o asignaturas.",
+    "simpleNoConsent": "Lectura simple, sin IA. Activa a Uni en Ajustes para entender peticiones más libres.",
+    "simpleAiFailed": "Uni no respondió ahora, así que usé la lectura simple.",
+    "apply": "Aplicar al plan",
+    "edit": "Editar texto",
+    "cancel": "Cancelar",
+    "applied_one": "{{count}} regla aplicada. El plan ya se recalculó.",
+    "applied_other": "{{count}} reglas aplicadas. El plan ya se recalculó.",
+    "change": "Cambiar",
+    "everyWeek": "todas las semanas",
+    "until": "hasta el {{date}}",
+    "onlyOn": "solo {{date}}",
+    "range": "del {{from}} al {{until}}",
+    "item": {
+      "boost": "Reforzar {{course}}",
+      "pause": "Pausar {{course}}",
+      "note": "{{course}}: {{text}}",
+      "dayOff": "{{day}}: sin estudio",
+      "dayMinutes": "{{day}}: {{time}} de estudio",
+      "dayWindow": "{{day}}: estudiar por la {{period}}",
+      "dayBlocked": "{{day}}: sin estudio por la {{period}}",
+      "marathon": "Recta final: hasta {{time}} al día, {{days}} días antes de los exámenes",
+      "contentMix": "Enfoque: {{mix}}",
+      "topic": "{{topic}}: {{status}}"
+    },
+    "mix": {
+      "balanced": "Equilibrar teoría y práctica",
+      "theory_first": "Más teoría primero",
+      "practice_first": "Más práctica y ejercicios"
+    },
+    "strategy": {
+      "catch_up": "Recuperar el retraso primero",
+      "exams_first": "Exámenes primero",
+      "srs_focus": "Más repasos",
+      "balanced": "Plan equilibrado"
+    },
+    "topicStatus": {
+      "done": "ya lo dominas",
+      "review": "para repasar",
+      "learning": "a medias",
+      "todo": "por empezar"
+    },
+    "period": {
+      "morning": "mañana",
+      "afternoon": "tarde",
+      "evening": "noche",
+      "all_day": "todo el día",
+      "auto": "cualquier hora"
+    }
+  },
   "replan": {
       "updated": "Plan actualizado",
       "undo": "Deshacer",

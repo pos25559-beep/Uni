@@ -66,7 +66,4 @@ export {
   type UniRecallPromptResult,
 } from './gemini/practice';
 
-export {
-  generateWeeklyPlanFromBriefing,
-  refinePlanBriefingWithAi,
-} from './gemini/plannerAi';
+export { extractPlanIntentWithAi } from './gemini/plannerAi';

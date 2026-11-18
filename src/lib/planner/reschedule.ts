@@ -9,6 +9,7 @@ import type {
   StudySession,
   WeekdayAvailability,
   ID,
+  PlannerDateOverride,
 } from '../../types';
 import {
   MIN_DAY_BUDGET,
@@ -58,6 +59,8 @@ export function rescheduleOverdueSessions(args: {
   preExamMarathon?: PreExamMarathonConfig;
   assessments?: Assessment[];
   pausedCourseIds?: ID[];
+  /** Exceções pontuais por data («esta sexta não posso»). */
+  dateOverrides?: Record<string, PlannerDateOverride>;
 }): { updated: StudySession[]; unscheduledCount: number } {
   const {
     overdue,
@@ -73,6 +76,7 @@ export function rescheduleOverdueSessions(args: {
     preExamMarathon,
     assessments = [],
     pausedCourseIds = [],
+    dateOverrides,
   } = args;
 
   if (overdue.length === 0) return { updated: [], unscheduledCount: 0 };
@@ -116,6 +120,7 @@ export function rescheduleOverdueSessions(args: {
       weekdaySchedule,
       preferredPeriod,
       preExamMarathon,
+      dateOverrides,
     });
     if (!dayProfile.enabled) continue;
 

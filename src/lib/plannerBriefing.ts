@@ -1,9 +1,9 @@
-import { weekdayShort } from './colors';
 import { detectUpToBoundary, extractOrdinalNumber, extractStudyFocusPhrase } from './uniCheckInNlu';
 import type {
   Course,
   ID,
   Material,
+  PlannerContentMix,
   PlannerDayPeriod,
   PlannerPreferences,
   PlannerWindowMode,
@@ -111,6 +111,7 @@ export function applyWeekdayPreset(preset: WeekdayPresetId): Record<string, Week
 export type BriefingInsightKind =
   | 'marathon'
   | 'mid_semester'
+  | 'content_mix'
   | 'availability'
   | 'topic_mastered'
   | 'course_boost'
@@ -120,7 +121,6 @@ export type BriefingInsightKind =
 export interface ParsedBriefingInsight {
   id: string;
   kind: BriefingInsightKind;
-  label: string;
   courseId?: ID;
   weekday?: number;
   blockedPeriod?: 'morning' | 'afternoon' | 'evening';
@@ -129,19 +129,24 @@ export interface ParsedBriefingInsight {
   setMinutes?: number;
   topicUpdates?: Array<{ courseId: ID; topicId: ID; status: Topic['status']; confidence: Topic['confidence'] }>;
   focusNote?: string;
+  clauseText?: string;
   marathon?: PreExamMarathonConfig;
   activateCatchUp?: boolean;
+  contentMix?: PlannerContentMix;
 }
 
 export interface ParsedPlannerBriefing {
   rawText: string;
   midSemesterCatchUp: boolean;
   suggestedMarathon?: PreExamMarathonConfig;
+  contentMix?: PlannerContentMix;
   insights: ParsedBriefingInsight[];
   topicUpdates: Array<{ courseId: ID; topicId: ID; status: Topic['status']; confidence: Topic['confidence'] }>;
   boostCourseIds: ID[];
   pausedCourseIds: ID[];
   briefingCourseFocus: Record<string, string>;
+  /** Texto da frase que mencionou reforço/pausa da cadeira, para resolver validade («até quarta»). */
+  courseModeClauses?: Record<ID, string>;
   weekdayUpdates: Array<{
     weekday: number;
     enabled?: boolean;
@@ -189,14 +194,6 @@ function matchCourseInClause(normClause: string, courses: Course[]): Course[] {
   return matched;
 }
 
-function periodLabel(p: PlannerWindowMode): string {
-  if (p === 'morning') return 'manhã';
-  if (p === 'afternoon') return 'tarde';
-  if (p === 'evening') return 'noite';
-  if (p === 'all_day') return 'dia todo';
-  return 'automático';
-}
-
 /**
  * Analisa deterministicamente ($0, instantâneo, offline) o texto livre onde o estudante explica
  * a sua realidade ao Uni (entrada a meio do semestre, disponibilidade semanal, maratona pré-teste e domínio prévio).
@@ -226,6 +223,7 @@ export function parsePlannerBriefing(args: {
   const boostCourseSet = new Set<ID>();
   const pausedCourseSet = new Set<ID>();
   const briefingCourseFocus: Record<string, string> = {};
+  const courseModeClauses: Record<ID, string> = {};
   const weekdayUpdates: ParsedPlannerBriefing['weekdayUpdates'] = [];
 
   // 1) Meio do semestre / atraso acumulado
@@ -237,8 +235,26 @@ export function parsePlannerBriefing(args: {
     insights.push({
       id: 'mid-semester',
       kind: 'mid_semester',
-      label: 'Ponto de partida a meio do semestre · priorizar recuperação e lacunas reais',
       activateCatchUp: true,
+    });
+  }
+
+  // 1b) Equilíbrio teoria / prática
+  const wantsPractice =
+    /\b(?:mais\s+pratica|so\s+pratica|pratica\s+primeiro|fazer\s+exercicios|so\s+exercicios|testes?\s+antigos?|practice\s+first|more\s+practice)\b/i.test(
+      normAll,
+    );
+  const wantsTheory =
+    /\b(?:mais\s+teoria|so\s+teoria|teoria\s+primeiro|rever\s+bases|entender\s+conceitos|theory\s+first|more\s+theory)\b/i.test(
+      normAll,
+    );
+  const contentMix: PlannerContentMix | undefined =
+    wantsPractice && !wantsTheory ? 'practice_first' : wantsTheory && !wantsPractice ? 'theory_first' : undefined;
+  if (contentMix) {
+    insights.push({
+      id: 'content-mix',
+      kind: 'content_mix',
+      contentMix,
     });
   }
 
@@ -265,7 +281,6 @@ export function parsePlannerBriefing(args: {
     insights.push({
       id: 'marathon-pre-exam',
       kind: 'marathon',
-      label: `Maratona Pré-Teste ativa: ${Math.round(dailyMinutes / 60)}h/dia nos últimos ${daysBefore} dia(s) antes de provas`,
       marathon: suggestedMarathon,
     });
   }
@@ -273,7 +288,7 @@ export function parsePlannerBriefing(args: {
   // Separa em frases/orações para interpretações locais mais precisas
   const clauses = rawText
     .split(
-      /(?<=[.!?\n;])|,\s+(?=(?:mas|e|na|no|ao|aos|à|as|quarta|quinta|sexta|sabado|sábado|domingo|segunda|terca|terça|já|ja|em|para)\b)|\s+(?:e|mas|pero|and|but)\s+(?=(?:ao|aos|à|às|na|no|nos|nas|segunda|terca|terça|quarta|quinta|sexta|sabado|sábado|domingo|fins?\s+de\s+semana|fds|dias?\s+uteis|já|ja|quero)\b)/i,
+      /(?<=[.!?\n;])|,\s+(?=(?:mas|e|na|no|ao|aos|à|as|quarta|quinta|sexta|sabado|sábado|domingo|segunda|terca|terça|já|ja|em|para|refor[cç]|paus|focar|quero|precis|tenho|mais|só|so)\b)|\s+(?:e|mas|pero|and|but)\s+(?=(?:ao|aos|à|às|na|no|nos|nas|segunda|terca|terça|quarta|quinta|sexta|sabado|sábado|domingo|fins?\s+de\s+semana|fds|dias?\s+uteis|já|ja|quero)\b)/i,
     )
     .map((c) => cleanSpaces(c))
     .filter((c) => c.length >= 3);
@@ -281,9 +296,15 @@ export function parsePlannerBriefing(args: {
   for (let idx = 0; idx < clauses.length; idx++) {
     const clause = clauses[idx]!;
     const nc = stripDiacritics(clause);
+    // Dias precedidos de «até/hasta/until» servem para definir validade («reforçar CDI até quarta»),
+    // nunca disponibilidade desse dia da semana.
+    const ncForWeekdays = nc.replace(
+      /\b(?:ate|hasta|until)\s+(?:a\s+|o\s+|el\s+)?(?:segunda|terca|quarta|quinta|sexta|sabado|domingo|monday|tuesday|wednesday|thursday|friday|saturday|sunday)(?:-feira)?\b/g,
+      '',
+    );
 
     // 3) Disponibilidade por dia da semana
-    const matchedWeekdays = WEEKDAY_PATTERNS.filter((p) => p.re.test(nc)).map((p) => p.weekday);
+    const matchedWeekdays = WEEKDAY_PATTERNS.filter((p) => p.re.test(ncForWeekdays)).map((p) => p.weekday);
     if (WEEKEND_RE.test(nc)) {
       if (!matchedWeekdays.includes(6)) matchedWeekdays.push(6);
       if (!matchedWeekdays.includes(0)) matchedWeekdays.push(0);
@@ -314,7 +335,6 @@ export function parsePlannerBriefing(args: {
           : undefined;
 
       for (const wd of matchedWeekdays) {
-        const dayName = weekdayShort[wd] ?? String(wd);
         if (isBlockedClause && !hasMorning && !hasAfternoon && !hasEvening) {
           weekdayUpdates.push({ weekday: wd, enabled: false, minutes: 0 });
           insights.push({
@@ -323,7 +343,7 @@ export function parsePlannerBriefing(args: {
             weekday: wd,
             setEnabled: false,
             setMinutes: 0,
-            label: `${dayName}: marcado como dia sem estudo`,
+            clauseText: clause,
           });
         } else if (isBlockedClause && (hasMorning || hasAfternoon || hasEvening)) {
           const blockedPeriod: 'morning' | 'afternoon' | 'evening' = hasMorning
@@ -347,7 +367,7 @@ export function parsePlannerBriefing(args: {
             blockedPeriod,
             setWindow: fallbackWindow,
             setEnabled: true,
-            label: `${dayName}: evitar ${periodLabel(blockedPeriod)} (mover para ${periodLabel(fallbackWindow)})`,
+            clauseText: clause,
           });
         } else if (hasAllDay || parsedMin || hasMorning || hasAfternoon || hasEvening) {
           const setWindow: PlannerWindowMode = hasAllDay
@@ -373,7 +393,7 @@ export function parsePlannerBriefing(args: {
             setEnabled: true,
             setWindow,
             ...(defaultMin ? { setMinutes: defaultMin } : {}),
-            label: `${dayName}: janela ${periodLabel(setWindow)}${defaultMin ? ` (${Math.round((defaultMin / 60) * 10) / 10}h)` : ''}`,
+            clauseText: clause,
           });
         }
       }
@@ -400,11 +420,12 @@ export function parsePlannerBriefing(args: {
     for (const course of mentionedCourses) {
       if (saysPause && !saysBoostOrTrouble) {
         pausedCourseSet.add(course.id);
+        courseModeClauses[course.id] = clause;
         insights.push({
           id: `pause-${course.id}-${idx}`,
           kind: 'course_pause',
           courseId: course.id,
-          label: `Pausar temporariamente ${course.shortName}`,
+          clauseText: clause,
         });
         continue;
       }
@@ -443,18 +464,18 @@ export function parsePlannerBriefing(args: {
             kind: 'topic_mastered',
             courseId: course.id,
             topicUpdates: picked,
-            label: `${course.shortName}: marcar ${picked.length} tópico(s) como já dominados`,
           });
         }
       }
 
       if (saysBoostOrTrouble) {
         boostCourseSet.add(course.id);
+        courseModeClauses[course.id] = clause;
         insights.push({
           id: `boost-${course.id}-${idx}`,
           kind: 'course_boost',
           courseId: course.id,
-          label: `Dar prioridade extra a ${course.shortName}`,
+          clauseText: clause,
         });
       }
 
@@ -465,7 +486,7 @@ export function parsePlannerBriefing(args: {
           kind: 'course_focus',
           courseId: course.id,
           focusNote: focusPhrase,
-          label: `${course.shortName}: focar em «${focusPhrase}»`,
+          clauseText: clause,
         });
       }
     }
@@ -475,11 +496,13 @@ export function parsePlannerBriefing(args: {
     rawText,
     midSemesterCatchUp,
     ...(suggestedMarathon ? { suggestedMarathon } : {}),
+    ...(contentMix ? { contentMix } : {}),
     insights,
     topicUpdates,
     boostCourseIds: [...boostCourseSet],
     pausedCourseIds: [...pausedCourseSet],
     briefingCourseFocus,
+    ...(Object.keys(courseModeClauses).length > 0 ? { courseModeClauses } : {}),
     weekdayUpdates,
   };
 }

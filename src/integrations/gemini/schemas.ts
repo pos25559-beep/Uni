@@ -302,45 +302,62 @@ export const PODCAST_SCRIPT_SCHEMA: SchemaRequest = {
   required: ['title', 'lines'],
 };
 
-export const WEEKLY_BRIEFING_PLAN_SCHEMA: SchemaRequest = {
+/** Intenção do pedido «Como está a tua semana?»: regras, nunca blocos. Ver src/lib/planner/intent.ts. */
+export const PLAN_INTENT_SCHEMA: SchemaRequest = {
   type: SchemaType.OBJECT,
   properties: {
-    strategySummary: { type: SchemaType.STRING },
-    focusCourseIds: {
-      type: SchemaType.ARRAY,
-      items: { type: SchemaType.STRING },
-    },
-    suggestedFollowUps: {
-      type: SchemaType.ARRAY,
-      items: { type: SchemaType.STRING },
-    },
-    blocks: {
+    items: {
       type: SchemaType.ARRAY,
       items: {
         type: SchemaType.OBJECT,
         properties: {
-          dayOffset: { type: SchemaType.INTEGER },
-          courseId: { type: SchemaType.STRING },
-          courseShortName: { type: SchemaType.STRING, nullable: true },
+          kind: {
+            type: SchemaType.STRING,
+            format: 'enum',
+            enum: [
+              'course_mode',
+              'course_note',
+              'weekday_rule',
+              'date_override',
+              'strategy',
+              'content_mix',
+              'topic_hint',
+            ],
+          },
+          courseId: { type: SchemaType.STRING, nullable: true },
           topicId: { type: SchemaType.STRING, nullable: true },
-          topicTitle: { type: SchemaType.STRING, nullable: true },
+          mode: { type: SchemaType.STRING, format: 'enum', enum: ['boost', 'pause'], nullable: true },
+          text: { type: SchemaType.STRING, nullable: true },
+          from: { type: SchemaType.STRING, nullable: true },
+          until: { type: SchemaType.STRING, nullable: true },
+          date: { type: SchemaType.STRING, nullable: true },
+          weekday: { type: SchemaType.INTEGER, nullable: true },
+          enabled: { type: SchemaType.BOOLEAN, nullable: true },
+          minutes: { type: SchemaType.INTEGER, nullable: true },
           window: {
             type: SchemaType.STRING,
             format: 'enum',
             enum: ['auto', 'morning', 'afternoon', 'evening', 'all_day'],
+            nullable: true,
           },
-          minutes: { type: SchemaType.INTEGER },
-          focusKind: {
+          strategy: {
             type: SchemaType.STRING,
             format: 'enum',
-            enum: ['theory', 'practice', 'review', 'exam_prep'],
+            enum: ['balanced', 'exams_first', 'srs_focus', 'catch_up'],
+            nullable: true,
           },
-          reasonNote: { type: SchemaType.STRING },
+          contentMix: {
+            type: SchemaType.STRING,
+            format: 'enum',
+            enum: ['balanced', 'theory_first', 'practice_first'],
+            nullable: true,
+          },
+          status: { type: SchemaType.STRING, format: 'enum', enum: ['todo', 'learning', 'review', 'done'], nullable: true },
+          confidence: { type: SchemaType.INTEGER, nullable: true },
         },
-        required: ['dayOffset', 'courseId', 'window', 'minutes', 'focusKind', 'reasonNote'],
+        required: ['kind'],
       },
     },
   },
-  required: ['strategySummary', 'focusCourseIds', 'suggestedFollowUps', 'blocks'],
+  required: ['items'],
 };
-

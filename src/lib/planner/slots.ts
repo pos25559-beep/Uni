@@ -13,6 +13,7 @@ import type {
   StudySession,
   Topic,
   WeekdayAvailability,
+  PlannerDateOverride,
 } from '../../types';
 import { resolveWeekdayAvailability } from '../plannerBriefing';
 import { sessionMinutes } from '../selectors';
@@ -179,6 +180,8 @@ export function resolveDayPlanProfile(args: {
   weekdaySchedule?: Record<string, WeekdayAvailability>;
   preferredPeriod?: PlannerDayPeriod;
   preExamMarathon?: PreExamMarathonConfig;
+  /** Exceções pontuais por data («esta sexta não posso»), por cima do horário semanal. */
+  dateOverrides?: Record<string, PlannerDateOverride>;
 }): DayPlanProfile {
   const {
     dateKey,
@@ -189,10 +192,24 @@ export function resolveDayPlanProfile(args: {
     weekdaySchedule,
     preferredPeriod = 'auto',
     preExamMarathon,
+    dateOverrides,
   } = args;
 
   const pausedSet = new Set(pausedCourseIds);
-  const avail = resolveWeekdayAvailability(weekday, settings, weekdaySchedule, preferredPeriod);
+  const weekly = resolveWeekdayAvailability(weekday, settings, weekdaySchedule, preferredPeriod);
+  const override = dateOverrides?.[dateKey];
+  // «Não posso neste dia» é absoluto: nem maratona nem teste próximo o voltam a ligar.
+  if (override?.enabled === false) {
+    return { enabled: false, baseBudget: 0, windowMode: weekly.window, blockedPeriods: [], isMarathonDay: false };
+  }
+  const avail = override
+    ? {
+        ...weekly,
+        ...(override.enabled !== undefined ? { enabled: override.enabled } : {}),
+        ...(override.minutes !== undefined ? { minutes: override.minutes } : {}),
+        ...(override.window !== undefined ? { window: override.window } : {}),
+      }
+    : weekly;
   const day = parseDay(dateKey);
 
   let minExamDaysLeft: number | undefined;

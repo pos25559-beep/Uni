@@ -25,7 +25,7 @@ import { celebrateStationery } from '../lib/motionTokens';
 import CourseDistribution from '../components/planner/CourseDistribution';
 import DayColumn from '../components/planner/DayColumn';
 import FocusResumeCard from '../components/planner/FocusResumeCard';
-import StudyBriefingCard from '../components/planner/StudyBriefingCard';
+import WeekCheckCard from '../components/planner/WeekCheckCard';
 
 const WeeklyTutorModal = lazy(() => import('../components/assistant/WeeklyTutorModal'));
 const ActiveReviewModal = lazy(() => import('../components/practice/ActiveReviewModal'));
@@ -280,12 +280,12 @@ export default function Planner() {
     void hapticTap();
     const wd = parseISO(targetDate).getDay();
     const avail = plannerPrefs?.weekdaySchedule?.[String(wd)];
-    const now = new Date();
+    const currentNow = new Date();
     const slot = findFirstFreeSlotOnDate({
       dateKey: targetDate,
       minutes: session.minutes,
       preferredPeriod: avail?.window ?? plannerPrefs?.preferredPeriod ?? 'auto',
-      nowMinutes: targetDate === today ? now.getHours() * 60 + now.getMinutes() : undefined,
+      nowMinutes: targetDate === today ? currentNow.getHours() * 60 + currentNow.getMinutes() : undefined,
       classes,
       events,
       existingSessions: sessions.filter((x) => x.id !== session.id),
@@ -309,30 +309,6 @@ export default function Planner() {
   };
 
   const onGenerate = () => setBuilderOpen(true);
-
-  const applyBriefingPlan = (briefingSessions: StudySession[], briefingNote: string) => {
-    void hapticTap();
-    const prevPrefs = settings.plannerPrefs;
-    // Transição até ao briefing por intenção: os blocos do briefing ficam fixados e o motor
-    // completa o resto do horizonte à volta deles (antes eram apagados no recálculo seguinte).
-    upsertMany('sessions', briefingSessions.map((x) => ({ ...x, locked: true })));
-    updateSettings({
-      plannerPrefs: {
-        horizonDays: plannerPrefs?.horizonDays ?? 14,
-        preferredPeriod: plannerPrefs?.preferredPeriod ?? 'auto',
-        blockMinutes: plannerPrefs?.blockMinutes ?? 50,
-        strategy: plannerPrefs?.strategy ?? 'balanced',
-        boostCourseIds: plannerPrefs?.boostCourseIds ?? [],
-        pausedCourseIds: plannerPrefs?.pausedCourseIds ?? [],
-        includeOverdue: plannerPrefs?.includeOverdue ?? true,
-        ...(plannerPrefs ?? {}),
-        ...(briefingNote ? { briefingNote } : {}),
-      },
-    }, { replan: false });
-    replan('briefing', { force: true, prevPrefs });
-    celebrateStationery();
-    showToast(t('ui.toastApplied', { count: briefingSessions.length }), 'ok');
-  };
 
   /** Encaixa uma sessão hoje numa hora livre (fixada, para o recálculo não a apagar). */
   const placeToday = (session: StudySession, others: StudySession[]): StudySession | null => {
@@ -539,25 +515,7 @@ export default function Planner() {
 
       <FocusResumeCard />
 
-      {!noPlanInputs && (
-        <StudyBriefingCard
-          courses={courses}
-          assessments={assessments}
-          classes={classes}
-          events={events}
-          materials={materials}
-          sessions={sessions}
-          settings={settings}
-          today={today}
-          difficultCourseIds={academicProfile.difficultCourseIds}
-          weeklyCheckIns={weeklyCheckIns}
-          studyLogs={studyLogs}
-          extraActivities={academicProfile.extraActivities}
-          hasExistingPlan={sessions.length > 0}
-          onApplyPlan={applyBriefingPlan}
-          onOpenStudio={onGenerate}
-        />
-      )}
+      {!noPlanInputs && <WeekCheckCard />}
 
       {sessions.length === 0 ? (
         <EmptyState
