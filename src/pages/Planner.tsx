@@ -234,8 +234,7 @@ export default function Planner() {
     [conscienceReport.opinions, conscienceDismissedIds],
   );
   const conscienceExpanded =
-    conscienceReport.status !== 'empty' &&
-    (conscienceOpenOverride ?? visibleConscienceCount > 0);
+    conscienceReport.status !== 'empty' && Boolean(conscienceOpenOverride);
   const uniAccessory = resolveUniAccessory(
     settings.uniAccessory,
     academicProfile?.degreeName,
