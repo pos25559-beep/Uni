@@ -27,6 +27,7 @@
     "item": {
       "boost": "Reforzar {{course}}",
       "pause": "Pausar {{course}}",
+      "exclusiveFocus": "Foco exclusivo en {{course}}",
       "note": "{{course}}: {{text}}",
       "dayOff": "{{day}}: sin estudio",
       "dayMinutes": "{{day}}: {{time}} de estudio",
@@ -399,6 +400,8 @@
     "course": "Asignatura",
     "topic": "Tema",
     "topicHint": "Opcional. Sin tema, la sesión queda como estudio general de la asignatura.",
+    "nextExamHint": "Próxima prueba: {{title}} (en {{days}} d).",
+    "suggestTopic": "Elegir tema prioritario",
     "general": "Estudio general",
     "date": "Fecha",
     "dateAria": "Fecha de la sesión",
@@ -508,6 +511,57 @@
       "marathonDays": "¿Cuántos días antes?",
       "marathonDaysOption": "{{d}} día(s) antes",
       "marathonLoad": "Carga diaria en maratón"
+    }
+  },
+  "mode": {
+    "label": "Control del plan",
+    "auto": "Automático",
+    "autoHint": "Uni organiza y ajusta los bloques según exámenes, clases y avisos.",
+    "manual": "Manual",
+    "manualHint": "Tú montas los bloques; Uni nunca los toca y actúa como conciencia.",
+    "bannerAuto": "Modo automático · Uni gestiona el plan",
+    "bannerManual": "Modo manual · tus bloques mandan",
+    "switchedManual": "Modo manual activo · Uni solo opina y sugiere",
+    "switchedAuto": "Modo automático activo",
+    "emptyManualHint": "Añade tus bloques libremente o pide a Uni que sugiera un punto de partida.",
+    "suggestWeekBtn": "Sugerir semana con Uni",
+    "suggestWeekHint": "Rellena los huecos libres manteniendo tus bloques fijos"
+  },
+  "conscience": {
+    "title": "Conciencia de Uni",
+    "status": {
+      "aligned": "Tu plan es coherente con exámenes, clases y ritmo.",
+      "empty": "Añade bloques o pide una sugerencia para empezar.",
+      "needsAttention_one": "{{count}} detalle para mejorar esta semana",
+      "needsAttention_other": "{{count}} detalles para mejorar esta semana"
+    },
+    "aiButton": "Segunda opinión",
+    "aiLoading": "Evaluando…",
+    "aiFailed": "No pude pedir la segunda opinión ahora, pero el análisis local sigue activo.",
+    "aiReviewTitle": "Opinión de Uni sobre tu semana",
+    "dismissAria": "Descartar sugerencia",
+    "closeReviewAria": "Cerrar opinión",
+    "opinions": {
+      "pausedCourseActive": "Pediste pausar {{course}}, pero aún tienes {{count}} bloque(s) programado(s).",
+      "exclusiveConflict": "Tienes foco exclusivo en {{course}}, pero aún hay {{count}} bloque(s) de otras asignaturas hasta entonces.",
+      "scheduleClash": "El bloque de {{course}} a las {{time}} coincide con una clase o evento.",
+      "examNoBlocks": "{{course}} ({{title}}) es en {{days}} días y aún no tiene bloques.",
+      "examLowMinutes": "{{course}} ({{title}}) es en {{days}} días y solo tiene {{time}} planificados.",
+      "dayOverBudget": "{{date}} tiene {{plannedTime}} planificados sobre tu presupuesto ({{budgetTime}}).",
+      "srsDueWaiting": "Tienes repaso espaciado pendiente en {{course}} ({{topic}})."
+    },
+    "actions": {
+      "removeSessions": "Quitar pausadas",
+      "keepFocusOnly": "Dejar solo foco",
+      "moveFreeSlot": "Mover a hueco libre",
+      "addStudyBlock": "Añadir bloque",
+      "lightenDay": "Aligerar día",
+      "addQuickReview": "Repasar 25 min"
+    },
+    "toast": {
+      "removed": "Eliminado(s) {{count}} bloque(s) del plan",
+      "moved": "Bloque movido al {{date}} a las {{time}}",
+      "added": "Bloque añadido el {{date}} a las {{time}}"
     }
   }
 }

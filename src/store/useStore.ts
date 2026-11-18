@@ -135,6 +135,8 @@ export const newId = (): ID => crypto.randomUUID();
 export interface ReplanOptions {
   force?: boolean;
   silent?: boolean;
+  /** Permite gerar mesmo quando `plannerMode === 'manual'` (ex.: botão explícito «Sugerir com o Uni»). */
+  allowInManualMode?: boolean;
   /** Preferências antes da mudança que levou a este recálculo (para o Desfazer as repor). */
   prevPrefs?: Settings['plannerPrefs'];
   /** Cadeiras antes da mudança (briefing que mexeu em tópicos). */
@@ -227,6 +229,7 @@ export const useStore = create<AppState>()(
           today: todayStr(),
           nowMinutes: now.getHours() * 60 + now.getMinutes(),
           force: opts.force,
+          allowInManualMode: opts.allowInManualMode,
         });
         const prevSessions = state.sessions;
         const sessionsChanged = result.sessions !== prevSessions && result.changed;

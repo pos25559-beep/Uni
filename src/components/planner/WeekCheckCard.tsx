@@ -59,6 +59,15 @@ export default function WeekCheckCard() {
             : t('weekCheck.everyWeek'),
         };
       }
+      case 'exclusive_focus': {
+        const course = courseMap.get(item.courseId)?.shortName ?? item.courseId;
+        return {
+          label: t('weekCheck.item.exclusiveFocus', { course }),
+          validity: item.until
+            ? t('weekCheck.until', { date: formatShortDate(item.until, dfLocale) })
+            : t('weekCheck.everyWeek'),
+        };
+      }
       case 'course_note': {
         const course = courseMap.get(item.courseId)?.shortName ?? item.courseId;
         return {

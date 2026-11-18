@@ -1,7 +1,7 @@
 import type { Content, GenerationConfig } from 'firebase/ai';
 import { normalizeAppLanguage } from '../../lib/grading';
 import { sanitizeIntentItems, type IntentItem } from '../../lib/planner/intent';
-import type { AppLanguage, Assessment, Course } from '../../types';
+import type { AppLanguage, Assessment, Course, StudySession } from '../../types';
 import {
   callDirectRest,
   resolveGeminiConfig,
@@ -10,7 +10,7 @@ import {
 } from './core';
 import { THINKING_FAST } from './models';
 import { getActiveAppLanguage } from './promptContext';
-import { PLAN_INTENT_SCHEMA } from './schemas';
+import { PLAN_INTENT_SCHEMA, PLAN_REVIEW_SCHEMA } from './schemas';
 
 /**
  * «Como está a tua semana?» com IA: devolve a INTENÇÃO (regras com validade), nunca blocos.
@@ -54,6 +54,7 @@ ${exams || '- (nenhuma)'}
 
 Tipos de regra:
 - course_mode: reforçar (boost) ou pausar (pause) uma cadeira; "until" = último dia (yyyy-MM-dd) se o estudante disser até quando.
+- exclusive_focus: quando o estudante pede para focar SÓ numa cadeira (ex. "só focar em X até ao teste"): courseId e "until" (data do teste ou dia dito).
 - course_note: foco curto (≤ 80 caracteres, na língua do estudante) para uma cadeira, com "from"/"until" (yyyy-MM-dd). Sem datas ditas, até 7 dias.
 - weekday_rule: mudança PERMANENTE de um dia da semana (todas as semanas): enabled, minutes, window.
 - date_override: mudança só numa DATA ("esta sexta não posso", "amanhã só 1 hora"): date (yyyy-MM-dd), enabled, minutes, window.
@@ -85,4 +86,108 @@ Texto do estudante:
   } catch {
     return [];
   }
+}
+
+export interface PlanReviewOpinion {
+  tone: 'warn' | 'tip' | 'good';
+  summary: string;
+  suggestion: string;
+}
+
+export interface PlanAiReview {
+  headline: string;
+  opinions: PlanReviewOpinion[];
+}
+
+/**
+ * «Consciência do Uni»: parecer opcional em leitura simples (nunca altera blocos sozinho)
+ * sobre o plano real montado pelo estudante ou pelo motor.
+ */
+export async function reviewPlanWithAi(args: {
+  today: string;
+  courses: Course[];
+  assessments: Assessment[];
+  sessions: StudySession[];
+  pausedCourseIds?: string[];
+  boostCourseIds?: string[];
+  exclusiveTestFocus?: boolean;
+  lang?: AppLanguage | string;
+  signal?: AbortSignal;
+}): Promise<PlanAiReview> {
+  const { customKey, model } = resolveGeminiConfig();
+  const targetLang = normalizeAppLanguage(args.lang ?? getActiveAppLanguage());
+  const courseMap = new Map(args.courses.map((c) => [c.id, c]));
+
+  const upcomingSessions = args.sessions
+    .filter((s) => !s.done && s.date >= args.today)
+    .sort((a, b) => `${a.date}${a.start ?? ''}`.localeCompare(`${b.date}${b.start ?? ''}`))
+    .slice(0, 24)
+    .map((s) => {
+      const c = courseMap.get(s.courseId);
+      return `- ${s.date} ${s.start ?? '--:--'} | ${s.minutes}m | ${c?.shortName ?? s.courseId}${s.generated === false ? ' [manual]' : ''}`;
+    })
+    .join('\n');
+
+  const upcomingTests = args.assessments
+    .filter((a) => a.grade === undefined && a.date.slice(0, 10) >= args.today)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 10)
+    .map((a) => {
+      const c = courseMap.get(a.courseId);
+      const pendingTopics = (c?.topics ?? []).filter((t) => t.status !== 'done').length;
+      return `- ${a.date.slice(0, 10)} | ${c?.shortName ?? a.courseId}: ${a.title} (peso ${a.weight}%, ${pendingTopics} tópicos por dominar)`;
+    })
+    .join('\n');
+
+  const pausedNames = (args.pausedCourseIds ?? [])
+    .map((id) => courseMap.get(id)?.shortName ?? id)
+    .join(', ');
+  const boostNames = (args.boostCourseIds ?? [])
+    .map((id) => courseMap.get(id)?.shortName ?? id)
+    .join(', ');
+
+  const prompt = `És a «Consciência do Uni» (conselheiro calmo, honesto e prático) para um estudante universitário. Hoje é ${args.today}. Responde sempre em ${targetLang}.
+Avalia o plano atual (sem inventar dados) e dá 1 frase geral ("headline") e 1 a 3 opiniões curtas ("opinions") com diagnóstico + melhoria prática.
+Preferências declaradas:
+- Pausadas: ${pausedNames || 'nenhuma'}
+- Reforçadas: ${boostNames || 'nenhuma'}
+- Foco exclusivo ativo: ${args.exclusiveTestFocus ? 'sim' : 'não'}
+
+Próximos testes:
+${upcomingTests || '- (nenhum)'}
+
+Sessões planeadas nos próximos dias:
+${upcomingSessions || '- (vazio)'}`;
+
+  const contents: Content[] = [{ role: 'user', parts: [{ type: 'text', text: prompt }] }];
+  const generationConfig: GenerationConfig = {
+    temperature: 0.25,
+    maxOutputTokens: 700,
+    responseMimeType: 'application/json',
+    responseSchema: PLAN_REVIEW_SCHEMA,
+    thinkingConfig: THINKING_FAST,
+  };
+
+  const raw = await withQuotaAndFallback('chat', customKey, () =>
+    customKey
+      ? callDirectRest({ key: customKey, model, contents, generationConfig, signal: args.signal })
+      : runNativeGenerate({ model, contents, generationConfig, signal: args.signal }),
+  );
+  const match = /\{[\s\S]*\}/.exec(raw || '{}');
+  const parsed = JSON.parse(match ? match[0] : '{}') as Partial<PlanAiReview>;
+  const opinions = Array.isArray(parsed.opinions)
+    ? parsed.opinions
+        .filter(
+          (o): o is PlanReviewOpinion =>
+            Boolean(o) &&
+            (o.tone === 'warn' || o.tone === 'tip' || o.tone === 'good') &&
+            typeof o.summary === 'string' &&
+            typeof o.suggestion === 'string',
+        )
+        .slice(0, 3)
+    : [];
+  return {
+    headline: typeof parsed.headline === 'string' ? parsed.headline.slice(0, 140) : '',
+    opinions,
+  };
 }

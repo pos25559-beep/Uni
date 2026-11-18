@@ -14,5 +14,11 @@ export {
   resolveDayPlanProfile,
 } from './planner/slots';
 export { analyzeTestMode, planSummary } from './planner/testMode';
+export {
+  analyzePlanConscience,
+  type ConscienceAction,
+  type ConscienceOpinion,
+  type PlanConscienceReport,
+} from './planner/conscience';
 export { generatePlan } from './planner/engine';
 export { rescheduleOverdueSessions } from './planner/reschedule';

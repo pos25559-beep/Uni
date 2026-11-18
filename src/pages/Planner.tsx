@@ -26,6 +26,7 @@ import { celebrateStationery } from '../lib/motionTokens';
 import CourseDistribution from '../components/planner/CourseDistribution';
 import DayColumn from '../components/planner/DayColumn';
 import FocusResumeCard from '../components/planner/FocusResumeCard';
+import PlanConscienceCard from '../components/planner/PlanConscienceCard';
 import WeekCheckCard from '../components/planner/WeekCheckCard';
 
 const WeeklyTutorModal = lazy(() => import('../components/assistant/WeeklyTutorModal'));
@@ -53,6 +54,7 @@ import { useHubUiStore } from '../store/useHubUiStore';
 import { useStore } from '../store/useStore';
 import { consumeSilentPlanAdjust } from '../store/planUndo';
 import {
+  DEFAULT_PLANNER_PREFS,
   maxDailyMinutes,
   minutesForWeekday,
   resolvePlannerPrefs,
@@ -86,6 +88,7 @@ export default function Planner() {
   const academicProfile = useStore((s) => s.academicProfile);
   const weeklyCheckIns = useStore((s) => s.weeklyCheckIns);
   const replan = useStore((s) => s.replan);
+  const updateSettings = useStore((s) => s.updateSettings);
   const upsertMany = useStore((s) => s.upsertMany);
   const patch = useStore((s) => s.patch);
   const remove = useStore((s) => s.remove);
@@ -104,7 +107,7 @@ export default function Planner() {
   const [prefsOpen, setPrefsOpen] = useState(false);
   const [tutorOpen, setTutorOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
-  const [modal, setModal] = useState<{ session?: StudySession; date: string } | null>(null);
+  const [modal, setModal] = useState<{ session?: StudySession; date: string; defaultStart?: string } | null>(null);
   const openFocus = useHubUiStore((st) => st.openFocus);
   const setFocusId = (id: string) => openFocus(id);
   // Ligações antigas e notificações abrem o foco com ?focus=<id>.
@@ -123,6 +126,21 @@ export default function Planner() {
   );
 
   const plannerPrefs = settings.plannerPrefs;
+  const plannerMode = plannerPrefs?.plannerMode ?? 'auto';
+  const switchPlannerMode = (nextMode: 'auto' | 'manual') => {
+    if (nextMode === plannerMode) return;
+    void hapticTap();
+    updateSettings(
+      {
+        plannerPrefs: {
+          ...(plannerPrefs ?? DEFAULT_PLANNER_PREFS),
+          plannerMode: nextMode,
+        },
+      },
+      { replan: false },
+    );
+    showToast(t(nextMode === 'manual' ? 'mode.switchedManual' : 'mode.switchedAuto'), 'neutral');
+  };
   const extraPenaltyByWeekday = useMemo(
     () => computeExtraActivityPenaltyByWeekday(academicProfile.extraActivities ?? []),
     [academicProfile.extraActivities],
@@ -218,10 +236,29 @@ export default function Planner() {
   const futureGeneratedCount = () =>
     useStore.getState().sessions.filter((x) => x.generated && !x.done && x.date >= today).length;
 
-  /** Atualizar/gerar plano: o mesmo motor de sempre, com as preferências guardadas. */
+  const openNewSession = (targetDate: string) => {
+    const wd = parseISO(targetDate).getDay();
+    const avail = resolvePlannerPrefs(settings).weekdaySchedule?.[String(wd)];
+    const currentNow = new Date();
+    const freeStart = findFirstFreeSlotOnDate({
+      dateKey: targetDate,
+      minutes: plannerPrefs?.blockMinutes ?? 50,
+      preferredPeriod: avail?.window ?? plannerPrefs?.preferredPeriod ?? 'auto',
+      nowMinutes:
+        targetDate === today ? currentNow.getHours() * 60 + currentNow.getMinutes() : undefined,
+      classes,
+      events,
+      existingSessions: sessions,
+      blockedPeriods: avail?.blockedPeriods,
+      assessments,
+    });
+    setModal({ date: targetDate, defaultStart: freeStart ?? undefined });
+  };
+
+  /** Atualizar/gerar plano: mesmo em modo manual, só gera quando pedido explicitamente. */
   const generate = () => {
     void hapticTap();
-    const changed = replan('manual', { force: true });
+    const changed = replan('manual', { force: true, allowInManualMode: true });
     celebrateStationery();
     if (!changed) showToast(t('ui.toastGenerated', { count: futureGeneratedCount() }), 'ok');
   };
@@ -375,13 +412,23 @@ export default function Planner() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <TabGuideHelpButton tabKey="plano" />
-            <Button
-              variant="primary"
-              onClick={onGenerate}
-              disabled={noPlanInputs}
-            >
-              <Sparkles size={16} /> {sessions.length > 0 ? t('updatePlan') : t('generatePlan')}
-            </Button>
+            {plannerMode === 'manual' ? (
+              <Button
+                variant="primary"
+                onClick={() => openNewSession(activeDayKey)}
+                disabled={noPlanInputs}
+              >
+                <Plus size={16} /> {t('ui.newSession')}
+              </Button>
+            ) : (
+              <Button
+                variant="primary"
+                onClick={onGenerate}
+                disabled={noPlanInputs}
+              >
+                <Sparkles size={16} /> {sessions.length > 0 ? t('updatePlan') : t('generatePlan')}
+              </Button>
+            )}
             <Button
               variant="secondary"
               iconOnly
@@ -478,7 +525,26 @@ export default function Planner() {
 
       <FocusResumeCard />
 
+      {!noPlanInputs && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-xs font-medium text-muted">
+            {t(plannerMode === 'manual' ? 'mode.bannerManual' : 'mode.bannerAuto')}
+          </span>
+          <SegmentedControl
+            layoutId="planner-control-mode"
+            value={plannerMode}
+            onChange={(v) => switchPlannerMode(v as 'auto' | 'manual')}
+            items={[
+              { id: 'auto', label: t('mode.auto') },
+              { id: 'manual', label: t('mode.manual') },
+            ]}
+          />
+        </div>
+      )}
+
       {!noPlanInputs && <WeekCheckCard />}
+
+      {!noPlanInputs && <PlanConscienceCard today={today} />}
 
       {sessions.length === 0 ? (
         <EmptyState
@@ -487,7 +553,9 @@ export default function Planner() {
           hint={
             noPlanInputs
               ? t('ui.emptyNoCoursesHint')
-              : t('ui.emptyNoPlanHint')
+              : plannerMode === 'manual'
+                ? t('mode.emptyManualHint')
+                : t('ui.emptyNoPlanHint')
           }
           action={
             noPlanInputs ? (
@@ -496,11 +564,19 @@ export default function Planner() {
               </Button>
             ) : (
               <div className="flex flex-wrap items-center justify-center gap-2">
-                <Button variant="secondary" onClick={() => setModal({ date: today })} disabled={courses.length === 0}>
+                <Button
+                  variant={plannerMode === 'manual' ? 'primary' : 'secondary'}
+                  onClick={() => openNewSession(today)}
+                  disabled={courses.length === 0}
+                >
                   <Plus size={16} /> {t('ui.newSession')}
                 </Button>
-                <Button variant="primary" onClick={onGenerate}>
-                  <Sparkles size={16} /> {t('generatePlan')}
+                <Button
+                  variant={plannerMode === 'manual' ? 'secondary' : 'primary'}
+                  onClick={plannerMode === 'manual' ? generate : onGenerate}
+                >
+                  <Sparkles size={16} />{' '}
+                  {plannerMode === 'manual' ? t('mode.suggestWeekBtn') : t('generatePlan')}
                 </Button>
               </div>
             )
@@ -654,7 +730,7 @@ export default function Planner() {
                     materialById={materialById}
                     onFocus={(s) => setFocusId(s.id)}
                     onEdit={(s) => setModal({ session: s, date: s.date })}
-                    onAdd={(date) => setModal({ date })}
+                    onAdd={openNewSession}
                     onToggleLock={toggleSessionLock}
                     onQuickMove={quickMoveSession}
                   />
@@ -709,7 +785,7 @@ export default function Planner() {
                     materialById={materialById}
                     onFocus={(s) => setFocusId(s.id)}
                     onEdit={(s) => setModal({ session: s, date: s.date })}
-                    onAdd={(date) => setModal({ date })}
+                    onAdd={openNewSession}
                     onToggleLock={toggleSessionLock}
                     onQuickMove={quickMoveSession}
                   />
@@ -776,9 +852,20 @@ export default function Planner() {
                 showToast(t('ui.addCourseFirst'), 'neutral');
                 return;
               }
-              setModal({ date: activeDayKey });
+              openNewSession(activeDayKey);
             },
           },
+          ...(plannerMode === 'manual'
+            ? [
+                {
+                  id: 'suggest-auto',
+                  label: t('mode.suggestWeekBtn'),
+                  hint: t('mode.suggestWeekHint'),
+                  icon: <Sparkles size={16} />,
+                  onSelect: generate,
+                },
+              ]
+            : []),
           {
             id: 'prefs',
             label: t('ui.preferences'),
@@ -809,6 +896,7 @@ export default function Planner() {
             courses={courses}
             session={modal.session}
             defaultDate={modal.date}
+            defaultStart={modal.defaultStart}
             onClose={() => setModal(null)}
           />
         </Suspense>

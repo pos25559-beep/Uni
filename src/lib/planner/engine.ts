@@ -505,12 +505,35 @@ export function generatePlan(input: PlanInput): StudySession[] {
     const urgentToday = active.filter((it) => it.daysLeft <= TEST_MODE_DAYS);
     const urgentCourseIdsToday = new Set(urgentToday.map((u) => u.courseId));
     const minUrgentDays = urgentToday.reduce((min, u) => Math.min(min, u.daysLeft), Infinity);
+
+    // Foco exclusivo respeita a(s) cadeira(s) em reforço hoje (mesmo em multiTestMode),
+    // ou, se não houver reforço explícito, o(s) teste(s) mais próximo(s) dentro da janela urgente.
+    let exclusiveTargetCourseIds: Set<ID> | null = null;
+    if (exclusiveTestFocus) {
+      const activeBoostIds = active
+        .map((it) => it.courseId)
+        .filter((cid) => isBoostedOnDay(cid, key));
+      const allBoostedToday = activeCourses
+        .filter((c) => !blockedAfterExamToday.has(c.id) && !isPausedOnDay(c.id, key) && isBoostedOnDay(c.id, key))
+        .map((c) => c.id);
+      if (activeBoostIds.length > 0) {
+        exclusiveTargetCourseIds = new Set(activeBoostIds);
+      } else if (allBoostedToday.length > 0) {
+        exclusiveTargetCourseIds = new Set(allBoostedToday);
+      } else if (urgentToday.length > 0) {
+        exclusiveTargetCourseIds = new Set(
+          urgentToday.filter((u) => u.daysLeft === minUrgentDays).map((u) => u.courseId),
+        );
+      }
+    }
+
     const singleTestMode = urgentCourseIdsToday.size === 1;
     const strictSingleTestMode = singleTestMode && minUrgentDays <= 2;
-    const multiTestMode = urgentCourseIdsToday.size >= 2;
+    const multiTestMode = urgentCourseIdsToday.size >= 2 && !exclusiveTargetCourseIds;
 
     const hasImminentTomorrow = active.some((it) => it.daysLeft <= 1);
     const dueTopics = eligibleCoursesToday
+      .filter((c) => !exclusiveTargetCourseIds || exclusiveTargetCourseIds.has(c.id))
       .flatMap((c) => c.topics.map((topic) => ({ courseId: c.id, topic })))
       .filter(({ topic }) => {
         const scheduledOn = lastScheduled.get(topic.id);
@@ -535,9 +558,9 @@ export function generatePlan(input: PlanInput): StudySession[] {
         );
       });
 
-    const otherMaintenanceCourses = eligibleCoursesToday.filter(
-      (c) => !urgentCourseIdsToday.has(c.id),
-    );
+    const otherMaintenanceCourses = exclusiveTargetCourseIds
+      ? []
+      : eligibleCoursesToday.filter((c) => !urgentCourseIdsToday.has(c.id));
     const hasOtherPriority =
       dueTopics.length > 0 ||
       active.some((it) => !urgentCourseIdsToday.has(it.courseId)) ||
@@ -545,11 +568,15 @@ export function generatePlan(input: PlanInput): StudySession[] {
 
     const courseOk = (courseId: ID, plannedMin = MIN_BLOCK) => {
       if (blockedAfterExamToday.has(courseId)) return false;
+      if (exclusiveTargetCourseIds && !exclusiveTargetCourseIds.has(courseId)) return false;
       const preExamCap = preExamWindowLimitByCourse.get(courseId);
       if (preExamCap !== undefined && (perCourseMinutes.get(courseId) ?? 0) + plannedMin > preExamCap) {
         return false;
       }
       const count = perCourse.get(courseId) ?? 0;
+      if (exclusiveTargetCourseIds && exclusiveTargetCourseIds.has(courseId)) {
+        return count < dayMaxBlocks;
+      }
       if (strictSingleTestMode && urgentCourseIdsToday.has(courseId)) {
         return count < dayMaxBlocks;
       }

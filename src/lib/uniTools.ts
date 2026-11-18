@@ -644,11 +644,21 @@ export async function commitUniToolProposal(
       throw new Error(tr('uni:uniTools.needCourseFocus'));
     }
     const prev = store.settings.plannerPrefs;
+    const today = todayStr();
     const boostCourseIds = [
       course.id,
       ...(prev?.boostCourseIds ?? []).filter((id) => id !== course.id),
     ];
     const pausedCourseIds = (prev?.pausedCourseIds ?? []).filter((id) => id !== course.id);
+    const nextTestDate = proposal.planFocus.exclusive
+      ? store.assessments
+          .filter((a) => a.courseId === course.id && a.grade === undefined && a.date.slice(0, 10) >= today)
+          .map((a) => a.date.slice(0, 10))
+          .sort()[0]
+      : undefined;
+    const courseModeUntil = nextTestDate
+      ? { ...(prev?.courseModeUntil ?? {}), [course.id]: nextTestDate }
+      : prev?.courseModeUntil;
     store.updateSettings({
       plannerPrefs: {
         horizonDays: prev?.horizonDays ?? 14,
@@ -658,6 +668,7 @@ export async function commitUniToolProposal(
         ...prev,
         boostCourseIds,
         pausedCourseIds,
+        ...(courseModeUntil ? { courseModeUntil } : {}),
         exclusiveTestFocus: proposal.planFocus.exclusive,
       },
     }, { replan: false });

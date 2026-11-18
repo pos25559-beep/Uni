@@ -737,5 +737,94 @@ describe('planner.rescheduleOverdueSessions', () => {
     });
     expect(quietWeekend).toEqual([]);
   });
+
+  it('em multiTestMode com foco exclusivo numa cadeira (TEP vs Fab. Aditivo), dedica 100% até ao teste sem agendar a outra', () => {
+    const tep: Course = {
+      id: 'c-tep',
+      code: 'TEP',
+      name: 'Tecnologia de Produção',
+      shortName: 'TEP',
+      ects: 6,
+      color: 'emerald',
+      targetGrade: 14,
+      topics: [
+        { id: 'tep-1', title: 'Plasticidade', status: 'todo', confidence: 2 },
+        { id: 'tep-2', title: 'Estampagem', status: 'learning', confidence: 3 },
+      ],
+    };
+    const fab: Course = {
+      id: 'c-fab',
+      code: 'FA',
+      name: 'Fabrico Aditivo',
+      shortName: 'Fab. Aditivo',
+      ects: 6,
+      color: 'amber',
+      targetGrade: 14,
+      topics: [{ id: 'fab-1', title: 'Processos PBF', status: 'todo', confidence: 2 }],
+    };
+    const assessments: Assessment[] = [
+      {
+        id: 'a-tep',
+        courseId: 'c-tep',
+        kind: 'teste',
+        title: '1.º Teste TEP',
+        date: '2026-11-20T10:00:00', // daqui a 4 dias
+        weight: 50,
+        topicIds: ['tep-1', 'tep-2'],
+        source: 'local',
+      },
+      {
+        id: 'a-fab',
+        courseId: 'c-fab',
+        kind: 'teste',
+        title: '1.º Teste Fabrico Aditivo',
+        date: '2026-11-23T10:00:00', // daqui a 7 dias (multiTestMode!)
+        weight: 50,
+        topicIds: ['fab-1'],
+        source: 'local',
+      },
+    ];
+
+    const plan = generatePlan({
+      courses: [tep, fab],
+      assessments,
+      classes: [],
+      events: [],
+      settings: { ...baseSettings, dailyStudyMinutes: 180 },
+      from: '2026-11-16',
+      days: 7,
+      boostCourseIds: ['c-tep'],
+      courseModeUntil: { 'c-tep': '2026-11-20' },
+      exclusiveTestFocus: true,
+    });
+
+    const beforeTepExam = plan.filter(
+      (s) => s.date < '2026-11-20' || (s.date === '2026-11-20' && (!s.start || s.start < '10:00')),
+    );
+    expect(beforeTepExam.length).toBeGreaterThan(0);
+    expect(beforeTepExam.some((s) => s.courseId === 'c-fab')).toBe(false);
+    expect(beforeTepExam.every((s) => s.courseId === 'c-tep')).toBe(true);
+
+    // Depois do teste de TEP (21–22 nov), Fabrico Aditivo volta automaticamente ao plano.
+    const afterTepExam = plan.filter((s) => s.date > '2026-11-20');
+    expect(afterTepExam.some((s) => s.courseId === 'c-fab')).toBe(true);
+
+    // Com a pausa gerada por «deixar Fabrico aditivo para depois» até 2026-11-20, nem na noite de 20 entra FA.
+    const withPause = generatePlan({
+      courses: [tep, fab],
+      assessments,
+      classes: [],
+      events: [],
+      settings: { ...baseSettings, dailyStudyMinutes: 180 },
+      from: '2026-11-16',
+      days: 7,
+      boostCourseIds: ['c-tep'],
+      pausedCourseIds: ['c-fab'],
+      courseModeUntil: { 'c-tep': '2026-11-20', 'c-fab': '2026-11-20' },
+      exclusiveTestFocus: true,
+    });
+    expect(withPause.filter((s) => s.date <= '2026-11-20').some((s) => s.courseId === 'c-fab')).toBe(false);
+    expect(withPause.filter((s) => s.date > '2026-11-20').some((s) => s.courseId === 'c-fab')).toBe(true);
+  });
 });
 

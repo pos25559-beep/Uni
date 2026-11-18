@@ -76,6 +76,9 @@ export function pruneExpiredPrefs(prefs: PlannerPreferences, today: string): Pla
       );
       next.boostCourseIds = (prefs.boostCourseIds ?? []).filter((id) => !gone.has(id));
       next.pausedCourseIds = (prefs.pausedCourseIds ?? []).filter((id) => !gone.has(id));
+      if (next.exclusiveTestFocus && next.boostCourseIds.length === 0) {
+        next.exclusiveTestFocus = false;
+      }
       changed = true;
     }
   }
@@ -154,24 +157,38 @@ export interface ReplanResult {
 
 /**
  * Recalcula o plano a partir de `today`. Sem `force`, só recalcula se já houver plano gerado
- * pendente (não cria plano a quem nunca o pediu).
+ * pendente (não cria plano a quem nunca o pediu). No modo `manual`, nunca substitui blocos
+ * sem `allowInManualMode: true` (pedido explícito «Sugerir com o Uni»).
  */
 export function computeReplan(
   state: ReplanState,
-  opts: { today: string; nowMinutes?: number; force?: boolean },
+  opts: { today: string; nowMinutes?: number; force?: boolean; allowInManualMode?: boolean },
 ): ReplanResult {
   const { today } = opts;
+  const resolved = resolvePlannerPrefs(state.settings);
+  const pruned = pruneExpiredPrefs(resolved, today);
+  if (pruned.plannerMode === 'manual' && !opts.allowInManualMode) {
+    return {
+      sessions: state.sessions,
+      previousFuture: [],
+      changed: false,
+      ...(pruned !== resolved ? { prunedPrefs: pruned } : {}),
+    };
+  }
   const previousFuture = state.sessions.filter((s) => isReplaceable(s, today));
   if (!opts.force && previousFuture.length === 0) {
-    return { sessions: state.sessions, previousFuture, changed: false };
+    return {
+      sessions: state.sessions,
+      previousFuture,
+      changed: false,
+      ...(pruned !== resolved ? { prunedPrefs: pruned } : {}),
+    };
   }
   const kept = state.sessions.filter((s) => !isReplaceable(s, today));
   if (state.courses.length === 0) {
     return { sessions: kept, previousFuture, changed: previousFuture.length > 0 };
   }
 
-  const resolved = resolvePlannerPrefs(state.settings);
-  const pruned = pruneExpiredPrefs(resolved, today);
   const generated = generatePlan(
     buildPlanInput(state, pruned, { from: today, nowMinutes: opts.nowMinutes, existing: kept }),
   );

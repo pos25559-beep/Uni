@@ -35,6 +35,8 @@ import {
   studyLogEntryToHumanPrompt,
   type ParsedCheckInUnderstanding,
 } from '../../lib/uniCheckInNlu';
+import { applyPlanIntent, intentFromParsedBriefing } from '../../lib/planner/intent';
+import { parsePlannerBriefing } from '../../lib/plannerBriefing';
 import { useSheetSwipeDismiss } from '../../lib/useSheetSwipeDismiss';
 import { newId, useStore } from '../../store/useStore';
 import type {
@@ -207,6 +209,7 @@ function UniCheckInModalInner({
   const addStudyLog = useStore((s) => s.addStudyLog);
   const addWeeklyCheckIn = useStore((s) => s.addWeeklyCheckIn);
   const ensureCourseTopic = useStore((s) => s.ensureCourseTopic);
+  const updateSettings = useStore((s) => s.updateSettings);
   const patchAssessment = useStore((s) => s.patch);
   const replan = useStore((s) => s.replan);
 
@@ -666,7 +669,34 @@ function UniCheckInModalInner({
     const wasAlreadySaved = Boolean(savedEntryForContext);
     addStudyLog(entry);
     clearCheckInDraft(activeContextKey);
-    replan('checkin', { force: true });
+
+    const combinedUserMessages = [
+      ...turns.filter((turn) => turn.role === 'user').map((turn) => turn.text),
+      ...(inputText.trim() ? [inputText.trim()] : []),
+    ].join('. ');
+    const parsedBriefing = combinedUserMessages
+      ? intentFromParsedBriefing(
+          parsePlannerBriefing({ text: combinedUserMessages, courses, materials }),
+          today,
+          assessments,
+        )
+      : null;
+    const planRuleItems = (parsedBriefing?.items ?? []).filter(
+      (it) =>
+        it.kind === 'course_mode' ||
+        it.kind === 'exclusive_focus' ||
+        it.kind === 'weekday_rule' ||
+        it.kind === 'date_override' ||
+        it.kind === 'marathon' ||
+        it.kind === 'strategy' ||
+        it.kind === 'content_mix',
+    );
+    const prevPrefs = settings.plannerPrefs;
+    if (planRuleItems.length > 0) {
+      const { prefs } = applyPlanIntent(prevPrefs, planRuleItems);
+      updateSettings({ plannerPrefs: prefs }, { replan: false });
+    }
+    replan('checkin', { force: true, ...(planRuleItems.length > 0 ? { prevPrefs } : {}) });
 
     showToast(
       wasAlreadySaved

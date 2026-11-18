@@ -316,6 +316,7 @@ export const PLAN_INTENT_SCHEMA: SchemaRequest = {
             format: 'enum',
             enum: [
               'course_mode',
+              'exclusive_focus',
               'course_note',
               'weekday_rule',
               'date_override',
@@ -360,4 +361,25 @@ export const PLAN_INTENT_SCHEMA: SchemaRequest = {
     },
   },
   required: ['items'],
+};
+
+/** Parecer read-only da «Consciência do Uni» sobre o plano atual do estudante. */
+export const PLAN_REVIEW_SCHEMA: SchemaRequest = {
+  type: SchemaType.OBJECT,
+  properties: {
+    headline: { type: SchemaType.STRING },
+    opinions: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          tone: { type: SchemaType.STRING, format: 'enum', enum: ['warn', 'tip', 'good'] },
+          summary: { type: SchemaType.STRING },
+          suggestion: { type: SchemaType.STRING },
+        },
+        required: ['tone', 'summary', 'suggestion'],
+      },
+    },
+  },
+  required: ['headline', 'opinions'],
 };

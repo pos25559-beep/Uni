@@ -53,6 +53,7 @@ export default function PlanPreferencesSheet({
   const [horizonDays, setHorizonDays] = useState<7 | 14 | 21>(initial.horizonDays);
   const [strategy, setStrategy] = useState<PlannerStrategy>(initial.strategy);
   const [contentMix, setContentMix] = useState<PlannerContentMix>(initial.contentMix ?? 'balanced');
+  const [plannerMode, setPlannerMode] = useState<'auto' | 'manual'>(initial.plannerMode ?? 'auto');
   const [exclusiveTestFocus, setExclusiveTestFocus] = useState<boolean>(
     Boolean(initial.exclusiveTestFocus),
   );
@@ -82,6 +83,7 @@ export default function PlanPreferencesSheet({
     setHorizonDays(DEFAULT_PLANNER_PREFS.horizonDays);
     setStrategy(DEFAULT_PLANNER_PREFS.strategy);
     setContentMix('balanced');
+    setPlannerMode('auto');
     setExclusiveTestFocus(false);
     setBoostCourseIds([]);
     setPausedCourseIds([]);
@@ -96,6 +98,7 @@ export default function PlanPreferencesSheet({
       blockMinutes,
       strategy,
       contentMix,
+      plannerMode,
       exclusiveTestFocus,
       boostCourseIds,
       pausedCourseIds,
@@ -132,6 +135,31 @@ export default function PlanPreferencesSheet({
       }
     >
       <div className="space-y-6">
+        {/* 0. Modo de controlo (Automático vs Manual) */}
+        <section className="space-y-2">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted">
+            {t('mode.label')}
+          </span>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {(['auto', 'manual'] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setPlannerMode(m)}
+                className={cx(
+                  'min-h-11 rounded-2xl border p-3 text-left transition',
+                  plannerMode === m
+                    ? 'border-accent bg-accent-soft text-accent-ink'
+                    : 'border-line bg-surface-2/50 hover:bg-surface-2',
+                )}
+              >
+                <p className="text-sm font-semibold">{t(`mode.${m}`)}</p>
+                <p className="mt-0.5 text-xs text-muted">{t(`mode.${m}Hint`)}</p>
+              </button>
+            ))}
+          </div>
+        </section>
+
         {/* 1. Dias e horas + Intervalos entre aulas */}
         <section className="space-y-2.5">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">

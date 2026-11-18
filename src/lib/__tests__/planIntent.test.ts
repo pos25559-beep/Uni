@@ -219,4 +219,66 @@ describe('planner intent (Fase C)', () => {
     // Desfazer o último replan funciona sem erros
     expect(useStore.getState().undoLastReplan()).toBe(true);
   });
+
+  it('interpreta «só focar em TEP até meu teste e deixar Fabrico aditivo para depois» como foco exclusivo + pausa com validade', () => {
+    const today = '2026-11-16';
+    const tepCourse: Course = {
+      id: 'c-tep',
+      code: 'TEP',
+      name: 'Tecnologia de Produção',
+      shortName: 'TEP',
+      ects: 6,
+      color: 'emerald',
+      targetGrade: 14,
+      topics: [{ id: 't-tep-1', title: 'Plasticidade', status: 'todo', confidence: 2 }],
+    };
+    const fabCourse: Course = {
+      id: 'c-fab',
+      code: 'FA',
+      name: 'Fabrico Aditivo',
+      shortName: 'Fabrico Aditivo',
+      ects: 6,
+      color: 'amber',
+      targetGrade: 14,
+      topics: [{ id: 't-fab-1', title: 'Processos', status: 'todo', confidence: 2 }],
+    };
+    const testAssessments: Assessment[] = [
+      {
+        id: 'a-tep',
+        courseId: 'c-tep',
+        kind: 'teste',
+        title: '1.º Teste TEP',
+        date: '2026-11-20T10:00:00',
+        weight: 50,
+        topicIds: ['t-tep-1'],
+        source: 'local',
+      },
+      {
+        id: 'a-fab',
+        courseId: 'c-fab',
+        kind: 'teste',
+        title: '1.º Teste Fabrico Aditivo',
+        date: '2026-11-24T10:00:00',
+        weight: 50,
+        topicIds: ['t-fab-1'],
+        source: 'local',
+      },
+    ];
+
+    const parsed = parsePlannerBriefing({
+      text: 'só focar em TEP até meu teste e deixar Fabrico aditivo para depois',
+      courses: [tepCourse, fabCourse],
+    });
+    expect(parsed.exclusiveFocusCourseId).toBe('c-tep');
+    expect(parsed.pausedCourseIds).toContain('c-fab');
+    expect(parsed.pausedCourseIds).not.toContain('c-tep');
+
+    const intent = intentFromParsedBriefing(parsed, today, testAssessments);
+    const { prefs } = applyPlanIntent(undefined, intent.items);
+    expect(prefs.exclusiveTestFocus).toBe(true);
+    expect(prefs.boostCourseIds).toContain('c-tep');
+    expect(prefs.pausedCourseIds).toContain('c-fab');
+    expect(prefs.courseModeUntil?.['c-tep']).toBe('2026-11-20');
+    expect(prefs.courseModeUntil?.['c-fab']).toBe('2026-11-20');
+  });
 });

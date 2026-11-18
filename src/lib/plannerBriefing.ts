@@ -144,6 +144,8 @@ export interface ParsedPlannerBriefing {
   topicUpdates: Array<{ courseId: ID; topicId: ID; status: Topic['status']; confidence: Topic['confidence'] }>;
   boostCourseIds: ID[];
   pausedCourseIds: ID[];
+  /** Cadeira em foco exclusivo («só focar em TEP até ao teste»). */
+  exclusiveFocusCourseId?: ID;
   briefingCourseFocus: Record<string, string>;
   /** Texto da frase que mencionou reforço/pausa da cadeira, para resolver validade («até quarta»). */
   courseModeClauses?: Record<ID, string>;
@@ -222,6 +224,7 @@ export function parsePlannerBriefing(args: {
   const topicUpdates: ParsedBriefingInsight['topicUpdates'] = [];
   const boostCourseSet = new Set<ID>();
   const pausedCourseSet = new Set<ID>();
+  let exclusiveFocusCourseId: ID | undefined;
   const briefingCourseFocus: Record<string, string> = {};
   const courseModeClauses: Record<ID, string> = {};
   const weekdayUpdates: ParsedPlannerBriefing['weekdayUpdates'] = [];
@@ -288,7 +291,7 @@ export function parsePlannerBriefing(args: {
   // Separa em frases/orações para interpretações locais mais precisas
   const clauses = rawText
     .split(
-      /(?<=[.!?\n;])|,\s+(?=(?:mas|e|na|no|ao|aos|à|as|quarta|quinta|sexta|sabado|sábado|domingo|segunda|terca|terça|já|ja|em|para|refor[cç]|paus|focar|quero|precis|tenho|mais|só|so)\b)|\s+(?:e|mas|pero|and|but)\s+(?=(?:ao|aos|à|às|na|no|nos|nas|segunda|terca|terça|quarta|quinta|sexta|sabado|sábado|domingo|fins?\s+de\s+semana|fds|dias?\s+uteis|já|ja|quero)\b)/i,
+      /(?<=[.!?\n;])|,\s+(?=(?:mas|e|na|no|ao|aos|à|as|quarta|quinta|sexta|sabado|sábado|domingo|segunda|terca|terça|já|ja|em|para|refor[cç]|paus|focar|deixar|tirar|adiar|quero|precis|tenho|mais|só|so)\b)|\s+(?:e|mas|pero|and|but)\s+(?=(?:ao|aos|à|às|na|no|nos|nas|segunda|terca|terça|quarta|quinta|sexta|sabado|sábado|domingo|fins?\s+de\s+semana|fds|dias?\s+uteis|já|ja|quero|deixar|pausar|tirar|adiar|focar|refor[cç]|nao\s+(?:focar|estudar|precis)|não\s+(?:focar|estudar|precis)|sem\s+focar|só\s+focar|so\s+focar)\b)/i,
     )
     .map((c) => cleanSpaces(c))
     .filter((c) => c.length >= 3);
@@ -407,18 +410,23 @@ export function parsePlannerBriefing(args: {
       /\b(?:ja\s+(?:sei|domino|dominei|estudei|revi|dei|li|percebi|tenho)|domino\s+bem|ja\s+esta|dispenso)\b/.test(
         nc,
       );
-    const saysPause = /\b(?:pausar|nao\s+precisa|deixar\s+para\s+depois|ja\s+passei|sem\s+focar\s+em)\b/.test(
-      nc,
-    );
+    const saysPause =
+      /\b(?:pausar|nao\s+precis\w*|deixar\s+(?:[\w-]+\s+){0,5}para\s+depois|para\s+depois|ja\s+passei|sem\s+focar(?:\s+em)?|nao\s+estudar|tirar|ignorar|adiar)\b/.test(
+        nc,
+      );
     const saysBoostOrTrouble =
       /\b(?:atrasad[oa]|duvida|duvidas|faltei|dificil|complicad[oa]|preciso\s+(?:muito|focar|rever)|prioridade|focar|tenho\s+teste|reforcar|nao\s+percebi)\b/.test(
+        nc,
+      );
+    const saysExclusive =
+      /\b(?:so\s+(?:para\s+|em\s+|quero\s+|vou\s+)?focar|focar\s+so|focar\s+apenas|apenas\s+focar|so\s+estudar|estudar\s+so|100%\s+(?:em|na|no)|foco\s+(?:total|exclusivo)|exclusiv\w*)\b/.test(
         nc,
       );
     const boundary = detectUpToBoundary(clause);
     const focusPhrase = extractStudyFocusPhrase(clause);
 
     for (const course of mentionedCourses) {
-      if (saysPause && !saysBoostOrTrouble) {
+      if (saysPause && (!saysBoostOrTrouble || /\bdepois\b/.test(nc))) {
         pausedCourseSet.add(course.id);
         courseModeClauses[course.id] = clause;
         insights.push({
@@ -468,9 +476,12 @@ export function parsePlannerBriefing(args: {
         }
       }
 
-      if (saysBoostOrTrouble) {
+      if (saysBoostOrTrouble || saysExclusive) {
         boostCourseSet.add(course.id);
         courseModeClauses[course.id] = clause;
+        if (saysExclusive && mentionedCourses.length === 1) {
+          exclusiveFocusCourseId = course.id;
+        }
         insights.push({
           id: `boost-${course.id}-${idx}`,
           kind: 'course_boost',
@@ -501,6 +512,7 @@ export function parsePlannerBriefing(args: {
     topicUpdates,
     boostCourseIds: [...boostCourseSet],
     pausedCourseIds: [...pausedCourseSet],
+    ...(exclusiveFocusCourseId ? { exclusiveFocusCourseId } : {}),
     briefingCourseFocus,
     ...(Object.keys(courseModeClauses).length > 0 ? { courseModeClauses } : {}),
     weekdayUpdates,

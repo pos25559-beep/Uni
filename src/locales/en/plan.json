@@ -27,6 +27,7 @@
     "item": {
       "boost": "More time for {{course}}",
       "pause": "Pause {{course}}",
+      "exclusiveFocus": "Focus only on {{course}}",
       "note": "{{course}}: {{text}}",
       "dayOff": "{{day}}: no study",
       "dayMinutes": "{{day}}: {{time}} of study",
@@ -399,6 +400,8 @@
     "course": "Course",
     "topic": "Topic",
     "topicHint": "Optional. Without a topic, it counts as general study for the course.",
+    "nextExamHint": "Next exam: {{title}} (in {{days}} d).",
+    "suggestTopic": "Pick priority topic",
     "general": "General study",
     "date": "Date",
     "dateAria": "Session date",
@@ -508,6 +511,57 @@
       "marathonDays": "How many days before?",
       "marathonDaysOption": "{{d}} day(s) before",
       "marathonLoad": "Marathon daily target"
+    }
+  },
+  "mode": {
+    "label": "Plan control",
+    "auto": "Automatic",
+    "autoHint": "Uni builds and adjusts blocks around your exams, classes, and requests.",
+    "manual": "Manual",
+    "manualHint": "You schedule your own blocks; Uni never touches them and acts as your advisor.",
+    "bannerAuto": "Auto mode · Uni manages the plan",
+    "bannerManual": "Manual mode · your blocks stay yours",
+    "switchedManual": "Manual mode active · Uni only reviews and suggests",
+    "switchedAuto": "Automatic mode active",
+    "emptyManualHint": "Add your blocks freely or ask Uni for an optional starting draft.",
+    "suggestWeekBtn": "Suggest week with Uni",
+    "suggestWeekHint": "Fills free slots while keeping your locked blocks"
+  },
+  "conscience": {
+    "title": "Uni's Conscience",
+    "status": {
+      "aligned": "Your plan looks well aligned with your exams, classes, and budget.",
+      "empty": "Add blocks or ask Uni for a suggestion to start.",
+      "needsAttention_one": "{{count}} suggestion to improve this week",
+      "needsAttention_other": "{{count}} suggestions to improve this week"
+    },
+    "aiButton": "Second opinion",
+    "aiLoading": "Reviewing…",
+    "aiFailed": "Couldn't get an AI second opinion right now, but local checks remain active.",
+    "aiReviewTitle": "Uni's take on your week",
+    "dismissAria": "Dismiss suggestion",
+    "closeReviewAria": "Close review",
+    "opinions": {
+      "pausedCourseActive": "You paused {{course}}, yet {{count}} session(s) are still scheduled.",
+      "exclusiveConflict": "Exclusive focus is set on {{course}}, yet {{count}} session(s) from other courses are still scheduled before then.",
+      "scheduleClash": "{{course}} block at {{time}} overlaps with a class or event.",
+      "examNoBlocks": "{{course}} ({{title}}) is in {{days}} days and has no blocks yet.",
+      "examLowMinutes": "{{course}} ({{title}}) is in {{days}} days with only {{time}} planned.",
+      "dayOverBudget": "{{date}} has {{plannedTime}} planned above your {{budgetTime}} budget.",
+      "srsDueWaiting": "Spaced review is due for {{course}} ({{topic}})."
+    },
+    "actions": {
+      "removeSessions": "Clear paused",
+      "keepFocusOnly": "Keep focused only",
+      "moveFreeSlot": "Move to free slot",
+      "addStudyBlock": "Add block",
+      "lightenDay": "Lighten day",
+      "addQuickReview": "25m review"
+    },
+    "toast": {
+      "removed": "Removed {{count}} block(s) from the plan",
+      "moved": "Moved block to {{date}} at {{time}}",
+      "added": "Added block on {{date}} at {{time}}"
     }
   }
 }

@@ -25,6 +25,7 @@ export const DEFAULT_PLANNER_PREFS: PlannerPreferences = {
   includeOverdue: true,
   fillClassGaps: false,
   contentMix: 'balanced',
+  plannerMode: 'auto',
   preExamMarathon: { enabled: false, daysBefore: 2, dailyMinutes: 480 },
 };
 

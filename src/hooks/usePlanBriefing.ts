@@ -35,7 +35,11 @@ export function usePlanBriefing() {
 
     const { courses, materials, assessments, settings } = useStore.getState();
     const today = todayStr();
-    const simple = intentFromParsedBriefing(parsePlannerBriefing({ text: trimmed, courses, materials }), today);
+    const simple = intentFromParsedBriefing(
+      parsePlannerBriefing({ text: trimmed, courses, materials }),
+      today,
+      assessments,
+    );
 
     if (!hasAiAccess(settings)) {
       setIntent(simple);

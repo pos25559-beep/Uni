@@ -3,6 +3,7 @@
 // nada se perde quando o plano recalcula. Puro e testável; a IA só acrescenta itens.
 import { addDays, format } from 'date-fns';
 import type {
+  Assessment,
   Course,
   ID,
   PlannerContentMix,
@@ -21,6 +22,7 @@ type Period = 'morning' | 'afternoon' | 'evening';
 
 export type IntentItem =
   | { id: string; kind: 'course_mode'; courseId: ID; mode: 'boost' | 'pause'; until?: string }
+  | { id: string; kind: 'exclusive_focus'; courseId: ID; until?: string }
   | { id: string; kind: 'course_note'; courseId: ID; text: string; from?: string; until: string }
   | {
       id: string;
@@ -84,8 +86,24 @@ export function oneOffDateForWeekday(text: string, weekday: number, today: strin
   return key(addDays(base, delta));
 }
 
+function nextAssessmentDate(
+  assessments: Assessment[] | undefined,
+  courseId: ID | undefined,
+  today: string,
+): string | undefined {
+  if (!assessments || !courseId) return undefined;
+  return assessments
+    .filter((a) => a.courseId === courseId && a.grade === undefined && a.date.slice(0, 10) >= today)
+    .map((a) => a.date.slice(0, 10))
+    .sort()[0];
+}
+
 /** Converte a leitura determinística (`parsePlannerBriefing`) em itens de intenção. */
-export function intentFromParsedBriefing(parsed: ParsedPlannerBriefing, today: string): PlanIntent {
+export function intentFromParsedBriefing(
+  parsed: ParsedPlannerBriefing,
+  today: string,
+  assessments?: Assessment[],
+): PlanIntent {
   const items: IntentItem[] = [];
   const text = parsed.rawText ?? '';
 
@@ -113,27 +131,51 @@ export function intentFromParsedBriefing(parsed: ParsedPlannerBriefing, today: s
     }
   }
 
+  const resolveClauseUntil = (courseId: ID, clause: string | undefined, fallbackCourseId?: ID): string | undefined => {
+    const explicit = clause ? parseFocusWindow(clause, today)?.until : undefined;
+    if (explicit) return explicit;
+    if (clause && /\b(?:ate|hasta|until)\s+(?:o\s+|a\s+|ao\s+|meu\s+|minha\s+|el\s+)?(?:teste|prova|exame|parcial|exam)\b/i.test(normalize(clause))) {
+      return nextAssessmentDate(assessments, courseId, today);
+    }
+    if (fallbackCourseId && clause && /\b(?:para\s+depois|after)\b/i.test(normalize(clause))) {
+      return nextAssessmentDate(assessments, fallbackCourseId, today);
+    }
+    return undefined;
+  };
+
   for (const id of parsed.boostCourseIds) {
+    if (parsed.exclusiveFocusCourseId === id) continue;
     const clause = parsed.courseModeClauses?.[id];
-    const window = clause ? parseFocusWindow(clause, today) : undefined;
+    const until = resolveClauseUntil(id, clause);
     items.push({
       id: `mode-${id}`,
       kind: 'course_mode',
       courseId: id,
       mode: 'boost',
-      ...(window ? { until: window.until } : {}),
+      ...(until ? { until } : {}),
     });
   }
   for (const id of parsed.pausedCourseIds) {
     if (parsed.boostCourseIds.includes(id)) continue;
     const clause = parsed.courseModeClauses?.[id];
-    const window = clause ? parseFocusWindow(clause, today) : undefined;
+    const until = resolveClauseUntil(id, clause, parsed.exclusiveFocusCourseId);
     items.push({
       id: `mode-${id}`,
       kind: 'course_mode',
       courseId: id,
       mode: 'pause',
-      ...(window ? { until: window.until } : {}),
+      ...(until ? { until } : {}),
+    });
+  }
+  if (parsed.exclusiveFocusCourseId) {
+    const cid = parsed.exclusiveFocusCourseId;
+    const clause = parsed.courseModeClauses?.[cid];
+    const until = resolveClauseUntil(cid, clause) ?? nextAssessmentDate(assessments, cid, today);
+    items.push({
+      id: `exclusive-${cid}`,
+      kind: 'exclusive_focus',
+      courseId: cid,
+      ...(until ? { until } : {}),
     });
   }
 
@@ -203,6 +245,16 @@ export function sanitizeIntentItems(raw: unknown, courses: Course[], today: stri
             kind: 'course_mode',
             courseId: r.courseId,
             mode: r.mode,
+            ...(okDate(r.until) ? { until: r.until } : {}),
+          });
+        }
+        break;
+      case 'exclusive_focus':
+        if (typeof r.courseId === 'string' && courseIds.has(r.courseId)) {
+          out.push({
+            id: `exclusive-${r.courseId}`,
+            kind: 'exclusive_focus',
+            courseId: r.courseId,
             ...(okDate(r.until) ? { until: r.until } : {}),
           });
         }
@@ -308,6 +360,12 @@ export function applyPlanIntent(
         }
         if (it.until) modeUntil[it.courseId] = it.until;
         else delete modeUntil[it.courseId];
+        break;
+      case 'exclusive_focus':
+        boost.add(it.courseId);
+        paused.delete(it.courseId);
+        if (it.until) modeUntil[it.courseId] = it.until;
+        next.exclusiveTestFocus = true;
         break;
       case 'course_note':
         notes[it.courseId] = {

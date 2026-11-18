@@ -320,6 +320,8 @@ export interface PlannerPreferences {
   dateOverrides?: Record<string, PlannerDateOverride>;
   /** Até quando vale o reforço/pausa de cada cadeira (sem entrada = sem fim). */
   courseModeUntil?: Record<ID, string>;
+  /** Modo de operação do Planeador: 'auto' recalcula; 'manual' preserva o controlo do aluno. */
+  plannerMode?: 'auto' | 'manual';
   /** Quando o último briefing foi aplicado (ISO). */
   briefingAppliedAt?: string;
 }

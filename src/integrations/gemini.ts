@@ -66,4 +66,9 @@ export {
   type UniRecallPromptResult,
 } from './gemini/practice';
 
-export { extractPlanIntentWithAi } from './gemini/plannerAi';
+export {
+  extractPlanIntentWithAi,
+  reviewPlanWithAi,
+  type PlanAiReview,
+  type PlanReviewOpinion,
+} from './gemini/plannerAi';
