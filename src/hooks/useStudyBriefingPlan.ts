@@ -5,7 +5,7 @@ import { hasAiAccess } from '../lib/aiAccess';
 import {
   buildBriefingPlannerSnapshot,
   buildOfflineBriefingWeeklyFallback,
-  groundLlmWeeklyPlan,
+  groundLlmWeeklyPlanDetailed,
 } from '../lib/studyBriefingPlan';
 import type {
   Assessment,
@@ -146,7 +146,7 @@ export function useStudyBriefingPlan({
 
         if (controller.signal.aborted) return;
 
-        const grounded = groundLlmWeeklyPlan({
+        const { sessions: grounded, dropped } = groundLlmWeeklyPlanDetailed({
           llmOutput,
           courses,
           assessments,
@@ -166,7 +166,11 @@ export function useStudyBriefingPlan({
         }
 
         setIsOfflinePreview(false);
-        setStrategySummary(llmOutput.strategySummary);
+        setStrategySummary(
+          dropped > 0
+            ? `${llmOutput.strategySummary} ${t('studyBriefing.blocksDropped', { count: dropped })}`.trim()
+            : llmOutput.strategySummary,
+        );
         setSuggestedFollowUps(llmOutput.suggestedFollowUps);
         setRefinementsApplied(nextRefinements);
         setPreviewSessions(grounded);

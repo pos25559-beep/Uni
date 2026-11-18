@@ -506,6 +506,8 @@
     "cancel": "Cancelar",
     "aiConsentNeeded": "Ativa a IA do Uni nas Definições para gerar planos conversacionais por LLM, ou usa o planeador offline abaixo.",
     "noFreeSlotsError": "Sem janelas livres suficientes nesta semana — ajusta os dias no Estúdio.",
+    "blocksDropped_one": "{{count}} bloco proposto pela IA não coube nas tuas regras (dias, meta diária ou data do teste).",
+    "blocksDropped_other": "{{count}} blocos propostos pela IA não couberam nas tuas regras (dias, meta diária ou data do teste).",
     "genericError": "Não foi possível gerar o plano com IA agora.",
     "openAiSettings": "Abrir definições de IA",
     "retry": "Tentar novamente",

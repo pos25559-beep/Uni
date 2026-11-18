@@ -3,6 +3,7 @@ import {
   buildBriefingPlannerSnapshot,
   buildOfflineBriefingWeeklyFallback,
   groundLlmWeeklyPlan,
+  groundLlmWeeklyPlanDetailed,
 } from '../studyBriefingPlan';
 import type {
   Assessment,
@@ -199,5 +200,78 @@ describe('studyBriefingPlan helpers', () => {
     expect(out.sessions.length).toBeGreaterThan(0);
     expect(out.sessions.some((s) => s.courseId === 'c-math')).toBe(true);
     expect(out.strategySummary.length).toBeGreaterThan(0);
+  });
+
+  describe('regras do planeador no plano da IA', () => {
+    // 2026-11-18 é quarta; o teste de AM1 é sábado 21 às 14:00.
+    const block = (dayOffset: number, courseId: string, minutes = 50) => ({
+      dayOffset,
+      courseId,
+      window: 'auto' as const,
+      minutes,
+      focusKind: 'practice' as const,
+      reasonNote: 'bloco',
+    });
+    const run = (blocks: ReturnType<typeof block>[], over: Partial<Settings> = {}) =>
+      groundLlmWeeklyPlanDetailed({
+        llmOutput: { strategySummary: 'x', focusCourseIds: [], suggestedFollowUps: [], blocks },
+        courses,
+        assessments,
+        classes: [],
+        events: [],
+        materials: [],
+        settings: { ...settings, ...over },
+        existingPreservedSessions: [],
+        today: '2026-11-18',
+        nowMinutes: 8 * 60,
+      });
+
+    it('não marca em dias desligados e não volta para dias que já passaram', () => {
+      // Só quarta (3) e quinta (4) ligadas; bloco pedido para domingo (offset 4) não pode ir para trás.
+      const out = run([block(4, 'c-alg')], { studyDays: [3, 4] });
+      expect(out.sessions).toHaveLength(0);
+      expect(out.dropped).toBe(1);
+    });
+
+    it('salta um dia desligado para o seguinte ligado', () => {
+      // Quinta (offset 1) desligada → sexta 2026-11-20.
+      const out = run([block(1, 'c-alg')], { studyDays: [3, 5] });
+      expect(out.sessions.map((s) => s.date)).toEqual(['2026-11-20']);
+    });
+
+    it('respeita a meta diária', () => {
+      const out = run([block(1, 'c-alg', 60), block(1, 'c-alg', 60), block(1, 'c-alg', 60)], {
+        dailyStudyMinutes: 90,
+        studyDays: [4],
+      });
+      const total = out.sessions.reduce((sum, s) => sum + s.minutes, 0);
+      expect(total).toBeLessThanOrEqual(90);
+      expect(out.sessions.every((s) => s.date === '2026-11-19')).toBe(true);
+      expect(out.dropped).toBe(1);
+    });
+
+    it('nada da cadeira depois do teste, e no dia do teste acaba 30 min antes', () => {
+      const out = run([block(3, 'c-math'), block(5, 'c-math')], { studyDays: [0, 1, 2, 3, 4, 5, 6] });
+      for (const s of out.sessions) {
+        expect(s.date <= '2026-11-21').toBe(true);
+        if (s.date === '2026-11-21') {
+          const [h, m] = (s.start ?? '00:00').split(':').map(Number);
+          expect(h * 60 + m + s.minutes).toBeLessThanOrEqual(13 * 60 + 30);
+        }
+      }
+    });
+
+    it('outras cadeiras não ocupam a hora do teste', () => {
+      const out = run([block(3, 'c-alg', 90), block(3, 'c-alg', 90), block(3, 'c-alg', 90)], {
+        studyDays: [6],
+        dailyStudyMinutes: 600,
+      });
+      for (const s of out.sessions.filter((x) => x.date === '2026-11-21')) {
+        const [h, m] = (s.start ?? '00:00').split(':').map(Number);
+        const start = h * 60 + m;
+        const overlaps = start < 16 * 60 && start + s.minutes > 13 * 60 + 30;
+        expect(overlaps).toBe(false);
+      }
+    });
   });
 });

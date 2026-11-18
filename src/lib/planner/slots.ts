@@ -242,6 +242,10 @@ export function findFirstFreeSlotOnDate(args: {
   events: CalendarEvent[];
   existingSessions: StudySession[];
   blockedPeriods?: Array<'morning' | 'afternoon' | 'evening'>;
+  /** Avaliações com hora: ocupam de 30 min antes a 2 h depois, como no motor do planeador. */
+  assessments?: Array<Pick<Assessment, 'date'>>;
+  /** Minuto do dia até ao qual o bloco tem de acabar (ex.: 30 min antes de um teste nesse dia). */
+  latestEnd?: number;
 }): string | undefined {
   const {
     dateKey,
@@ -252,6 +256,8 @@ export function findFirstFreeSlotOnDate(args: {
     events,
     existingSessions,
     blockedPeriods = [],
+    assessments = [],
+    latestEnd,
   } = args;
   const day = parseDay(dateKey);
   const weekday = day.getDay();
@@ -270,6 +276,12 @@ export function findFirstFreeSlotOnDate(args: {
         start: s.getHours() * 60 + s.getMinutes(),
         end: en.getHours() * 60 + en.getMinutes(),
       });
+    }
+  }
+  for (const a of assessments) {
+    const due = a.date.slice(0, 10) === dateKey ? parseDueMinutes(a.date) : undefined;
+    if (due !== undefined) {
+      busy.push({ start: Math.max(0, due - 30), end: Math.min(23 * 60 + 59, due + 120) });
     }
   }
   for (const s of existingSessions) {
@@ -291,6 +303,7 @@ export function findFirstFreeSlotOnDate(args: {
             ? 10 * 60
             : 9 * 60;
   const cursor = Math.max(periodStart, nowMinutes !== undefined ? Math.ceil((nowMinutes + 10) / 30) * 30 : 0);
-  const slot = firstSlotBefore(cursor, minutes, busy, 23 * 60 + 30);
+  const limit = Math.min(23 * 60 + 30, latestEnd ?? 23 * 60 + 30);
+  const slot = firstSlotBefore(cursor, minutes, busy, limit);
   return slot !== null ? fmtTime(slot) : undefined;
 }

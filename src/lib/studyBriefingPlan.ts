@@ -6,6 +6,7 @@ import {
   matchBestMaterialForTopic,
   resolveDayPlanProfile,
 } from './planner';
+import { occupied, parseDueMinutes } from './planner/slots';
 import { parsePlannerBriefing, resolveWeekdayAvailability } from './plannerBriefing';
 import type {
   Assessment,
@@ -199,7 +200,7 @@ function resolveTopicForBlock(
  * Converte os blocos estruturados gerados pelo LLM em sessoes reais encaixadas sem colisoes
  * com aulas, eventos e sessoes fixadas/concluidas nos proximos 7 dias.
  */
-export function groundLlmWeeklyPlan(args: {
+type GroundLlmWeeklyPlanArgs = {
   llmOutput: LlmWeeklyBriefingOutput;
   courses: Course[];
   assessments: Assessment[];
@@ -210,7 +211,23 @@ export function groundLlmWeeklyPlan(args: {
   existingPreservedSessions: StudySession[];
   today: string;
   nowMinutes?: number;
-}): StudySession[] {
+};
+
+/** Menor bloco que vale a pena marcar quando a meta diaria ja esta quase cheia. */
+const MIN_BRIEFING_BLOCK = 25;
+
+export function groundLlmWeeklyPlan(args: GroundLlmWeeklyPlanArgs): StudySession[] {
+  return groundLlmWeeklyPlanDetailed(args).sessions;
+}
+
+/**
+ * Como `groundLlmWeeklyPlan`, mas diz tambem quantos blocos da IA nao couberam nas regras do estudante
+ * (dias desligados, meta diaria, data do teste), para o ecra o poder dizer em vez de os esconder.
+ */
+export function groundLlmWeeklyPlanDetailed(args: GroundLlmWeeklyPlanArgs): {
+  sessions: StudySession[];
+  dropped: number;
+} {
   const {
     llmOutput,
     courses,
@@ -225,12 +242,13 @@ export function groundLlmWeeklyPlan(args: {
   } = args;
 
   if (courses.length === 0 || !Array.isArray(llmOutput.blocks) || llmOutput.blocks.length === 0) {
-    return [];
+    return { sessions: [], dropped: 0 };
   }
 
   const prefs = settings.plannerPrefs;
   const baseDate = parseISO(today);
   const grounded: StudySession[] = [];
+  let dropped = 0;
   const allOccupied = [...existingPreservedSessions];
 
   const sortedBlocks = [...llmOutput.blocks]
@@ -252,8 +270,7 @@ export function groundLlmWeeklyPlan(args: {
       ? rawBlock.window
       : prefs?.preferredPeriod ?? 'auto';
 
-    // Proxima avaliacao desta cadeira para ligar contexto e material
-    const baseTargetDate = addDays(baseDate, clampedOffset);
+    // Proxima avaliacao desta cadeira: liga contexto e material e marca o prazo (nada depois do teste).
     const nearestAssessment = assessments
       .filter((a) => a.courseId === course.id && a.grade === undefined)
       .map((a) => ({
@@ -262,17 +279,16 @@ export function groundLlmWeeklyPlan(args: {
       }))
       .filter((x) => x.daysFromToday >= 0)
       .sort((a, b) => a.daysFromToday - b.daysFromToday)[0];
+    const lastOffset = nearestAssessment ? Math.min(6, nearestAssessment.daysFromToday) : 6;
+    const examDueMinutes = nearestAssessment ? parseDueMinutes(nearestAssessment.a.date) : undefined;
 
-    // Procura o primeiro slot livre a partir de dayOffset (e se o dia estiver cheio, tenta dias seguintes dentro da semana)
+    // Procura o primeiro slot livre a partir de dayOffset, so para a frente (nunca volta a dias ja passados),
+    // respeitando os dias ligados, a meta diaria e a hora do teste, como o motor do planeador.
     let chosenDateKey: string | null = null;
     let chosenSlot: string | undefined;
+    let chosenMinutes = clampedMinutes;
 
-    for (let spill = 0; spill < 7; spill++) {
-      const candidateOffset = (clampedOffset + spill) % 7;
-      // Evita voltar para tras depois de tentar todos os restantes dias se o proprio dia ja passou
-      if (spill > 0 && candidateOffset < clampedOffset && clampedOffset + spill >= 7) {
-        // Permite encaixe noutro dia livre da semana apenas como ultimo recurso
-      }
+    for (let candidateOffset = clampedOffset; candidateOffset <= lastOffset; candidateOffset++) {
       const candidateDate = addDays(baseDate, candidateOffset);
       const dateKey = format(candidateDate, 'yyyy-MM-dd');
       const wd = candidateDate.getDay();
@@ -282,30 +298,46 @@ export function groundLlmWeeklyPlan(args: {
         prefs?.weekdaySchedule,
         prefs?.preferredPeriod ?? 'auto',
       );
+      if (!avail.enabled) continue;
+
+      const usedMinutes = allOccupied
+        .filter((s) => s.date === dateKey)
+        .reduce((sum, s) => sum + occupied(s), 0);
+      const room = Math.floor((avail.minutes - usedMinutes) / 5) * 5;
+      const minutesHere = Math.min(clampedMinutes, room);
+      if (minutesHere < MIN_BRIEFING_BLOCK) continue;
+
       const effectiveWindow =
         preferredWindow !== 'auto'
           ? preferredWindow
           : avail.window;
+      const isExamDay = nearestAssessment !== undefined && candidateOffset === nearestAssessment.daysFromToday;
 
       const slot = findFirstFreeSlotOnDate({
         dateKey,
-        minutes: clampedMinutes,
+        minutes: minutesHere,
         preferredPeriod: effectiveWindow,
         nowMinutes: candidateOffset === 0 ? nowMinutes : undefined,
         classes,
         events,
         existingSessions: allOccupied,
         blockedPeriods: avail.blockedPeriods,
+        assessments,
+        ...(isExamDay && examDueMinutes !== undefined ? { latestEnd: examDueMinutes - 30 } : {}),
       });
 
       if (slot) {
         chosenDateKey = dateKey;
         chosenSlot = slot;
+        chosenMinutes = minutesHere;
         break;
       }
     }
 
-    if (!chosenDateKey || !chosenSlot) continue;
+    if (!chosenDateKey || !chosenSlot) {
+      dropped += 1;
+      continue;
+    }
 
     const isExamUrgent =
       rawBlock.focusKind === 'exam_prep' ||
@@ -342,7 +374,7 @@ export function groundLlmWeeklyPlan(args: {
       ...(materialId ? { materialId } : {}),
       date: chosenDateKey,
       start: chosenSlot,
-      minutes: clampedMinutes,
+      minutes: chosenMinutes,
       done: false,
       ...(cleanNote ? { notes: cleanNote } : {}),
       reason: {
@@ -356,12 +388,14 @@ export function groundLlmWeeklyPlan(args: {
 
     grounded.push(session);
     allOccupied.push(session);
-    void baseTargetDate;
   }
 
-  return grounded.sort(
-    (a, b) => a.date.localeCompare(b.date) || (a.start ?? '').localeCompare(b.start ?? ''),
-  );
+  return {
+    sessions: grounded.sort(
+      (a, b) => a.date.localeCompare(b.date) || (a.start ?? '').localeCompare(b.start ?? ''),
+    ),
+    dropped,
+  };
 }
 
 /**

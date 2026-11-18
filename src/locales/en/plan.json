@@ -506,6 +506,8 @@
     "cancel": "Cancel",
     "aiConsentNeeded": "Turn on Uni AI in Settings to generate tailored LLM study plans, or run the offline planner below.",
     "noFreeSlotsError": "Could not fit blocks into free slots this week — adjust your weekday availability or Studio settings.",
+    "blocksDropped_one": "{{count}} block suggested by the AI didn't fit your rules (days, daily goal or test date).",
+    "blocksDropped_other": "{{count}} blocks suggested by the AI didn't fit your rules (days, daily goal or test date).",
     "genericError": "Could not generate the AI plan right now.",
     "openAiSettings": "Open AI settings",
     "retry": "Try again",
