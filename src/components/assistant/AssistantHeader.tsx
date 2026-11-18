@@ -330,28 +330,26 @@ export function AssistantHeader(props: AssistantHeaderProps) {
             </div>
           </div>
 
-          {messagesCount === 0 && (
-            <div className="flex flex-wrap items-center gap-1.5 pb-0.5">
-              {[{ id: 'all', label: t('page.allSubjects') }, ...TUTOR_SUBJECTS].map((subj) => {
-                const active = activeSubject === subj.id;
-                return (
-                  <button
-                    key={subj.id}
-                    type="button"
-                    onClick={() => onChangeSubject(subj.id)}
-                    className={cx(
-                      'min-h-11 shrink-0 rounded-full border px-3.5 text-xs font-medium transition',
-                      active
-                        ? 'border-accent bg-accent-soft font-semibold text-accent-ink'
-                        : 'border-line bg-surface text-muted hover:text-fg',
-                    )}
-                  >
-                    {subj.label}
-                  </button>
-                );
-              })}
-            </div>
-          )}
+          <div className="flex flex-wrap items-center gap-1.5 pb-0.5">
+            {[{ id: 'all', label: t('page.allSubjects') }, ...TUTOR_SUBJECTS].map((subj) => {
+              const active = activeSubject === subj.id;
+              return (
+                <button
+                  key={subj.id}
+                  type="button"
+                  onClick={() => onChangeSubject(subj.id)}
+                  className={cx(
+                    'min-h-11 shrink-0 rounded-full border px-3.5 text-xs font-medium transition',
+                    active
+                      ? 'border-accent bg-accent-soft font-semibold text-accent-ink'
+                      : 'border-line bg-surface text-muted hover:text-fg',
+                  )}
+                >
+                  {subj.label}
+                </button>
+              );
+            })}
+          </div>
 
           {filteredConversations.length > 0 && (
             <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">

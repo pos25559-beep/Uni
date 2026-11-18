@@ -19,7 +19,6 @@ const settings: Settings = {
   geminiApiKey: '',
   geminiModel: 'gemini-4-hydrogen',
   googleClientId: '',
-  msClientId: '',
 };
 
 const course: Course = {

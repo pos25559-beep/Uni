@@ -12,8 +12,13 @@ vi.mock('firebase/firestore', () => ({
 }));
 vi.mock('../firebase', () => ({ auth: { currentUser: null }, db: {} }));
 vi.mock('../../store/useStore', () => ({
+  defaultAcademicProfile: {},
   useStore: {
-    getState: () => ({ settings: {} }),
+    getState: () => ({
+      settings: {},
+      clearAll: vi.fn(),
+      updateSettings: vi.fn(),
+    }),
     setState: vi.fn(),
   },
 }));
@@ -130,5 +135,43 @@ describe('sincronização de definições', () => {
     expect(Object.keys(p.courseModeUntil)).toHaveLength(30);
     expect(p.courseModeUntil.mau).toBeUndefined();
     expect(p).not.toHaveProperty('briefingAppliedAt');
+  });
+
+  it('limpa estado local da conta após resetLocalAccountState e normaliza perfil académico', async () => {
+    const prevStorage = globalThis.localStorage;
+    const store = new Map<string, string>();
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: (k: string) => store.get(k) ?? null,
+        setItem: (k: string, v: string) => void store.set(k, v),
+        removeItem: (k: string) => void store.delete(k),
+      },
+    });
+    try {
+      localStorage.setItem('unipedia-tutor-session-state-v1', '{"activeConvId":"c1"}');
+      localStorage.setItem('uni-checkin-drafts-v1', '{}');
+      const mod = await import('../firestoreSync');
+      await mod.resetLocalAccountState();
+      expect(localStorage.getItem('unipedia-tutor-session-state-v1')).toBeNull();
+      expect(localStorage.getItem('uni-checkin-drafts-v1')).toBeNull();
+
+      const profile = mod.sanitizeAcademicProfile({
+        onboardingCompleted: true,
+        universityId: 'fct-nova',
+        universityName: 'NOVA',
+        degreeId: 'lemc',
+        degreeName: 'LEMc',
+        entryYear: 2024,
+        currentAcademicYear: 3,
+        currentSemester: 1,
+        completedCourses: [],
+        difficultCourseIds: [],
+        difficultTopicsNotes: 'x'.repeat(5000),
+      });
+      expect(profile.difficultTopicsNotes).toHaveLength(4000);
+    } finally {
+      Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: prevStorage });
+    }
   });
 });

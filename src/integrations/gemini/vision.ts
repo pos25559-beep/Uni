@@ -12,7 +12,7 @@ import {
   type ExtractedSchedulePayload,
 } from '../../lib/visionParsers';
 import { useStore } from '../../store/useStore';
-import { callDirectRest, resolveGeminiConfig, runNativeGenerate } from './core';
+import { callDirectRest, resolveGeminiConfig, runNativeGenerate, withQuotaAndFallback } from './core';
 import { OCR_PRIMARY_TIMEOUT_MS, THINKING_FAST } from './models';
 import { ACADEMIC_HISTORY_SCHEMA, TIMETABLE_EXTRACTION_SCHEMA } from './schemas';
 
@@ -95,20 +95,22 @@ Regras:
     thinkingConfig: THINKING_FAST,
   };
 
-  const rawText = customKey
-    ? await callDirectRest({
-        key: customKey,
-        model,
-        contents,
-        generationConfig,
-        primaryTimeoutMs: OCR_PRIMARY_TIMEOUT_MS,
-      })
-    : await runNativeGenerate({
-        model,
-        contents,
-        generationConfig,
-        primaryTimeoutMs: OCR_PRIMARY_TIMEOUT_MS,
-      });
+  const rawText = await withQuotaAndFallback('chat', customKey, () =>
+    customKey
+      ? callDirectRest({
+          key: customKey,
+          model,
+          contents,
+          generationConfig,
+          primaryTimeoutMs: OCR_PRIMARY_TIMEOUT_MS,
+        })
+      : runNativeGenerate({
+          model,
+          contents,
+          generationConfig,
+          primaryTimeoutMs: OCR_PRIMARY_TIMEOUT_MS,
+        }),
+  );
 
   return parseHistoryJsonText(rawText);
 }
@@ -197,20 +199,22 @@ Regras muito importantes para grelhas visuais de horários:
     thinkingConfig: THINKING_FAST,
   };
 
-  const rawText = customKey
-    ? await callDirectRest({
-        key: customKey,
-        model,
-        contents,
-        generationConfig,
-        primaryTimeoutMs: OCR_PRIMARY_TIMEOUT_MS,
-      })
-    : await runNativeGenerate({
-        model,
-        contents,
-        generationConfig,
-        primaryTimeoutMs: OCR_PRIMARY_TIMEOUT_MS,
-      });
+  const rawText = await withQuotaAndFallback('chat', customKey, () =>
+    customKey
+      ? callDirectRest({
+          key: customKey,
+          model,
+          contents,
+          generationConfig,
+          primaryTimeoutMs: OCR_PRIMARY_TIMEOUT_MS,
+        })
+      : runNativeGenerate({
+          model,
+          contents,
+          generationConfig,
+          primaryTimeoutMs: OCR_PRIMARY_TIMEOUT_MS,
+        }),
+  );
 
   return parseScheduleJsonText(rawText);
 }
@@ -255,9 +259,11 @@ ${clean.slice(0, 6000)}
     thinkingConfig: THINKING_FAST,
   };
 
-  const rawJson = customKey
-    ? await callDirectRest({ key: customKey, model, contents, generationConfig })
-    : await runNativeGenerate({ model, contents, generationConfig });
+  const rawJson = await withQuotaAndFallback('chat', customKey, () =>
+    customKey
+      ? callDirectRest({ key: customKey, model, contents, generationConfig })
+      : runNativeGenerate({ model, contents, generationConfig }),
+  );
 
   return parseScheduleJsonText(rawJson);
 }

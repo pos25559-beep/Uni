@@ -50,6 +50,15 @@ export function TabGuideBanner({
     return () => window.removeEventListener('uni-open-tab-guide', onOpenGuide);
   }, [tabKey]);
 
+  useEffect(() => {
+    if (openTab !== tabKey) return;
+    const st = useStore.getState();
+    const seen = st.settings.seenTabGuides ?? [];
+    if (!seen.includes(tabKey)) {
+      st.updateSettings({ seenTabGuides: [...seen, tabKey] }, { replan: false });
+    }
+  }, [openTab, tabKey]);
+
   if (openTab !== tabKey) return null;
 
   const spec = getLocalizedTabGuide(tabKey, i18n.language);

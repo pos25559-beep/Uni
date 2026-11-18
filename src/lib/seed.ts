@@ -15,7 +15,6 @@ export const defaultSettings: Settings = {
   geminiApiKey: '',
   geminiModel: 'gemini-4-hydrogen',
   googleClientId: '',
-  msClientId: '',
   uniAccessory: 'auto',
   uniSkin: 'classic',
   uniSkinAutoRotate: true,

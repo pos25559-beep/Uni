@@ -23,7 +23,6 @@ const baseSettings: Settings = {
   geminiApiKey: '',
   geminiModel: 'gemini-2.5-flash',
   googleClientId: '',
-  msClientId: '',
 };
 
 const baseCourse: Course = {
@@ -353,7 +352,7 @@ describe('planner.generatePlan', () => {
         { id: 'u1', role: 'user', text: 'Quero focar em refazer os testes antigos' },
       ],
     });
-    latest.reconcileFuturePlan(true);
+    latest.replan('checkin', { force: true });
 
     const updatedSessions = useStore.getState().sessions;
     expect(updatedSessions.length).toBeGreaterThan(0);

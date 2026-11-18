@@ -35,6 +35,7 @@ export function sanitizeMaterials(
   materials: Material[],
   courses: Course[] = [],
   entryYear?: number,
+  protectedIds?: Set<string>,
 ): { clean: Material[]; removedCount: number } {
   const c3d = courses.find((c) => c.id === 'c3d');
   let removedCount = 0;
@@ -61,7 +62,12 @@ export function sanitizeMaterials(
       removedCount++;
       continue;
     }
-    if (m.provider === 'gdrive' && !m.pinned && isPreEntryDriveFile(m.modifiedAt, entryYear)) {
+    if (
+      m.provider === 'gdrive' &&
+      !m.pinned &&
+      !protectedIds?.has(m.id) &&
+      isPreEntryDriveFile(m.modifiedAt, entryYear)
+    ) {
       removedCount++;
       continue;
     }
@@ -188,11 +194,13 @@ export function migrateStoreState(persistedState: unknown, version: number) {
     if (version < 7 && nextSettings.guestMode === undefined) {
       nextSettings.guestMode = false;
     }
+    const hasPersonalKey = Boolean((nextSettings as Partial<Settings>).geminiApiKey?.trim());
     if (
       !nextSettings.geminiModel ||
       nextSettings.geminiModel === 'gemini-3.8-flash' ||
       nextSettings.geminiModel === 'gemini-3.5-flash-lite' ||
-      nextSettings.geminiModel.startsWith('gemini-2.') ||
+      nextSettings.geminiModel.startsWith('gemini-2.0') ||
+      (!hasPersonalKey && nextSettings.geminiModel.startsWith('gemini-2.')) ||
       nextSettings.geminiModel.startsWith('gemini-1.')
     ) {
       nextSettings.geminiModel = 'gemini-4-hydrogen';

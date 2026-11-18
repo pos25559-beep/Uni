@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
@@ -109,7 +109,21 @@ export default function Dashboard() {
     [academicProfile, courses, classes, assessments, materials, sessions, settings],
   );
 
-  const [now] = useState(() => new Date());
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const refresh = () => setNow(new Date());
+    const onVis = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', onVis);
+    const timer = window.setInterval(refresh, 60_000);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', onVis);
+      window.clearInterval(timer);
+    };
+  }, []);
   const {
     today,
     nowTime,
@@ -144,14 +158,18 @@ export default function Dashboard() {
     now,
   });
 
+  const pausedSet = useMemo(
+    () => new Set(settings.plannerPrefs?.pausedCourseIds ?? []),
+    [settings.plannerPrefs?.pausedCourseIds],
+  );
   const next = upcoming[0];
   const nextCourse = next ? courseById.get(next.courseId) : undefined;
   const upcomingPlanSessions = useMemo(
     () =>
       sessions
-        .filter((s) => !s.done && s.date > today)
+        .filter((s) => !s.done && s.date > today && !pausedSet.has(s.courseId))
         .sort((a, b) => a.date.localeCompare(b.date) || (a.start ?? '').localeCompare(b.start ?? '')),
-    [sessions, today],
+    [sessions, today, pausedSet],
   );
   const nextStudyDate = upcomingPlanSessions[0]?.date;
   const nextStudyDaySessions = useMemo(
@@ -221,15 +239,15 @@ export default function Dashboard() {
 
   const startQuickMinutesBlock = (minutes: 10 | 25 | 50) => {
     void hapticTap();
-    const pendingToday = todaySessions.find((s) => !s.done);
-    if (pendingToday) {
-      if (minutes < pendingToday.minutes) {
-        patch('sessions', pendingToday.id, { minutes });
-      }
+    const pendingToday = todaySessions.find((s) => !s.done && !pausedSet.has(s.courseId));
+    if (pendingToday && pendingToday.minutes <= minutes) {
       openFocus(pendingToday.id);
       return;
     }
-    const targetCourse = nextCourse ?? courses[0];
+    const targetCourse =
+      (nextCourse && !pausedSet.has(nextCourse.id) ? nextCourse : undefined) ??
+      courses.find((c) => !pausedSet.has(c.id)) ??
+      courses[0];
     if (!targetCourse) {
       navigate('/cadeiras');
       return;
@@ -246,6 +264,7 @@ export default function Dashboard() {
       minutes,
       done: false,
       generated: false,
+      locked: true,
       notes: minutes === 10 ? 'Revisão espaçada' : 'Consolidação',
     });
     openFocus(id);
@@ -536,30 +555,32 @@ export default function Dashboard() {
             isEmpty={todaySessions.length === 0 && nextStudyDaySessions.length === 0}
             onOpenPlan={() => navigate('/plano')}
             uniAccessory={uniAccessory}
-          >
-            {courses.length > 0 && (
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-white/65 px-3 py-2 text-xs dark:bg-black/20">
-                <span className="font-semibold text-fg">
-                  {appLang === 'en'
-                    ? 'I have:'
-                    : appLang === 'es'
-                      ? 'Tengo:'
-                      : 'Tenho agora:'}
-                </span>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {([10, 25, 50] as const).map((mins) => (
-                    <button
-                      key={mins}
-                      type="button"
-                      onClick={() => startQuickMinutesBlock(mins)}
-                      className="min-h-[36px] rounded-full border border-line bg-surface px-3 py-1 text-xs font-semibold text-fg transition hover:border-accent hover:bg-accent-soft/50"
-                    >
-                      ⚡ {mins} min
-                    </button>
-                  ))}
+            topSlot={
+              courses.length > 0 ? (
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-white/65 px-3 py-2 text-xs dark:bg-black/20">
+                  <span className="font-semibold text-fg">
+                    {appLang === 'en'
+                      ? 'I have:'
+                      : appLang === 'es'
+                        ? 'Tengo:'
+                        : 'Tenho agora:'}
+                  </span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {([10, 25, 50] as const).map((mins) => (
+                      <button
+                        key={mins}
+                        type="button"
+                        onClick={() => startQuickMinutesBlock(mins)}
+                        className="min-h-[36px] rounded-full border border-line bg-surface px-3 py-1 text-xs font-semibold text-fg transition hover:border-accent hover:bg-accent-soft/50"
+                      >
+                        ⚡ {mins} min
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              ) : undefined
+            }
+          >
             {todaySessions.length > 0 ? (
               <ul className="space-y-2">
                 {todaySessions.map((s) => (

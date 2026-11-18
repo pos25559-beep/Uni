@@ -51,6 +51,19 @@ describe('buildFirestorePatch', () => {
     expect(out.title).toBe('x');
     expect(out.nested).toEqual({ b: 1 });
   });
+
+  it('remove URLs opcionais vazias em buildFirestorePatch via deleteField', () => {
+    const out = buildFirestorePatch({
+      clipUrl: '',
+      driveFolderUrl: '',
+      personalEmail: '',
+      title: 'ok',
+    });
+    expect(isDelete(out.clipUrl)).toBe(true);
+    expect(isDelete(out.driveFolderUrl)).toBe(true);
+    expect(isDelete(out.personalEmail)).toBe(true);
+    expect(out.title).toBe('ok');
+  });
 });
 
 describe('stripUndefined', () => {

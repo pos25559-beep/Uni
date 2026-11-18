@@ -443,6 +443,7 @@
     "doubtSaved": "Dúvida salva para levar à aula ({{topic}}).",
     "needCourseFocus": "Selecione uma disciplina para focar o plano.",
     "planFocusApplied": "Plano focado em «{{course}}» e sessões futuras atualizadas.",
+    "planFocusManualNote": "Foco em «{{course}}» salvo para a Consciência do Uni (no modo manual seus blocos não são alterados).",
     "invalidProposal": "Proposta inválida ou incompleta."
   },
   "voice": {

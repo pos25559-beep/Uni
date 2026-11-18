@@ -32,7 +32,9 @@ export default function WeekCheckCard({ initialOpen = false, onCollapse }: WeekC
   const { t, i18n } = useTranslation('plan');
   const dfLocale = resolveDateFnsLocale(i18n.language);
   const courses = useStore((s) => s.courses);
+  const plannerMode = useStore((s) => s.settings.plannerPrefs?.plannerMode ?? 'auto');
   const lastBriefingNote = useStore((s) => s.settings.plannerPrefs?.briefingNote ?? '');
+  const appliedMsgKey = plannerMode === 'manual' ? 'weekCheck.appliedManual' : 'weekCheck.applied';
   const {
     status,
     intent,
@@ -195,7 +197,7 @@ export default function WeekCheckCard({ initialOpen = false, onCollapse }: WeekC
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
           <Check size={16} className="shrink-0 text-ok" aria-hidden="true" />
           <p className="min-w-0 flex-1 text-xs font-semibold text-fg">
-            {t('weekCheck.applied', { count: appliedCount })}
+            {t(appliedMsgKey, { count: appliedCount })}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
@@ -304,7 +306,7 @@ export default function WeekCheckCard({ initialOpen = false, onCollapse }: WeekC
                   setAppliedCount(count);
                   setEditing(false);
                   if (onCollapse) {
-                    showToast(t('weekCheck.applied', { count }), 'ok');
+                    showToast(t(appliedMsgKey, { count }), 'ok');
                     onCollapse();
                   }
                 }

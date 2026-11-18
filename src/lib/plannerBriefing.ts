@@ -5,7 +5,6 @@ import type {
   Material,
   PlannerContentMix,
   PlannerDayPeriod,
-  PlannerPreferences,
   PlannerWindowMode,
   PreExamMarathonConfig,
   Settings,
@@ -517,19 +516,4 @@ export function parsePlannerBriefing(args: {
     ...(Object.keys(courseModeClauses).length > 0 ? { courseModeClauses } : {}),
     weekdayUpdates,
   };
-}
-
-/** Constrói estado rápido inicial da matriz de preferências para o construtor. */
-export function isCustomPrefsModified(prefs: PlannerPreferences): boolean {
-  return (
-    (prefs.boostCourseIds?.length ?? 0) > 0 ||
-    (prefs.pausedCourseIds?.length ?? 0) > 0 ||
-    prefs.strategy !== 'balanced' ||
-    prefs.preferredPeriod !== 'auto' ||
-    prefs.blockMinutes !== 50 ||
-    prefs.horizonDays !== 14 ||
-    Boolean(prefs.preExamMarathon?.enabled) ||
-    Boolean(prefs.fillClassGaps) ||
-    Boolean(prefs.briefingNote?.trim())
-  );
 }

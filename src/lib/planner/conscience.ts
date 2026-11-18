@@ -111,6 +111,7 @@ function overlapsClassOrEvent(
 
 function findNextFreeSlotAcrossDays(args: {
   from: string;
+  today?: string;
   maxDate?: string;
   maxDays: number;
   minutes: number;
@@ -124,6 +125,7 @@ function findNextFreeSlotAcrossDays(args: {
 }): { date: string; start: string } | null {
   const prefs = resolvePlannerPrefs(args.settings);
   const startDay = parseDay(args.from);
+  const effectiveToday = args.today ?? args.from;
   const others = args.excludeSessionId
     ? args.sessions.filter((x) => x.id !== args.excludeSessionId)
     : args.sessions;
@@ -132,17 +134,26 @@ function findNextFreeSlotAcrossDays(args: {
     const dk = format(addDays(startDay, i), 'yyyy-MM-dd');
     if (args.maxDate && dk > args.maxDate) break;
     const wd = addDays(startDay, i).getDay();
-    const avail = prefs.weekdaySchedule?.[String(wd)];
-    if (avail && !avail.enabled) continue;
+    const dayProfile = resolveDayPlanProfile({
+      dateKey: dk,
+      weekday: wd,
+      settings: args.settings,
+      assessments: args.assessments,
+      weekdaySchedule: prefs.weekdaySchedule,
+      preferredPeriod: prefs.preferredPeriod,
+      preExamMarathon: prefs.preExamMarathon,
+      dateOverrides: prefs.dateOverrides,
+    });
+    if (!dayProfile.enabled) continue;
     const start = findFirstFreeSlotOnDate({
       dateKey: dk,
       minutes: args.minutes,
-      preferredPeriod: avail?.window ?? prefs.preferredPeriod ?? 'auto',
-      nowMinutes: dk === args.from ? args.nowMinutes : undefined,
+      preferredPeriod: dayProfile.windowMode,
+      nowMinutes: dk === effectiveToday ? args.nowMinutes : undefined,
       classes: args.classes,
       events: args.events,
       existingSessions: others,
-      blockedPeriods: avail?.blockedPeriods,
+      blockedPeriods: dayProfile.blockedPeriods,
       assessments: args.assessments,
     });
     if (start) return { date: dk, start };
@@ -231,7 +242,8 @@ export function analyzePlanConscience(input: AnalyzeConscienceInput): PlanConsci
       const maxUntil = [...activeTargetIds]
         .map((id) => modeUntil[id])
         .filter((d): d is string => Boolean(d))
-        .sort()[0];
+        .sort()
+        .at(-1);
       const conflicting = futurePending.filter(
         (s) =>
           !activeTargetIds.has(s.courseId) &&
@@ -267,6 +279,7 @@ export function analyzePlanConscience(input: AnalyzeConscienceInput): PlanConsci
     const course = courseMap.get(clashed.courseId);
     const slot = findNextFreeSlotAcrossDays({
       from: clashed.date,
+      today,
       maxDays: 5,
       minutes: clashed.minutes,
       nowMinutes,

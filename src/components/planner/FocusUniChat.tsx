@@ -49,6 +49,7 @@ export default function FocusUniChat({ course, onClose }: { course: Course; onCl
     uniAgent: agent,
     userName,
     setIntegration,
+    persistSessionState: false,
   });
 
   // Usa a conversa mais recente desta cadeira; se não houver, cria uma (uma só vez).
@@ -88,6 +89,7 @@ export default function FocusUniChat({ course, onClose }: { course: Course; onCl
           size={28}
           mood={chat.loading ? 'thinking' : 'calm'}
           accessory={uniAccessory}
+          skin={agent?.skinId}
           {...(agent ? { form: agent.formId, stage: agent.stage } : {})}
           interactive={false}
         />

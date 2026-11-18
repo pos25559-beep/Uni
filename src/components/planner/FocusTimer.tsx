@@ -585,7 +585,6 @@ export default function FocusTimer({
     setConfidenceSet(level);
     if (!activePracticeTopic) return;
     updateTopic(session.courseId, activePracticeTopic.id, { confidence: level });
-    replan('session_done', { silent: true });
     syncCourseUniProgression(false);
   };
 

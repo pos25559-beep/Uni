@@ -202,10 +202,10 @@ export default function PostOnboardingHubModal({
     }
 
     const targetCourse = courses.find((c) => c.id === notebookCourseId);
-    if (targetCourse && (courseNbClean || coursePortalClean)) {
+    if (targetCourse && (courseNbClean !== targetCourse.notebookUrl || coursePortalClean !== (targetCourse.clipUrl ?? ''))) {
       patch('courses', targetCourse.id, {
-        ...(courseNbClean ? { notebookUrl: courseNbClean } : {}),
-        ...(coursePortalClean ? { clipUrl: coursePortalClean } : {}),
+        notebookUrl: courseNbClean || undefined,
+        clipUrl: coursePortalClean || undefined,
       });
       if (courseNbClean) {
         const alreadyListed = materials.some(
@@ -234,7 +234,7 @@ export default function PostOnboardingHubModal({
     const today = todayStr();
     const pendingAssessmentsCount = assessments.filter((a) => a.grade === undefined).length;
     const starterOnly = pendingAssessmentsCount === 0 && courses.length > 0;
-    replan('onboarding', { force: true });
+    replan('onboarding', { force: true, allowInManualMode: true });
     const nextSessions = useStore
       .getState()
       .sessions.filter((x) => x.generated && !x.done && x.date >= today);

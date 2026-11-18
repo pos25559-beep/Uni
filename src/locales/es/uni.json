@@ -443,6 +443,7 @@
     "doubtSaved": "Duda guardada para llevar a clase ({{topic}}).",
     "needCourseFocus": "Selecciona una asignatura para enfocar el plan.",
     "planFocusApplied": "Plan enfocado en «{{course}}» y sesiones futuras actualizadas.",
+    "planFocusManualNote": "Enfoque en «{{course}}» guardado para la Conciencia de Uni (en modo manual no tocamos tus bloques).",
     "invalidProposal": "Propuesta no válida o incompleta."
   },
   "voice": {

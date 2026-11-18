@@ -123,7 +123,7 @@ export default function FileUploadModal({ initialCourseId, onClose }: Props) {
             id="file-upload-input"
             type="file"
             className="hidden"
-            accept=".pdf,.ppt,.pptx,.doc,.docx,.txt,.zip"
+            accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.txt,.md,.markdown,.csv,.tsv,.json,.tex"
             onChange={(e: ChangeEvent<HTMLInputElement>) => onFileSelected(e.target.files?.[0] ?? null)}
           />
 

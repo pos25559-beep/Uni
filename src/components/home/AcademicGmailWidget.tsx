@@ -38,7 +38,7 @@ export default function AcademicGmailWidget({ hideWhenEmpty = false }: { hideWhe
 
   const combinedEmails = [...importedEmails, ...allEmails].slice(0, 5);
 
-  if (hideWhenEmpty && combinedEmails.length === 0) {
+  if (hideWhenEmpty && combinedEmails.length === 0 && !(connected && needsPermission)) {
     return null;
   }
 

@@ -443,6 +443,7 @@
     "doubtSaved": "Question saved to bring to class ({{topic}}).",
     "needCourseFocus": "Select a course to focus the plan on.",
     "planFocusApplied": "Plan focused on “{{course}}” and upcoming sessions updated.",
+    "planFocusManualNote": "Focus on “{{course}}” saved for Uni Conscience (in manual mode your blocks stay untouched).",
     "invalidProposal": "Invalid or incomplete proposal."
   },
   "voice": {

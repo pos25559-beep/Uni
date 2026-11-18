@@ -1,6 +1,8 @@
 // Funções puras: juntam todas as fontes num único calendário. Sem React.
 import { addDays, eachDayOfInterval, format, parseISO } from 'date-fns';
+import i18n from '../../i18n';
 import { kindLabel } from '../../lib/colors';
+import { formatSessionDisplay } from '../../lib/selectors';
 import type { AppState } from '../../store/useStore';
 import type { Assessment, Source } from '../../types';
 
@@ -120,6 +122,7 @@ export function buildCalendarItems(state: CalState, rangeStart: Date, rangeEnd: 
   }
 
   // Sessões de estudo.
+  const activeLang = i18n.isInitialized ? i18n.language : 'pt-PT';
   for (const s of state.sessions) {
     if (!inRange(s.date)) continue;
     const course = courses.get(s.courseId);
@@ -128,7 +131,7 @@ export function buildCalendarItems(state: CalState, rangeStart: Date, rangeEnd: 
       id: s.id,
       refId: s.id,
       kind: 'estudo',
-      title: topic?.title ?? 'Estudo',
+      title: formatSessionDisplay(s, topic, activeLang).title,
       date: s.date,
       start: s.start,
       end: s.start ? addMinutesTo(s.start, s.minutes) : undefined,

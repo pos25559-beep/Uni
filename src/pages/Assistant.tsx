@@ -11,6 +11,7 @@ import {
   readStoredTutorSessionState,
   useAssistantChat,
 } from '../components/assistant/useAssistantChat';
+import { openUniCheckIn } from '../lib/uniCheckInBus';
 import { TabGuideBanner } from '../components/onboarding/TabGuideBanner';
 import { Button, Modal } from '../components/ui';
 import { hasCustomGeminiKey } from '../integrations/gemini';
@@ -56,10 +57,11 @@ export default function Assistant() {
   const userName = useStore((s) => s.settings.userName);
   const setIntegration = useStore((s) => s.setIntegration);
 
+  const queryCourse = new URLSearchParams(location.search).get('course');
+  const initialCourseOverride = routeState?.courseId || queryCourse || null;
+
   const [activeCourseId, setActiveCourseId] = useState<string>(() => {
-    const queryCourse = new URLSearchParams(location.search).get('course');
-    if (routeState?.courseId) return routeState.courseId;
-    if (queryCourse) return queryCourse;
+    if (initialCourseOverride) return initialCourseOverride;
     const saved = readStoredTutorSessionState()?.activeCourseId;
     return saved || 'all';
   });
@@ -73,7 +75,6 @@ export default function Assistant() {
   const [showActions, setShowActions] = useState(false);
   const [mobileSuggestionsOpen, setMobileSuggestionsOpen] = useState(false);
   const [sourcesOpen, setSourcesOpen] = useState(false);
-  const [tutorOpen, setTutorOpen] = useState(false);
   const [keyGuideOpen, setKeyGuideOpen] = useState(false);
   const [collectiblesOpen, setCollectiblesOpen] = useState(false);
   const [contextModalOpen, setContextModalOpen] = useState(false);
@@ -122,6 +123,8 @@ export default function Assistant() {
     uniAgent: courseUniAgent,
     userName,
     setIntegration,
+    persistSessionState: true,
+    initialCourseOverride,
   });
 
   useEffect(() => {
@@ -171,7 +174,6 @@ export default function Assistant() {
     menuOpen ||
     showDocPicker ||
     confirmDeleteConv ||
-    tutorOpen ||
     keyGuideOpen ||
     collectiblesOpen ||
     contextModalOpen ||
@@ -285,7 +287,7 @@ export default function Assistant() {
         courses={courses}
         activeCourse={activeCourse}
         activeCourseId={activeCourseId}
-        onChangeCourseId={setActiveCourseId}
+        onChangeCourseId={chat.selectCourse}
         attachedCount={chat.attachedMaterials.length}
         onOpenSources={() => setSourcesOpen(true)}
         showActions={showActions}
@@ -338,7 +340,7 @@ export default function Assistant() {
           <AssistantModals
             menuOpen={menuOpen}
             onCloseMenu={() => setMenuOpen(false)}
-            onOpenWeeklyTutor={() => setTutorOpen(true)}
+            onOpenWeeklyTutor={() => openUniCheckIn({ kind: 'week', courseId: activeCourse?.id })}
             onOpenDocPicker={() => setShowDocPicker(true)}
             onOpenCollectibles={() => setCollectiblesOpen(true)}
             onNavigateSettings={() => navigate('/definicoes/tutor')}
@@ -359,8 +361,6 @@ export default function Assistant() {
               setConfirmDeleteConv(false);
               if (chat.activeConvId) void chat.handleDeleteConversationById(chat.activeConvId);
             }}
-            tutorOpen={tutorOpen}
-            onCloseTutor={() => setTutorOpen(false)}
             keyGuideOpen={keyGuideOpen}
             onCloseKeyGuide={() => setKeyGuideOpen(false)}
             collectiblesOpen={collectiblesOpen}
@@ -377,13 +377,14 @@ export default function Assistant() {
             activeSubject={activeSubject}
             onSelectConversation={(conv) => {
               chat.setActiveConvId(conv.id);
-              if (conv.courseId) setActiveCourseId(conv.courseId);
+              setActiveCourseId(conv.courseId ?? 'all');
             }}
             onCreateConversation={chat.handleCreateConversation}
             onRenameConversation={chat.handleRenameConversation}
             onDeleteConversation={chat.handleDeleteConversationById}
             notebookOpen={notebookOpen}
             onCloseNotebook={() => setNotebookOpen(false)}
+            onSendNoteToChat={chat.appendNoteMessage}
             attachedMaterials={chat.attachedMaterials}
             uniAccessory={uniAccessory}
             uniPersona={effectivePersona}

@@ -35,14 +35,13 @@ import {
   isIncomingEmailSignInLink,
   loginWithEmail,
   loginWithGoogle,
-  logoutFirebase,
   onAuthStateChanged,
   registerWithEmail,
   resetPasswordWithEmail,
   sendMagicEmailLink,
   type User,
 } from '../lib/firebase';
-import { migrateLocalDataToCloud } from '../lib/firestoreSync';
+import { migrateLocalDataToCloud, performFullLogout } from '../lib/firestoreSync';
 import { hapticSuccess, hapticTap } from '../lib/nativeBridge';
 import { googleService } from '../services/googleService';
 import { useStore } from '../store/useStore';
@@ -303,6 +302,7 @@ export default function LoginPage() {
         ...(u.displayName ? { userName: u.displayName } : {}),
         ...(u.email ? { personalEmail: u.email } : {}),
       });
+      await migrateLocalDataToCloud().catch(() => {});
       const st = useStore.getState();
       st.setIntegration('google', {
         connected: true,
@@ -345,9 +345,8 @@ export default function LoginPage() {
   const handleLogout = async () => {
     setBusy(true);
     try {
-      await logoutFirebase();
+      await performFullLogout();
       setUser(null);
-      updateSettings({ guestMode: false, userName: '' });
       showToast(t('auth.toast.signedOut'), 'neutral');
     } finally {
       setBusy(false);

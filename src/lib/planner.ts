@@ -21,4 +21,5 @@ export {
   type PlanConscienceReport,
 } from './planner/conscience';
 export { generatePlan } from './planner/engine';
+export { classifyOverdue } from './planner/overdue';
 export { rescheduleOverdueSessions } from './planner/reschedule';

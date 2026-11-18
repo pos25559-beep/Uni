@@ -448,6 +448,7 @@ export default function SmartScheduleImportModal({
       return `${dayLabel} ${s.start}–${s.end} · ${crs?.shortName || crs?.name || s.courseName} (${s.type})`;
     });
 
+    const hadSessionsBefore = useStore.getState().sessions.length > 0;
     if (createdCourses.length > 0) upsertMany('courses', createdCourses);
     if (newClasses.length > 0) {
       if (replaceExistingClasses && existingClasses.length > 0) {
@@ -458,7 +459,10 @@ export default function SmartScheduleImportModal({
       upsertMany('classes', newClasses);
     }
     if (newAssessments.length > 0) upsertMany('assessments', newAssessments);
-    if (createdCourses.length > 0 || newClasses.length > 0 || newAssessments.length > 0) {
+    if (
+      (createdCourses.length > 0 || newClasses.length > 0 || newAssessments.length > 0) &&
+      (!hadSessionsBefore || (newClasses.length === 0 && newAssessments.length === 0))
+    ) {
       replan('schedule', { force: true });
     }
 

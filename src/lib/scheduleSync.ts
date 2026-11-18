@@ -2,6 +2,7 @@ import { matchCourse } from '../integrations/clip';
 import { newId, useStore } from '../store/useStore';
 import type { Assessment, ClassSlot, Course, CourseColor } from '../types';
 import { colorNames } from './colors';
+import { percentToGradeByScale } from './grading';
 import {
   collectKnownCourseCandidates,
   deriveCourseAcronym,
@@ -119,7 +120,7 @@ export function commitScheduleSyncToStore(bundle: {
       shortName: code.slice(0, 12),
       ects: 6,
       color: palette[colorIdx++ % palette.length] ?? 'emerald',
-      targetGrade: 14,
+      targetGrade: percentToGradeByScale(70, store.settings.gradingScale ?? 'pt20'),
       topics: [],
     };
     createdCourses.push(created);

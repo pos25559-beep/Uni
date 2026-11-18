@@ -428,25 +428,6 @@
     "validated": "Key verified ({{total}} models available). Local daily cap disabled!",
     "privacyNote": "Your key is sent directly from your browser/app to the Google API — it never passes through Unipedia servers."
   },
-  "microsoft": {
-    "title": "Microsoft OneDrive",
-    "desc": "OneDrive files linked to your courses.",
-    "step1Pre": "Open",
-    "step1Post": "and go to “Microsoft Entra ID” → “App registrations” → “New registration”.",
-    "step2Pre": "Under “Supported account types”, choose",
-    "step2Bold": "any organizational directory and personal Microsoft accounts",
-    "step3Pre": "Under “Redirect URI”, pick platform",
-    "step3Bold": "Single-page application (SPA)",
-    "step3Post": "and paste the origin below.",
-    "step4Pre": "Under “API permissions”, add delegated Microsoft Graph permissions",
-    "step4And": "and",
-    "step5": "Copy the “Application (client) ID” and paste it here.",
-    "redirectUriLabel": "Redirect URI (SPA)",
-    "copyUriLabel": "the URI",
-    "clientIdLabel": "Application (client) ID",
-    "signInPre": "Sign-in happens the first time you import files on the",
-    "materialsLink": "Materials"
-  },
   "notebook": {
     "title": "Uni Notebook & External Shortcut",
     "desc": "Generate study guides, flashcards, and quizzes right inside Uni's Notebook, or optionally save a private shortcut to an external notebook.",

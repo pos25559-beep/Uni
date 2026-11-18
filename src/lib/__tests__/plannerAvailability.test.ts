@@ -22,7 +22,6 @@ const base: Settings = {
   geminiApiKey: '',
   geminiModel: 'gemini-4-hydrogen',
   googleClientId: '',
-  msClientId: '',
 };
 
 // Uma só fonte de disponibilidade: o horário por dia; dias e minutos antigos são derivados.

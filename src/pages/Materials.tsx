@@ -10,6 +10,7 @@ import { cx, showToast } from '../lib/uiHelpers';
 import { useStore } from '../store/useStore';
 import { providerLabel } from '../lib/colors';
 import { driveFolderIdFromUrl } from '../integrations/drive';
+import { filterMaterialsForCourse } from '../lib/courseMaterials';
 import type { Material, MaterialProvider } from '../types';
 import AddLinkModal from '../components/materials/AddLinkModal';
 import FileUploadModal from '../components/materials/FileUploadModal';
@@ -92,8 +93,15 @@ export default function Materials() {
   // Pesquisa + cadeira (base dos contadores dos separadores).
   const scoped = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const selectedCourse =
+      courseFilter !== 'all' && courseFilter !== 'none' ? courseById.get(courseFilter) : undefined;
+    const courseAllowedIds = selectedCourse
+      ? new Set(filterMaterialsForCourse(materials, selectedCourse).map((m) => m.id))
+      : null;
+
     return materials.filter((m) => {
       if (q && !m.title.toLowerCase().includes(q)) return false;
+      if (courseAllowedIds) return courseAllowedIds.has(m.id);
       // Cadeira válida do material; 'none' inclui também cadeiras que já não existem.
       const key = m.courseId && courseById.has(m.courseId) ? m.courseId : 'none';
       return courseFilter === 'all' || key === courseFilter;

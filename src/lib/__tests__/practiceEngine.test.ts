@@ -179,5 +179,29 @@ describe('retentionOverview', () => {
       practiceTotal: 6,
       practiceHitRatePct: 83,
     });
+
+    const withStandalone = retentionOverview(
+      [
+        {
+          ...courses[0],
+          topics: [
+            ...courses[0].topics,
+            {
+              id: 't3',
+              title: 'Maquinagem',
+              status: 'review',
+              confidence: 4,
+              recallCount: 4,
+              recallSuccessCount: 3,
+            },
+          ],
+        },
+      ],
+      sessions,
+      '2026-11-15',
+    );
+    expect(withStandalone.focusQuality.practiceHits).toBe(8);
+    expect(withStandalone.focusQuality.practiceTotal).toBe(10);
+    expect(withStandalone.focusQuality.practiceHitRatePct).toBe(80);
   });
 });

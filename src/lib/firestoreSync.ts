@@ -14,11 +14,12 @@ import {
   auth,
   db,
   deleteCurrentFirebaseUser,
+  logoutFirebase,
   onAuthStateChanged,
   sessionNeedsRecentLogin,
   type User,
 } from './firebase';
-import { useStore } from '../store/useStore';
+import { defaultAcademicProfile, useStore } from '../store/useStore';
 import {
   OPTIONAL_EMAIL_OR_URL_KEYS,
   buildFirestorePatch,
@@ -66,7 +67,6 @@ const SETTINGS_KEYS: Array<keyof Settings> = [
   // `geminiApiKey` NUNCA é sincronizado: a chave pessoal fica só neste dispositivo.
   'geminiModel',
   'googleClientId',
-  'msClientId',
   'academicEmail',
   'personalEmail',
   'personalNotebookUrl',
@@ -239,7 +239,7 @@ export function sanitizeSettingsPayload(
   return payload;
 }
 
-function sanitizeAcademicProfile(profile: AcademicProfile): Record<string, unknown> {
+export function sanitizeAcademicProfile(profile: AcademicProfile): Record<string, unknown> {
   return stripUndefined({
     onboardingCompleted: Boolean(profile.onboardingCompleted),
     universityId: (profile.universityId || 'outra').slice(0, 100),
@@ -261,9 +261,7 @@ function sanitizeAcademicProfile(profile: AcademicProfile): Record<string, unkno
       : {}),
     currentSemester: ([1, 2].includes(profile.currentSemester) ? profile.currentSemester : 1) as 1 | 2,
     difficultCourseIds: (profile.difficultCourseIds ?? []).slice(0, 50),
-    ...(profile.difficultTopicsNotes?.trim()
-      ? { difficultTopicsNotes: profile.difficultTopicsNotes.trim().slice(0, 4000) }
-      : {}),
+    difficultTopicsNotes: (profile.difficultTopicsNotes ?? '').trim().slice(0, 4000),
     ...(typeof profile.targetTotalEcts === 'number' && Number.isFinite(profile.targetTotalEcts)
       ? { targetTotalEcts: Math.max(0, Math.min(600, Math.round(profile.targetTotalEcts))) }
       : {}),
@@ -280,7 +278,7 @@ function sanitizeAcademicProfile(profile: AcademicProfile): Record<string, unkno
     ...(Array.isArray(profile.extraActivities)
       ? { extraActivities: profile.extraActivities.slice(0, 20) }
       : {}),
-    completedCourses: (profile.completedCourses ?? []).slice(0, 100),
+    completedCourses: (profile.completedCourses ?? []).slice(0, 200),
   });
 }
 
@@ -336,15 +334,16 @@ function sanitizeStudyLog(log: StudyLogEntry): Record<string, unknown> {
   });
 }
 
-function sanitizeUniAgent(agent: UniAgentRecord): Record<string, unknown> {
-  return stripUndefined({
+function sanitizeUniAgent(agent: UniAgentRecord, isPatch = false): Record<string, unknown | FieldValue> {
+  const cleanVoice = sanitizeVoiceConfig(agent.voiceConfig);
+  const base = stripUndefined({
     courseId: String(agent.courseId).slice(0, 100),
     name: String(agent.name || 'Uni').trim().slice(0, 60) || 'Uni',
     formId: agent.formId,
     ...(typeof agent.skinId === 'string' && agent.skinId ? { skinId: agent.skinId.slice(0, 40) } : {}),
     ...(typeof agent.petId === 'string' && agent.petId ? { petId: agent.petId.slice(0, 40) } : {}),
     personaId: agent.personaId,
-    ...(sanitizeVoiceConfig(agent.voiceConfig) ? { voiceConfig: sanitizeVoiceConfig(agent.voiceConfig) } : {}),
+    ...(cleanVoice ? { voiceConfig: cleanVoice } : {}),
     language: String(agent.language || 'pt-PT').slice(0, 15),
     memoryEnabled: Boolean(agent.memoryEnabled),
     stage: Math.max(0, Math.min(4, Math.round(Number(agent.stage) || 0))),
@@ -405,7 +404,14 @@ function sanitizeUniAgent(agent: UniAgentRecord): Record<string, unknown> {
       : {}),
     createdAt: String(agent.createdAt || new Date().toISOString()).slice(0, 45),
     updatedAt: String(agent.updatedAt || new Date().toISOString()).slice(0, 45),
-  });
+  }) as Record<string, unknown | FieldValue>;
+
+  if (isPatch) {
+    if (!cleanVoice) base.voiceConfig = deleteField();
+    if (!agent.expedition) base.expedition = deleteField();
+    if (!agent.diploma) base.diploma = deleteField();
+  }
+  return base;
 }
 
 /**
@@ -609,11 +615,10 @@ export function initFirestoreSync() {
       activeUnsubscribers.push(unsub);
     }
 
-    // 5. Escuta dos Unis especialistas (`/users/{uid}/uniAgents`) quando cloudSyncConsent está ativo
+    // 5. Escuta dos Unis especialistas (`/users/{uid}/uniAgents`) para qualquer utilizador autenticado
     const uniAgentsRef = collection(db, 'users', uid, 'uniAgents');
     let firstUniAgentsSyncDone = false;
     const unsubUniAgents = onSnapshot(uniAgentsRef, (snapshot) => {
-      if (!useStore.getState().settings.cloudSyncConsent) return;
       const items = snapshot.docs.map((d) => ({
         ...(d.data() as UniAgentRecord),
         courseId: d.id,
@@ -803,30 +808,127 @@ export async function deleteStudyLogFromCloud(logId: ID) {
   await deleteDoc(doc(db, 'users', user.uid, 'studyLogs', logId));
 }
 
-/** Sincroniza um Uni especialista de cadeira em `/users/{uid}/uniAgents/{courseId}` se `cloudSyncConsent` estiver ativo. */
+/** Desativa listeners ativos (ex.: pré-visualização demo ou fim de sessão). */
+export function detachCloudSyncListeners(): void {
+  activeUnsubscribers.forEach((u) => u());
+  activeUnsubscribers = [];
+}
+
+/** Limpa dados locais sensíveis após logout para evitar fuga entre contas no mesmo browser. */
+export async function resetLocalAccountState(): Promise<void> {
+  isApplyingRemote = true;
+  try {
+    useStore.getState().clearAll();
+    useStore.setState({
+      academicProfile: defaultAcademicProfile,
+      integrations: {
+        google: { connected: false },
+        gemini: { connected: false },
+        clip: { connected: false },
+      },
+    });
+    useStore.getState().updateSettings(
+      { guestMode: false, userName: '', personalEmail: '', academicEmail: '' },
+      { replan: false },
+    );
+  } finally {
+    isApplyingRemote = false;
+  }
+  await clearLocalDb().catch(() => {});
+  notifyUniAgentsChanged();
+  try {
+    localStorage.removeItem('unipedia-tutor-session-state-v1');
+    localStorage.removeItem('uni-checkin-drafts-v1');
+    localStorage.removeItem('uni-test-mode-ack-v1');
+    localStorage.removeItem('uni-week-check-ack-v1');
+    sessionStorage.clear();
+  } catch {
+    // noop
+  }
+}
+
+/** Termina sessão Firebase e limpa estado local/IndexedDB da conta anterior. */
+export async function performFullLogout(): Promise<void> {
+  detachCloudSyncListeners();
+  await logoutFirebase();
+  await resetLocalAccountState();
+}
+
+/** Executa atualização local sem enviar alterações para o Firestore (ex.: modo demo `?demo=1`). */
+export function runWithoutCloudSync(fn: () => void): void {
+  detachCloudSyncListeners();
+  const prev = isApplyingRemote;
+  isApplyingRemote = true;
+  try {
+    fn();
+  } finally {
+    isApplyingRemote = prev;
+  }
+}
+
+/** Sincroniza um Uni especialista de cadeira em `/users/{uid}/uniAgents/{courseId}`. */
 export async function syncUniAgent(agent: UniAgentRecord) {
   const user = auth.currentUser;
-  if (!user || isApplyingRemote || !useStore.getState().settings.cloudSyncConsent) return;
+  if (!user || isApplyingRemote) return;
   const ref = doc(db, 'users', user.uid, 'uniAgents', agent.courseId);
-  await setDoc(ref, sanitizeUniAgent(agent), { merge: true });
+  await setDoc(ref, sanitizeUniAgent(agent, true), { merge: true });
 }
 
 /** Remove um Uni especialista de cadeira no Firestore. */
 export async function deleteUniAgentFromCloud(courseId: ID) {
   const user = auth.currentUser;
-  if (!user || isApplyingRemote || !useStore.getState().settings.cloudSyncConsent) return;
+  if (!user || isApplyingRemote) return;
   await deleteDoc(doc(db, 'users', user.uid, 'uniAgents', courseId));
 }
 
-/** Substitui/sincroniza em lote um conjunto de cadeiras geradas pelo onboarding curricular. */
-export async function syncCourseBatch(courses: Course[]) {
+/** Apaga em lote os registos ligados a uma cadeira eliminada na nuvem. */
+export async function deleteCourseCascadeFromCloud(
+  courseId: ID,
+  cascaded: {
+    assessmentIds: ID[];
+    classIds: ID[];
+    sessionIds: ID[];
+    taskIds: ID[];
+    materialIds: ID[];
+    eventIds: ID[];
+  },
+): Promise<void> {
   const user = auth.currentUser;
-  if (!user || isApplyingRemote || courses.length === 0) return;
-  const batch = writeBatch(db);
-  for (const c of courses) {
-    batch.set(doc(db, 'users', user.uid, 'courses', c.id), stripUndefined(c), { merge: true });
-  }
-  await batch.commit();
+  if (!user || isApplyingRemote) return;
+  const uid = user.uid;
+  const ops: BatchOp[] = [
+    { type: 'delete', ref: doc(db, 'users', uid, 'courses', courseId) },
+    { type: 'delete', ref: doc(db, 'users', uid, 'uniAgents', courseId) },
+    ...cascaded.assessmentIds.map((id): BatchOp => ({ type: 'delete', ref: doc(db, 'users', uid, 'assessments', id) })),
+    ...cascaded.classIds.map((id): BatchOp => ({ type: 'delete', ref: doc(db, 'users', uid, 'classes', id) })),
+    ...cascaded.sessionIds.map((id): BatchOp => ({ type: 'delete', ref: doc(db, 'users', uid, 'sessions', id) })),
+    ...cascaded.taskIds.map((id): BatchOp => ({ type: 'delete', ref: doc(db, 'users', uid, 'tasks', id) })),
+    ...cascaded.materialIds.map((id): BatchOp => ({ type: 'delete', ref: doc(db, 'users', uid, 'materials', id) })),
+    ...cascaded.eventIds.map((id): BatchOp => ({ type: 'delete', ref: doc(db, 'users', uid, 'events', id) })),
+  ];
+  await commitChunkedOps(ops);
+}
+
+/** Substitui/sincroniza em lote um conjunto de cadeiras geradas pelo onboarding curricular. */
+export async function syncCourseBatch(courses: Course[], removedCourseIds: ID[] = []) {
+  const user = auth.currentUser;
+  if (!user || isApplyingRemote || (courses.length === 0 && removedCourseIds.length === 0)) return;
+  const ops: BatchOp[] = [
+    ...courses.map(
+      (c): BatchOp => ({
+        type: 'set',
+        ref: doc(db, 'users', user.uid, 'courses', c.id),
+        data: stripUndefined(c) as unknown as Record<string, unknown>,
+      }),
+    ),
+    ...removedCourseIds.map(
+      (id): BatchOp => ({
+        type: 'delete',
+        ref: doc(db, 'users', user.uid, 'courses', id),
+      }),
+    ),
+  ];
+  await commitChunkedOps(ops);
 }
 
 /**
@@ -938,61 +1040,69 @@ export async function publishSharedCurriculum(
 }
 
 /**
- * Migra todos os dados locais para o Firestore na primeira sincronização.
+ * Migra todos os dados locais para o Firestore (com divisão em lotes e proteção pré-onboarding).
  */
 export async function migrateLocalDataToCloud(): Promise<void> {
   const user = auth.currentUser;
   if (!user) throw new Error(tr('common:errors.cloudSignInToSync'));
   const state = useStore.getState();
-  const batch = writeBatch(db);
+  const ops: BatchOp[] = [];
 
   // Settings & Identidade
-  batch.set(
-    doc(db, 'users', user.uid),
-    stripUndefined({
+  ops.push({
+    type: 'set',
+    ref: doc(db, 'users', user.uid),
+    data: stripUndefined({
       uid: user.uid,
       ...(user.email ? { email: user.email } : {}),
       ...(user.displayName ? { displayName: user.displayName } : {}),
-      ...sanitizeSettingsPayload(state.settings, false),
-    }),
-    { merge: true },
-  );
+      ...sanitizeSettingsPayload(state.settings, true),
+    }) as Record<string, unknown>,
+  });
 
-  // Perfil Académico & Check-ins Semanais
-  batch.set(
-    doc(db, 'users', user.uid, 'profile', 'academic'),
-    sanitizeAcademicProfile(state.academicProfile),
-    { merge: true },
-  );
+  // Perfil Académico (só envia quando tem universidade e curso preenchidos para respeitar regras)
+  if (state.academicProfile.universityName.trim() && state.academicProfile.degreeName.trim()) {
+    ops.push({
+      type: 'set',
+      ref: doc(db, 'users', user.uid, 'profile', 'academic'),
+      data: sanitizeAcademicProfile(state.academicProfile),
+    });
+  }
+
   for (const checkIn of state.weeklyCheckIns) {
-    batch.set(
-      doc(db, 'users', user.uid, 'weeklyCheckIns', checkIn.id),
-      sanitizeWeeklyCheckIn(checkIn),
-      { merge: true },
-    );
+    ops.push({
+      type: 'set',
+      ref: doc(db, 'users', user.uid, 'weeklyCheckIns', checkIn.id),
+      data: sanitizeWeeklyCheckIn(checkIn),
+    });
   }
   for (const log of state.studyLogs) {
-    batch.set(
-      doc(db, 'users', user.uid, 'studyLogs', log.id),
-      sanitizeStudyLog(log),
-      { merge: true },
-    );
+    ops.push({
+      type: 'set',
+      ref: doc(db, 'users', user.uid, 'studyLogs', log.id),
+      data: sanitizeStudyLog(log),
+    });
   }
 
-  // Coleções principais
   for (const colKey of COLLECTIONS) {
     const items = state[colKey] as Array<{ id: ID }>;
     for (const item of items) {
-      const ref = doc(db, 'users', user.uid, colKey, item.id);
-      batch.set(ref, stripUndefined(item), { merge: true });
+      ops.push({
+        type: 'set',
+        ref: doc(db, 'users', user.uid, colKey, item.id),
+        data: stripUndefined(item) as Record<string, unknown>,
+      });
     }
   }
 
   const localUniAgents = await listUniAgents().catch(() => []);
   for (const agent of localUniAgents) {
-    const ref = doc(db, 'users', user.uid, 'uniAgents', agent.courseId);
-    batch.set(ref, sanitizeUniAgent(agent), { merge: true });
+    ops.push({
+      type: 'set',
+      ref: doc(db, 'users', user.uid, 'uniAgents', agent.courseId),
+      data: sanitizeUniAgent(agent, true),
+    });
   }
 
-  await batch.commit();
+  await commitChunkedOps(ops);
 }

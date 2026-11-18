@@ -27,9 +27,6 @@ export const DRIVE_FOLDER_MIME = 'application/vnd.google-apps.folder';
 const DRIVE_SHORTCUT_MIME = 'application/vnd.google-apps.shortcut';
 const FIELDS = 'nextPageToken,files(id,name,mimeType,modifiedTime,webViewLink,shortcutDetails(targetId,targetMimeType))';
 
-// Pastas partilhadas multi-cadeiras indicadas explicitamente pelo utilizador
-const MULTI_COURSE_ROOT_IDS = new Set<string>();
-
 interface DriveFile {
   id: string;
   name: string;
@@ -480,7 +477,7 @@ export async function scanAndAutoLinkGoogleDrive(
       }
       if (c.sharedDriveUrl) {
         const fid = driveFolderIdFromUrl(c.sharedDriveUrl);
-        if (fid && !MULTI_COURSE_ROOT_IDS.has(fid)) {
+        if (fid) {
           folderTargets.set(fid, {
             fallbackCourseId: c.id,
             initialPrefix: c.shortName,
@@ -497,12 +494,17 @@ export async function scanAndAutoLinkGoogleDrive(
       }
     }
 
+    const succeededExplicitFolders = new Set<string>();
+
     const runAccountPass = async (tokenOverride?: string, isPrimary = true) => {
       if (controller.signal.aborted) return;
 
-      // 1a. Pastas associadas diretamente (apenas na passagem principal para não repetir)
-      if (isPrimary && folderTargets.size > 0) {
-        await mapWithConcurrency(Array.from(folderTargets.entries()), 3, async ([folderId, meta]) => {
+      // 1a. Pastas associadas diretamente (na passagem secundária, tenta apenas as que falharam ou não foram varridas)
+      const pendingTargets = Array.from(folderTargets.entries()).filter(
+        ([folderId]) => isPrimary || !succeededExplicitFolders.has(folderId),
+      );
+      if (pendingTargets.length > 0) {
+        await mapWithConcurrency(pendingTargets, 3, async ([folderId, meta]) => {
           if (controller.signal.aborted) return;
           try {
             foldersScanned++;
@@ -511,8 +513,10 @@ export async function scanAndAutoLinkGoogleDrive(
               maxDepth: 5,
               maxFolders: 180,
               initialPrefix: meta.initialPrefix,
+              tokenOverride,
               signal: controller.signal,
             });
+            succeededExplicitFolders.add(folderId);
             for (const f of scanned) {
               registerFile(f, meta.fallbackCourseId, true, meta.explicit);
             }
@@ -694,11 +698,15 @@ export async function scanAndAutoLinkGoogleDrive(
   const currentMaterials = useStore.getState().materials;
   const currentMaterialIds = new Set(currentMaterials.map((m) => m.id));
   const coursesWithMatches = new Set<string>();
+  const explicitFolderMaterialIds = new Set<string>();
   const newMaterials: Material[] = [];
 
   for (const entry of discoveredById.values()) {
-    const { file, fallbackCourseId, allowImages } = entry;
+    const { file, fallbackCourseId, allowImages, fromExplicitCourseFolder } = entry;
     const materialId = `gdrive:${file.id}`;
+    if (fromExplicitCourseFolder) {
+      explicitFolderMaterialIds.add(materialId);
+    }
     if (currentMaterialIds.has(materialId)) continue;
 
     const parsed = parseFilenameToParsedItem(
@@ -736,7 +744,7 @@ export async function scanAndAutoLinkGoogleDrive(
     useStore.getState().upsertMany('materials', newMaterials);
   }
   if (entryYear) {
-    useStore.getState().cleanupMismatchedMaterials();
+    useStore.getState().cleanupMismatchedMaterials(explicitFolderMaterialIds);
   }
 
   return {

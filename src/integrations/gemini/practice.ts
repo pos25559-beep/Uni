@@ -29,22 +29,15 @@ import { THINKING_FAST } from './models';
 import type { NotebookSourceInput } from './notebook';
 import {
   PERSONA_INSTRUCTIONS_BY_LANG,
-  getActiveAppLanguage,
   outputLanguageInstruction,
 } from './promptContext';
 import {
   NOTEBOOK_MEMORY_DELTA_SCHEMA,
   PRACTICE_SET_SCHEMA,
-  RECALL_CHALLENGE_SCHEMA,
   UNI_EXPEDITION_SCHEMA,
   UNI_RECALL_EVAL_SCHEMA,
   UNI_RECALL_PROMPT_SCHEMA,
 } from './schemas';
-
-export interface RecallChallenge {
-  question: string;
-  hint: string;
-}
 
 export interface GeneratedPracticeCardDraft {
   prompt: string;
@@ -138,55 +131,6 @@ Devolve APENAS JSON válido no formato:
     throw new Error(tr('common:errors.practiceCardsFail'));
   }
   return clean;
-}
-
-/** Gera 1 pergunta curta de recall ativo pós-sessão sobre o tópico estudado. */
-export async function generateRecallChallenge(
-  topicTitle: string,
-  courseName?: string,
-): Promise<RecallChallenge> {
-  const { customKey, model } = resolveGeminiConfig();
-  const lang = getActiveAppLanguage();
-  const prompt = `Cria 1 pergunta curta de recordação ativa (active recall) sobre "${topicTitle}"${courseName ? ` (${courseName})` : ''}.
-${outputLanguageInstruction(lang)}
-Devolve APENAS JSON válido no formato: {"question": "pergunta objetiva em 1-2 frases para testar compreensão sem consultar apontamentos", "hint": "pista curta ou critério de resposta correta em 1 frase"}`;
-  const contents: Content[] = [{ role: 'user', parts: [{ type: 'text', text: prompt }] }];
-  const generationConfig: GenerationConfig = {
-    temperature: 0.4,
-    maxOutputTokens: 320,
-    responseMimeType: 'application/json',
-    responseSchema: RECALL_CHALLENGE_SCHEMA,
-    thinkingConfig: THINKING_FAST,
-  };
-
-  const rawText = await withQuotaAndFallback('chat', customKey, () =>
-    customKey
-      ? callDirectRest({ key: customKey, model, contents, generationConfig })
-      : runNativeGenerate({ model, contents, generationConfig }),
-  );
-
-  const match = /\{[\s\S]*\}/.exec(rawText || '{}');
-  const parsed = JSON.parse(match ? match[0] : rawText || '{}') as Partial<RecallChallenge>;
-  const fallbackQ =
-    lang === 'en'
-      ? `In your own words, explain the core idea or mechanism behind “${topicTitle}”.`
-      : lang === 'es'
-        ? `Explica con tus palabras la idea o el mecanismo central de «${topicTitle}».`
-        : lang === 'pt-BR'
-          ? `Explique com suas palavras o mecanismo ou ideia central de «${topicTitle}».`
-          : `Explica por palavras tuas o mecanismo ou ideia central de «${topicTitle}».`;
-  const fallbackHint =
-    lang === 'en'
-      ? 'Check whether you can give one concrete example or explain why it works.'
-      : lang === 'es'
-        ? 'Comprueba si puedes dar un ejemplo concreto o justificar por qué ocurre.'
-        : lang === 'pt-BR'
-          ? 'Veja se consegue dar 1 exemplo concreto ou justificar por que acontece.'
-          : 'Verifica se consegues dar 1 exemplo concreto ou justificar porquê acontece.';
-  return {
-    question: parsed.question?.trim() || fallbackQ,
-    hint: parsed.hint?.trim() || fallbackHint,
-  };
 }
 
 /**

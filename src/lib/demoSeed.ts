@@ -1,6 +1,7 @@
 import { addDays, format, subDays } from 'date-fns';
 import { normalizeAppLanguage } from './grading';
 import { useStore } from '../store/useStore';
+import { runWithoutCloudSync } from './firestoreSync';
 import type {
   AcademicProfile,
   AppLanguage,
@@ -440,25 +441,27 @@ export function buildDemoPayload(lang?: AppLanguage | string) {
   };
 }
 
-/** Preenche o store local com um semestre de demonstração anónimo. */
+/** Preenche o store local com um semestre de demonstração anónimo (nunca escreve na nuvem). */
 export function loadDemoData() {
-  const st = useStore.getState();
-  const demo = buildDemoPayload(st.settings.language);
-  st.clearAll();
-  st.upsertMany('courses', demo.courses);
-  st.upsertMany('assessments', demo.assessments);
-  st.upsertMany('classes', demo.classes);
-  st.upsertMany('sessions', demo.sessions);
-  st.upsertMany('tasks', demo.tasks);
-  st.upsertMany('events', demo.events);
-  st.saveAcademicProfile(demo.academicProfile);
-  st.updateSettings({
-    userName: demo.userName,
-    semesterName: demo.semesterName,
-    guestMode: true,
-    hasSeenWelcome: true,
-    tourCompleted: true,
-    hubSetupCompleted: true,
-    aiConsent: false,
+  runWithoutCloudSync(() => {
+    const st = useStore.getState();
+    const demo = buildDemoPayload(st.settings.language);
+    st.clearAll();
+    st.upsertMany('courses', demo.courses);
+    st.upsertMany('assessments', demo.assessments);
+    st.upsertMany('classes', demo.classes);
+    st.upsertMany('sessions', demo.sessions);
+    st.upsertMany('tasks', demo.tasks);
+    st.upsertMany('events', demo.events);
+    st.saveAcademicProfile(demo.academicProfile);
+    st.updateSettings({
+      userName: demo.userName,
+      semesterName: demo.semesterName,
+      guestMode: true,
+      hasSeenWelcome: true,
+      tourCompleted: true,
+      hubSetupCompleted: true,
+      aiConsent: false,
+    });
   });
 }

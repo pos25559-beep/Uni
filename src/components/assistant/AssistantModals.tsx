@@ -1,12 +1,8 @@
 import { Award, BookOpenCheck, FileText, MessageSquare, Shield, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import {
-  appendMessage,
-  type Conversation,
-} from '../../lib/geminiConversations';
+import type { Conversation } from '../../lib/geminiConversations';
 import { openUniCheckIn } from '../../lib/uniCheckInBus';
 import type { UniAccessoryId, UniPersonaMode } from '../../lib/uniAccessories';
-import { newId } from '../../store/useStore';
 import type { Course, Material } from '../../types';
 import UniCollectiblesModal from '../brand/UniCollectiblesModal';
 import GeminiKeyGuideModal from '../settings/GeminiKeyGuideModal';
@@ -14,7 +10,6 @@ import { ActionSheet, Badge, Button, Modal } from '../ui';
 import { ContextPanel } from './ContextPanel';
 import ConversationsModal from './ConversationsModal';
 import UniNotebookDrawer from './UniNotebookDrawer';
-import WeeklyTutorModal from './WeeklyTutorModal';
 
 interface AssistantModalsProps {
   menuOpen: boolean;
@@ -37,8 +32,6 @@ interface AssistantModalsProps {
   confirmDeleteConv: boolean;
   onCloseDeleteConv: () => void;
   onConfirmDeleteConv: () => void;
-  tutorOpen: boolean;
-  onCloseTutor: () => void;
   keyGuideOpen: boolean;
   onCloseKeyGuide: () => void;
   collectiblesOpen: boolean;
@@ -59,6 +52,7 @@ interface AssistantModalsProps {
   onDeleteConversation: (id: string) => Promise<void>;
   notebookOpen: boolean;
   onCloseNotebook: () => void;
+  onSendNoteToChat: (markdown: string, sourceDocTitles?: string[]) => Promise<void> | void;
   attachedMaterials: Material[];
   uniAccessory: UniAccessoryId;
   uniPersona: UniPersonaMode;
@@ -86,8 +80,6 @@ export default function AssistantModals({
   confirmDeleteConv,
   onCloseDeleteConv,
   onConfirmDeleteConv,
-  tutorOpen,
-  onCloseTutor,
   keyGuideOpen,
   onCloseKeyGuide,
   collectiblesOpen,
@@ -108,6 +100,7 @@ export default function AssistantModals({
   onDeleteConversation,
   notebookOpen,
   onCloseNotebook,
+  onSendNoteToChat,
   attachedMaterials,
   uniAccessory,
   uniPersona,
@@ -297,7 +290,6 @@ export default function AssistantModals({
         </p>
       </Modal>
 
-      <WeeklyTutorModal open={tutorOpen} onClose={onCloseTutor} />
       <GeminiKeyGuideModal open={keyGuideOpen} onClose={onCloseKeyGuide} />
       <UniCollectiblesModal open={collectiblesOpen} onClose={onCloseCollectibles} />
       {contextModalOpen && (
@@ -340,13 +332,10 @@ export default function AssistantModals({
         accessory={uniAccessory}
         persona={uniPersona}
         onSendToChat={(markdown) => {
-          void appendMessage(activeConvId, {
-            id: newId(),
-            role: 'model',
-            text: markdown,
-            at: new Date().toISOString(),
-            sourceDocTitles: attachedMaterials.map((m) => m.title),
-          });
+          void onSendNoteToChat(
+            markdown,
+            attachedMaterials.map((m) => m.title),
+          );
         }}
       />
     </>

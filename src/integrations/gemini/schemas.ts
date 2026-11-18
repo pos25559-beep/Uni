@@ -205,15 +205,6 @@ export const STUDY_GUIDE_TOPIC_SCHEMA: SchemaRequest = {
   required: ['title', 'summary', 'keyIdeas', 'formulaDetails', 'examPattern', 'pitfalls', 'practice', 'sources'],
 };
 
-export const RECALL_CHALLENGE_SCHEMA: SchemaRequest = {
-  type: SchemaType.OBJECT,
-  properties: {
-    question: { type: SchemaType.STRING },
-    hint: { type: SchemaType.STRING },
-  },
-  required: ['question', 'hint'],
-};
-
 export const TOPIC_SHEET_SCHEMA: SchemaRequest = {
   type: SchemaType.OBJECT,
   properties: {

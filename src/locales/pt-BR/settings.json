@@ -428,25 +428,6 @@
     "validated": "Chave validada ({{total}} modelos disponíveis). Limite diário local desativado!",
     "privacyNote": "A chave é enviada diretamente do seu navegador/app para a Google API — nunca passa por servidores próprios da Unipedia."
   },
-  "microsoft": {
-    "title": "Microsoft OneDrive",
-    "desc": "Arquivos do OneDrive conectados às disciplinas.",
-    "step1Pre": "Abra",
-    "step1Post": "e vá em «Microsoft Entra ID» → «Registros de aplicativo» → «Novo registro».",
-    "step2Pre": "Em «Tipos de conta com suporte», escolha",
-    "step2Bold": "qualquer diretório organizacional e contas Microsoft pessoais",
-    "step3Pre": "Em «URI de redirecionamento», escolha a plataforma",
-    "step3Bold": "Single-page application (SPA)",
-    "step3Post": "e cole a origem abaixo.",
-    "step4Pre": "Em «Permissões de API», adicione do Microsoft Graph as permissões delegadas",
-    "step4And": "e",
-    "step5": "Copie o «ID do aplicativo (cliente)» e cole aqui.",
-    "redirectUriLabel": "URI de redirecionamento (SPA)",
-    "copyUriLabel": "o URI",
-    "clientIdLabel": "ID do aplicativo (cliente)",
-    "signInPre": "O login acontece na primeira vez que você importar arquivos na página",
-    "materialsLink": "Materiais"
-  },
   "notebook": {
     "title": "Caderno do Uni & Atalho Externo",
     "desc": "Crie resumos, guias e quizzes diretamente aqui dentro no Caderno do Uni, ou salve opcionalmente um atalho privado para um caderno externo.",

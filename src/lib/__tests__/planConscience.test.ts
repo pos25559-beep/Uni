@@ -40,7 +40,6 @@ const settings: Settings = {
   geminiApiKey: '',
   geminiModel: 'gemini-4-hydrogen',
   googleClientId: '',
-  msClientId: '',
   aiConsent: false,
 };
 
@@ -177,5 +176,69 @@ describe('Consciência do Uni & Modo Manual', () => {
     expect(pausedOp?.action?.kind).toBe('remove_sessions');
     const examOp = report.opinions.find((o) => o.kind === 'urgent_exam_underfunded');
     expect(examOp?.action?.kind).toBe('add_session');
+  });
+
+  it('usa o maxUntil mais tardio no foco exclusivo e ignora nowMinutes em choques de dias futuros', () => {
+    const report = analyzePlanConscience({
+      courses,
+      assessments: [],
+      classes: [
+        {
+          id: 'cl-wed',
+          courseId: 'c-tep',
+          type: 'TP',
+          weekday: 3, // Quarta 2026-11-18
+          start: '09:00',
+          end: '10:30',
+          source: 'local',
+        },
+      ],
+      events: [],
+      sessions: [
+        {
+          id: 'clash-future',
+          courseId: 'c-tep',
+          date: '2026-11-18',
+          start: '09:30',
+          minutes: 50,
+          done: false,
+          generated: false,
+        },
+        {
+          id: 'late-fab',
+          courseId: 'c-fab',
+          date: '2026-11-24',
+          minutes: 50,
+          done: false,
+          generated: false,
+        },
+      ],
+      settings: {
+        ...settings,
+        plannerPrefs: {
+          horizonDays: 14,
+          preferredPeriod: 'auto',
+          blockMinutes: 50,
+          strategy: 'balanced',
+          plannerMode: 'manual',
+          exclusiveTestFocus: true,
+          boostCourseIds: ['c-tep'],
+          courseModeUntil: { 'c-tep': '2026-11-25' },
+          dateOverrides: {
+            '2026-11-18': { enabled: true, window: 'all_day' },
+          },
+        },
+      },
+      today: '2026-11-16',
+      nowMinutes: 20 * 60, // 20h hoje não deve impedir slot de manhã na quarta 2026-11-18
+    });
+
+    const clashOp = report.opinions.find((o) => o.kind === 'schedule_clash');
+    expect(clashOp?.action?.kind).toBe('move_session');
+    if (clashOp?.action?.kind === 'move_session') {
+      expect(clashOp.action.targetDate).toBe('2026-11-18');
+      expect(clashOp.action.targetStart < '20:00').toBe(true);
+    }
+    expect(report.opinions.some((o) => o.kind === 'exclusive_violation')).toBe(true);
   });
 });

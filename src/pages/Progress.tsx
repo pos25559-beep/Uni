@@ -31,7 +31,7 @@ import { fmtGrade, fmtMinutes, semesterAverage, sessionMinutes, studyStreak, tod
 import { useStore } from '../store/useStore';
 
 export default function ProgressPage() {
-  const { t, i18n } = useTranslation('progress');
+  const { t, i18n } = useTranslation(['progress', 'assistant']);
   const appLang = normalizeAppLanguage(i18n.language);
   const [progressTab, setProgressTab] = useState<'week' | 'semester'>('week');
   const [period, setPeriod] = useState<Period>('30d');
@@ -200,46 +200,56 @@ export default function ProgressPage() {
       {progressTab === 'week' ? (
       <>
       {!hasSessions && !showEmptyCharts ? (
-        <section className="space-y-4 rounded-3xl bg-pastel-mint/55 p-5 text-[#141312] shadow-card dark:bg-surface-2 dark:text-[#FAF6EC]">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="max-w-lg space-y-1">
-              <p className="text-xs font-bold uppercase tracking-[0.1em] opacity-75">
-                {t('emptyCharts.eyebrow')}
-              </p>
-              <h2 className="font-display text-lg font-bold">
-                {t('emptyCharts.title')}
-              </h2>
-              <p className="text-xs leading-relaxed opacity-85">
-                {t('emptyCharts.body')}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Link to="/plano">
-                <Button size="sm" variant="primary">
-                  {t('emptyCharts.generateBtn')} <ArrowRight size={14} />
+        <div className="space-y-6">
+          <section className="space-y-4 rounded-3xl bg-pastel-mint/55 p-5 text-[#141312] shadow-card dark:bg-surface-2 dark:text-[#FAF6EC]">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="max-w-lg space-y-1">
+                <p className="text-xs font-bold uppercase tracking-[0.1em] opacity-75">
+                  {t('emptyCharts.eyebrow')}
+                </p>
+                <h2 className="font-display text-lg font-bold">
+                  {t('emptyCharts.title')}
+                </h2>
+                <p className="text-xs leading-relaxed opacity-85">
+                  {t('emptyCharts.body')}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Link to="/plano">
+                  <Button size="sm" variant="primary">
+                    {t('emptyCharts.generateBtn')} <ArrowRight size={14} />
+                  </Button>
+                </Link>
+                <Button size="sm" variant="secondary" onClick={() => setShowEmptyCharts(true)}>
+                  <BarChart3 size={14} /> {t('emptyCharts.previewBtn')}
                 </Button>
-              </Link>
-              <Button size="sm" variant="secondary" onClick={() => setShowEmptyCharts(true)}>
-                <BarChart3 size={14} /> {t('emptyCharts.previewBtn')}
-              </Button>
+              </div>
             </div>
-          </div>
 
-          <div className="grid gap-2.5 sm:grid-cols-3">
-            <div className="rounded-2xl bg-white/75 p-3 dark:bg-black/20">
-              <p className="text-xs font-bold">{t('emptyCharts.card1Title')}</p>
-              <p className="mt-1 text-xs opacity-75">{t('emptyCharts.card1Body')}</p>
+            <div className="grid gap-2.5 sm:grid-cols-3">
+              <div className="rounded-2xl bg-white/75 p-3 dark:bg-black/20">
+                <p className="text-xs font-bold">{t('emptyCharts.card1Title')}</p>
+                <p className="mt-1 text-xs opacity-75">{t('emptyCharts.card1Body')}</p>
+              </div>
+              <div className="rounded-2xl bg-white/75 p-3 dark:bg-black/20">
+                <p className="text-xs font-bold">{t('emptyCharts.card2Title')}</p>
+                <p className="mt-1 text-xs opacity-75">{t('emptyCharts.card2Body')}</p>
+              </div>
+              <div className="rounded-2xl bg-white/75 p-3 dark:bg-black/20">
+                <p className="text-xs font-bold">{t('emptyCharts.card3Title')}</p>
+                <p className="mt-1 text-xs opacity-75">{t('emptyCharts.card3Body')}</p>
+              </div>
             </div>
-            <div className="rounded-2xl bg-white/75 p-3 dark:bg-black/20">
-              <p className="text-xs font-bold">{t('emptyCharts.card2Title')}</p>
-              <p className="mt-1 text-xs opacity-75">{t('emptyCharts.card2Body')}</p>
-            </div>
-            <div className="rounded-2xl bg-white/75 p-3 dark:bg-black/20">
-              <p className="text-xs font-bold">{t('emptyCharts.card3Title')}</p>
-              <p className="mt-1 text-xs opacity-75">{t('emptyCharts.card3Body')}</p>
-            </div>
-          </div>
-        </section>
+          </section>
+          {hasTopics && (
+            <RetentionFocusChart
+              courses={courses}
+              sessions={sessions}
+              dayKey={today}
+              onPracticeTopic={(courseId, topicId) => setReviewTarget({ courseId, topicId })}
+            />
+          )}
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {(hasSessions || showEmptyCharts) && (
@@ -269,125 +279,159 @@ export default function ProgressPage() {
       ) : null}
 
       {/* Diário & Check-ins do Uni (Pós-aula, Fim do dia, Domingos e Modo Teste) */}
-      <Card
-        title={t('logs.title')}
-        action={
-          <Button
-            size="sm"
-            variant="primary"
-            onClick={() => openUniCheckIn({ kind: logFilter === 'all' ? 'day' : logFilter })}
-          >
-            <Plus size={14} /> {t('logs.newEntryBtn')}
-          </Button>
-        }
-      >
-        <div className="space-y-3">
-          <div className="flex flex-wrap gap-1.5">
-            {(
-              [
-                { id: 'all', label: t('logs.all', { count: studyLogs.length }) },
-                { id: 'class', label: t('logs.postClass') },
-                { id: 'day', label: t('logs.endOfDay') },
-                { id: 'week', label: t('logs.sundays') },
-                { id: 'exam_prep', label: t('logs.testMode') },
-              ] as const
-            ).map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                onClick={() => setLogFilter(f.id)}
-                className={cx(
-                  'min-h-[44px] rounded-full border px-3 py-1 text-xs font-semibold transition',
-                  logFilter === f.id
-                    ? 'border-accent bg-accent text-accent-fg'
-                    : 'border-line bg-surface-2/60 text-muted hover:text-fg',
-                )}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
+      {(() => {
+        const weekLogDates = new Set(
+          studyLogs.filter((l) => l.kind === 'week').map((l) => l.date),
+        );
+        const combinedLogs = [
+          ...studyLogs.map((l) => ({ ...l, isStudyLog: true as const })),
+          ...weeklyCheckIns
+            .filter((wc) => !weekLogDates.has(wc.weekOf))
+            .map((wc) => ({
+              id: `wc-${wc.id}`,
+              kind: 'week' as const,
+              date: wc.weekOf,
+              createdAt: wc.createdAt,
+              courseId: wc.hardCourseIds?.[0],
+              feeling:
+                wc.mood === 'confiante'
+                  ? 'bem'
+                  : wc.mood === 'estavel'
+                    ? 'mais_ou_menos'
+                    : 'dificil',
+              topicTitle: undefined,
+              topicIds: undefined,
+              studiedSummary: wc.pendingNextWeek,
+              difficulties: wc.classDifficulties,
+              notes: wc.notes,
+              rating: undefined,
+              isStudyLog: false as const,
+            })),
+        ].sort((a, b) => (b.createdAt || b.date).localeCompare(a.createdAt || a.date));
 
-          {(() => {
-            const visibleLogs =
-              logFilter === 'all' ? studyLogs : studyLogs.filter((l) => l.kind === logFilter);
-            if (visibleLogs.length === 0) {
-              return (
+        const visibleLogs =
+          logFilter === 'all' ? combinedLogs : combinedLogs.filter((l) => l.kind === logFilter);
+        const kindBadges: Record<StudyLogKind, string> = {
+          class: t('logs.postClass'),
+          day: t('logs.endOfDay'),
+          week: t('logs.sunday'),
+          exam_prep: t('logs.testMode'),
+        };
+
+        return (
+          <Card
+            title={t('logs.title')}
+            action={
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() => openUniCheckIn({ kind: logFilter === 'all' ? 'day' : logFilter })}
+              >
+                <Plus size={14} /> {t('logs.newEntryBtn')}
+              </Button>
+            }
+          >
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-1.5">
+                {(
+                  [
+                    { id: 'all', label: t('logs.all', { count: combinedLogs.length }) },
+                    { id: 'class', label: t('logs.postClass') },
+                    { id: 'day', label: t('logs.endOfDay') },
+                    { id: 'week', label: t('logs.sundays') },
+                    { id: 'exam_prep', label: t('logs.testMode') },
+                  ] as const
+                ).map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setLogFilter(f.id)}
+                    className={cx(
+                      'min-h-[44px] rounded-full border px-3 py-1 text-xs font-semibold transition',
+                      logFilter === f.id
+                        ? 'border-accent bg-accent text-accent-fg'
+                        : 'border-line bg-surface-2/60 text-muted hover:text-fg',
+                    )}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              {visibleLogs.length === 0 ? (
                 <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-line p-5 text-center">
                   <BookOpenCheck size={20} className="text-muted" />
                   <p className="text-xs text-muted">{t('logs.emptyFilter')}</p>
                 </div>
-              );
-            }
-            const kindBadges: Record<StudyLogKind, string> = {
-              class: t('logs.postClass'),
-              day: t('logs.endOfDay'),
-              week: t('logs.sunday'),
-              exam_prep: t('logs.testMode'),
-            };
-            return (
-              <ul className="space-y-2.5">
-                {visibleLogs.slice(0, 20).map((log) => {
-                  const course = log.courseId ? courses.find((c) => c.id === log.courseId) : undefined;
-                  const topicNames =
-                    course && log.topicIds && log.topicIds.length > 0
-                      ? course.topics.filter((t) => log.topicIds!.includes(t.id)).map((t) => t.title)
-                      : [];
-                  return (
-                    <li
-                      key={log.id}
-                      className="flex items-start justify-between gap-3 rounded-2xl border border-line bg-surface-2/40 p-3.5"
-                    >
-                      <div className="min-w-0 flex-1 space-y-1">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <Badge tone={log.kind === 'exam_prep' ? 'warn' : 'accent'}>
-                            {kindBadges[log.kind]}
-                          </Badge>
-                          {course && <Badge tone="neutral">{course.shortName}</Badge>}
-                          <span className="text-xs font-medium text-muted">{log.date}</span>
-                          <span className="rounded-full bg-surface px-2 py-0.5 text-xs font-semibold text-fg">
-                            {log.feeling}
-                            {log.rating ? ` · ${log.rating}/5` : ''}
-                          </span>
-                        </div>
-                        {log.topicTitle && (
-                          <p className="text-xs text-fg">
-                            <strong className="font-semibold">{t('logs.topicLabel')}</strong> {log.topicTitle}
-                          </p>
-                        )}
-                        {topicNames.length > 0 && (
-                          <p className="text-xs text-fg">
-                            <strong className="font-semibold">{t('logs.alignedTopicsLabel')}</strong>{' '}
-                            {topicNames.join(', ')}
-                          </p>
-                        )}
-                        {log.studiedSummary && (
-                          <p className="text-xs text-muted">{log.studiedSummary}</p>
-                        )}
-                        {log.difficulties && (
-                          <p className="text-xs text-coral">{t('logs.doubtsLabel', { text: log.difficulties })}</p>
-                        )}
-                        {log.notes && <p className="text-xs text-muted">{log.notes}</p>}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          removeStudyLog(log.id);
-                          showToast(t('logs.deletedToast'), 'neutral');
-                        }}
-                        aria-label={t('logs.deleteAria')}
-                        className="grid size-11 shrink-0 place-items-center rounded-full text-muted transition hover:bg-surface hover:text-danger"
+              ) : (
+                <ul className="space-y-2.5">
+                  {visibleLogs.slice(0, 20).map((log) => {
+                    const course = log.courseId ? courses.find((c) => c.id === log.courseId) : undefined;
+                    const topicNames =
+                      course && log.topicIds && log.topicIds.length > 0
+                        ? course.topics.filter((tp) => log.topicIds!.includes(tp.id)).map((tp) => tp.title)
+                        : [];
+                    const feelingLabel = t(`assistant:checkin.feelings.${log.feeling}`, {
+                      defaultValue: log.feeling,
+                    });
+                    return (
+                      <li
+                        key={log.id}
+                        className="flex items-start justify-between gap-3 rounded-2xl border border-line bg-surface-2/40 p-3.5"
                       >
-                        <Trash2 size={14} />
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            );
-          })()}
-        </div>
-      </Card>
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <Badge tone={log.kind === 'exam_prep' ? 'warn' : 'accent'}>
+                              {kindBadges[log.kind]}
+                            </Badge>
+                            {course && <Badge tone="neutral">{course.shortName}</Badge>}
+                            <span className="text-xs font-medium text-muted">{log.date}</span>
+                            <span className="rounded-full bg-surface px-2 py-0.5 text-xs font-semibold text-fg">
+                              {feelingLabel}
+                              {log.rating ? ` · ${log.rating}/5` : ''}
+                            </span>
+                          </div>
+                          {log.topicTitle && (
+                            <p className="text-xs text-fg">
+                              <strong className="font-semibold">{t('logs.topicLabel')}</strong> {log.topicTitle}
+                            </p>
+                          )}
+                          {topicNames.length > 0 && (
+                            <p className="text-xs text-fg">
+                              <strong className="font-semibold">{t('logs.alignedTopicsLabel')}</strong>{' '}
+                              {topicNames.join(', ')}
+                            </p>
+                          )}
+                          {log.studiedSummary && (
+                            <p className="text-xs text-muted">{log.studiedSummary}</p>
+                          )}
+                          {log.difficulties && (
+                            <p className="text-xs text-coral">{t('logs.doubtsLabel', { text: log.difficulties })}</p>
+                          )}
+                          {log.notes && <p className="text-xs text-muted">{log.notes}</p>}
+                        </div>
+                        {log.isStudyLog && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              removeStudyLog(log.id);
+                              showToast(t('logs.deletedToast'), 'neutral');
+                            }}
+                            aria-label={t('logs.deleteAria')}
+                            className="grid size-11 shrink-0 place-items-center rounded-full text-muted transition hover:bg-surface hover:text-danger"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </Card>
+        );
+      })()}
       </>
       ) : (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

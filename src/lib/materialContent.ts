@@ -144,6 +144,17 @@ export interface ResolvedMaterialsBundle {
 interface CachedMaterialResolution {
   attachment?: ChatAttachment;
   excerpt?: ResolvedMaterialExcerpt;
+  expiresAt?: number;
+}
+
+function fingerprintCustomKey(customKey: string): string {
+  if (!customKey) return 'free';
+  let hash = 2166136261;
+  for (let i = 0; i < customKey.length; i++) {
+    hash ^= customKey.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `k_${(hash >>> 0).toString(36)}`;
 }
 
 export interface StoredGeminiFileUriEntry {
@@ -376,11 +387,12 @@ async function resolveBinaryBlobToAttachment(
   blob: Blob,
   binaryMime: string,
   customKey: string,
+  keyTag: string,
   preferFilesApi: boolean,
   remainingInlineBytes: number,
   signal?: AbortSignal,
 ): Promise<ChatAttachment> {
-  const fileCacheKey = `${m.id}:${m.modifiedAt ?? ''}:${blob.size}`;
+  const fileCacheKey = `${keyTag}:${m.id}:${m.modifiedAt ?? ''}:${blob.size}`;
   if (customKey && preferFilesApi) {
     try {
       const uploaded = await uploadBlobToGeminiFilesApi(
@@ -422,6 +434,7 @@ async function resolveBinaryBlobToAttachment(
 async function resolveUploadMaterial(
   m: Material,
   customKey: string,
+  keyTag: string,
   preferFilesApi: boolean,
   remainingInlineBytes: number,
   signal?: AbortSignal,
@@ -464,16 +477,21 @@ async function resolveUploadMaterial(
     blob,
     binaryMime,
     customKey,
+    keyTag,
     preferFilesApi,
     remainingInlineBytes,
     signal,
   );
-  return { attachment };
+  return {
+    attachment,
+    ...(attachment.fileUri ? { expiresAt: Date.now() + FILE_URI_TTL_MS } : {}),
+  };
 }
 
 async function resolveDriveMaterial(
   m: Material,
   customKey: string,
+  keyTag: string,
   preferFilesApi: boolean,
   remainingInlineBytes: number,
   signal?: AbortSignal,
@@ -552,11 +570,15 @@ async function resolveDriveMaterial(
     blob,
     binaryMime || blob.type || 'application/pdf',
     customKey,
+    keyTag,
     preferFilesApi,
     remainingInlineBytes,
     signal,
   );
-  return { attachment };
+  return {
+    attachment,
+    ...(attachment.fileUri ? { expiresAt: Date.now() + FILE_URI_TTL_MS } : {}),
+  };
 }
 
 /**
@@ -568,13 +590,14 @@ export async function resolveMaterialsForAI(
   options?: { maxFiles?: number; signal?: AbortSignal },
 ): Promise<ResolvedMaterialsBundle> {
   const customKey = getCustomGeminiKey();
+  const keyTag = fingerprintCustomKey(customKey);
   const hardCap = getAiMaterialLimit(Boolean(customKey));
   const maxFiles = Math.max(1, Math.min(hardCap, options?.maxFiles ?? hardCap));
   const candidates = materials.slice(0, maxFiles);
   const overflow = materials.slice(maxFiles);
 
-  // Com chave pessoal + múltiplos PDFs (ou ficheiros > 2 MB), usa Files API (`fileUri` em cache 47h)
-  const preferFilesApi = Boolean(customKey) && (candidates.length > 2 || true);
+  // Com chave pessoal, usa Gemini Files API (`fileUri` em cache 47h) para poupar o teto inline.
+  const preferFilesApi = Boolean(customKey);
 
   const attachments: ChatAttachment[] = [];
   const textExcerpts: ResolvedMaterialExcerpt[] = [];
@@ -589,10 +612,21 @@ export async function resolveMaterialsForAI(
   const tokenBudget = customKey ? getKeyContextTokenBudget() : SHARED_CONTEXT_TOKEN_BUDGET;
   let tokensUsed = 0;
 
-  /** O limite é o orçamento de tokens (60k no modo partilhado, 240k–900k com chave pessoal); o primeiro material entra sempre. */
-  const fitsTokenBudget = (m: Material, resolved: CachedMaterialResolution): boolean => {
+  /** Valida teto inline e orçamento de tokens antes de contabilizar o material no contexto. */
+  const tryIncludeResolved = (m: Material, resolved: CachedMaterialResolution): boolean => {
+    const att = resolved.attachment;
+    const isInline = Boolean(att && !att.fileUri);
+    if (att && isInline && inlineBytesUsed + att.sizeBytes > MAX_TOTAL_INLINE_BYTES) {
+      skipped.push({
+        id: m.id,
+        title: m.title,
+        reason: tr('common:errors.matDirectSizeLimit'),
+      });
+      return false;
+    }
+
     const cost =
-      (resolved.attachment ? attachmentTokens(resolved.attachment) : 0) +
+      (att ? attachmentTokens(att) : 0) +
       (resolved.excerpt ? estimateTextTokens(resolved.excerpt.content) : 0);
     if (tokenBudget !== null && tokensUsed > 0 && tokensUsed + cost > tokenBudget) {
       skipped.push({
@@ -602,36 +636,27 @@ export async function resolveMaterialsForAI(
       });
       return false;
     }
+
     tokensUsed += cost;
+    if (att) {
+      if (isInline) inlineBytesUsed += att.sizeBytes;
+      attachments.push(att);
+    }
+    if (resolved.excerpt) textExcerpts.push(resolved.excerpt);
+    readTitles.push(m.title);
     return true;
   };
 
   for (const m of candidates) {
     if (options?.signal?.aborted) break;
 
-    const cacheKey = `${customKey ? 'key' : 'free'}:${m.id}:${m.modifiedAt ?? ''}`;
+    const cacheKey = `${keyTag}:${m.id}:${m.modifiedAt ?? ''}`;
     const cached = contentCache.get(cacheKey);
-    if (cached) {
-      if (!fitsTokenBudget(m, cached)) continue;
-      if (cached.attachment) {
-        if (cached.attachment.fileUri) {
-          attachments.push(cached.attachment);
-        } else if (inlineBytesUsed + cached.attachment.sizeBytes <= MAX_TOTAL_INLINE_BYTES) {
-          inlineBytesUsed += cached.attachment.sizeBytes;
-          attachments.push(cached.attachment);
-        } else {
-          skipped.push({
-            id: m.id,
-            title: m.title,
-            reason: tr('common:errors.matDirectSizeLimit'),
-          });
-          continue;
-        }
-      }
-      if (cached.excerpt) textExcerpts.push(cached.excerpt);
-      readTitles.push(m.title);
+    if (cached && (!cached.expiresAt || cached.expiresAt > Date.now())) {
+      tryIncludeResolved(m, cached);
       continue;
     }
+    if (cached) contentCache.delete(cacheKey);
 
     const remainingInline = Math.max(0, MAX_TOTAL_INLINE_BYTES - inlineBytesUsed);
 
@@ -640,18 +665,13 @@ export async function resolveMaterialsForAI(
         const resolved = await resolveUploadMaterial(
           m,
           customKey,
+          keyTag,
           preferFilesApi,
           remainingInline,
           options?.signal,
         );
         setCacheEntry(cacheKey, resolved);
-        if (!fitsTokenBudget(m, resolved)) continue;
-        if (resolved.attachment) {
-          if (!resolved.attachment.fileUri) inlineBytesUsed += resolved.attachment.sizeBytes;
-          attachments.push(resolved.attachment);
-        }
-        if (resolved.excerpt) textExcerpts.push(resolved.excerpt);
-        readTitles.push(m.title);
+        tryIncludeResolved(m, resolved);
       } catch (err) {
         skipped.push({
           id: m.id,
@@ -676,18 +696,13 @@ export async function resolveMaterialsForAI(
         const resolved = await resolveDriveMaterial(
           m,
           customKey,
+          keyTag,
           preferFilesApi,
           remainingInline,
           options?.signal,
         );
         setCacheEntry(cacheKey, resolved);
-        if (!fitsTokenBudget(m, resolved)) continue;
-        if (resolved.attachment) {
-          if (!resolved.attachment.fileUri) inlineBytesUsed += resolved.attachment.sizeBytes;
-          attachments.push(resolved.attachment);
-        }
-        if (resolved.excerpt) textExcerpts.push(resolved.excerpt);
-        readTitles.push(m.title);
+        tryIncludeResolved(m, resolved);
       } catch (err) {
         const msg = err instanceof Error ? err.message : tr('common:errors.matDriveFail');
         if (/(expir|caducad|sess[aã]o|session|sesi[oó]n)/i.test(msg)) {

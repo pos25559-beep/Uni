@@ -2,7 +2,8 @@ import { useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
 import { courseColors } from '../../lib/colors';
 import { normalizeAppLanguage, resolveDateFnsLocale } from '../../lib/grading';
-import { analyzeTestMode } from '../../lib/planner';
+import { analyzeTestMode, classifyOverdue } from '../../lib/planner';
+import { resolvePlannerPrefs, weeklyStudyMinutes } from '../../lib/planner/availability';
 import {
   daysUntil,
   minutesThisWeek,
@@ -99,7 +100,16 @@ export function useDashboardAgenda({
     [courses],
   );
 
-  const upcoming = useMemo(() => upcomingAssessments(assessments), [assessments]);
+  const plannerPrefs = useMemo(() => resolvePlannerPrefs(settings), [settings]);
+  const pausedSet = useMemo(
+    () => new Set(plannerPrefs.pausedCourseIds ?? []),
+    [plannerPrefs.pausedCourseIds],
+  );
+
+  const upcoming = useMemo(
+    () => upcomingAssessments(assessments).filter((a) => !pausedSet.has(a.courseId)),
+    [assessments, pausedSet],
+  );
 
   const scored = useMemo<Scored[]>(
     () =>
@@ -118,14 +128,22 @@ export function useDashboardAgenda({
     return top && top.score >= 30 ? top : undefined;
   }, [scored]);
 
-  const overdue = useMemo(
-    () => sessions.filter((s) => !s.done && s.date < today).length,
-    [sessions, today],
-  );
+  const overdue = useMemo(() => {
+    const classified = classifyOverdue({
+      sessions,
+      today,
+      assessments,
+      pausedCourseIds: plannerPrefs.pausedCourseIds,
+    });
+    return classified.manual.length + classified.missedGenerated.length;
+  }, [sessions, today, assessments, plannerPrefs.pausedCourseIds]);
 
   const average = useMemo(() => semesterAverage(courses, assessments), [courses, assessments]);
   const weekMinutes = useMemo(() => minutesThisWeek(sessions), [sessions]);
-  const weekGoal = settings.dailyStudyMinutes * settings.studyDays.length;
+  const weekGoal = useMemo(
+    () => weeklyStudyMinutes(plannerPrefs.weekdaySchedule ?? {}),
+    [plannerPrefs.weekdaySchedule],
+  );
   const weekPct = weekGoal > 0 ? Math.min(100, Math.round((weekMinutes / weekGoal) * 100)) : 0;
   const streak = useMemo(() => studyStreak(sessions), [sessions]);
 

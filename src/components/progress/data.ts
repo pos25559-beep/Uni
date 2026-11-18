@@ -4,6 +4,11 @@ import i18n from '../../i18n';
 import { courseColors } from '../../lib/colors';
 import { normalizeAppLanguage, resolveDateFnsLocale } from '../../lib/grading';
 import {
+  minutesForWeekday,
+  resolvePlannerPrefs,
+  weeklyStudyMinutes,
+} from '../../lib/planner/availability';
+import {
   daysUntil, gradeSummary, readiness, sessionMinutes, toDateStr, topicProgress, upcomingAssessments,
 } from '../../lib/selectors';
 import { estimateTopicRetention, isTopicReviewDue, type RetentionState } from '../../lib/spacedRepetition';
@@ -101,19 +106,30 @@ export const fmtDec = (n: number, lang?: string) => {
 export const fmtPct = (n: number) => `${Math.round(n)}%`;
 export const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
-/** Minutos de meta no período: dias de estudo já decorridos × minutos diários. */
-export function studyGoalMinutes(r: PeriodRange, settings: Pick<Settings, 'studyDays' | 'dailyStudyMinutes'>): number {
-  const allowedDays = Array.isArray(settings.studyDays) ? settings.studyDays : [1, 2, 3, 4, 5];
-  const dailyMin = settings.dailyStudyMinutes ?? 120;
-  const studyDays = r.days.filter((d) => d <= r.elapsedTo && allowedDays.includes(parseISO(d).getDay()));
-  return studyDays.length * dailyMin;
+/** Minutos de meta no período conforme o horário real por dia (`weekdaySchedule`). */
+export function studyGoalMinutes(
+  r: PeriodRange,
+  settings: Pick<Settings, 'studyDays' | 'dailyStudyMinutes' | 'plannerPrefs'>,
+): number {
+  const schedule = resolvePlannerPrefs(settings as Settings).weekdaySchedule ?? {};
+  return r.days
+    .filter((d) => d <= r.elapsedTo)
+    .reduce((sum, d) => sum + minutesForWeekday(schedule, parseISO(d).getDay()), 0);
 }
 
-/** Meta por barra: diária, ou semanal (× dias de estudo) quando agregado por semana. */
-export function bucketGoal(r: PeriodRange, settings: Pick<Settings, 'studyDays' | 'dailyStudyMinutes'>): number {
-  const allowedDays = Array.isArray(settings.studyDays) ? settings.studyDays : [1, 2, 3, 4, 5];
-  const dailyMin = settings.dailyStudyMinutes ?? 120;
-  return r.byWeek ? dailyMin * allowedDays.length : dailyMin;
+/** Meta por barra: média dos dias ativos, ou semanal (`weeklyStudyMinutes`) quando agregado por semana. */
+export function bucketGoal(
+  r: PeriodRange,
+  settings: Pick<Settings, 'studyDays' | 'dailyStudyMinutes' | 'plannerPrefs'>,
+): number {
+  const schedule = resolvePlannerPrefs(settings as Settings).weekdaySchedule ?? {};
+  const weeklyTotal = weeklyStudyMinutes(schedule);
+  if (r.byWeek) return weeklyTotal;
+  const activeDayMinutes = [0, 1, 2, 3, 4, 5, 6]
+    .map((wd) => minutesForWeekday(schedule, wd))
+    .filter((m) => m > 0);
+  if (activeDayMinutes.length === 0) return 0;
+  return Math.round(weeklyTotal / activeDayMinutes.length);
 }
 
 export interface SeriesDef { key: string; name: string; color: string }
@@ -428,15 +444,32 @@ export function retentionOverview(
 
   let sessionHits = 0;
   let sessionTotal = 0;
+  const topicsWithSessionPractice = new Set<string>();
   for (const s of doneSessions) {
     if ((s.practiceTotal ?? 0) > 0) {
       sessionTotal += s.practiceTotal ?? 0;
       sessionHits += Math.min(s.practiceTotal ?? 0, s.practiceHits ?? 0);
+      if (s.topicId) topicsWithSessionPractice.add(s.topicId);
     }
   }
 
-  const practiceHits = sessionTotal > 0 ? sessionHits : topicRecallHits;
-  const practiceTotal = sessionTotal > 0 ? sessionTotal : topicRecallAttempts;
+  let standaloneTopicHits = 0;
+  let standaloneTopicAttempts = 0;
+  for (const course of courses) {
+    for (const topic of course.topics) {
+      if (topicsWithSessionPractice.has(topic.id)) continue;
+      const attempts = topic.recallCount ?? 0;
+      if (attempts <= 0) continue;
+      const hits =
+        topic.recallSuccessCount ??
+        (topic.lastRecallScore && topic.lastRecallScore >= 2 ? attempts : 0);
+      standaloneTopicAttempts += attempts;
+      standaloneTopicHits += hits;
+    }
+  }
+
+  const practiceHits = sessionHits + standaloneTopicHits;
+  const practiceTotal = sessionTotal + standaloneTopicAttempts;
 
   return {
     avgRetentionPct: studiedTopicCount > 0 ? Math.round(totalRetention / studiedTopicCount) : null,

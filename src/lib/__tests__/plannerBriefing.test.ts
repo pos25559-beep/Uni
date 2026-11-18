@@ -25,7 +25,6 @@ const baseSettings: Settings = {
   geminiApiKey: '',
   geminiModel: 'gemini-2.5-flash',
   googleClientId: '',
-  msClientId: '',
 };
 
 const calcCourse: Course = {
@@ -281,7 +280,7 @@ describe('planner v2 · disponibilidade semanal, maratona pré-teste, bloqueios 
       sessions: [lockedSession, unlockedOld],
     });
 
-    useStore.getState().reconcileFuturePlan(true);
+    useStore.getState().replan('manual', { force: true });
     const updated = useStore.getState().sessions;
 
     // A sessão fixada mantém exatamente a mesma ID, hora e nota; a não fixada foi substituída.

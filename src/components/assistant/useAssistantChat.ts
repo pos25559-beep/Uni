@@ -24,6 +24,7 @@ import {
   type Conversation,
 } from '../../lib/geminiConversations';
 import { getAiMaterialLimit, resolveMaterialsForAI } from '../../lib/materialContent';
+import { filterMaterialsForCourse } from '../../lib/courseMaterials';
 import {
   findAssessmentCandidates,
   findTargetAssessmentDocuments,
@@ -152,6 +153,10 @@ interface UseAssistantChatArgs {
   uniAgent?: UniAgentRecord | null;
   userName: string;
   setIntegration: (key: IntegrationKey, patch: Partial<IntegrationStatus>) => void;
+  /** Quando `false` (ex.: FocusUniChat), não lê nem grava no estado global do separador Tutor. */
+  persistSessionState?: boolean;
+  /** Cadeira pedida via URL/route state ao abrir o Tutor; tem prioridade sobre a conversa guardada. */
+  initialCourseOverride?: string | null;
 }
 
 /** Gere o estado completo do chat do Tutor (Firestore, anexos, streaming Gemini e blocos UNI_SYNC). */
@@ -160,6 +165,7 @@ export function useAssistantChat({
   setActiveCourseId,
   activeSubject,
   activeCourse,
+  courses,
   materials,
   hasCustomKey,
   uniAccessory,
@@ -167,20 +173,27 @@ export function useAssistantChat({
   uniAgent,
   userName,
   setIntegration,
+  persistSessionState = true,
+  initialCourseOverride = null,
 }: UseAssistantChatArgs) {
   const [user, setUser] = useState<User | null>(() => auth.currentUser);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId] = useState<string>(
-    () => readStoredTutorSessionState()?.activeConvId ?? 'default',
+    () => (persistSessionState ? readStoredTutorSessionState()?.activeConvId : undefined) ?? 'default',
   );
   const [selectedMaterialIds, setSelectedMaterialIds] = useState<string[]>(
-    () => readStoredTutorSessionState()?.selectedMaterialIds ?? [],
+    () => (persistSessionState ? readStoredTutorSessionState()?.selectedMaterialIds : undefined) ?? [],
   );
   const [dismissedAutoMaterialIds, setDismissedAutoMaterialIds] = useState<string[]>(
-    () => readStoredTutorSessionState()?.dismissedAutoMaterialIds ?? [],
+    () => (persistSessionState ? readStoredTutorSessionState()?.dismissedAutoMaterialIds : undefined) ?? [],
   );
   const autoPinnedIdsRef = useRef<string[]>([]);
   const restoredConvIdRef = useRef<string | null>(null);
+  const activeConvIdRef = useRef<string>(activeConvId);
+  useEffect(() => {
+    activeConvIdRef.current = activeConvId;
+  }, [activeConvId]);
+  const courseLockRef = useRef<string | null>(initialCourseOverride ?? null);
   const [driveAuthNeeded, setDriveAuthNeeded] = useState(false);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -214,14 +227,31 @@ export function useAssistantChat({
   }, []);
 
   useEffect(() => {
+    if (!initialCourseOverride) return;
+    courseLockRef.current = initialCourseOverride;
+    restoredConvIdRef.current = null;
+    setActiveCourseId(initialCourseOverride);
+  }, [initialCourseOverride, setActiveCourseId]);
+
+  useEffect(() => {
     const unsub = subscribeConversations((list) => {
       setConversations(list);
-      if (list.length > 0 && !list.some((c) => c.id === activeConvId)) {
+      const lockedCourse = courseLockRef.current;
+      const curId = activeConvIdRef.current;
+      if (lockedCourse) {
+        const currentMatches = list.find((c) => c.id === curId && c.courseId === lockedCourse);
+        if (!currentMatches) {
+          const courseMatch = list.find((c) => c.courseId === lockedCourse);
+          setActiveConvId(courseMatch ? courseMatch.id : 'default');
+        }
+        return;
+      }
+      if (list.length > 0 && !list.some((c) => c.id === curId)) {
         setActiveConvId(list[0].id);
       }
     });
     return () => unsub();
-  }, [activeConvId]);
+  }, [user]);
 
   useEffect(() => {
     if (!activeConvId) return;
@@ -244,33 +274,24 @@ export function useAssistantChat({
     if (restoredConvIdRef.current === currentConv.id) return;
     restoredConvIdRef.current = currentConv.id;
 
-    if (currentConv.courseId) {
-      queueMicrotask(() => setActiveCourseId(currentConv.courseId!));
+    const lockedCourse = courseLockRef.current;
+    if (lockedCourse && currentConv.courseId !== lockedCourse) {
+      return;
     }
-    if (Array.isArray(currentConv.materialIds) && currentConv.materialIds.length > 0) {
-      queueMicrotask(() => {
-        setSelectedMaterialIds((prev) => {
-          const merged = [...new Set([...currentConv.materialIds!, ...prev])];
-          return merged;
-        });
-      });
-    }
-  }, [currentConv, setActiveCourseId]);
+    courseLockRef.current = null;
 
-  // Mantém a cadeira da conversa ativa sincronizada quando o estudante muda o seletor de cadeira
-  useEffect(() => {
-    if (!currentConv || restoredConvIdRef.current !== currentConv.id) return;
-    const normalizedCourse = activeCourseId === 'all' ? undefined : activeCourseId;
-    if (normalizedCourse !== currentConv.courseId) {
-      void upsertConversation({
-        ...currentConv,
-        courseId: normalizedCourse,
-      });
-    }
-  }, [activeCourseId, currentConv]);
+    const targetCourseId = currentConv.courseId ?? 'all';
+    const nextMaterialIds = Array.isArray(currentConv.materialIds) ? currentConv.materialIds : [];
+    queueMicrotask(() => {
+      setActiveCourseId(targetCourseId);
+      setDismissedAutoMaterialIds([]);
+      setSelectedMaterialIds(nextMaterialIds);
+    });
+  }, [currentConv, setActiveCourseId]);
 
   // Persiste o estado ativo da sessão do Tutor em localStorage para sobreviver à troca de abas
   useEffect(() => {
+    if (!persistSessionState) return;
     writeStoredTutorSessionState({
       activeConvId,
       activeCourseId,
@@ -278,7 +299,14 @@ export function useAssistantChat({
       selectedMaterialIds,
       dismissedAutoMaterialIds,
     });
-  }, [activeConvId, activeCourseId, activeSubject, selectedMaterialIds, dismissedAutoMaterialIds]);
+  }, [
+    persistSessionState,
+    activeConvId,
+    activeCourseId,
+    activeSubject,
+    selectedMaterialIds,
+    dismissedAutoMaterialIds,
+  ]);
 
   const syncCurrentConvMeta = useCallback(
     (patch: { courseId?: string; materialIds?: string[] }) => {
@@ -303,14 +331,17 @@ export function useAssistantChat({
 
   const availableMaterials = useMemo(() => {
     if (activeCourseId === 'all') return materials;
+    if (activeCourse) return filterMaterialsForCourse(materials, activeCourse);
     return materials.filter((m) => m.courseId === activeCourseId);
-  }, [materials, activeCourseId]);
+  }, [materials, activeCourseId, activeCourse]);
 
   const maxAiFiles = getAiMaterialLimit(hasCustomKey);
-  const attachedMaterials = useMemo(
-    () => materials.filter((m) => selectedMaterialIds.includes(m.id)),
-    [materials, selectedMaterialIds],
-  );
+  const attachedMaterials = useMemo(() => {
+    const allowedIds = new Set(availableMaterials.map((m) => m.id));
+    return availableMaterials.filter(
+      (m) => selectedMaterialIds.includes(m.id) && allowedIds.has(m.id),
+    );
+  }, [availableMaterials, selectedMaterialIds]);
 
   // Pré-anexa até maxAiFiles materiais fixados da cadeira ativa
   useEffect(() => {
@@ -371,11 +402,52 @@ export function useAssistantChat({
     syncCurrentConvMeta({ materialIds: [] });
   };
 
+  const handleSelectConversationById = useCallback(
+    (targetId: string) => {
+      courseLockRef.current = null;
+      restoredConvIdRef.current = null;
+      setActiveConvId(targetId);
+    },
+    [],
+  );
+
+  const selectCourse = useCallback(
+    (nextCourseId: string) => {
+      courseLockRef.current = null;
+      setActiveCourseId(nextCourseId);
+      const normalized = nextCourseId === 'all' ? undefined : nextCourseId;
+      const targetCourse = normalized ? courses.find((c) => c.id === normalized) : undefined;
+      const allowedSet = targetCourse
+        ? new Set(filterMaterialsForCourse(materials, targetCourse).map((m) => m.id))
+        : null;
+      setSelectedMaterialIds((prev) =>
+        allowedSet ? prev.filter((id) => allowedSet.has(id)) : prev,
+      );
+      setDismissedAutoMaterialIds([]);
+      if (currentConv && currentConv.courseId !== normalized) {
+        if (messages.length === 0) {
+          syncCurrentConvMeta({
+            courseId: normalized,
+            materialIds: allowedSet
+              ? selectedMaterialIds.filter((id) => allowedSet.has(id))
+              : selectedMaterialIds,
+          });
+        } else {
+          restoredConvIdRef.current = null;
+          setActiveConvId('default');
+          setMessages([]);
+        }
+      }
+    },
+    [courses, currentConv, materials, messages.length, selectedMaterialIds, setActiveCourseId, syncCurrentConvMeta],
+  );
+
   const handleCreateConversation = async (opts?: {
     title?: string;
     courseId?: string;
     subject?: string;
   }) => {
+    courseLockRef.current = null;
     const id = newId();
     const resolvedCourseId =
       opts?.courseId !== undefined
@@ -385,16 +457,20 @@ export function useAssistantChat({
           : undefined;
     const resolvedSubject =
       opts?.subject ?? (activeSubject !== 'all' ? activeSubject : 'geral');
+    const scopedMaterialIds = resolvedCourseId
+      ? selectedMaterialIds.filter((matId) => availableMaterials.some((m) => m.id === matId))
+      : selectedMaterialIds;
     const newConv: Conversation = {
       id,
       title: opts?.title?.trim() || tr('assistant:convs.newTitle'),
       courseId: resolvedCourseId,
       subject: resolvedSubject,
-      materialIds: selectedMaterialIds,
+      materialIds: scopedMaterialIds,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
     await upsertConversation(newConv);
+    restoredConvIdRef.current = id;
     setActiveConvId(id);
     if (resolvedCourseId) setActiveCourseId(resolvedCourseId);
     setMessages([]);
@@ -837,12 +913,45 @@ export function useAssistantChat({
     [syncingMsgId, updatePendingSyncForMsg],
   );
 
+  const appendNoteMessage = useCallback(
+    async (markdown: string, sourceDocTitles?: string[]) => {
+      const nowIso = new Date().toISOString();
+      let targetConvId = activeConvId;
+      if (!currentConv || targetConvId === 'default') {
+        targetConvId = newId();
+        const heading = markdown.trim().split('\n')[0]?.replace(/^#+\s*/, '').trim() || '';
+        const newConv: Conversation = {
+          id: targetConvId,
+          title: (heading || tr('assistant:convs.newTitle')).slice(0, 48),
+          courseId: activeCourseId !== 'all' ? activeCourseId : undefined,
+          subject: activeSubject !== 'all' ? activeSubject : 'geral',
+          materialIds: attachedMaterials.map((m) => m.id),
+          createdAt: nowIso,
+          updatedAt: nowIso,
+        };
+        await upsertConversation(newConv);
+        restoredConvIdRef.current = targetConvId;
+        setActiveConvId(targetConvId);
+      }
+      await appendMessage(targetConvId, {
+        id: newId(),
+        role: 'model',
+        text: markdown,
+        at: nowIso,
+        sourceDocTitles: sourceDocTitles ?? attachedMaterials.map((m) => m.title),
+      });
+    },
+    [activeConvId, activeCourseId, activeSubject, attachedMaterials, currentConv],
+  );
+
   return {
     user,
     conversations,
     filteredConversations,
     activeConvId,
-    setActiveConvId,
+    setActiveConvId: handleSelectConversationById,
+    selectCourse,
+    appendNoteMessage,
     currentConv,
     selectedMaterialIds,
     availableMaterials,

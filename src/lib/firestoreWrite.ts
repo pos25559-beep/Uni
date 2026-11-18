@@ -6,6 +6,12 @@ export const OPTIONAL_EMAIL_OR_URL_KEYS = new Set<string>([
   'personalEmail',
   'personalNotebookUrl',
   'photoURL',
+  'clipUrl',
+  'notebookUrl',
+  'driveFolderUrl',
+  'sharedDriveUrl',
+  'oneDriveFolderUrl',
+  'sharedOneDriveUrl',
 ]);
 
 /** Campos que nunca se apagam no Firestore (as regras exigem-nos imutáveis). */
@@ -57,7 +63,9 @@ export function buildFirestoreWrite(
 export function buildFirestorePatch(changes: Record<string, unknown>): Record<string, unknown | FieldValue> {
   const data = stripUndefined(changes) as Record<string, unknown | FieldValue>;
   for (const [key, value] of Object.entries(changes)) {
-    if (value === undefined && !PROTECTED_KEYS.has(key)) data[key] = deleteField();
+    if ((value === undefined || (OPTIONAL_EMAIL_OR_URL_KEYS.has(key) && value === '')) && !PROTECTED_KEYS.has(key)) {
+      data[key] = deleteField();
+    }
   }
   return data;
 }

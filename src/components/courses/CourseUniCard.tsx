@@ -314,14 +314,18 @@ export default function CourseUniCard({ course }: { course: Course }) {
                 size={54}
                 interactive={false}
               />
-              {(agent.petId ?? settings.uniPet ?? 'none') !== 'none' && (
-                <span className="absolute -bottom-1.5 -right-1.5 rounded-full bg-surface p-0.5 shadow-xs">
-                  <UniPetBuddy
-                    pet={(agent.petId ?? settings.uniPet ?? 'cat') as Exclude<UniPetId, 'none'>}
-                    size={22}
-                  />
-                </span>
-              )}
+              {(() => {
+                const resolvedPet = agent.petId ?? settings.uniPet ?? 'none';
+                if (resolvedPet === 'none') return null;
+                return (
+                  <span className="absolute -bottom-1.5 -right-1.5 rounded-full bg-surface p-0.5 shadow-xs">
+                    <UniPetBuddy
+                      pet={resolvedPet as Exclude<UniPetId, 'none'>}
+                      size={22}
+                    />
+                  </span>
+                );
+              })()}
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1.5">

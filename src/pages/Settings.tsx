@@ -34,8 +34,8 @@ import { Badge, Button, ListGroup, ListRow, PageHeader, SegmentedControl, Subpag
 import { showToast } from '../lib/uiHelpers';
 import { APP_PALETTES } from '../lib/academicCredits';
 import { APP_VERSION_LABEL } from '../lib/appVersion';
-import { auth, logoutFirebase, onAuthStateChanged, type User } from '../lib/firebase';
-import { migrateLocalDataToCloud } from '../lib/firestoreSync';
+import { auth, onAuthStateChanged, type User } from '../lib/firebase';
+import { migrateLocalDataToCloud, performFullLogout } from '../lib/firestoreSync';
 import { fmtMinutes } from '../lib/selectors';
 import { resolveUniAccessory } from '../lib/uniAccessories';
 import { useStore } from '../store/useStore';
@@ -69,8 +69,7 @@ export default function SettingsPage() {
   };
 
   const handleLogout = async () => {
-    await logoutFirebase();
-    updateSettings({ guestMode: false, userName: '' });
+    await performFullLogout();
     showToast(t('hero.loggedOutToast'), 'neutral');
   };
 

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { defaultSettings, emptyCollections } from '../lib/seed';
 import {
+  deleteCourseCascadeFromCloud,
   deleteStudyLogFromCloud,
   syncAcademicProfile,
   syncCollectionDiff,
@@ -15,6 +16,9 @@ import {
   syncWeeklyCheckIn,
   isRemoteSyncing,
 } from '../lib/firestoreSync';
+import { deleteFile } from '../lib/fileStorage';
+import { deleteTopicSheet, deleteUniMemory, listTopicSheetsByCourse } from '../lib/localDb';
+import { deleteUniAgentLocal } from '../lib/uniAgents';
 import { computeReplan, isReplaceable, type ReplanReason } from '../lib/planner/replan';
 import { applyPlanIntent, type IntentItem } from '../lib/planner/intent';
 import { notifyPlanReplanned, recordPlanUndo, takePlanUndo } from './planUndo';
@@ -44,7 +48,6 @@ const emptyData = emptyCollections;
 
 const defaultIntegrations: Record<IntegrationKey, IntegrationStatus> = {
   google: { connected: false },
-  microsoft: { connected: false },
   gemini: { connected: false },
   clip: { connected: false },
 };
@@ -98,8 +101,6 @@ export interface AppState extends Collections {
   applyBriefing: (items: IntentItem[], text: string) => boolean;
   /** Desfaz o último recálculo (sessões e, se mudaram, preferências e tópicos). */
   undoLastReplan: (token?: number) => boolean;
-  /** @deprecated Usar `replan`. Mantido para chamadas antigas. */
-  reconcileFuturePlan: (force?: boolean) => void;
   updateTopic: (courseId: ID, topicId: ID, changes: Partial<Topic>) => void;
   /** Atualiza vários tópicos em lote (ex.: calibração de meio do semestre no construtor). */
   batchUpdateTopicStates: (
@@ -120,7 +121,7 @@ export interface AppState extends Collections {
     opts?: { replan?: ReplanReason | false; force?: boolean },
   ) => void;
   setIntegration: (key: IntegrationKey, status: Partial<IntegrationStatus>) => void;
-  cleanupMismatchedMaterials: () => number;
+  cleanupMismatchedMaterials: (protectedIds?: Set<string>) => number;
   saveAcademicProfile: (changes: Partial<AcademicProfile>) => void;
   addWeeklyCheckIn: (checkIn: WeeklyCheckIn) => void;
   addStudyLog: (entry: StudyLogEntry) => void;
@@ -190,7 +191,41 @@ export const useStore = create<AppState>()(
         }
       },
       remove: (key, id) => {
-        syncRemove(key as any, id).catch(() => {});
+        const snapshot = get();
+        if (key === 'materials') {
+          const targetMat = snapshot.materials.find((m) => m.id === id);
+          if (targetMat?.provider === 'upload') {
+            deleteFile(targetMat.id).catch(() => {});
+          }
+        }
+        if (key === 'courses') {
+          const assessmentIds = snapshot.assessments.filter((x) => x.courseId === id).map((x) => x.id);
+          const classIds = snapshot.classes.filter((x) => x.courseId === id).map((x) => x.id);
+          const sessionIds = snapshot.sessions.filter((x) => x.courseId === id).map((x) => x.id);
+          const taskIds = snapshot.tasks.filter((x) => x.courseId === id).map((x) => x.id);
+          const courseMaterials = snapshot.materials.filter((x) => x.courseId === id);
+          const materialIds = courseMaterials.map((x) => x.id);
+          const eventIds = snapshot.events.filter((x) => x.courseId === id).map((x) => x.id);
+
+          for (const m of courseMaterials) {
+            if (m.provider === 'upload') deleteFile(m.id).catch(() => {});
+          }
+          deleteUniAgentLocal(id).catch(() => {});
+          deleteUniMemory(id).catch(() => {});
+          listTopicSheetsByCourse(id)
+            .then((sheets) => Promise.all(sheets.map((sh) => deleteTopicSheet(sh.id))))
+            .catch(() => {});
+          deleteCourseCascadeFromCloud(id, {
+            assessmentIds,
+            classIds,
+            sessionIds,
+            taskIds,
+            materialIds,
+            eventIds,
+          }).catch(() => {});
+        } else {
+          syncRemove(key as any, id).catch(() => {});
+        }
         set((s) => {
           const next: Partial<Collections> = {
             [key]: (s[key] as { id: ID }[]).filter((x) => x.id !== id),
@@ -201,11 +236,12 @@ export const useStore = create<AppState>()(
             next.sessions = s.sessions.filter((x) => x.courseId !== id);
             next.tasks = s.tasks.filter((x) => x.courseId !== id);
             next.materials = s.materials.filter((x) => x.courseId !== id);
+            next.events = s.events.filter((x) => x.courseId !== id);
           }
           return next as Partial<AppState>;
         });
         if (key === 'assessments') get().replan('assessment');
-        else if (key === 'classes' || key === 'events') get().replan('schedule');
+        else if (key === 'classes' || key === 'events' || key === 'courses') get().replan('schedule');
       },
       replaceSource: (key, source, items) => {
         let prevItems: Collections[typeof key] = [];
@@ -290,9 +326,6 @@ export const useStore = create<AppState>()(
         set(patch);
         syncSessionsDiff(prev.sessions, restored).catch(() => {});
         return true;
-      },
-      reconcileFuturePlan: (force = false) => {
-        get().replan(force ? 'manual' : 'topic', { force, silent: !force });
       },
       updateTopic: (courseId, topicId, changes) => {
         let shouldReconcile = false;
@@ -403,18 +436,24 @@ export const useStore = create<AppState>()(
         set((s) => ({
           integrations: { ...s.integrations, [key]: { ...s.integrations[key], ...status } },
         })),
-      cleanupMismatchedMaterials: () => {
+      cleanupMismatchedMaterials: (protectedIds) => {
         let removedCount = 0;
         let prevMaterials: Collections['materials'] = [];
         let nextMaterials: Collections['materials'] = [];
         set((s) => {
           prevMaterials = s.materials;
-          const result = sanitizeMaterials(s.materials, s.courses, s.academicProfile?.entryYear);
+          const result = sanitizeMaterials(s.materials, s.courses, s.academicProfile?.entryYear, protectedIds);
           removedCount = result.removedCount;
           nextMaterials = result.clean;
           return { materials: result.clean } as Partial<AppState>;
         });
         if (removedCount > 0) {
+          const keptIds = new Set(nextMaterials.map((m) => m.id));
+          for (const prev of prevMaterials) {
+            if (prev.provider === 'upload' && !keptIds.has(prev.id)) {
+              deleteFile(prev.id).catch(() => {});
+            }
+          }
           syncCollectionDiff('materials', prevMaterials, nextMaterials).catch(() => {});
         }
         return removedCount;
@@ -428,14 +467,9 @@ export const useStore = create<AppState>()(
       addWeeklyCheckIn: (checkIn) =>
         set((s) => {
           const filtered = s.weeklyCheckIns.filter((w) => w.weekOf !== checkIn.weekOf && w.id !== checkIn.id);
-          const nextProfile =
-            checkIn.hardCourseIds.length > 0
-              ? { ...s.academicProfile, difficultCourseIds: checkIn.hardCourseIds }
-              : s.academicProfile;
+          const nextProfile = { ...s.academicProfile, difficultCourseIds: checkIn.hardCourseIds };
           syncWeeklyCheckIn(checkIn).catch(() => {});
-          if (checkIn.hardCourseIds.length > 0) {
-            syncAcademicProfile(nextProfile).catch(() => {});
-          }
+          syncAcademicProfile(nextProfile).catch(() => {});
           return {
             weeklyCheckIns: [checkIn, ...filtered].slice(0, 24),
             academicProfile: nextProfile,
@@ -483,11 +517,13 @@ export const useStore = create<AppState>()(
         }));
       },
       applyBuiltCurriculumCourses: (profile, built) =>
-        set(() => {
+        set((s) => {
           if (built.length === 0) {
             syncAcademicProfile(profile).catch(() => {});
             return { academicProfile: profile };
           }
+          const builtIds = new Set(built.map((c) => c.id));
+          const removedCourseIds = s.courses.filter((c) => !builtIds.has(c.id)).map((c) => c.id);
           const mappedDifficultIds = profile.difficultCourseIds.map((idOrCode) => {
             const found = built.find(
               (c) => c.id === idOrCode || c.code.toLowerCase() === idOrCode.toLowerCase(),
@@ -499,7 +535,7 @@ export const useStore = create<AppState>()(
             difficultCourseIds: mappedDifficultIds,
           };
           syncAcademicProfile(nextProfile).catch(() => {});
-          syncCourseBatch(built).catch(() => {});
+          syncCourseBatch(built, removedCourseIds).catch(() => {});
           return {
             courses: built,
             academicProfile: nextProfile,

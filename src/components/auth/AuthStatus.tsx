@@ -2,9 +2,8 @@ import { Cloud, ChevronRight, LogOut, RefreshCw, ShieldCheck } from 'lucide-reac
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { auth, logoutFirebase, onAuthStateChanged, type User } from '../../lib/firebase';
-import { migrateLocalDataToCloud } from '../../lib/firestoreSync';
-import { useStore } from '../../store/useStore';
+import { auth, onAuthStateChanged, type User } from '../../lib/firebase';
+import { migrateLocalDataToCloud, performFullLogout } from '../../lib/firestoreSync';
 import { showToast } from '../../lib/uiHelpers';
 
 /**
@@ -15,15 +14,13 @@ export default function AuthStatus({ compact = false }: { compact?: boolean }) {
   const { t } = useTranslation('common');
   const [user, setUser] = useState<User | null>(() => auth.currentUser);
   const [syncing, setSyncing] = useState(false);
-  const updateSettings = useStore((s) => s.updateSettings);
 
   useEffect(() => {
     return onAuthStateChanged(auth, setUser);
   }, []);
 
   const handleLogout = async () => {
-    await logoutFirebase();
-    updateSettings({ guestMode: false, userName: '' });
+    await performFullLogout();
     showToast(t('auth.toast.signedOut'), 'neutral');
   };
 

@@ -672,9 +672,12 @@ export async function commitUniToolProposal(
         exclusiveTestFocus: proposal.planFocus.exclusive,
       },
     }, { replan: false });
-    store.replan('uni_tool', { force: true, prevPrefs: prev });
+    const isManual = (prev?.plannerMode ?? 'auto') === 'manual';
+    if (!isManual) {
+      store.replan('uni_tool', { force: true, prevPrefs: prev });
+    }
     return {
-      summary: tr('uni:uniTools.planFocusApplied', {
+      summary: tr(isManual ? 'uni:uniTools.planFocusManualNote' : 'uni:uniTools.planFocusApplied', {
         course: course.shortName || course.name,
       }),
     };

@@ -30,8 +30,18 @@ export default function UniVoiceCard() {
     : fallbackVoice;
   const savedStyle = (persisted?.stylePrompt ?? '').trim();
 
-  const [voice, setVoice] = useState<UniVoiceName>(savedVoice);
-  const [style, setStyle] = useState(savedStyle);
+  const [voiceDraft, setVoiceDraft] = useState<{ base: UniVoiceName; value: UniVoiceName }>({
+    base: savedVoice,
+    value: savedVoice,
+  });
+  const [styleDraft, setStyleDraft] = useState<{ base: string; value: string }>({
+    base: savedStyle,
+    value: savedStyle,
+  });
+  const voice = voiceDraft.base === savedVoice ? voiceDraft.value : savedVoice;
+  const style = styleDraft.base === savedStyle ? styleDraft.value : savedStyle;
+  const setVoice = (value: UniVoiceName) => setVoiceDraft({ base: savedVoice, value });
+  const setStyle = (value: string) => setStyleDraft({ base: savedStyle, value });
   const [previewing, setPreviewing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

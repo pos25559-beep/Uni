@@ -48,7 +48,17 @@ export default function ProfileCard() {
     weekdayFmt
       .format(new Date(Date.UTC(2024, 0, 7 + dayIndex)))
       .replace(/\.$/, '');
-  const [minutesText, setMinutesText] = useState(String(settings.dailyStudyMinutes));
+  const [minutesDraftState, setMinutesDraftState] = useState<{ base: number; text: string }>({
+    base: settings.dailyStudyMinutes,
+    text: String(settings.dailyStudyMinutes),
+  });
+  const [editingMinutes, setEditingMinutes] = useState(false);
+  const minutesText =
+    editingMinutes || minutesDraftState.base === settings.dailyStudyMinutes
+      ? minutesDraftState.text
+      : String(settings.dailyStudyMinutes);
+  const setMinutesText = (text: string) =>
+    setMinutesDraftState({ base: settings.dailyStudyMinutes, text });
   const [userNameDraft, setUserNameDraft] = useState(settings.userName);
   const [semesterDraft, setSemesterDraft] = useState(settings.semesterName);
   const [editingField, setEditingField] = useState<'userName' | 'semesterName' | null>(null);
@@ -173,7 +183,12 @@ export default function ProfileCard() {
             max={1440}
             step={15}
             value={minutesText}
+            onFocus={() => setEditingMinutes(true)}
             onChange={(e) => onMinutes(e.target.value)}
+            onBlur={() => {
+              setEditingMinutes(false);
+              setMinutesText(String(useStore.getState().settings.dailyStudyMinutes));
+            }}
           />
         </Field>
         <div>

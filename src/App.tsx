@@ -10,7 +10,6 @@ import { showToast } from './lib/uiHelpers';
 import { setPlanReplanNotifier } from './store/planUndo';
 import { useStore } from './store/useStore';
 
-const TourManager = lazy(() => import('./components/onboarding/TourManager'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const WelcomePage = lazy(() => import('./pages/Welcome'));
 const LoginPage = lazy(() => import('./pages/Login'));
@@ -91,9 +90,6 @@ export default function App() {
       <BrowserRouter>
         <DemoQueryBootstrap />
         <PlanReplanNotifier />
-        <Suspense fallback={null}>
-          <TourManager />
-        </Suspense>
         <Suspense fallback={<RouteLoadingFallback />}>
           <Routes>
             <Route element={<AppShell />}>

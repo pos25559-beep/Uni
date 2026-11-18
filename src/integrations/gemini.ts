@@ -56,12 +56,10 @@ export {
   converseCheckInWithGemini,
   evaluateUniRecall,
   generateMaterialPracticeSet,
-  generateRecallChallenge,
   generateUniExpeditionQuestions,
   generateUniRecallQuestion,
   summarizeNotebookMemoryDelta,
   type GeneratedPracticeCardDraft,
-  type RecallChallenge,
   type UniRecallEvaluationResult,
   type UniRecallPromptResult,
 } from './gemini/practice';

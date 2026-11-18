@@ -2,7 +2,12 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { courseColors } from '../../lib/colors';
-import { formatGradeByScale, GRADE_SCALES, gradeToPercent } from '../../lib/grading';
+import {
+  formatGradeByScale,
+  GRADE_SCALES,
+  gradeToPercent,
+  normalizeTargetGradeForScale,
+} from '../../lib/grading';
 import { semesterAverage } from '../../lib/selectors';
 import { useStore } from '../../store/useStore';
 import type { Assessment, Course } from '../../types';
@@ -24,10 +29,17 @@ export function GradeBullets({ courses, assessments }: Props) {
   const scale = (grade: number) => `${gradeToPercent(grade, gradingScale)}%`;
   const fmt = (g: number | null | undefined) => formatGradeByScale(g, gradingScale, appLang);
 
-  const rows = useMemo(() => gradeRows(courses, assessments), [courses, assessments]);
+  const rows = useMemo(
+    () =>
+      gradeRows(courses, assessments).map((r) => ({
+        ...r,
+        normalizedTarget: normalizeTargetGradeForScale(r.course.targetGrade, gradingScale),
+      })),
+    [courses, assessments, gradingScale],
+  );
   const average = useMemo(() => semesterAverage(courses, assessments), [courses, assessments]);
   const graded = rows.filter((r) => r.current !== null).length;
-  const below = rows.filter((r) => r.current !== null && r.current < r.course.targetGrade).length;
+  const below = rows.filter((r) => r.current !== null && r.current < r.normalizedTarget).length;
 
   return (
     <ChartCard
@@ -51,7 +63,7 @@ export function GradeBullets({ courses, assessments }: Props) {
       }
     >
       <ul className="space-y-4">
-        {rows.map(({ course, current }) => (
+        {rows.map(({ course, current, normalizedTarget }) => (
           <li key={course.id}>
             <div className="mb-2 flex items-baseline justify-between gap-3 text-xs">
               <span className="truncate font-medium text-fg">{course.shortName}</span>
@@ -61,7 +73,7 @@ export function GradeBullets({ courses, assessments }: Props) {
                 <span className="shrink-0 tabular text-fg">
                   {fmt(current)}{' '}
                   <span className="text-muted">
-                    {t('charts.gradeBullets.targetShort', { grade: fmt(course.targetGrade) })}
+                    {t('charts.gradeBullets.targetShort', { grade: fmt(normalizedTarget) })}
                   </span>
                 </span>
               )}
@@ -75,8 +87,8 @@ export function GradeBullets({ courses, assessments }: Props) {
               )}
               <div
                 className="absolute -inset-y-1 w-0.5 bg-fg"
-                style={{ left: scale(course.targetGrade) }}
-                title={t('charts.gradeBullets.targetTitle', { grade: fmt(course.targetGrade) })}
+                style={{ left: scale(normalizedTarget) }}
+                title={t('charts.gradeBullets.targetTitle', { grade: fmt(normalizedTarget) })}
               />
               <div
                 className="absolute -inset-y-1 border-l border-dotted border-muted"

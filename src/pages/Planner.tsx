@@ -33,7 +33,6 @@ import WeekCheckCard from '../components/planner/WeekCheckCard';
 import { UniBuddy } from '../components/brand/UnipediaMarks';
 import { resolveUniAccessory } from '../lib/uniAccessories';
 
-const WeeklyTutorModal = lazy(() => import('../components/assistant/WeeklyTutorModal'));
 const ActiveReviewModal = lazy(() => import('../components/practice/ActiveReviewModal'));
 const PlanPreferencesSheet = lazy(() => import('../components/planner/PlanPreferencesSheet'));
 const SessionModal = lazy(() => import('../components/planner/SessionModal'));
@@ -47,6 +46,7 @@ import { computeExtraActivityPenaltyByWeekday } from '../lib/academicCredits';
 import {
   analyzePlanConscience,
   analyzeTestMode,
+  classifyOverdue,
   computeDayBudget,
   findFirstFreeSlotOnDate,
   planSummary,
@@ -128,7 +128,6 @@ export default function Planner() {
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
   const [actionsOpen, setActionsOpen] = useState(false);
   const [prefsOpen, setPrefsOpen] = useState(false);
-  const [tutorOpen, setTutorOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [modal, setModal] = useState<{ session?: StudySession; date: string; defaultStart?: string } | null>(null);
   const openFocus = useHubUiStore((st) => st.openFocus);
@@ -160,7 +159,7 @@ export default function Planner() {
           plannerMode: nextMode,
         },
       },
-      { replan: false },
+      nextMode === 'auto' ? { replan: 'prefs', force: true } : { replan: false },
     );
     showToast(t(nextMode === 'manual' ? 'mode.switchedManual' : 'mode.switchedAuto'), 'neutral');
   };
@@ -286,7 +285,17 @@ export default function Planner() {
     [sorted, weekFrom, weekTo],
   );
 
-  const overdue = useMemo(() => sorted.filter((s) => !s.done && s.date < today), [sorted, today]);
+  const overdue = useMemo(() => {
+    const classified = classifyOverdue({
+      sessions: sorted,
+      today,
+      assessments,
+      pausedCourseIds: plannerPrefs?.pausedCourseIds,
+    });
+    return [...classified.manual, ...classified.missedGenerated].sort(
+      (a, b) => a.date.localeCompare(b.date) || (a.start ?? '').localeCompare(b.start ?? ''),
+    );
+  }, [sorted, today, assessments, plannerPrefs?.pausedCourseIds]);
   const overdueGroups = useMemo(() => {
     const groups = new Map<string, { course?: Course; items: StudySession[] }>();
     for (const s of overdue) {
@@ -361,8 +370,11 @@ export default function Planner() {
   const generate = () => {
     void hapticTap();
     const changed = replan('manual', { force: true, allowInManualMode: true });
-    celebrateStationery();
-    if (!changed) showToast(t('ui.toastGenerated', { count: futureGeneratedCount() }), 'ok');
+    if (changed) {
+      celebrateStationery();
+    } else {
+      showToast(t('ui.toastGenerated', { count: futureGeneratedCount() }), 'ok');
+    }
   };
 
   const toggleSessionLock = (session: StudySession) => {
@@ -372,19 +384,32 @@ export default function Planner() {
 
   const quickMoveSession = (session: StudySession, targetDate: string) => {
     void hapticTap();
+    const resolved = resolvePlannerPrefs(settings);
     const wd = parseISO(targetDate).getDay();
-    const avail = plannerPrefs?.weekdaySchedule?.[String(wd)];
-    const currentNow = new Date();
-    const slot = findFirstFreeSlotOnDate({
+    const dayProfile = resolveDayPlanProfile({
       dateKey: targetDate,
-      minutes: session.minutes,
-      preferredPeriod: avail?.window ?? plannerPrefs?.preferredPeriod ?? 'auto',
-      nowMinutes: targetDate === today ? currentNow.getHours() * 60 + currentNow.getMinutes() : undefined,
-      classes,
-      events,
-      existingSessions: sessions.filter((x) => x.id !== session.id),
-      blockedPeriods: avail?.blockedPeriods,
+      weekday: wd,
+      settings,
+      assessments,
+      weekdaySchedule: resolved.weekdaySchedule,
+      preferredPeriod: resolved.preferredPeriod,
+      preExamMarathon: resolved.preExamMarathon,
+      dateOverrides: resolved.dateOverrides,
     });
+    const currentNow = new Date();
+    const slot = dayProfile.enabled
+      ? findFirstFreeSlotOnDate({
+          dateKey: targetDate,
+          minutes: session.minutes,
+          preferredPeriod: dayProfile.windowMode,
+          nowMinutes: targetDate === today ? currentNow.getHours() * 60 + currentNow.getMinutes() : undefined,
+          classes,
+          events,
+          existingSessions: sessions.filter((x) => x.id !== session.id),
+          blockedPeriods: dayProfile.blockedPeriods,
+          assessments,
+        })
+      : null;
     if (!slot) {
       showToast(
         t('session.noSlotDay', { date: format(parseISO(targetDate), 'd MMM', { locale: dfLocale }) }),
@@ -407,16 +432,27 @@ export default function Planner() {
   /** Encaixa uma sessão hoje numa hora livre (fixada, para o recálculo não a apagar). */
   const placeToday = (session: StudySession, others: StudySession[]): StudySession | null => {
     const now = new Date();
-    const avail = resolvePlannerPrefs(settings).weekdaySchedule?.[String(new Date().getDay())];
+    const resolved = resolvePlannerPrefs(settings);
+    const dayProfile = resolveDayPlanProfile({
+      dateKey: today,
+      weekday: now.getDay(),
+      settings,
+      assessments,
+      weekdaySchedule: resolved.weekdaySchedule,
+      preferredPeriod: resolved.preferredPeriod,
+      preExamMarathon: resolved.preExamMarathon,
+      dateOverrides: resolved.dateOverrides,
+    });
+    if (!dayProfile.enabled) return null;
     const slot = findFirstFreeSlotOnDate({
       dateKey: today,
       minutes: session.minutes,
-      preferredPeriod: avail?.window ?? 'auto',
+      preferredPeriod: dayProfile.windowMode,
       nowMinutes: now.getHours() * 60 + now.getMinutes(),
       classes,
       events,
       existingSessions: others.filter((x) => x.id !== session.id),
-      blockedPeriods: avail?.blockedPeriods,
+      blockedPeriods: dayProfile.blockedPeriods,
       assessments,
     });
     return slot ? { ...session, date: today, start: slot, locked: true } : null;
@@ -466,6 +502,7 @@ export default function Planner() {
       weekdaySchedule: plannerPrefs?.weekdaySchedule,
       preExamMarathon: plannerPrefs?.preExamMarathon,
       pausedCourseIds: plannerPrefs?.pausedCourseIds,
+      dateOverrides: plannerPrefs?.dateOverrides,
     });
     if (updated.length > 0) {
       upsertMany('sessions', updated);
@@ -1066,7 +1103,7 @@ export default function Planner() {
             label: t('ui.weeklyCheckin'),
             hint: t('ui.weeklyCheckinHint'),
             icon: <MessageSquare size={16} />,
-            onSelect: () => setTutorOpen(true),
+            onSelect: () => openUniCheckIn({ kind: 'week' }),
           },
         ]}
       />
@@ -1080,12 +1117,6 @@ export default function Planner() {
             defaultStart={modal.defaultStart}
             onClose={() => setModal(null)}
           />
-        </Suspense>
-      )}
-
-      {tutorOpen && (
-        <Suspense fallback={null}>
-          <WeeklyTutorModal open={tutorOpen} onClose={() => setTutorOpen(false)} />
         </Suspense>
       )}
 

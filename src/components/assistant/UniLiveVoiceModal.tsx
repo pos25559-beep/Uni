@@ -7,6 +7,7 @@ import {
   type LiveVoiceController,
   type LiveVoiceStatus,
 } from '../../integrations/geminiLiveVoice';
+import { getCustomGeminiKey } from '../../integrations/gemini';
 import { canStartLiveVoiceSession } from '../../lib/aiQuota';
 import type { UniAgentRecord } from '../../lib/localDb';
 import { showToast } from '../../lib/uiHelpers';
@@ -42,8 +43,9 @@ export default function UniLiveVoiceModal({
   language,
 }: UniLiveVoiceModalProps) {
   const { t } = useTranslation(['assistant', 'common']);
-  const apiKey = useStore((s) => s.settings.geminiApiKey ?? '');
-  const hasCustomKey = Boolean(apiKey.trim());
+  const storedKey = useStore((s) => s.settings.geminiApiKey ?? '');
+  const apiKey = storedKey.trim() || getCustomGeminiKey();
+  const hasCustomKey = Boolean(apiKey);
   const voiceGuard = canStartLiveVoiceSession(hasCustomKey);
 
   const [status, setStatus] = useState<LiveVoiceStatus>('idle');
@@ -126,7 +128,7 @@ export default function UniLiveVoiceModal({
       stopSession();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, voiceGuard.allowed, attempt]);
+  }, [open, voiceGuard.allowed, attempt, apiKey, activeCourse?.id, uniAgent?.courseId, uniAgent?.updatedAt, persona, accessory, studentName, language]);
 
   const uniDisplayName = uniAgent?.name ?? 'Uni';
 
@@ -163,6 +165,7 @@ export default function UniLiveVoiceModal({
   const reconnect = () => {
     setStatus('connecting');
     setTranscripts([]);
+    setProposals([]);
     setAttempt((n) => n + 1);
   };
 
@@ -247,6 +250,7 @@ export default function UniLiveVoiceModal({
               form={uniAgent?.formId ?? 'nuvem'}
               stage={uniAgent?.stage ?? 1}
               accessory={accessory}
+              skin={uniAgent?.skinId}
               mood="calm"
               size={60}
               interactive={false}
@@ -268,6 +272,7 @@ export default function UniLiveVoiceModal({
               form={uniAgent?.formId ?? 'nuvem'}
               stage={uniAgent?.stage ?? 1}
               accessory={accessory}
+              skin={uniAgent?.skinId}
               mood={buddyMood}
               dormant={buddyMood === 'sleeping'}
               size={84}

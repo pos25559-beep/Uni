@@ -9,6 +9,7 @@ import {
   formatGradeByScale,
   gradeToPercent,
   normalizeAppLanguage,
+  normalizeTargetGradeForScale,
   parseGradeByScale,
   percentToGradeByScale,
   resolveIntlLocale,
@@ -98,6 +99,12 @@ describe('i18n parity, regional vocabulary, curriculum packs, and grading scales
     expect(formatGradeByScale(16.5, 'pt20', 'pt-PT')).toBe('16,5');
     expect(formatGradeByScale(8.5, 'scale10', 'pt-BR')).toBe('8,5');
     expect(formatGradeByScale(8.5, 'scale10', 'es')).toBe('8,5');
+
+    expect(normalizeTargetGradeForScale(14, 'pt20')).toBe(14);
+    expect(normalizeTargetGradeForScale(14, 'scale10')).toBe(7);
+    expect(normalizeTargetGradeForScale(7.5, 'scale10')).toBe(7.5);
+    expect(normalizeTargetGradeForScale(14, 'pct100')).toBe(70);
+    expect(normalizeTargetGradeForScale(80, 'pct100')).toBe(80);
   });
 
   it('exposes multi-country curriculum packs with appropriate default grading scales', () => {

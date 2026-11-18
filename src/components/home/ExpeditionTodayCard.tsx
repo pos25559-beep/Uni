@@ -22,8 +22,8 @@ interface PendingItem {
 export default function ExpeditionTodayCard() {
   const { t } = useTranslation('uni');
   const courses = useStore((s) => s.courses);
+  const pausedCourseIds = useStore((s) => s.settings.plannerPrefs?.pausedCourseIds);
   const updateTopic = useStore((s) => s.updateTopic);
-  const replan = useStore((s) => s.replan);
   const agents = useUniAgents();
 
   const [revealedHints, setRevealedHints] = useState<Record<string, boolean>>({});
@@ -31,16 +31,18 @@ export default function ExpeditionTodayCard() {
 
   const today = todayStr();
   const courseById = useMemo(() => new Map(courses.map((c) => [c.id, c])), [courses]);
+  const pausedSet = useMemo(() => new Set(pausedCourseIds ?? []), [pausedCourseIds]);
 
   const pendingItems = useMemo<PendingItem[]>(() => {
     const out: PendingItem[] = [];
     for (const agent of agents) {
+      if (pausedSet.has(agent.courseId)) continue;
       for (const q of getPendingExpeditionQuestions(agent, today)) {
         out.push({ agent, question: q });
       }
     }
     return out.slice(0, 4);
-  }, [agents, today]);
+  }, [agents, pausedSet, today]);
 
   if (pendingItems.length === 0) return null;
 
@@ -67,7 +69,6 @@ export default function ExpeditionTodayCard() {
             total: outcome.total,
           });
           updateTopic(targetCourse.id, targetTopic.id, srsUpdate);
-          replan('topic', { silent: true });
         }
       }
 

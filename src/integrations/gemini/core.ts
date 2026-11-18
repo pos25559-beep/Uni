@@ -66,7 +66,8 @@ export function resolveGeminiConfig() {
     !raw ||
     LEGACY_REMOVED_MODELS.has(raw) ||
     raw.startsWith('gemini-1.') ||
-    raw.startsWith('gemini-2.');
+    raw.startsWith('gemini-2.0') ||
+    (!customKey && raw.startsWith('gemini-2.'));
   const model = isLegacyOrInvalid ? DEFAULT_MODEL : raw;
   return { customKey, model };
 }

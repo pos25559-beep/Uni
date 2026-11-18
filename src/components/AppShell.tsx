@@ -38,6 +38,7 @@ const AiConsentDialog = lazy(() => import('./AiConsentDialog'));
 const UniCheckInModal = lazy(() => import('./assistant/UniCheckInModal'));
 const PostOnboardingHubModal = lazy(() => import('./onboarding/PostOnboardingHubModal'));
 const UniHubInviteOverlay = lazy(() => import('./onboarding/UniHubInviteOverlay'));
+const UniLivingOverlay = lazy(() => import('./brand/UniLivingOverlay'));
 
 const desktopNav = [
   { to: '/', key: 'nav.today', icon: LayoutDashboard, end: true, tour: 'nav-today' },
@@ -629,7 +630,12 @@ export default function AppShell() {
         </Suspense>
       )}
 
-      {/* Regra de lugar: sem mascote flutuante sobre controlos ou calendário */}
+      {/* Companheiros Uni nómadas e discretos (+ Micropet equipado) */}
+      {!isBypassRoute && (
+        <Suspense fallback={null}>
+          <UniLivingOverlay />
+        </Suspense>
+      )}
 
       {/* Convite flutuante do Uni após explorar + Hub global acessível em qualquer ecrã */}
       {!isBypassRoute && (

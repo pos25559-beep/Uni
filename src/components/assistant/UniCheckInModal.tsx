@@ -651,7 +651,7 @@ function UniCheckInModalInner({
       date: today,
       createdAt: nowIso,
       ...(effectiveCourse ? { courseId: effectiveCourse.id } : {}),
-      ...(kind === 'class' && initialMatchedSlot ? { classSlotId: initialMatchedSlot.id } : {}),
+      ...(kind === 'class' && activeSlot ? { classSlotId: activeSlot.id } : {}),
       ...(kind === 'exam_prep' && selectedAssessment ? { assessmentId: selectedAssessment.id } : {}),
       feeling: finalUnderstanding.feeling,
       ...(finalUnderstanding.rating ? { rating: finalUnderstanding.rating } : {}),
@@ -685,6 +685,7 @@ function UniCheckInModalInner({
       (it) =>
         it.kind === 'course_mode' ||
         it.kind === 'exclusive_focus' ||
+        it.kind === 'course_note' ||
         it.kind === 'weekday_rule' ||
         it.kind === 'date_override' ||
         it.kind === 'marathon' ||

@@ -14,7 +14,6 @@ const settings: Settings = {
   geminiApiKey: '',
   geminiModel: 'gemini-2.5-flash',
   googleClientId: '',
-  msClientId: '',
 };
 
 const TODAY = '2026-11-16';

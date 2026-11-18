@@ -1,4 +1,5 @@
 import { friendlyCustomKeyError } from './gemini';
+import { HttpStatusError } from '../lib/geminiErrors';
 import { tr } from '../i18n/tr';
 
 const MODELS_URL = 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=50';
@@ -24,7 +25,10 @@ export async function verifyGeminiApiKey(
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
     throw friendlyCustomKeyError(
-      new Error(body?.error?.message ?? tr('common:errors.verifyKeyListErr', { status: res.status })),
+      new HttpStatusError(
+        res.status,
+        body?.error?.message ?? tr('common:errors.verifyKeyListErr', { status: res.status }),
+      ),
     );
   }
   const data = (await res.json()) as { models?: { name?: string }[] };
@@ -51,7 +55,10 @@ export async function verifyGeminiApiKey(
   if (!probeRes.ok) {
     const probeBody = (await probeRes.json().catch(() => null)) as { error?: { message?: string } } | null;
     throw friendlyCustomKeyError(
-      new Error(probeBody?.error?.message ?? tr('common:errors.verifyKeyProbeErr', { status: probeRes.status })),
+      new HttpStatusError(
+        probeRes.status,
+        probeBody?.error?.message ?? tr('common:errors.verifyKeyProbeErr', { status: probeRes.status }),
+      ),
     );
   }
 

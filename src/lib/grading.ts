@@ -142,6 +142,23 @@ export function percentToGradeByScale(pct: number, scale: GradingScale = 'pt20')
   return Math.round(raw * factor) / factor;
 }
 
+/** Normaliza `course.targetGrade` guardado (muitas vezes em 0–20) para a escala ativa (`0–10`, `0–20` ou `0–100%`). */
+export function normalizeTargetGradeForScale(target: number, scale: GradingScale = 'pt20'): number {
+  if (!Number.isFinite(target) || target < 0) return percentToGradeByScale(70, scale);
+  const meta = GRADE_SCALES[scale] ?? GRADE_SCALES.pt20;
+  if (scale === 'scale10' && target > meta.max) {
+    const scaled = target <= 20 ? (target / 20) * 10 : (target / 100) * 10;
+    return Math.round(Math.min(meta.max, scaled) * 10) / 10;
+  }
+  if (scale === 'pt20' && target > meta.max) {
+    return Math.round(Math.min(meta.max, (target / 100) * 20) * 10) / 10;
+  }
+  if (scale === 'pct100' && target <= 20) {
+    return Math.round((target / 20) * 100);
+  }
+  return Math.min(meta.max, target);
+}
+
 /** Formata uma nota na escala ativa usando `Intl.NumberFormat`. */
 export function formatGradeByScale(
   grade: number | null | undefined,

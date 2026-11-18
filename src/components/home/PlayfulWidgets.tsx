@@ -1,144 +1,12 @@
-import { ArrowRight, CalendarDays, Flame, Plus, Sparkles } from 'lucide-react';
-import { motion } from 'motion/react';
+import { ArrowRight, CalendarDays, Plus, Sparkles } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { UniAccessoryId } from '../../lib/uniAccessories';
-import { hapticTap } from '../../lib/nativeBridge';
 import { useStore } from '../../store/useStore';
 import { UniBuddy } from '../brand/UnipediaMarks';
 import { StickerBadge } from '../motion/Primitives';
-import { UNIPEDIA_BOUNCE_SPRING } from '../../lib/motionTokens';
 import { Badge, Button, Input } from '../ui';
 import { cx } from '../../lib/uiHelpers';
-
-/**
- * Mosaico de formas orgânicas estilo "Daily highlights" (gotas, trevos, estrelas e stickers pastel).
- */
-export function HighlightShapesGrid({
-  focusedLabel,
-  streakDays,
-  sessionsLabel,
-  pendingCount,
-  onOpenProgress,
-  onOpenPlan,
-  onFocusTasks,
-}: {
-  focusedLabel: string;
-  streakDays: number;
-  sessionsLabel: string;
-  pendingCount: number;
-  onOpenProgress: () => void;
-  onOpenPlan: () => void;
-  onFocusTasks: () => void;
-}) {
-  const { t } = useTranslation('today');
-  const isMinimal = useStore((s) => (s.settings.appTone ?? 'vibrante') === 'serio');
-  return (
-    <section aria-label={t('highlights.ariaLabel')} className="space-y-2.5">
-      <div className="flex items-center justify-between px-1">
-        <h2 className="font-display text-sm font-bold uppercase tracking-wider text-muted">
-          {t('highlights.title')}
-        </h2>
-        <span className="inline-flex items-center gap-1 text-xs font-semibold text-accent-ink">
-          <Flame size={13} />
-          {streakDays > 0
-            ? t('highlights.streakDays', { count: streakDays })
-            : t('highlights.startToday')}
-        </span>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {/* Gota azul céu: Foco */}
-        <motion.button
-          type="button"
-          whileHover={isMinimal ? undefined : { y: -2, scale: 1.02 }}
-          whileTap={isMinimal ? undefined : { scale: 0.96 }}
-          transition={UNIPEDIA_BOUNCE_SPRING}
-          onClick={() => {
-            void hapticTap();
-            onOpenProgress();
-          }}
-          className={cx(
-            'relative flex min-h-[126px] flex-col items-center justify-center overflow-hidden p-3.5 text-center shadow-card',
-            isMinimal
-              ? 'rounded-2xl border border-line bg-surface text-fg'
-              : 'rounded-[30px] rounded-tl-[12px] bg-pastel-sky text-[#141312] dark:bg-[#192A3D] dark:text-[#FAF6EC]',
-          )}
-        >
-          <span className="text-xs font-bold uppercase tracking-wider opacity-70">{t('highlights.focused')}</span>
-          <span className="mt-1 font-display text-2xl font-extrabold tabular">{focusedLabel}</span>
-          <span className="mt-1 text-xs font-medium opacity-75">{t('highlights.thisWeek')}</span>
-        </motion.button>
-
-        {/* Trevo verde salva: Sequência */}
-        <motion.button
-          type="button"
-          whileHover={isMinimal ? undefined : { y: -2, scale: 1.02 }}
-          whileTap={isMinimal ? undefined : { scale: 0.96 }}
-          transition={UNIPEDIA_BOUNCE_SPRING}
-          onClick={() => {
-            void hapticTap();
-            onOpenProgress();
-          }}
-          className={cx(
-            'relative flex min-h-[126px] flex-col items-center justify-center overflow-hidden p-3.5 text-center shadow-card',
-            isMinimal
-              ? 'rounded-2xl border border-line bg-surface text-fg'
-              : 'rounded-[34px] rounded-br-[12px] bg-pastel-sage text-[#141312] dark:bg-[#23311B] dark:text-[#FAF6EC]',
-          )}
-        >
-          <span className="text-xs font-bold uppercase tracking-wider opacity-70">{t('highlights.rhythm')}</span>
-          <span className="mt-1 font-display text-2xl font-extrabold tabular">{streakDays}d</span>
-          <span className="mt-1 text-xs font-medium opacity-75">{t('highlights.streak')}</span>
-        </motion.button>
-
-        {/* Cartão sol manteiga: Sessões */}
-        <motion.button
-          type="button"
-          whileHover={isMinimal ? undefined : { y: -2, scale: 1.02 }}
-          whileTap={isMinimal ? undefined : { scale: 0.96 }}
-          transition={UNIPEDIA_BOUNCE_SPRING}
-          onClick={() => {
-            void hapticTap();
-            onOpenPlan();
-          }}
-          className={cx(
-            'relative flex min-h-[126px] flex-col items-center justify-center overflow-hidden p-3.5 text-center shadow-card',
-            isMinimal
-              ? 'rounded-2xl border border-line bg-surface text-fg'
-              : 'rounded-[22px] rounded-tr-[38px] bg-pastel-butter text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]',
-          )}
-        >
-          <span className="text-xs font-bold uppercase tracking-wider opacity-70">{t('highlights.sessions')}</span>
-          <span className="mt-1 font-display text-2xl font-extrabold tabular">{sessionsLabel}</span>
-          <span className="mt-1 text-xs font-medium opacity-75">{t('highlights.completed')}</span>
-        </motion.button>
-
-        {/* Sticker pêssego: Tarefas */}
-        <motion.button
-          type="button"
-          whileHover={isMinimal ? undefined : { y: -2, scale: 1.02 }}
-          whileTap={isMinimal ? undefined : { scale: 0.96 }}
-          transition={UNIPEDIA_BOUNCE_SPRING}
-          onClick={() => {
-            void hapticTap();
-            onFocusTasks();
-          }}
-          className={cx(
-            'relative flex min-h-[126px] flex-col items-center justify-center overflow-hidden p-3.5 text-center shadow-card',
-            isMinimal
-              ? 'rounded-2xl border border-line bg-surface text-fg'
-              : 'rounded-[34px] rounded-bl-[12px] bg-pastel-peach text-[#141312] dark:bg-[#382317] dark:text-[#FAF6EC]',
-          )}
-        >
-          <span className="text-xs font-bold uppercase tracking-wider opacity-70">{t('highlights.tasks')}</span>
-          <span className="mt-1 font-display text-2xl font-extrabold tabular">{pendingCount}</span>
-          <span className="mt-1 text-xs font-medium opacity-75">{t('highlights.pending')}</span>
-        </motion.button>
-      </div>
-    </section>
-  );
-}
 
 /**
  * Caderno pautado vivo para o "Foco de hoje" (substitui cartão branco plano).
@@ -147,11 +15,13 @@ export function NotebookFocusSheet({
   isEmpty,
   onOpenPlan,
   uniAccessory,
+  topSlot,
   children,
 }: {
   isEmpty: boolean;
   onOpenPlan: () => void;
   uniAccessory: UniAccessoryId;
+  topSlot?: ReactNode;
   children?: ReactNode;
 }) {
   const { t } = useTranslation('today');
@@ -200,6 +70,7 @@ export function NotebookFocusSheet({
             'bg-[repeating-linear-gradient(to_bottom,transparent_0,transparent_31px,rgba(20,19,18,0.045)_31px,rgba(20,19,18,0.045)_32px)] dark:bg-none',
         )}
       >
+        {topSlot}
         {isEmpty ? (
           <div className="flex flex-col items-center gap-3 py-3 text-center">
             {isMinimal ? (

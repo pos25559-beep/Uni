@@ -233,7 +233,7 @@ export interface CalendarEvent {
   courseId?: ID;
 }
 
-export type IntegrationKey = 'google' | 'microsoft' | 'gemini' | 'clip';
+export type IntegrationKey = 'google' | 'gemini' | 'clip';
 
 export interface IntegrationStatus {
   connected: boolean;
@@ -371,7 +371,6 @@ export interface Settings {
   geminiApiKey: string;
   geminiModel: string;
   googleClientId: string;
-  msClientId: string;
   /** Email institucional para avisos dos docentes e Gmail académico. */
   academicEmail?: string;
   /** Email pessoal para o Gemini AI e sincronização cloud (@gmail.com). */
