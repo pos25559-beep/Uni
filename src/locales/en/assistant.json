@@ -25,7 +25,12 @@
     "endSession": "End call",
     "transcriptEmpty": "Speak naturally about the topic. {{name}} replies in the personality you chose.",
     "silenceClosed": "Voice session closed after extended silence.",
-    "connectionError": "Could not start microphone audio or live connection."
+    "connectionError": "Could not start microphone audio or live connection.",
+    "ended": "Session ended",
+    "sessionEnded": "The voice session ended unexpectedly. You can reconnect.",
+    "sessionEndedQuota": "The voice session ended because the Gemini key quota was reached. Try again later.",
+    "sessionEndedKey": "The voice session ended: the Gemini key was rejected. Check it in settings.",
+    "reconnect": "Reconnect"
   },
   "tools": {
     "proposalTitle": "Proposed by Uni",

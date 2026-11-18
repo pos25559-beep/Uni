@@ -25,7 +25,12 @@
     "endSession": "Terminar chamada",
     "transcriptEmpty": "Fala naturalmente sobre a matéria. O {{name}} responde com a personalidade que escolheste.",
     "silenceClosed": "Chamada terminada após pausa prolongada em silêncio.",
-    "connectionError": "Não foi possível iniciar o áudio ou a ligação em tempo real."
+    "connectionError": "Não foi possível iniciar o áudio ou a ligação em tempo real.",
+    "ended": "Sessão terminada",
+    "sessionEnded": "A sessão de voz terminou inesperadamente. Podes ligar de novo.",
+    "sessionEndedQuota": "A sessão de voz terminou porque a cota da chave Gemini foi atingida. Tenta mais tarde.",
+    "sessionEndedKey": "A sessão de voz terminou: a chave Gemini foi recusada. Confirma-a nas definições.",
+    "reconnect": "Ligar de novo"
   },
   "tools": {
     "proposalTitle": "Ação proposta pelo Uni",

@@ -1,4 +1,4 @@
-import { KeyRound, Mic, MicOff, PhoneOff, Radio } from 'lucide-react';
+import { KeyRound, Mic, MicOff, PhoneOff, Radio, RotateCcw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -52,6 +52,8 @@ export default function UniLiveVoiceModal({
   const [proposals, setProposals] = useState<UniToolProposal[]>([]);
   const [busyProposalId, setBusyProposalId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // Incrementar reinicia a sessão («Ligar de novo»).
+  const [attempt, setAttempt] = useState(0);
 
   const controllerRef = useRef<LiveVoiceController | null>(null);
 
@@ -63,6 +65,7 @@ export default function UniLiveVoiceModal({
   useEffect(() => {
     if (!open || !voiceGuard.allowed) return;
     let cancelled = false;
+    const abort = new AbortController();
     setErrorMsg(null);
     setMuted(false);
 
@@ -74,6 +77,7 @@ export default function UniLiveVoiceModal({
       accessory,
       studentName,
       language,
+      signal: abort.signal,
       onStatusChange: (next) => {
         if (!cancelled) setStatus(next);
       },
@@ -110,7 +114,7 @@ export default function UniLiveVoiceModal({
         controllerRef.current = ctrl;
       })
       .catch((err) => {
-        if (!cancelled) {
+        if (!cancelled && !abort.signal.aborted) {
           setStatus('error');
           setErrorMsg(err instanceof Error ? err.message : t('assistant:liveVoice.connectionError'));
         }
@@ -118,10 +122,11 @@ export default function UniLiveVoiceModal({
 
     return () => {
       cancelled = true;
+      abort.abort();
       stopSession();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, voiceGuard.allowed]);
+  }, [open, voiceGuard.allowed, attempt]);
 
   const uniDisplayName = uniAgent?.name ?? 'Uni';
 
@@ -134,7 +139,9 @@ export default function UniLiveVoiceModal({
           ? 'thinking'
           : status === 'sleeping'
             ? 'sleeping'
-            : 'happy';
+            : status === 'ended' || status === 'error'
+              ? 'calm'
+              : 'happy';
 
   const statusText =
     status === 'connecting'
@@ -147,7 +154,17 @@ export default function UniLiveVoiceModal({
             ? t('assistant:liveVoice.speaking')
             : status === 'sleeping'
               ? t('assistant:liveVoice.sleeping')
-              : t('assistant:liveVoice.idle');
+              : status === 'ended' || status === 'error'
+                ? t('assistant:liveVoice.ended')
+                : t('assistant:liveVoice.idle');
+
+  const canReconnect = status === 'ended' || status === 'error';
+
+  const reconnect = () => {
+    setStatus('connecting');
+    setTranscripts([]);
+    setAttempt((n) => n + 1);
+  };
 
   const toggleMute = () => {
     const next = !muted;
@@ -206,10 +223,16 @@ export default function UniLiveVoiceModal({
           </div>
         ) : (
           <div className="flex w-full items-center justify-between gap-2">
-            <Button size="sm" variant="secondary" onClick={toggleMute} disabled={status === 'connecting'}>
-              {muted ? <MicOff size={15} /> : <Mic size={15} />}
-              {muted ? t('assistant:liveVoice.unmute') : t('assistant:liveVoice.mute')}
-            </Button>
+            {canReconnect ? (
+              <Button size="sm" variant="primary" onClick={reconnect}>
+                <RotateCcw size={15} /> {t('assistant:liveVoice.reconnect')}
+              </Button>
+            ) : (
+              <Button size="sm" variant="secondary" onClick={toggleMute} disabled={status === 'connecting'}>
+                {muted ? <MicOff size={15} /> : <Mic size={15} />}
+                {muted ? t('assistant:liveVoice.unmute') : t('assistant:liveVoice.mute')}
+              </Button>
+            )}
             <Button size="sm" variant="danger" onClick={handleClose}>
               <PhoneOff size={15} /> {t('assistant:liveVoice.endSession')}
             </Button>

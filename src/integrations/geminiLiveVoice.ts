@@ -35,7 +35,34 @@ export type LiveVoiceStatus =
   | 'thinking'
   | 'speaking'
   | 'sleeping'
+  | 'ended'
   | 'error';
+
+/** Motivo (seguro para mostrar) pelo qual a Google fechou a sessão. */
+export type LiveCloseKind = 'quota' | 'key' | 'generic';
+
+/**
+ * Classifica o evento de fecho da ligação em tempo real num motivo amigável.
+ * Nunca devolve o texto bruto do servidor (pode conter detalhes internos).
+ */
+export function classifyLiveClose(event: { code?: number; reason?: string } | null | undefined): LiveCloseKind {
+  const reason = (event?.reason ?? '').toLowerCase();
+  if (/quota|resource_exhausted|rate.?limit|exhausted|\b429\b/.test(reason)) return 'quota';
+  if (/api key|api_key|permission|unauthenticated|unauthorized|forbidden|invalid.*key|\b40[13]\b/.test(reason)) {
+    return 'key';
+  }
+  return 'generic';
+}
+
+const LIVE_CLOSE_MESSAGE_KEY: Record<LiveCloseKind, string> = {
+  quota: 'assistant:liveVoice.sessionEndedQuota',
+  key: 'assistant:liveVoice.sessionEndedKey',
+  generic: 'assistant:liveVoice.sessionEnded',
+};
+
+export function liveCloseMessageKey(kind: LiveCloseKind): string {
+  return LIVE_CLOSE_MESSAGE_KEY[kind];
+}
 
 export interface LiveTranscriptEntry {
   id: string;
@@ -102,6 +129,8 @@ export interface StartLiveVoiceSessionArgs {
   onTranscript: (entry: LiveTranscriptEntry) => void;
   onToolProposal: (proposal: UniToolProposal) => void;
   onSilenceTimeout?: () => void;
+  /** Permite cancelar a ligação (ex.: o modal fechou) enquanto ainda está a abrir. */
+  signal?: AbortSignal;
   onError: (message: string) => void;
 }
 
@@ -171,6 +200,7 @@ export async function startUniLiveVoiceSession(
   args.onStatusChange('connecting');
 
   let closed = false;
+  let everConnected = false;
   let muted = false;
   let session: Session | null = null;
   let stream: MediaStream | null = null;
@@ -209,9 +239,8 @@ export async function startUniLiveVoiceSession(
     }, SILENCE_TIMEOUT_MS);
   };
 
-  const cleanup = () => {
-    if (closed) return;
-    closed = true;
+  /** Liberta microfone, grafo de áudio e sessão; seguro de chamar várias vezes. */
+  const releaseResources = () => {
     if (silenceTimer !== null) {
       window.clearTimeout(silenceTimer);
       silenceTimer = null;
@@ -233,20 +262,41 @@ export async function startUniLiveVoiceSession(
       for (const track of stream.getTracks()) {
         track.stop();
       }
+      stream = null;
     }
     if (audioCtx) {
       void audioCtx.close().catch(() => {});
+      audioCtx = null;
     }
     try {
       session?.close();
     } catch {
       // ignore
     }
+    session = null;
+  };
+
+  const cleanup = () => {
+    if (closed) return;
+    closed = true;
+    releaseResources();
+    // Só conta como uso de voz se a sessão chegou realmente a ligar.
     const elapsedSec = (Date.now() - startedAtMs) / 1000;
-    if (elapsedSec >= 2) {
+    if (everConnected && elapsedSec >= 2) {
       recordVoiceSessionUsage(elapsedSec);
     }
   };
+
+  const abortError = () => new DOMException('Sessão de voz cancelada.', 'AbortError');
+  /** Depois de cada await: se entretanto foi cancelada, liberta tudo o que acabou de ser aberto. */
+  const throwIfClosed = () => {
+    if (closed || args.signal?.aborted) {
+      closed = true;
+      releaseResources();
+      throw abortError();
+    }
+  };
+  args.signal?.addEventListener('abort', () => cleanup(), { once: true });
 
   const schedulePcmPlayback = (base64: string) => {
     if (!audioCtx || closed) return;
@@ -302,11 +352,13 @@ export async function startUniLiveVoiceSession(
         noiseSuppression: true,
       },
     });
+    throwIfClosed();
 
     const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     audioCtx = new AudioCtx();
     if (audioCtx.state === 'suspended') {
       await audioCtx.resume();
+      throwIfClosed();
     }
 
     const ai = new GoogleGenAI({
@@ -377,6 +429,7 @@ export async function startUniLiveVoiceSession(
           callbacks: {
             onopen: () => {
               if (closed) return;
+              everConnected = true;
               args.onStatusChange('listening');
               resetSilenceTimer();
             },
@@ -487,23 +540,28 @@ export async function startUniLiveVoiceSession(
               }
             },
             onerror: (err: ErrorEvent) => {
-              if (closed || !connected) return;
+              if (closed || !everConnected) return;
+              cleanup();
               args.onStatusChange('error');
               args.onError(err?.message || tr('common:errors.voiceConnErr'));
-              cleanup();
             },
-            onclose: () => {
-              if (!closed && connected) {
-                cleanup();
-              }
+            onclose: (ev: CloseEvent) => {
+              // Fecho inesperado (timeout do servidor, erro, quota): sem isto a UI ficava a «ouvir».
+              if (closed || !everConnected) return;
+              cleanup();
+              args.onStatusChange('ended');
+              args.onError(tr(liveCloseMessageKey(classifyLiveClose(ev))));
             },
           },
         });
         connected = true;
+        everConnected = true;
+        throwIfClosed();
         args.onStatusChange('listening');
         resetSilenceTimer();
         break;
       } catch (connectErr) {
+        if (closed || args.signal?.aborted) throw connectErr;
         lastConnectErr = connectErr;
       }
     }
@@ -514,8 +572,8 @@ export async function startUniLiveVoiceSession(
         : new Error(tr('common:errors.voiceSessionErr'));
     }
 
-    sourceNode = audioCtx.createMediaStreamSource(stream);
-    const actualSampleRate = audioCtx.sampleRate;
+    sourceNode = audioCtx!.createMediaStreamSource(stream!);
+    const actualSampleRate = audioCtx!.sampleRate;
 
     const handleChunk = (input: Float32Array) => {
       if (closed || muted || !session) return;
@@ -546,6 +604,7 @@ export async function startUniLiveVoiceSession(
     processorSink.connect(audioCtx.destination);
 
     const workletNode = await createCaptureWorklet(audioCtx);
+    throwIfClosed();
     if (workletNode) {
       workletNode.port.onmessage = (ev: MessageEvent<Float32Array>) => handleChunk(ev.data);
       processor = workletNode;
@@ -570,6 +629,7 @@ export async function startUniLiveVoiceSession(
     };
   } catch (err) {
     cleanup();
+    if (err instanceof DOMException && err.name === 'AbortError') throw err;
     args.onStatusChange('error');
     const message = err instanceof Error ? err.message : tr('common:errors.voiceStartErr');
     args.onError(message);

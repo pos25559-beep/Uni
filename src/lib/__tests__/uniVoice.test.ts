@@ -80,4 +80,66 @@ A tensão equivalente é $$\\sigma_{eq} = \\sqrt{\\sigma_1^2 - \\sigma_1\\sigma_
       expect(() => deleteSheetPodcast('test-sheet')).not.toThrow();
     }
   });
+
+  describe('parsePodcastScript · atribuição de vozes', () => {
+    const scriptWith = (speakers: string[]) =>
+      JSON.stringify({
+        title: 'Teste',
+        lines: speakers.map((speaker, i) => ({ speaker, text: `Fala ${i + 1}` })),
+      });
+
+    it('anfitrião «Alex» e colega «Marco»: cada fala vai para a voz certa', () => {
+      const script = parsePodcastScript(
+        scriptWith(['Alex', 'Marco', ' alex ', 'MARCO']),
+        'Alex',
+        'Marco',
+      );
+      expect(script?.lines.map((l) => l.speaker)).toEqual(['Alex', 'Marco', 'Alex', 'Marco']);
+    });
+
+    it('anfitrião «Marco» e colega «Alex»: as duas vozes são usadas corretamente', () => {
+      const script = parsePodcastScript(
+        scriptWith(['Marco', 'Alex', 'Marco', 'Alex']),
+        'Marco',
+        'Alex',
+      );
+      expect(script?.lines.map((l) => l.speaker)).toEqual(['Marco', 'Alex', 'Marco', 'Alex']);
+    });
+
+    it('anfitrião «Coral» com colega «Alex»: nenhuma fala cai toda numa só voz', () => {
+      const script = parsePodcastScript(
+        scriptWith(['Coral', 'Alex', 'Coral', 'Alex']),
+        'Coral',
+        'Alex',
+      );
+      const speakers = script?.lines.map((l) => l.speaker) ?? [];
+      expect(speakers).toEqual(['Coral', 'Alex', 'Coral', 'Alex']);
+      expect(new Set(speakers).size).toBe(2);
+    });
+
+    it('nomes não reconhecidos alternam pela ordem da primeira aparição', () => {
+      const script = parsePodcastScript(
+        scriptWith(['Professora', 'Aluno', 'Professora', 'Outro', 'Aluno']),
+        'Coral',
+        'Alex',
+      );
+      expect(script?.lines.map((l) => l.speaker)).toEqual([
+        'Coral',
+        'Alex',
+        'Coral',
+        'Coral',
+        'Alex',
+      ]);
+    });
+
+    it('um nome que contém «co» ou «alex» não é confundido com o colega', () => {
+      const script = parsePodcastScript(
+        scriptWith(['Coral', 'Cosmo', 'Alexandre']),
+        'Coral',
+        'Alex',
+      );
+      // «Cosmo» e «Alexandre» são desconhecidos: primeira aparição → anfitrião, depois colega
+      expect(script?.lines.map((l) => l.speaker)).toEqual(['Coral', 'Coral', 'Alex']);
+    });
+  });
 });

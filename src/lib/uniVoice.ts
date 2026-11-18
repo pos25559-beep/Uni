@@ -323,19 +323,32 @@ export function parsePodcastScript(
     const title = typeof parsed.title === 'string' && parsed.title.trim()
       ? parsed.title.trim().slice(0, 120)
       : 'Podcast de Estudo';
+    // Nomes comparados sem maiúsculas, acentos nem espaços nas pontas.
+    const comparable = (s: string) =>
+      s.normalize('NFD').replace(/\p{Diacritic}/gu, '').trim().toLowerCase();
+    const hostKey = comparable(hostName);
+    const coHostKey = comparable(coHostName);
+    // Oradores que não são nem o anfitrião nem o colega: alternam pela ordem da primeira aparição.
+    const unknownVoices = new Map<string, string>();
+    const voiceForUnknown = (key: string): string => {
+      const known = unknownVoices.get(key);
+      if (known) return known;
+      const voice = unknownVoices.size % 2 === 0 ? hostName : coHostName;
+      unknownVoices.set(key, voice);
+      return voice;
+    };
     const rawLines = Array.isArray(parsed.lines) ? parsed.lines : [];
     const lines: PodcastLine[] = rawLines
       .map((item, idx) => {
         const rawText = typeof item?.text === 'string' ? item.text.trim() : '';
         if (!rawText) return null;
         const rawSpeaker = typeof item?.speaker === 'string' ? item.speaker.trim() : '';
-        const normalizedSpeaker = rawSpeaker
-          ? (rawSpeaker.toLowerCase().includes(coHostName.toLowerCase()) ||
-             rawSpeaker.toLowerCase().includes('co') ||
-             rawSpeaker.toLowerCase().includes('alex')
-              ? coHostName
-              : hostName)
-          : (idx % 2 === 0 ? hostName : coHostName);
+        const key = comparable(rawSpeaker);
+        const normalizedSpeaker =
+          !key ? (idx % 2 === 0 ? hostName : coHostName)
+          : key === hostKey ? hostName
+          : key === coHostKey ? coHostName
+          : voiceForUnknown(key);
         return { speaker: normalizedSpeaker, text: rawText.slice(0, 800) };
       })
       .filter((x): x is PodcastLine => x !== null)
