@@ -33,3 +33,7 @@ android/app/google-services.json
 .env
 .env.*
 !.env.example
+
+# Gestor de pacotes único: npm (package-lock.json). O bun.lock não entra no repositório.
+bun.lock
+bun.lockb

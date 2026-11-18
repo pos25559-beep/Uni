@@ -19,6 +19,8 @@ import { normalizeAppLanguage } from '../lib/grading';
 import { resolveUniVoiceConfig } from '../lib/uniVoice';
 import { joinTranscriptFragment, visibleLiveText } from '../lib/liveTranscript';
 import { tr } from '../i18n/tr';
+import { hasAiAccess } from '../lib/aiAccess';
+import { AiConsentRequiredError } from './gemini/models';
 
 export const LIVE_VOICE_MODEL = 'gemini-3.8-live';
 const LIVE_VOICE_CANDIDATE_MODELS = [LIVE_VOICE_MODEL] as const;
@@ -152,6 +154,10 @@ async function createCaptureWorklet(ctx: AudioContext): Promise<AudioWorkletNode
 export async function startUniLiveVoiceSession(
   args: StartLiveVoiceSessionArgs,
 ): Promise<LiveVoiceController> {
+  // ADR-001: sem consentimento e 18+ não se abre o microfone nem se envia nada à Google.
+  if (!hasAiAccess(useStore.getState().settings)) {
+    throw new AiConsentRequiredError();
+  }
   const trimmedKey = args.apiKey.trim();
   const guard = canStartLiveVoiceSession(Boolean(trimmedKey));
   if (!guard.allowed) {

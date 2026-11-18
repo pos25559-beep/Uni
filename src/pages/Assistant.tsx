@@ -18,6 +18,8 @@ import { normalizeAppLanguage } from '../lib/grading';
 import { getLocalizedPersonas, resolveUniAccessory } from '../lib/uniAccessories';
 import { saveUniAgent, useUniAgent } from '../lib/uniAgents';
 import { useStore } from '../store/useStore';
+import { requestAiConsent } from '../store/useAiConsentStore';
+import { hasAiAccess } from '../lib/aiAccess';
 
 const AssistantModals = lazy(() => import('../components/assistant/AssistantModals'));
 const UniLiveVoiceModal = lazy(() => import('../components/assistant/UniLiveVoiceModal'));
@@ -77,6 +79,14 @@ export default function Assistant() {
   const [contextModalOpen, setContextModalOpen] = useState(false);
   const [courseUniMemoryOpen, setCourseUniMemoryOpen] = useState(false);
   const [liveVoiceOpen, setLiveVoiceOpen] = useState(false);
+  // ADR-001: a Voz Live envia áudio à Google; sem consentimento e 18+ pede-os primeiro.
+  const openLiveVoice = () => {
+    if (!hasAiAccess(useStore.getState().settings)) {
+      requestAiConsent();
+      return;
+    }
+    setLiveVoiceOpen(true);
+  };
   const [flaggedWrongIds, setFlaggedWrongIds] = useState<Record<string, boolean>>({});
   const [dismissedPrompt, setDismissedPrompt] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -199,7 +209,7 @@ export default function Assistant() {
         onOpenMenu={() => setMenuOpen(true)}
         onOpenKeyGuide={() => setKeyGuideOpen(true)}
         onOpenNotebook={() => setNotebookOpen(true)}
-        onOpenLiveVoice={() => setLiveVoiceOpen(true)}
+        onOpenLiveVoice={openLiveVoice}
       />
 
       {/* Área de Mensagens */}
@@ -296,7 +306,7 @@ export default function Assistant() {
         mobileComposerToolsOpen={mobileComposerToolsOpen}
         setMobileComposerToolsOpen={setMobileComposerToolsOpen}
         onOpenNotebook={() => setNotebookOpen(true)}
-        onOpenLiveVoice={() => setLiveVoiceOpen(true)}
+        onOpenLiveVoice={openLiveVoice}
       />
 
       <SourcesSheet

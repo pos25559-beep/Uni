@@ -25,18 +25,8 @@ jobs:
           node-version: 24
           cache: npm
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Install dependencies
-        run: |
-          if [ -f bun.lock ] || [ -f bun.lockb ]; then
-            bun install --frozen-lockfile || bun install --no-save
-          elif [ -f package-lock.json ]; then
-            npm ci || bun install --no-save
-          else
-            bun install --no-save
-          fi
+      - name: Install dependencies (lockfile exato, sem alternativa)
+        run: npm ci
 
       - name: Verify 4-locale i18n parity
         run: npm run i18n:report
