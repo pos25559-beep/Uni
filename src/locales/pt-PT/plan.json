@@ -17,6 +17,8 @@
     "apply": "Aplicar ao plano",
     "edit": "Editar texto",
     "cancel": "Cancelar",
+    "compactOpenAria": "Como está a tua semana?",
+    "collapseAria": "Recolher cartão semanal",
     "applied_one": "Aplicada {{count}} regra. O plano já foi recalculado.",
     "applied_other": "Aplicadas {{count}} regras. O plano já foi recalculado.",
     "change": "Alterar",
@@ -275,7 +277,9 @@
     "preferences": "Preferências do plano",
     "preferencesHint": "Dias, duração dos blocos, estratégia e cadeiras",
     "quickReviewN": "Revisão rápida ({{count}})",
-    "quickReview": "Revisão rápida"
+    "quickReview": "Revisão rápida",
+    "testModeExpandAria": "Modo Teste ({{count}} prova(s) próxima(s))",
+    "testModeCollapseAria": "Recolher aviso de Modo Teste"
   },
   "dayCol": {
     "addAria": "Adicionar sessão a {{date}}",
@@ -562,6 +566,8 @@
       "removed": "Removido(s) {{count}} bloco(s) do plano",
       "moved": "Bloco movido para {{date}} às {{time}}",
       "added": "Bloco adicionado em {{date}} às {{time}}"
-    }
+    },
+    "compactAria": "Abrir Consciência do Uni",
+    "collapseAria": "Recolher Consciência do Uni"
   }
 }

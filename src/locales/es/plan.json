@@ -17,6 +17,8 @@
     "apply": "Aplicar al plan",
     "edit": "Editar texto",
     "cancel": "Cancelar",
+    "compactOpenAria": "¿Cómo va tu semana?",
+    "collapseAria": "Ocultar tarjeta semanal",
     "applied_one": "{{count}} regla aplicada. El plan ya se recalculó.",
     "applied_other": "{{count}} reglas aplicadas. El plan ya se recalculó.",
     "change": "Cambiar",
@@ -275,7 +277,9 @@
     "preferences": "Preferencias del plan",
     "preferencesHint": "Días, duración de bloques, estrategia y asignaturas",
     "quickReviewN": "Repaso rápido ({{count}})",
-    "quickReview": "Repaso rápido"
+    "quickReview": "Repaso rápido",
+    "testModeExpandAria": "Modo Examen ({{count}} examen/exámenes cercano(s))",
+    "testModeCollapseAria": "Ocultar aviso de Modo Examen"
   },
   "dayCol": {
     "addAria": "Añadir sesión el {{date}}",
@@ -562,6 +566,8 @@
       "removed": "Eliminado(s) {{count}} bloque(s) del plan",
       "moved": "Bloque movido al {{date}} a las {{time}}",
       "added": "Bloque añadido el {{date}} a las {{time}}"
-    }
+    },
+    "compactAria": "Abrir Conciencia de Uni",
+    "collapseAria": "Ocultar Conciencia de Uni"
   }
 }

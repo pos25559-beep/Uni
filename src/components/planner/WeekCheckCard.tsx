@@ -1,14 +1,14 @@
 // Cartão «Como está a tua semana?»: pedido em linguagem natural que vira INTENÇÃO
 // (regras com validade), nunca blocos diretos, com revisão antes de aplicar.
 import { format, parseISO } from 'date-fns';
-import { Check, MessageSquareText, Sparkles } from 'lucide-react';
+import { Check, MessageSquareText, Sparkles, X } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePlanBriefing } from '../../hooks/usePlanBriefing';
 import { resolveDateFnsLocale } from '../../lib/grading';
 import type { IntentItem } from '../../lib/planner/intent';
 import { fmtMinutes } from '../../lib/selectors';
-import { cx } from '../../lib/uiHelpers';
+import { cx, showToast } from '../../lib/uiHelpers';
 import { useStore } from '../../store/useStore';
 import type { Course, Topic } from '../../types';
 import { Button, Switch, Textarea } from '../ui';
@@ -21,7 +21,14 @@ function formatShortDate(isoDate: string, locale: ReturnType<typeof resolveDateF
   }
 }
 
-export default function WeekCheckCard() {
+interface WeekCheckCardProps {
+  /** Se verdadeiro, abre logo na caixa de texto quando montado. */
+  initialOpen?: boolean;
+  /** Chamado quando o utilizador retrai o cartão para o atalho compacto. */
+  onCollapse?: () => void;
+}
+
+export default function WeekCheckCard({ initialOpen = false, onCollapse }: WeekCheckCardProps) {
   const { t, i18n } = useTranslation('plan');
   const dfLocale = resolveDateFnsLocale(i18n.language);
   const courses = useStore((s) => s.courses);
@@ -39,7 +46,7 @@ export default function WeekCheckCard() {
     reset,
   } = usePlanBriefing();
 
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(initialOpen);
   const [draft, setDraft] = useState(() => lastBriefingNote);
   const [appliedCount, setAppliedCount] = useState(0);
 
@@ -154,16 +161,29 @@ export default function WeekCheckCard() {
             </p>
           </div>
         </div>
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => {
-            setDraft(shownLast);
-            setEditing(true);
-          }}
-        >
-          {t('weekCheck.open')}
-        </Button>
+        <div className="flex shrink-0 items-center gap-1">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => {
+              setDraft(shownLast);
+              setEditing(true);
+            }}
+          >
+            {t('weekCheck.open')}
+          </Button>
+          {onCollapse && (
+            <button
+              type="button"
+              onClick={onCollapse}
+              aria-label={t('weekCheck.collapseAria')}
+              title={t('weekCheck.collapseAria')}
+              className="grid size-11 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-surface-2 hover:text-fg"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
       </section>
     );
   }
@@ -178,16 +198,29 @@ export default function WeekCheckCard() {
             {t('weekCheck.applied', { count: appliedCount })}
           </p>
         </div>
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => {
-            setDraft(lastText || lastBriefingNote);
-            setEditing(true);
-          }}
-        >
-          {t('weekCheck.change')}
-        </Button>
+        <div className="flex shrink-0 items-center gap-1">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => {
+              setDraft(lastText || lastBriefingNote);
+              setEditing(true);
+            }}
+          >
+            {t('weekCheck.change')}
+          </Button>
+          {onCollapse && (
+            <button
+              type="button"
+              onClick={onCollapse}
+              aria-label={t('weekCheck.collapseAria')}
+              title={t('weekCheck.collapseAria')}
+              className="grid size-11 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-surface-2 hover:text-fg"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
       </section>
     );
   }
@@ -270,6 +303,10 @@ export default function WeekCheckCard() {
                 if (apply()) {
                   setAppliedCount(count);
                   setEditing(false);
+                  if (onCollapse) {
+                    showToast(t('weekCheck.applied', { count }), 'ok');
+                    onCollapse();
+                  }
                 }
               }}
             >
@@ -293,6 +330,7 @@ export default function WeekCheckCard() {
           onClick={() => {
             setEditing(false);
             if (status === 'reading') reset();
+            if (initialOpen && onCollapse) onCollapse();
           }}
         >
           {t('weekCheck.cancel')}

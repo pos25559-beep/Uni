@@ -11,6 +11,7 @@ import { hapticTap } from '../../lib/nativeBridge';
 import {
   analyzePlanConscience,
   type ConscienceOpinion,
+  type PlanConscienceReport,
 } from '../../lib/planner';
 import { fmtMinutes } from '../../lib/selectors';
 import { cx, showToast } from '../../lib/uiHelpers';
@@ -22,9 +23,19 @@ import { Button } from '../ui';
 
 interface PlanConscienceCardProps {
   today: string;
+  report?: PlanConscienceReport;
+  dismissedIds?: Set<string>;
+  onDismiss?: (id: string) => void;
+  onCollapse?: () => void;
 }
 
-export default function PlanConscienceCard({ today }: PlanConscienceCardProps) {
+export default function PlanConscienceCard({
+  today,
+  report: externalReport,
+  dismissedIds: externalDismissed,
+  onDismiss: externalOnDismiss,
+  onCollapse,
+}: PlanConscienceCardProps) {
   const { t, i18n } = useTranslation('plan');
   const dfLocale = resolveDateFnsLocale(i18n.language);
   const courses = useStore((s) => s.courses);
@@ -41,7 +52,8 @@ export default function PlanConscienceCard({ today }: PlanConscienceCardProps) {
   const patch = useStore((s) => s.patch);
   const remove = useStore((s) => s.remove);
 
-  const [dismissedIds, setDismissedIds] = useState<Set<string>>(() => new Set());
+  const [localDismissedIds, setLocalDismissedIds] = useState<Set<string>>(() => new Set());
+  const dismissedIds = externalDismissed ?? localDismissedIds;
   const [mountNowMinutes] = useState(() => {
     const d = new Date();
     return d.getHours() * 60 + d.getMinutes();
@@ -53,8 +65,9 @@ export default function PlanConscienceCard({ today }: PlanConscienceCardProps) {
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
-  const report = useMemo(
+  const computedReport = useMemo(
     () =>
+      externalReport ??
       analyzePlanConscience({
         courses,
         assessments,
@@ -69,6 +82,7 @@ export default function PlanConscienceCard({ today }: PlanConscienceCardProps) {
         nowMinutes: mountNowMinutes,
       }),
     [
+      externalReport,
       courses,
       assessments,
       classes,
@@ -82,6 +96,7 @@ export default function PlanConscienceCard({ today }: PlanConscienceCardProps) {
       mountNowMinutes,
     ],
   );
+  const report = computedReport;
 
   const visibleOpinions = useMemo(
     () => report.opinions.filter((op) => !dismissedIds.has(op.id)),
@@ -189,7 +204,11 @@ export default function PlanConscienceCard({ today }: PlanConscienceCardProps) {
   };
 
   const dismissOpinion = (id: string) => {
-    setDismissedIds((prev) => {
+    if (externalOnDismiss) {
+      externalOnDismiss(id);
+      return;
+    }
+    setLocalDismissedIds((prev) => {
       const next = new Set(prev);
       next.add(id);
       return next;
@@ -258,17 +277,30 @@ export default function PlanConscienceCard({ today }: PlanConscienceCardProps) {
           </div>
         </div>
 
-        {aiAvailable && (
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={aiLoading}
-            onClick={() => void askSecondOpinion()}
-          >
-            <Sparkles size={14} aria-hidden="true" />
-            {aiLoading ? t('conscience.aiLoading') : t('conscience.aiButton')}
-          </Button>
-        )}
+        <div className="flex shrink-0 items-center gap-1">
+          {aiAvailable && (
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={aiLoading}
+              onClick={() => void askSecondOpinion()}
+            >
+              <Sparkles size={14} aria-hidden="true" />
+              {aiLoading ? t('conscience.aiLoading') : t('conscience.aiButton')}
+            </Button>
+          )}
+          {onCollapse && (
+            <button
+              type="button"
+              onClick={onCollapse}
+              aria-label={t('conscience.collapseAria')}
+              title={t('conscience.collapseAria')}
+              className="grid size-11 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-surface-2 hover:text-fg"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
       </div>
 
       {visibleOpinions.length > 0 && (

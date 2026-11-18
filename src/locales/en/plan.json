@@ -17,6 +17,8 @@
     "apply": "Apply to plan",
     "edit": "Edit text",
     "cancel": "Cancel",
+    "compactOpenAria": "How's your week?",
+    "collapseAria": "Collapse weekly check-in",
     "applied_one": "{{count}} rule applied. The plan has been recalculated.",
     "applied_other": "{{count}} rules applied. The plan has been recalculated.",
     "change": "Change",
@@ -275,7 +277,9 @@
     "preferences": "Plan preferences",
     "preferencesHint": "Days, block duration, strategy, and courses",
     "quickReviewN": "Quick review ({{count}})",
-    "quickReview": "Quick review"
+    "quickReview": "Quick review",
+    "testModeExpandAria": "Exam Mode ({{count}} upcoming test(s))",
+    "testModeCollapseAria": "Collapse Exam Mode notice"
   },
   "dayCol": {
     "addAria": "Add session on {{date}}",
@@ -562,6 +566,8 @@
       "removed": "Removed {{count}} block(s) from the plan",
       "moved": "Moved block to {{date}} at {{time}}",
       "added": "Added block on {{date}} at {{time}}"
-    }
+    },
+    "compactAria": "Open Uni's Conscience",
+    "collapseAria": "Collapse Uni's Conscience"
   }
 }

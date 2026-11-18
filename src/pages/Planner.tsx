@@ -8,10 +8,12 @@ import {
   Clock,
   Flame,
   MessageSquare,
+  MessageSquareText,
   MoreHorizontal,
   Plus,
   SlidersHorizontal,
   Sparkles,
+  X,
 } from 'lucide-react';
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,6 +30,8 @@ import DayColumn from '../components/planner/DayColumn';
 import FocusResumeCard from '../components/planner/FocusResumeCard';
 import PlanConscienceCard from '../components/planner/PlanConscienceCard';
 import WeekCheckCard from '../components/planner/WeekCheckCard';
+import { UniBuddy } from '../components/brand/UnipediaMarks';
+import { resolveUniAccessory } from '../lib/uniAccessories';
 
 const WeeklyTutorModal = lazy(() => import('../components/assistant/WeeklyTutorModal'));
 const ActiveReviewModal = lazy(() => import('../components/practice/ActiveReviewModal'));
@@ -41,6 +45,7 @@ import { weekdayShort } from '../lib/colors';
 import { hapticTap } from '../lib/nativeBridge';
 import { computeExtraActivityPenaltyByWeekday } from '../lib/academicCredits';
 import {
+  analyzePlanConscience,
   analyzeTestMode,
   computeDayBudget,
   findFirstFreeSlotOnDate,
@@ -63,6 +68,24 @@ import {
 import type { Course, StudySession } from '../types';
 
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
+const TEST_MODE_ACK_KEY = 'uni-test-mode-ack-v1';
+const WEEK_CHECK_ACK_KEY = 'uni-week-check-ack-v1';
+
+function readStoredFlag(key: string): string {
+  try {
+    return typeof localStorage !== 'undefined' ? localStorage.getItem(key) ?? '' : '';
+  } catch {
+    return '';
+  }
+}
+
+function writeStoredFlag(key: string, value: string): void {
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(key, value);
+  } catch {
+    // noop
+  }
+}
 
 function studyDaysLabel(days: number[], emptyLabel: string): string {
   const ordered = DAY_ORDER.filter((d) => days.includes(d));
@@ -150,6 +173,75 @@ export default function Planner() {
     () => analyzeTestMode(courses, assessments, today, plannerPrefs?.pausedCourseIds),
     [courses, assessments, today, plannerPrefs?.pausedCourseIds],
   );
+  const urgentSignature = useMemo(
+    () =>
+      testMode.urgentAssessments
+        .map((u) => `${u.assessment.id}:${u.assessment.date.slice(0, 10)}`)
+        .join('|'),
+    [testMode.urgentAssessments],
+  );
+  const [ackedTestSig, setAckedTestSig] = useState(() => readStoredFlag(TEST_MODE_ACK_KEY));
+  const [testModeOpenOverride, setTestModeOpenOverride] = useState<boolean | null>(null);
+  const testModeExpanded =
+    testMode.mode !== 'normal' &&
+    (testModeOpenOverride ?? (Boolean(urgentSignature) && ackedTestSig !== urgentSignature));
+  const acknowledgeTestMode = () => {
+    if (urgentSignature) {
+      writeStoredFlag(TEST_MODE_ACK_KEY, urgentSignature);
+      setAckedTestSig(urgentSignature);
+    }
+    setTestModeOpenOverride(false);
+  };
+
+  const [ackedWeekSig, setAckedWeekSig] = useState(() => readStoredFlag(WEEK_CHECK_ACK_KEY));
+  const [weekCheckOpenOverride, setWeekCheckOpenOverride] = useState<boolean | null>(null);
+  const [mountNowMinutes] = useState(() => {
+    const d = new Date();
+    return d.getHours() * 60 + d.getMinutes();
+  });
+  const [conscienceDismissedIds, setConscienceDismissedIds] = useState<Set<string>>(() => new Set());
+  const [conscienceOpenOverride, setConscienceOpenOverride] = useState<boolean | null>(null);
+  const conscienceReport = useMemo(
+    () =>
+      analyzePlanConscience({
+        courses,
+        assessments,
+        classes,
+        events,
+        materials,
+        sessions,
+        settings,
+        extraActivities: academicProfile.extraActivities,
+        weeklyCheckIns,
+        today,
+        nowMinutes: mountNowMinutes,
+      }),
+    [
+      courses,
+      assessments,
+      classes,
+      events,
+      materials,
+      sessions,
+      settings,
+      academicProfile.extraActivities,
+      weeklyCheckIns,
+      today,
+      mountNowMinutes,
+    ],
+  );
+  const visibleConscienceCount = useMemo(
+    () => conscienceReport.opinions.filter((op) => !conscienceDismissedIds.has(op.id)).length,
+    [conscienceReport.opinions, conscienceDismissedIds],
+  );
+  const conscienceExpanded =
+    conscienceReport.status !== 'empty' &&
+    (conscienceOpenOverride ?? visibleConscienceCount > 0);
+  const uniAccessory = resolveUniAccessory(
+    settings.uniAccessory,
+    academicProfile?.degreeName,
+    courses[0]?.name,
+  );
 
   const [anchorDate] = useState(() => new Date());
   const weekDays = useMemo(() => {
@@ -220,6 +312,16 @@ export default function Planner() {
 
   const noPlanInputs = courses.length === 0;
   const starterOnlyMode = courses.length > 0 && !assessments.some((a) => a.grade === undefined);
+  const currentWeekAckSig = weekKeys[0] ?? today;
+  const weekCheckExpanded =
+    !noPlanInputs &&
+    (weekCheckOpenOverride ??
+      (!plannerPrefs?.briefingAppliedAt && ackedWeekSig !== currentWeekAckSig));
+  const acknowledgeWeekCheck = () => {
+    writeStoredFlag(WEEK_CHECK_ACK_KEY, currentWeekAckSig);
+    setAckedWeekSig(currentWeekAckSig);
+    setWeekCheckOpenOverride(false);
+  };
   // Disponibilidade legível («Seg–Sáb · até 5 h por dia»), sempre a partir do horário por dia.
   const resolvedSchedule = resolvePlannerPrefs(settings).weekdaySchedule ?? {};
   const scheduleDays = DAY_ORDER.filter((d) => minutesForWeekday(resolvedSchedule, d) > 0);
@@ -444,7 +546,74 @@ export default function Planner() {
 
       <TabGuideBanner tabKey="plano" />
 
-      {testMode.mode !== 'normal' && (
+      {!noPlanInputs && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {testMode.mode !== 'normal' && !testModeExpanded && (
+              <button
+                type="button"
+                onClick={() => setTestModeOpenOverride(true)}
+                aria-label={t('ui.testModeExpandAria', { count: testMode.urgentAssessments.length })}
+                title={t('ui.testModeExpandAria', { count: testMode.urgentAssessments.length })}
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-coral/40 bg-pastel-blush/75 px-3 text-xs font-semibold text-[#141312] transition hover:border-coral dark:bg-surface-2 dark:text-[#FAF6EC]"
+              >
+                <Flame size={16} className="text-coral" aria-hidden="true" />
+                <span className="tabular">{testMode.urgentAssessments.length}</span>
+              </button>
+            )}
+
+            {!weekCheckExpanded && (
+              <button
+                type="button"
+                onClick={() => setWeekCheckOpenOverride(true)}
+                aria-label={t('weekCheck.compactOpenAria')}
+                title={t('weekCheck.compactOpenAria')}
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-surface px-3 text-xs font-medium text-fg transition hover:border-accent"
+              >
+                <MessageSquareText size={16} className="text-accent" aria-hidden="true" />
+                {plannerPrefs?.briefingNote && (
+                  <span className="size-1.5 rounded-full bg-ok" aria-hidden="true" />
+                )}
+              </button>
+            )}
+
+            {conscienceReport.status !== 'empty' && !conscienceExpanded && (
+              <button
+                type="button"
+                onClick={() => setConscienceOpenOverride(true)}
+                aria-label={t('conscience.compactAria')}
+                title={t('conscience.compactAria')}
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-surface px-3 text-xs font-medium text-fg transition hover:border-accent"
+              >
+                <UniBuddy
+                  size={20}
+                  accessory={uniAccessory}
+                  skin={settings.uniSkin ?? 'classic'}
+                  mood={visibleConscienceCount > 0 ? 'calm' : 'happy'}
+                  interactive={false}
+                />
+                {visibleConscienceCount > 0 && (
+                  <span className="rounded-full bg-warn/20 px-1.5 py-0.5 text-xs font-bold text-warn tabular">
+                    {visibleConscienceCount}
+                  </span>
+                )}
+              </button>
+            )}
+          </div>
+
+          <SegmentedControl
+            layoutId="planner-control-mode"
+            value={plannerMode}
+            onChange={(v) => switchPlannerMode(v as 'auto' | 'manual')}
+            items={[
+              { id: 'auto', label: t('mode.auto') },
+              { id: 'manual', label: t('mode.manual') },
+            ]}
+          />
+        </div>
+      )}
+
+      {testModeExpanded && (
         <section
           className={
             testMode.mode === 'single_test'
@@ -466,6 +635,15 @@ export default function Planner() {
                 {testMode.mode === 'single_test' ? t('testModeFocusBadge') : t('testModeBalanceBadge')}
               </Badge>
             </div>
+            <button
+              type="button"
+              onClick={acknowledgeTestMode}
+              aria-label={t('ui.testModeCollapseAria')}
+              title={t('ui.testModeCollapseAria')}
+              className="-mr-1 grid size-11 shrink-0 place-items-center rounded-full text-[#141312]/70 transition hover:bg-black/10 hover:text-[#141312] dark:text-[#FAF6EC]/70 dark:hover:bg-white/10 dark:hover:text-[#FAF6EC]"
+            >
+              <X size={16} />
+            </button>
           </div>
 
           <ul className="space-y-1.5">
@@ -491,13 +669,14 @@ export default function Planner() {
                   <Button
                     size="sm"
                     variant="secondary"
-                    onClick={() =>
+                    onClick={() => {
+                      acknowledgeTestMode();
                       openUniCheckIn({
                         kind: 'exam_prep',
                         assessmentId: u.assessment.id,
                         courseId: u.course.id,
-                      })
-                    }
+                      });
+                    }}
                   >
                     {t('alignShort')}
                   </Button>
@@ -525,26 +704,28 @@ export default function Planner() {
 
       <FocusResumeCard />
 
-      {!noPlanInputs && (
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="text-xs font-medium text-muted">
-            {t(plannerMode === 'manual' ? 'mode.bannerManual' : 'mode.bannerAuto')}
-          </span>
-          <SegmentedControl
-            layoutId="planner-control-mode"
-            value={plannerMode}
-            onChange={(v) => switchPlannerMode(v as 'auto' | 'manual')}
-            items={[
-              { id: 'auto', label: t('mode.auto') },
-              { id: 'manual', label: t('mode.manual') },
-            ]}
-          />
-        </div>
+      {weekCheckExpanded && (
+        <WeekCheckCard
+          initialOpen={Boolean(weekCheckOpenOverride)}
+          onCollapse={acknowledgeWeekCheck}
+        />
       )}
 
-      {!noPlanInputs && <WeekCheckCard />}
-
-      {!noPlanInputs && <PlanConscienceCard today={today} />}
+      {!noPlanInputs && conscienceExpanded && (
+        <PlanConscienceCard
+          today={today}
+          report={conscienceReport}
+          dismissedIds={conscienceDismissedIds}
+          onDismiss={(id) =>
+            setConscienceDismissedIds((prev) => {
+              const next = new Set(prev);
+              next.add(id);
+              return next;
+            })
+          }
+          onCollapse={() => setConscienceOpenOverride(false)}
+        />
+      )}
 
       {sessions.length === 0 ? (
         <EmptyState
