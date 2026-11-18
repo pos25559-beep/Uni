@@ -149,19 +149,45 @@ const ORDINAL_WORDS: Record<string, string> = {
   primeiro: '1', primeira: '1', segundo: '2', segunda: '2', terceiro: '3', terceira: '3', quarto: '4', quarta: '4',
   first: '1', second: '2', third: '3', primer: '1', segundo_es: '2',
 };
-const ASSESSMENT_KINDS = '(teste|exame|frequencia|mini teste|minitest|test|exam|prova)';
+const ASSESSMENT_KINDS = '(mini teste|minitest|teste|exame|frequencia|test|exam|prova)';
+const KIND_CONNECTOR = '(?:\\s+(?:e|ou|and|y)(?:\\s+(?:os?|as?))?)?';
+
+function assessmentKindOf(k: string): string {
+  return k.startsWith('exam') || k === 'exame' ? 'exame' : k.startsWith('freq') ? 'frequencia' : 'teste';
+}
 
 /**
- * «2 teste», «2º teste», «2.º teste», «segundo teste», «teste 2» → {"2:teste"}.
+ * Números de teste/exame/frequência → conjunto de chaves «N:tipo». Reconhece:
+ * «2 teste», «2º teste», «2.º teste», «2.ª frequência», «segundo teste», «teste 2», «Teste 2 2011-2012»,
+ * listas («1º e 2º teste», «1.º, 2.º e 3.º testes», «testes 1 e 2») e «T1 2021» (só com ano).
  * Serve para não confundir o 1.º com o 2.º teste do mesmo ano.
  */
 export function ordinalAssessmentKeys(text: string): Set<string> {
-  const norm = normalizeSourceText(text)
-    .replace(/\b(primeiro|primeira|segundo|segunda|terceiro|terceira|quarto|quarta|first|second|third)\b/g, (w) => ORDINAL_WORDS[w] ?? w);
+  const norm = normalizeSourceText(text).replace(
+    /\b(primeiro|primeira|segundo|segunda|terceiro|terceira|quarto|quarta|first|second|third)\b/g,
+    (w) => ORDINAL_WORDS[w] ?? w,
+  );
   const keys = new Set<string>();
-  const kindOf = (k: string) => (k.startsWith('exam') || k === 'exame' ? 'exame' : k.startsWith('freq') ? 'frequencia' : 'teste');
-  for (const m of norm.matchAll(new RegExp(`\\b([1-4])\\s*o?\\s+${ASSESSMENT_KINDS}\\b`, 'g'))) keys.add(`${m[1]}:${kindOf(m[2])}`);
-  for (const m of norm.matchAll(new RegExp(`\\b${ASSESSMENT_KINDS}\\s+([1-4])\\b(?!\\s*\\d)`, 'g'))) keys.add(`${m[2]}:${kindOf(m[1])}`);
+  // Números antes do tipo: «1º e o 2º teste».
+  const before = new RegExp(
+    `\\b((?:[1-4](?:\\s*[oa])?${KIND_CONNECTOR}\\s+)+)${ASSESSMENT_KINDS}s?\\b`,
+    'g',
+  );
+  for (const m of norm.matchAll(before)) {
+    for (const d of m[1].matchAll(/[1-4]/g)) keys.add(`${d[0]}:${assessmentKindOf(m[2])}`);
+  }
+  // Números depois do tipo: «teste 2», «testes 1 e 2». Os anos («2011») nunca são um dígito isolado.
+  const after = new RegExp(
+    `\\b${ASSESSMENT_KINDS}s?\\s+((?:[1-4]\\b(?:\\s+(?:e|ou|and|y)(?=\\s+[1-4]\\b))?\\s*)+)`,
+    'g',
+  );
+  for (const m of norm.matchAll(after)) {
+    for (const d of m[2].matchAll(/[1-4]/g)) keys.add(`${d[0]}:${assessmentKindOf(m[1])}`);
+  }
+  // «T1 2021»: abreviatura de teste, só com um ano ao lado (senão «T1» é uma aula).
+  if (/\b(19|20)\d{2}\b/.test(norm)) {
+    for (const m of norm.matchAll(/\bt([1-4])\b/g)) keys.add(`${m[1]}:teste`);
+  }
   return keys;
 }
 
@@ -248,31 +274,44 @@ export function prioritizeMaterialsForQuery<
     .map((entry) => entry.m);
 }
 
-/**
- * O estudante refere-se a um teste/exame concreto («alínea c do grupo 1 do teste 2 de 2009-2010»)?
- * Devolve esse material só quando há exatamente um que bate no tipo, no número e nos anos.
- * Com vários testes quase iguais anexados, o modelo confunde-os e resolve o enunciado errado.
- */
-export function findAssessmentCandidates<
-  T extends Pick<Material, 'title'> & Partial<Pick<Material, 'category' | 'mimeType'>>,
->(materials: readonly T[], queryText: string): T[] {
-  const qKeys = ordinalAssessmentKeys(queryText);
-  const qYears = new Set([
-    ...academicYearTokens(queryText),
-    ...(normalizeSourceText(queryText).match(/\b20\d\d\b/g) ?? []),
-  ]);
+const KIND_WORDS = ['teste', 'exame', 'frequencia', 'recurso'];
+
+/** Época da avaliação indicada num texto: recurso, especial ou normal (por omissão, nos títulos). */
+function epochOf(norm: string): 'recurso' | 'especial' | 'normal' {
+  if (/\brecurso\b/.test(norm)) return 'recurso';
+  if (/\bespecial\b/.test(norm)) return 'especial';
+  return 'normal';
+}
+
+/** Anos da pergunta/título como conjunto («2019/20», «2019-2020» e «2019 2020» dão {2019, 2020}). */
+function yearSet(text: string): Set<string> {
+  return new Set([...academicYearTokens(text), ...(normalizeSourceText(text).match(/\b20\d\d\b/g) ?? [])]);
+}
+
+/** Materiais de teste/exame que batem com a pergunta, usando só as chaves de número dadas. */
+function matchAssessments<T extends Pick<Material, 'title'> & Partial<Pick<Material, 'category' | 'mimeType'>>>(
+  materials: readonly T[],
+  queryText: string,
+  qKeys: ReadonlySet<string>,
+): T[] {
   const norm = normalizeSourceText(queryText);
-  const mentionsAssessment = /\b(teste|exame|frequencia|recurso|prova|exam|test)\b/.test(norm);
-  if (!mentionsAssessment || (qKeys.size === 0 && qYears.size === 0)) return [];
+  const qYears = yearSet(queryText);
+  const wantsNormalEpoch = /\bepoca normal\b/.test(norm);
+  const wantsSpecialEpoch = /\bepoca especial\b/.test(norm);
   // «teste» não é «exame»: se a pergunta diz o tipo, só esse tipo conta.
-  const kinds = ['teste', 'exame', 'frequencia', 'recurso'].filter((k) => new RegExp(`\\b${k}`).test(norm));
+  const kinds = KIND_WORDS.filter((k) => new RegExp(`\\b${k}`).test(norm));
+  if (wantsNormalEpoch && !kinds.some((k) => k !== 'recurso')) kinds.push('exame');
   const matches = materials.filter((m) => {
     if (sourceGroupKey(m) !== 'tests') return false;
-    const titleKindNorm = normalizeSourceText(m.title);
-    if (kinds.length > 0 && !kinds.some((k) => new RegExp(`\\b${k}`).test(titleKindNorm))) return false;
-    if (qKeys.size > 0 && ![...ordinalAssessmentKeys(m.title)].some((k) => qKeys.has(k))) return false;
     const titleNorm = normalizeSourceText(m.title);
-    return [...qYears].every((y) => titleNorm.includes(y));
+    if (kinds.length > 0 && !kinds.some((k) => new RegExp(`\\b${k}`).test(titleNorm))) return false;
+    // «exame de recurso»: tem de ser mesmo o de recurso, não o da época normal.
+    if (kinds.includes('recurso') && epochOf(titleNorm) !== 'recurso') return false;
+    if (wantsNormalEpoch && epochOf(titleNorm) !== 'normal') return false;
+    if (wantsSpecialEpoch && epochOf(titleNorm) !== 'especial') return false;
+    if (qKeys.size > 0 && ![...ordinalAssessmentKeys(m.title)].some((k) => qKeys.has(k))) return false;
+    const tYears = yearSet(m.title);
+    return [...qYears].every((y) => tYears.has(y));
   });
   // Duplicados do mesmo ficheiro («… 2009 2010» e «… 2009 2010 (1)») contam como um.
   const distinct = new Map<string, T>();
@@ -283,22 +322,59 @@ export function findAssessmentCandidates<
   return [...distinct.values()];
 }
 
+const MENTIONS_ASSESSMENT = /\b(teste|exame|frequencia|recurso|prova|exam|test|epoca normal|epoca especial)\b/;
+
 /**
- * O estudante refere-se a um teste/exame concreto («alínea c do grupo 1 do teste 2 de 2009-2010»)?
- * Devolve esse material só quando há exatamente um que bate no tipo, no número e nos anos.
- * Com vários testes quase iguais anexados, o modelo confunde-os e resolve o enunciado errado.
+ * Candidatos a «o teste/exame de que o estudante fala»: bate no tipo, na época, nos números
+ * (qualquer um dos pedidos) e nos anos letivos. Vazio se a pergunta não nomeia número nem ano.
  */
+export function findAssessmentCandidates<
+  T extends Pick<Material, 'title'> & Partial<Pick<Material, 'category' | 'mimeType'>>,
+>(materials: readonly T[], queryText: string): T[] {
+  const qKeys = ordinalAssessmentKeys(queryText);
+  const norm = normalizeSourceText(queryText);
+  if (!MENTIONS_ASSESSMENT.test(norm) || (qKeys.size === 0 && yearSet(queryText).size === 0)) return [];
+  return matchAssessments(materials, queryText, qKeys);
+}
+
+/**
+ * O estudante refere-se a testes/exames concretos («alínea c do grupo 1 do teste 2 de 2009-2010»,
+ * «compara o 1º e o 2º teste»)? Devolve um material por cada número pedido que bata sem dúvida.
+ * Um número sem ficheiro é ignorado (os outros mantêm-se); um número com vários ficheiros possíveis
+ * deixa tudo por decidir (devolve []), para o Uni perguntar. Sem número, só devolve o ficheiro se
+ * tipo/época e ano o identificarem de forma única («exame de recurso 2019/20»).
+ */
+export function findTargetAssessmentDocuments<
+  T extends Pick<Material, 'title'> & Partial<Pick<Material, 'category' | 'mimeType'>>,
+>(materials: readonly T[], queryText: string): T[] {
+  const qKeys = ordinalAssessmentKeys(queryText);
+  if (qKeys.size === 0) {
+    const norm = normalizeSourceText(queryText);
+    if (!MENTIONS_ASSESSMENT.test(norm) || yearSet(queryText).size === 0) return [];
+    const only = matchAssessments(materials, queryText, qKeys);
+    return only.length === 1 ? only : [];
+  }
+  const out: T[] = [];
+  for (const key of qKeys) {
+    const found = matchAssessments(materials, queryText, new Set([key]));
+    if (found.length > 1) return [];
+    if (found.length === 1 && !out.includes(found[0])) out.push(found[0]);
+  }
+  return out;
+}
+
+/** Versão de um só documento: só devolve quando o pedido aponta para exatamente um. */
 export function findTargetAssessmentDocument<
   T extends Pick<Material, 'title'> & Partial<Pick<Material, 'category' | 'mimeType'>>,
 >(materials: readonly T[], queryText: string): T | null {
-  if (ordinalAssessmentKeys(queryText).size === 0) return null;
-  const candidates = findAssessmentCandidates(materials, queryText);
-  return candidates.length === 1 ? candidates[0] : null;
+  const targets = findTargetAssessmentDocuments(materials, queryText);
+  return targets.length === 1 ? targets[0] : null;
 }
 
-/** Quando há um documento-alvo, tira os outros testes/exames (as aulas e fichas ficam). */
+/** Quando há documentos-alvo, tira os outros testes/exames (as aulas e fichas ficam). */
 export function focusMaterialsOnTarget<
   T extends Pick<Material, 'title'> & Partial<Pick<Material, 'category' | 'mimeType'>>,
->(materials: readonly T[], target: T): T[] {
-  return [target, ...materials.filter((m) => m !== target && sourceGroupKey(m) !== 'tests')];
+>(materials: readonly T[], target: T | readonly T[]): T[] {
+  const targets: readonly T[] = Array.isArray(target) ? (target as readonly T[]) : [target as T];
+  return [...targets, ...materials.filter((m) => !targets.includes(m) && sourceGroupKey(m) !== 'tests')];
 }

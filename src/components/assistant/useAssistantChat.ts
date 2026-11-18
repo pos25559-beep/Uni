@@ -26,7 +26,7 @@ import {
 import { getAiMaterialLimit, resolveMaterialsForAI } from '../../lib/materialContent';
 import {
   findAssessmentCandidates,
-  findTargetAssessmentDocument,
+  findTargetAssessmentDocuments,
   focusMaterialsOnTarget,
   prioritizeMaterialsForQuery,
 } from '../../lib/tutorSources';
@@ -524,10 +524,10 @@ export function useAssistantChat({
         );
         // Pergunta sobre um teste concreto: só esse teste vai (mais aulas e fichas). Com vários
         // testes quase iguais anexados, o modelo resolvia o enunciado de outro sem avisar.
-        const targetDoc =
-          findTargetAssessmentDocument(attachedMaterials, lastUserText) ??
-          findTargetAssessmentDocument(attachedMaterials, recentTurnsText);
-        const prioritizedMaterials = targetDoc ? focusMaterialsOnTarget(rankedMaterials, targetDoc) : rankedMaterials;
+        // Pode haver vários («compara o 1º e o 2º teste»): todos ficam no contexto.
+        const fromLastText = findTargetAssessmentDocuments(attachedMaterials, lastUserText);
+        const targetDocs = fromLastText.length > 0 ? fromLastText : findTargetAssessmentDocuments(attachedMaterials, recentTurnsText);
+        const prioritizedMaterials = targetDocs.length > 0 ? focusMaterialsOnTarget(rankedMaterials, targetDocs) : rankedMaterials;
         const chatBinaryCap = hasCustomKey ? Math.min(maxAiFiles, 8) : maxAiFiles;
 
         const resolvedMaterials =
@@ -555,9 +555,9 @@ export function useAssistantChat({
         const courseSheets = activeCourse ? await listTopicSheetsByCourse(activeCourse.id) : [];
         const retrievedSheets = retrieveRelevantSheets(lastUserText, courseSheets, undefined, 4);
         // Vários testes possíveis e nenhum claro: o Uni pergunta qual é antes de resolver.
-        const candidates = targetDoc ? [] : findAssessmentCandidates(attachedMaterials, lastUserText);
-        const focusNote = targetDoc
-          ? tr('assistant:chat.focusDocNote', { title: targetDoc.title })
+        const candidates = targetDocs.length > 0 ? [] : findAssessmentCandidates(attachedMaterials, lastUserText);
+        const focusNote = targetDocs.length > 0
+          ? tr('assistant:chat.focusDocNote', { title: targetDocs.map((d) => d.title).join(' + ') })
           : candidates.length > 1
             ? tr('assistant:chat.ambiguousDocNote', { titles: candidates.map((m) => `«${m.title}»`).join(', ') })
             : '';

@@ -3,6 +3,9 @@ import {
   citedSources,
   findAssessmentCandidates,
   findTargetAssessmentDocument,
+  findTargetAssessmentDocuments,
+  ordinalAssessmentKeys,
+  academicYearTokens,
   focusMaterialsOnTarget,
   groupSources,
   matchesSourceQuery,
@@ -159,5 +162,86 @@ describe('documento-alvo de uma pergunta sobre um teste', () => {
     const c = findAssessmentCandidates(titles, 'resolve o grupo 2 do teste de 2009-2010').map((m) => m.title);
     expect(c).toEqual(['1º Teste TMIII 2009 2010 (1)', '2º Teste TMIII 2009 2010']);
     expect(findAssessmentCandidates(titles, 'explica Tresca')).toEqual([]);
+  });
+});
+
+describe('normalização de ordinais, tipos e anos letivos', () => {
+  it('reconhece ordinais em vários formatos e listas', () => {
+    const keys = (t: string) => [...ordinalAssessmentKeys(t)].sort();
+    expect(keys('2º teste')).toEqual(['2:teste']);
+    expect(keys('2.ª frequência')).toEqual(['2:frequencia']);
+    expect(keys('segunda frequência')).toEqual(['2:frequencia']);
+    expect(keys('Teste 2 2011-2012')).toEqual(['2:teste']);
+    expect(keys('compara o 1º e o 2º teste')).toEqual(['1:teste', '2:teste']);
+    expect(keys('os 1.º, 2.º e 3.º testes')).toEqual(['1:teste', '2:teste', '3:teste']);
+    expect(keys('testes 1 e 2 de 2009')).toEqual(['1:teste', '2:teste']);
+    expect(keys('T1 2021 Resolucao')).toEqual(['1:teste']);
+    expect(keys('Aula T1')).toEqual([]);
+    expect(keys('grupo 1 do teste')).toEqual([]);
+  });
+  it('equivale 2019/20, 2019/2020, 2019-2020 e 2019 2020', () => {
+    for (const t of ['2019/20', '2019/2020', '2019-2020', '2019 2020', '19/20']) {
+      expect(academicYearTokens(t).sort()).toEqual(['2019', '2020']);
+    }
+  });
+});
+
+describe('documento-alvo com ficheiros de estilos variados', () => {
+  const titles = [
+    'Teste 1 2011-2012.pdf',
+    'Teste 2 2011-2012.pdf',
+    'Exame 2011-2012.pdf',
+    '2.ª Frequência 2018 2019.pdf',
+    '1ª Frequência 2018 2019.pdf',
+    'Exame Recurso 2019 20 Resolucao.pdf',
+    'Exame Normal 2019-2020.pdf',
+    '1º Teste TMIII 2009 2010',
+    '2º Teste TMIII 2009 2010',
+    '3º Teste TMIII 2009 2010',
+    'T1 2021 Resolucao',
+    'Aula T08 Método do Limite Superior',
+  ].map((title) => ({ title }));
+  const one = (q: string) => findTargetAssessmentDocuments(titles, q).map((m) => m.title);
+
+  it.each([
+    ['alínea c do teste 2 de 2011-2012', ['Teste 2 2011-2012.pdf']],
+    ['grupo 1 do 1.º teste de 2011/12', ['Teste 1 2011-2012.pdf']],
+    ['2.ª frequência de 2018/19', ['2.ª Frequência 2018 2019.pdf']],
+    ['segunda frequência 2018-2019', ['2.ª Frequência 2018 2019.pdf']],
+    ['exame de recurso 2019/20', ['Exame Recurso 2019 20 Resolucao.pdf']],
+    ['recurso 2019-2020', ['Exame Recurso 2019 20 Resolucao.pdf']],
+    ['exame de época normal 2019 2020', ['Exame Normal 2019-2020.pdf']],
+    ['exame de 2011/2012', ['Exame 2011-2012.pdf']],
+    ['T1 de 2021', ['T1 2021 Resolucao']],
+  ])('%s', (q, expected) => {
+    expect(one(q)).toEqual(expected);
+  });
+
+  it('o exame nunca é escolhido por uma pergunta sobre teste, e vice-versa', () => {
+    expect(one('teste 2 de 2011-2012')).not.toContain('Exame 2011-2012.pdf');
+    expect(one('exame de 2011-2012')).not.toContain('Teste 2 2011-2012.pdf');
+  });
+
+  it('compara vários: devolve todos os pedidos', () => {
+    expect(one('compara o 1º e o 2º teste de 2009/10')).toEqual(['1º Teste TMIII 2009 2010', '2º Teste TMIII 2009 2010']);
+    expect(one('testes 1 e 2 de 2011-2012')).toEqual(['Teste 1 2011-2012.pdf', 'Teste 2 2011-2012.pdf']);
+    expect(one('os 1.º, 2.º e 3.º testes de 2009-2010')).toHaveLength(3);
+    const focused = focusMaterialsOnTarget(titles, findTargetAssessmentDocuments(titles, 'compara o 1º e o 2º teste de 2009/10')).map((m) => m.title);
+    expect(focused.slice(0, 2)).toEqual(['1º Teste TMIII 2009 2010', '2º Teste TMIII 2009 2010']);
+    expect(focused).toContain('Aula T08 Método do Limite Superior');
+    expect(focused).not.toContain('3º Teste TMIII 2009 2010');
+  });
+
+  it('se um dos pedidos não existe, mantém os encontrados', () => {
+    expect(one('compara o 2º e o 4º teste de 2009/10')).toEqual(['2º Teste TMIII 2009 2010']);
+  });
+
+  it('ambíguo ou ano inexistente: sem alvo único', () => {
+    expect(one('explica o teste de 2009-2010')).toEqual([]);
+    expect(one('resolve o grupo 2 do teste')).toEqual([]);
+    expect(one('teste 2 de 2015-2016')).toEqual([]);
+    expect(one('exame de 2005')).toEqual([]);
+    expect(findTargetAssessmentDocument(titles, 'o teste de 2009-2010')).toBeNull();
+    expect(findAssessmentCandidates(titles, 'o teste de 2009-2010')).toHaveLength(3);
   });
 });
