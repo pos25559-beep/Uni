@@ -49,6 +49,12 @@ import { getDueReviewQueue } from '../lib/spacedRepetition';
 import { capitalizeFirst, fmtMinutes, formatSessionDisplay, sessionMinutes, todayStr } from '../lib/selectors';
 import { useHubUiStore } from '../store/useHubUiStore';
 import { useStore } from '../store/useStore';
+import {
+  maxDailyMinutes,
+  minutesForWeekday,
+  resolvePlannerPrefs,
+  weeklyStudyMinutes,
+} from '../lib/planner/availability';
 import type { ID, PlannerPreferences, StudySession, Topic } from '../types';
 
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
@@ -199,6 +205,18 @@ export default function Planner() {
   const noPlanInputs = courses.length === 0;
   const starterOnlyMode = courses.length > 0 && !assessments.some((a) => a.grade === undefined);
   const plannerPrefs = settings.plannerPrefs;
+  // Disponibilidade legível («Seg–Sáb · até 5 h por dia»), sempre a partir do horário por dia.
+  const resolvedSchedule = resolvePlannerPrefs(settings).weekdaySchedule ?? {};
+  const scheduleDays = DAY_ORDER.filter((d) => minutesForWeekday(resolvedSchedule, d) > 0);
+  const scheduleMinutes = scheduleDays.map((d) => minutesForWeekday(resolvedSchedule, d));
+  const weeklyGoalMinutes = weeklyStudyMinutes(resolvedSchedule);
+  const availabilitySummary =
+    scheduleDays.length === 0
+      ? t('ui.noStudyDays')
+      : t(new Set(scheduleMinutes).size === 1 ? 'ui.availSame' : 'ui.availUpTo', {
+          days: studyDaysLabel(scheduleDays, t('ui.noStudyDays')),
+          time: fmtMinutes(maxDailyMinutes(resolvedSchedule)),
+        });
 
   const generate = () => {
     void hapticTap();
@@ -412,7 +430,7 @@ export default function Planner() {
         eyebrow={t('plannerEyebrow')}
         title={t('plannerTitle')}
         accentTitle={t('plannerAccent')}
-        subtitle={`${fmtMinutes(settings.dailyStudyMinutes)} · ${studyDaysLabel(settings.studyDays, t('ui.noStudyDays'))}${plannerPrefs ? ` · ${plannerPrefs.blockMinutes}m (${plannerPrefs.horizonDays}d)` : ''}`}
+        subtitle={availabilitySummary}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <TabGuideHelpButton tabKey="plano" />
@@ -750,9 +768,9 @@ export default function Planner() {
             />
             <BentoMetricTile
               tone="butter"
-              label={t('ui.dailyGoal')}
-              value={fmtMinutes(settings.dailyStudyMinutes)}
-              hint={studyDaysLabel(settings.studyDays, t('ui.noStudyDays'))}
+              label={t('ui.weeklyGoal')}
+              value={fmtMinutes(weeklyGoalMinutes)}
+              hint={availabilitySummary}
             />
             <BentoMetricTile
               tone={overdue.length > 0 ? 'peach' : 'sky'}

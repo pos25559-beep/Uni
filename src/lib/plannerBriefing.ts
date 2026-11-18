@@ -74,14 +74,10 @@ export function resolveWeekdayAvailability(
   weekdaySchedule?: Record<string, WeekdayAvailability>,
   preferredPeriod: PlannerDayPeriod = 'auto',
 ): WeekdayAvailability {
-  // Os dias de estudo das Definições têm sempre a última palavra: um dia desligado
-  // em studyDays não fica ativo só porque o mapa semanal (weekdaySchedule) o tem.
-  const studyDaysDefined = Array.isArray(settings.studyDays);
-  const allowedByStudyDays = !studyDaysDefined || settings.studyDays.includes(weekday);
+  // O horário por dia é a única fonte de verdade (settings.studyDays é derivado dele;
+  // a migração v10 já passou o antigo veto de studyDays para dentro do horário).
   const entry = weekdaySchedule?.[String(weekday)];
-  if (entry) {
-    return allowedByStudyDays ? entry : { ...entry, enabled: false };
-  }
+  if (entry) return entry;
   return {
     enabled: settings.studyDays.includes(weekday),
     minutes: Math.max(30, settings.dailyStudyMinutes || 120),

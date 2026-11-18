@@ -202,6 +202,9 @@
     "weeklyCheckin": "Check-in semanal com o Tutor",
     "weeklyCheckinHint": "Ajuste o plano ao seu ritmo desta semana",
     "noStudyDays": "sem dias de estudo",
+    "availSame": "{{days}} · {{time}} por dia",
+    "availUpTo": "{{days}} · até {{time}} por dia",
+    "weeklyGoal": "Meta da semana",
     "focusInProgress": "Bloco de foco em andamento"
   },
   "dayCol": {

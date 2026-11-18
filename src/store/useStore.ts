@@ -15,6 +15,7 @@ import {
   syncWeeklyCheckIn,
 } from '../lib/firestoreSync';
 import { migrateStoreState, rehydrateStoreState, sanitizeMaterials } from '../lib/storeMigration';
+import { reconcileAvailabilityChanges } from '../lib/planner/availability';
 import type {
   AcademicProfile,
   Collections,
@@ -392,10 +393,11 @@ export const useStore = create<AppState>()(
         return created;
       },
       updateSettings: (changes) => {
-        let nextChanges = changes;
+        // Horário por dia e valores antigos (dias, minutos) ficam sempre coerentes.
+        let nextChanges = reconcileAvailabilityChanges(get().settings, changes);
         if (changes.language !== undefined) {
           const normalizedLang = normalizeAppLanguage(changes.language);
-          nextChanges = { ...changes, language: normalizedLang };
+          nextChanges = { ...nextChanges, language: normalizedLang };
           setAppLanguage(normalizedLang);
         }
         syncSettings(nextChanges).catch(() => {});
@@ -522,7 +524,7 @@ export const useStore = create<AppState>()(
     }),
     {
       name: 'uni-erp-v5',
-      version: 9,
+      version: 10,
       onRehydrateStorage: () => (state) => {
         rehydrateStoreState(state);
       },

@@ -1,6 +1,7 @@
 import { isNonAcademicDocument, isPreEntryDriveFile, matchesCourse } from './courseAliases';
 import { defaultSettings, emptyCollections } from './seed';
-import type { AcademicProfile, Collections, Course, Material, StudyLogEntry, WeeklyCheckIn } from '../types';
+import type { AcademicProfile, Collections, Course, Material, Settings, StudyLogEntry, WeeklyCheckIn } from '../types';
+import { migrateAvailabilitySettings } from './planner/availability';
 
 // Impressões digitais (FNV-1a) de ids e nomes do antigo modo demo pessoal. Guardamos só o
 // hash para não publicar identificadores pessoais no código; serve apenas para os limpar.
@@ -197,13 +198,18 @@ export function migrateStoreState(persistedState: unknown, version: number) {
       nextSettings.geminiModel = 'gemini-4-hydrogen';
     }
   }
+  // v10: o horário por dia passa a ser a única fonte de disponibilidade (com o veto antigo incluído).
+  const migratedSettings =
+    nextSettings && version < 10
+      ? migrateAvailabilitySettings(nextSettings as Partial<Settings>)
+      : nextSettings;
 
   const rest = { ...base };
   delete rest.isDemo;
 
   return {
     ...rest,
-    ...(nextSettings ? { settings: nextSettings } : {}),
+    ...(migratedSettings ? { settings: migratedSettings } : {}),
     ...(nextProfile ? { academicProfile: nextProfile } : {}),
     courses: cleanedCourses,
     materials: clean,

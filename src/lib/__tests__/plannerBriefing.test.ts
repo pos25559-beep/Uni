@@ -328,19 +328,12 @@ describe('planner v2 · disponibilidade semanal, maratona pré-teste, bloqueios 
 });
 
 describe('resolveWeekdayAvailability · dias de estudo das Definições', () => {
-  it('um dia desligado em studyDays não fica ativo, mesmo com o mapa semanal a marcá-lo', () => {
-    // Plano criado com fim de semana ligado; depois o utilizador desliga o sábado nas Definições.
+  it('com horário por dia, decide só o horário (studyDays é derivado dele)', () => {
     const weekdaySchedule = applyWeekdayPreset('light_week_strong_weekend');
-    expect(weekdaySchedule['6']?.enabled).toBe(true);
     const settings = { ...baseSettings, studyDays: [1, 2, 3, 4, 5] };
-
-    const saturday = resolveWeekdayAvailability(6, settings, weekdaySchedule);
-    expect(saturday.enabled).toBe(false);
-    // Os minutos continuam a vir do mapa; só o estado de dia de estudo muda.
-    expect(saturday.minutes).toBe(weekdaySchedule['6']?.minutes);
-
-    const monday = resolveWeekdayAvailability(1, settings, weekdaySchedule);
-    expect(monday.enabled).toBe(true);
+    expect(resolveWeekdayAvailability(6, settings, weekdaySchedule).enabled).toBe(true);
+    const off = { ...weekdaySchedule, '6': { ...weekdaySchedule['6']!, enabled: false } };
+    expect(resolveWeekdayAvailability(6, settings, off).enabled).toBe(false);
   });
 
   it('sem mapa semanal, usa studyDays como antes', () => {
