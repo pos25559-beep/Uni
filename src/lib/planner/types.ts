@@ -95,6 +95,14 @@ export interface DayPlanProfile {
   marathonDaysLeft?: number;
 }
 
+export type DayBudgetReductionReason = 'heavy_classes' | 'events' | 'extra_activities' | 'tired';
+
+export interface DayBudgetResult {
+  budget: number;
+  baseBudget: number;
+  reducedReason?: DayBudgetReductionReason;
+}
+
 export interface Block {
   courseId: ID;
   topicId?: ID;

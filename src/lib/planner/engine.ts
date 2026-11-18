@@ -1,4 +1,4 @@
-import { differenceInCalendarDays, differenceInMinutes, parseISO } from 'date-fns';
+import { differenceInCalendarDays, parseISO } from 'date-fns';
 import { newId } from '../../store/useStore';
 import type {
   Assessment,
@@ -19,6 +19,7 @@ import { isWithinWindow, parseFocusWindow, type FocusWindow } from './focusWindo
 import {
   advanceCursorPastBusy,
   availableWindowMinutes,
+  computeDayBudget,
   dayKey,
   firstSlotBefore,
   fmtTime,
@@ -34,13 +35,10 @@ import {
   ADAPTIVE_LOW_CONFIDENCE_BLOCK,
   BLOCK,
   BREAK,
-  EVENT_THRESHOLD_MIN,
   HORIZON_DAYS,
-  LIGHT_CLASS_LOAD_MIN,
   MAX_BLOCKS_PER_COURSE,
   MAX_BLOCKS_PER_DAY,
   MIN_BLOCK,
-  MIN_DAY_BUDGET,
   PERIOD_BUSY_RANGES,
   SPACED_MINUTES,
   TEST_MODE_DAYS,
@@ -436,24 +434,16 @@ export function generatePlan(input: PlanInput): StudySession[] {
     }
     dayBusy.sort((a, b) => a.start - b.start);
 
-    // Orçamento do dia (individual Seg-Dom ou expandido em Modo Maratona Pré-Teste).
-    const classMinutes = classes
-      .filter((c) => c.weekday === weekday)
-      .reduce((sum, c) => sum + Math.max(0, toMin(c.end) - toMin(c.start)), 0);
-    const eventMinutes = events
-      .filter((e) => !e.allDay && e.start.slice(0, 10) === key)
-      .reduce((sum, e) => sum + Math.max(0, differenceInMinutes(parseISO(e.end), parseISO(e.start))), 0);
-    let budget = dayProfile.baseBudget;
-    if (!dayProfile.isMarathonDay && classMinutes >= LIGHT_CLASS_LOAD_MIN) budget *= 0.75;
-    if (eventMinutes > EVENT_THRESHOLD_MIN) budget -= eventMinutes;
-    const extraPenalty = extraPenaltyByWeekday.get(weekday) ?? 0;
-    if (!dayProfile.isMarathonDay && extraPenalty > 0) {
-      budget -= Math.min(120, Math.round(extraPenalty * 0.5));
-    }
-    if (!dayProfile.isMarathonDay && (latestCheckIn?.mood === 'atrasado' || latestCheckIn?.mood === 'pressionado')) {
-      budget *= 0.85;
-    }
-    budget = Math.round(Math.max(MIN_DAY_BUDGET, budget));
+    // Orçamento do dia (partilhado com a interface via computeDayBudget em slots.ts).
+    const { budget } = computeDayBudget({
+      dateKey: key,
+      weekday,
+      dayProfile,
+      classes,
+      events,
+      extraPenaltyMinutes: extraPenaltyByWeekday.get(weekday) ?? 0,
+      latestCheckInMood: latestCheckIn?.mood,
+    });
     const baseStart = resolvePeriodStart(weekday, dayProfile.windowMode, roundedNow, budget);
 
     const alreadyUsed = existing

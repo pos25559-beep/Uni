@@ -491,7 +491,7 @@ export function SegmentedControl<T extends string>({
               onChange(item.id);
             }}
             className={cx(
-              'relative min-w-0 flex-1 rounded-full px-3 py-2 text-xs font-semibold transition-colors sm:flex-initial sm:px-4',
+              'relative min-h-11 min-w-11 flex-1 rounded-full px-3.5 py-2 text-xs font-semibold transition-colors sm:flex-initial sm:px-4',
               active ? 'text-fg' : 'text-muted hover:text-fg',
             )}
           >

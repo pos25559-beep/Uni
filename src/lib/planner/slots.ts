@@ -1,4 +1,4 @@
-import { differenceInCalendarDays, format, parseISO } from 'date-fns';
+import { differenceInCalendarDays, differenceInMinutes, format, parseISO } from 'date-fns';
 import type {
   Assessment,
   CalendarEvent,
@@ -14,14 +14,20 @@ import type {
   Topic,
   WeekdayAvailability,
   PlannerDateOverride,
+  WeeklyCheckIn,
 } from '../../types';
 import { resolveWeekdayAvailability } from '../plannerBriefing';
 import { sessionMinutes } from '../selectors';
 import { extractOrdinalNumber } from '../uniCheckInNlu';
 import {
   BREAK,
+  EVENT_THRESHOLD_MIN,
+  LIGHT_CLASS_LOAD_MIN,
+  MIN_DAY_BUDGET,
   PERIOD_BUSY_RANGES,
   type BusyInterval,
+  type DayBudgetReductionReason,
+  type DayBudgetResult,
   type DayPlanProfile,
 } from './types';
 
@@ -246,6 +252,60 @@ export function resolveDayPlanProfile(args: {
     blockedPeriods: avail.blockedPeriods ?? [],
     isMarathonDay: marathonActive,
     ...(marathonActive && minExamDaysLeft !== undefined ? { marathonDaysLeft: minExamDaysLeft } : {}),
+  };
+}
+
+/** Calcula o orçamento líquido do dia (partilhado entre o motor e as colunas da interface). */
+export function computeDayBudget(args: {
+  dateKey: string;
+  weekday: number;
+  dayProfile: DayPlanProfile;
+  classes: ClassSlot[];
+  events: CalendarEvent[];
+  extraPenaltyMinutes?: number;
+  latestCheckInMood?: WeeklyCheckIn['mood'];
+}): DayBudgetResult {
+  const {
+    dateKey,
+    weekday,
+    dayProfile,
+    classes,
+    events,
+    extraPenaltyMinutes = 0,
+    latestCheckInMood,
+  } = args;
+
+  const classMinutes = classes
+    .filter((c) => c.weekday === weekday)
+    .reduce((sum, c) => sum + Math.max(0, toMin(c.end) - toMin(c.start)), 0);
+  const eventMinutes = events
+    .filter((e) => !e.allDay && e.start.slice(0, 10) === dateKey)
+    .reduce((sum, e) => sum + Math.max(0, differenceInMinutes(parseISO(e.end), parseISO(e.start))), 0);
+
+  let budget = dayProfile.baseBudget;
+  let reducedReason: DayBudgetReductionReason | undefined;
+
+  if (!dayProfile.isMarathonDay && classMinutes >= LIGHT_CLASS_LOAD_MIN) {
+    budget *= 0.75;
+    reducedReason ??= 'heavy_classes';
+  }
+  if (eventMinutes > EVENT_THRESHOLD_MIN) {
+    budget -= eventMinutes;
+    reducedReason ??= 'events';
+  }
+  if (!dayProfile.isMarathonDay && extraPenaltyMinutes > 0) {
+    budget -= Math.min(120, Math.round(extraPenaltyMinutes * 0.5));
+    reducedReason ??= 'extra_activities';
+  }
+  if (!dayProfile.isMarathonDay && (latestCheckInMood === 'atrasado' || latestCheckInMood === 'pressionado')) {
+    budget *= 0.85;
+    reducedReason ??= 'tired';
+  }
+
+  return {
+    budget: dayProfile.enabled ? Math.round(Math.max(MIN_DAY_BUDGET, budget)) : 0,
+    baseBudget: dayProfile.baseBudget,
+    ...(reducedReason ? { reducedReason } : {}),
   };
 }
 

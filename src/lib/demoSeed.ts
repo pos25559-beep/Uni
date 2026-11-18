@@ -25,6 +25,8 @@ interface DemoLocaleCopy {
   a3Title: string;
   rooms: [string, string, string, string];
   sessions: [string, string, string, string];
+  yesterdayManual: string;
+  yesterdayGenerated: string;
   tasks: [string, string, string];
   eventTitle: string;
   eventLoc: string;
@@ -69,6 +71,8 @@ const DEMO_COPY: Record<AppLanguage, DemoLocaleCopy> = {
       'Revisão SRS · Leis de Newton.',
       'Implementar fila circular e testes.',
     ],
+    yesterdayManual: 'Rever folha de exercícios de limites.',
+    yesterdayGenerated: 'Consolidar derivadas por definição.',
     tasks: [
       'Resolver folha de exercícios 3 (extremos)',
       'Organizar relatório de laboratório de atrito',
@@ -115,6 +119,8 @@ const DEMO_COPY: Record<AppLanguage, DemoLocaleCopy> = {
       'Revisão SRS · Leis de Newton.',
       'Implementar fila circular e testes unitários.',
     ],
+    yesterdayManual: 'Revisar lista de exercícios de limites.',
+    yesterdayGenerated: 'Consolidar derivadas pela definição.',
     tasks: [
       'Resolver lista de exercícios 3 (máximos e mínimos)',
       'Organizar relatório do laboratório de atrito',
@@ -161,6 +167,8 @@ const DEMO_COPY: Record<AppLanguage, DemoLocaleCopy> = {
       'Repaso SRS · Leyes de Newton.',
       'Implementar cola circular y pruebas.',
     ],
+    yesterdayManual: 'Repasar hoja de ejercicios de límites.',
+    yesterdayGenerated: 'Consolidar derivadas por definición.',
     tasks: [
       'Resolver hoja de ejercicios 3 (extremos)',
       'Preparar informe de laboratorio de rozamiento',
@@ -207,6 +215,8 @@ const DEMO_COPY: Record<AppLanguage, DemoLocaleCopy> = {
       "SRS review · Newton's Laws.",
       'Implement circular queue and unit tests.',
     ],
+    yesterdayManual: 'Review limits problem sheet.',
+    yesterdayGenerated: 'Consolidate derivatives by definition.',
     tasks: [
       'Complete problem set 3 (extrema)',
       'Organise friction lab report',
@@ -313,6 +323,29 @@ export function buildDemoPayload(lang?: AppLanguage | string) {
   ];
 
   const sessions: StudySession[] = [
+    {
+      id: 'demo-s-prev-manual',
+      courseId: 'demo-c1',
+      topicId: 'demo-t1',
+      assessmentId: 'demo-a1',
+      date: isoDate(-1),
+      start: '17:00',
+      minutes: 40,
+      done: false,
+      notes: copy.yesterdayManual,
+      generated: false,
+    },
+    {
+      id: 'demo-s-prev-gen',
+      courseId: 'demo-c2',
+      topicId: 'demo-t5',
+      date: isoDate(-1),
+      start: '18:00',
+      minutes: 45,
+      done: false,
+      notes: copy.yesterdayGenerated,
+      generated: true,
+    },
     {
       id: 'demo-s1',
       courseId: 'demo-c1',

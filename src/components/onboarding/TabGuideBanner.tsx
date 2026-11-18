@@ -129,6 +129,7 @@ export function TabGuideHelpButton({ tabKey }: { tabKey: AppTabKey }) {
       aria-label={t('guide.openAria')}
       aria-expanded={isOpen}
       title={t('guide.openTitle')}
+      className="min-w-11"
     >
       <HelpCircle size={15} />
       <span className="hidden sm:inline">{t('guide.button')}</span>

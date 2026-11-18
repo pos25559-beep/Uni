@@ -10,6 +10,7 @@ import {
   MessageSquare,
   MoreHorizontal,
   Plus,
+  SlidersHorizontal,
   Sparkles,
 } from 'lucide-react';
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
@@ -29,7 +30,7 @@ import WeekCheckCard from '../components/planner/WeekCheckCard';
 
 const WeeklyTutorModal = lazy(() => import('../components/assistant/WeeklyTutorModal'));
 const ActiveReviewModal = lazy(() => import('../components/practice/ActiveReviewModal'));
-const PlanBuilderModal = lazy(() => import('../components/planner/PlanBuilderModal'));
+const PlanPreferencesSheet = lazy(() => import('../components/planner/PlanPreferencesSheet'));
 const SessionModal = lazy(() => import('../components/planner/SessionModal'));
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import { openUniCheckIn } from '../lib/uniCheckInBus';
@@ -37,8 +38,10 @@ import { ActionSheet, Badge, Button, Card, CourseChip, EmptyState, PageHeader, S
 import { showToast } from '../lib/uiHelpers';
 import { weekdayShort } from '../lib/colors';
 import { hapticTap } from '../lib/nativeBridge';
+import { computeExtraActivityPenaltyByWeekday } from '../lib/academicCredits';
 import {
   analyzeTestMode,
+  computeDayBudget,
   findFirstFreeSlotOnDate,
   planSummary,
   rescheduleOverdueSessions,
@@ -55,7 +58,7 @@ import {
   resolvePlannerPrefs,
   weeklyStudyMinutes,
 } from '../lib/planner/availability';
-import type { ID, PlannerPreferences, StudySession, Topic } from '../types';
+import type { Course, StudySession } from '../types';
 
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
@@ -82,13 +85,10 @@ export default function Planner() {
   const settings = useStore((s) => s.settings);
   const academicProfile = useStore((s) => s.academicProfile);
   const weeklyCheckIns = useStore((s) => s.weeklyCheckIns);
-  const studyLogs = useStore((s) => s.studyLogs);
   const replan = useStore((s) => s.replan);
-  const batchUpdateTopicStates = useStore((s) => s.batchUpdateTopicStates);
   const upsertMany = useStore((s) => s.upsertMany);
   const patch = useStore((s) => s.patch);
   const remove = useStore((s) => s.remove);
-  const updateSettings = useStore((s) => s.updateSettings);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -101,7 +101,7 @@ export default function Planner() {
   const [selectedDayKey, setSelectedDayKey] = useState(today);
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
   const [actionsOpen, setActionsOpen] = useState(false);
-  const [builderOpen, setBuilderOpen] = useState(false);
+  const [prefsOpen, setPrefsOpen] = useState(false);
   const [tutorOpen, setTutorOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [modal, setModal] = useState<{ session?: StudySession; date: string } | null>(null);
@@ -122,9 +122,15 @@ export default function Planner() {
     [courses, today],
   );
 
+  const plannerPrefs = settings.plannerPrefs;
+  const extraPenaltyByWeekday = useMemo(
+    () => computeExtraActivityPenaltyByWeekday(academicProfile.extraActivities ?? []),
+    [academicProfile.extraActivities],
+  );
+
   const testMode = useMemo(
-    () => analyzeTestMode(courses, assessments, today),
-    [courses, assessments, today],
+    () => analyzeTestMode(courses, assessments, today, plannerPrefs?.pausedCourseIds),
+    [courses, assessments, today, plannerPrefs?.pausedCourseIds],
   );
 
   const [anchorDate] = useState(() => new Date());
@@ -171,6 +177,15 @@ export default function Planner() {
   );
 
   const overdue = useMemo(() => sorted.filter((s) => !s.done && s.date < today), [sorted, today]);
+  const overdueGroups = useMemo(() => {
+    const groups = new Map<string, { course?: Course; items: StudySession[] }>();
+    for (const s of overdue) {
+      const cur = groups.get(s.courseId);
+      if (cur) cur.items.push(s);
+      else groups.set(s.courseId, { course: courseById.get(s.courseId), items: [s] });
+    }
+    return [...groups.entries()];
+  }, [overdue, courseById]);
 
   const stats = useMemo(() => {
     const planned = weekSessions.reduce((sum, s) => sum + s.minutes, 0);
@@ -185,14 +200,8 @@ export default function Planner() {
     [weekSessions, courses],
   );
 
-  const hasPendingGenerated = useMemo(
-    () => sessions.some((s) => s.generated && !s.done && s.date >= today),
-    [sessions, today],
-  );
-
   const noPlanInputs = courses.length === 0;
   const starterOnlyMode = courses.length > 0 && !assessments.some((a) => a.grade === undefined);
-  const plannerPrefs = settings.plannerPrefs;
   // Disponibilidade legível («Seg–Sáb · até 5 h por dia»), sempre a partir do horário por dia.
   const resolvedSchedule = resolvePlannerPrefs(settings).weekdaySchedule ?? {};
   const scheduleDays = DAY_ORDER.filter((d) => minutesForWeekday(resolvedSchedule, d) > 0);
@@ -209,66 +218,12 @@ export default function Planner() {
   const futureGeneratedCount = () =>
     useStore.getState().sessions.filter((x) => x.generated && !x.done && x.date >= today).length;
 
-  /** Recalcular: o mesmo motor de sempre, com as preferências guardadas. */
+  /** Atualizar/gerar plano: o mesmo motor de sempre, com as preferências guardadas. */
   const generate = () => {
     void hapticTap();
     const changed = replan('manual', { force: true });
-    setBuilderOpen(false);
     celebrateStationery();
     if (!changed) showToast(t('ui.toastGenerated', { count: futureGeneratedCount() }), 'ok');
-  };
-
-  const applyCustomPlan = ({
-    prefs,
-    dailyStudyMinutes,
-    studyDays,
-    plan,
-    topicUpdates,
-  }: {
-    prefs: PlannerPreferences;
-    dailyStudyMinutes: number;
-    studyDays: number[];
-    plan: StudySession[];
-    topicUpdates?: Array<{ courseId: ID; topicId: ID; changes: Partial<Topic> }>;
-  }) => {
-    void hapticTap();
-    const prevPrefs = settings.plannerPrefs;
-    const prevCourses = courses;
-    if (topicUpdates && topicUpdates.length > 0) {
-      batchUpdateTopicStates(topicUpdates);
-    }
-    updateSettings({ plannerPrefs: prefs, dailyStudyMinutes, studyDays }, { replan: false });
-    // Blocos que o estudante fixou na pré-visualização ficam como estão; o resto vem do motor.
-    const keptFromPreview = plan.filter((x) => x.locked);
-    if (keptFromPreview.length > 0) upsertMany('sessions', keptFromPreview);
-    replan('prefs', { force: true, prevPrefs, prevCourses });
-    if (prefs.includeOverdue && overdue.length > 0) {
-      const now = new Date();
-      const { updated } = rescheduleOverdueSessions({
-        overdue,
-        existing: [
-          ...sessions
-            .filter((s) => !s.generated || s.done || s.locked || s.date < today)
-            .filter((s) => s.date >= today),
-          ...useStore.getState().sessions.filter((s) => s.generated && !s.done && s.date >= today),
-        ],
-        classes,
-        events,
-        assessments,
-        settings: { ...settings, dailyStudyMinutes, studyDays },
-        from: today,
-        nowMinutes: now.getHours() * 60 + now.getMinutes(),
-        days: prefs.horizonDays,
-        preferredPeriod: prefs.preferredPeriod,
-        weekdaySchedule: prefs.weekdaySchedule,
-        preExamMarathon: prefs.preExamMarathon,
-        pausedCourseIds: prefs.pausedCourseIds,
-      });
-      if (updated.length > 0) upsertMany('sessions', updated);
-    }
-    setBuilderOpen(false);
-    celebrateStationery();
-    showToast(t('ui.toastApplied', { count: futureGeneratedCount() }), 'ok');
   };
 
   const toggleSessionLock = (session: StudySession) => {
@@ -308,7 +263,7 @@ export default function Planner() {
     );
   };
 
-  const onGenerate = () => setBuilderOpen(true);
+  const onGenerate = () => (sessions.length > 0 ? generate() : setPrefsOpen(true));
 
   /** Encaixa uma sessão hoje numa hora livre (fixada, para o recálculo não a apagar). */
   const placeToday = (session: StudySession, others: StudySession[]): StudySession | null => {
@@ -420,17 +375,12 @@ export default function Planner() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <TabGuideHelpButton tabKey="plano" />
-            {dueReviewCount > 0 && (
-              <Button variant="secondary" onClick={() => setReviewOpen(true)}>
-                <Brain size={16} /> {t('reviewDue')} ({dueReviewCount})
-              </Button>
-            )}
             <Button
-              variant={testMode.mode !== 'normal' ? 'secondary' : 'primary'}
+              variant="primary"
               onClick={onGenerate}
               disabled={noPlanInputs}
             >
-              <Sparkles size={16} /> {t('generatePlan')}
+              <Sparkles size={16} /> {sessions.length > 0 ? t('updatePlan') : t('generatePlan')}
             </Button>
             <Button
               variant="secondary"
@@ -448,54 +398,67 @@ export default function Planner() {
       <TabGuideBanner tabKey="plano" />
 
       {testMode.mode !== 'normal' && (
-        <div
+        <section
           className={
             testMode.mode === 'single_test'
-              ? 'flex flex-wrap items-center justify-between gap-3 rounded-3xl bg-pastel-butter/85 px-4 py-3.5 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]'
-              : 'flex flex-wrap items-center justify-between gap-3 rounded-3xl bg-pastel-blush/85 px-4 py-3.5 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]'
+              ? 'space-y-2.5 rounded-3xl bg-pastel-butter/85 px-4 py-3.5 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]'
+              : 'space-y-2.5 rounded-3xl bg-pastel-blush/85 px-4 py-3.5 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]'
           }
         >
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5 rounded-full bg-surface/80 p-2 text-coral dark:bg-black/25">
-              <Flame size={18} />
-            </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm font-semibold">
-                  {testMode.mode === 'single_test'
-                    ? t('testModeSingleTitle')
-                    : t('testModeMultiTitle', { count: testMode.urgentCourseIds.length })}
-                </span>
-                <Badge tone={testMode.mode === 'single_test' ? 'warn' : 'danger'}>
-                  {testMode.mode === 'single_test' ? t('testModeFocusBadge') : t('testModeBalanceBadge')}
-                </Badge>
-              </div>
-                <p className="mt-1 text-xs opacity-75">
-                  {testMode.mode === 'single_test'
-                    ? t('ui.testSingle', { focus: plannerPrefs?.exclusiveTestFocus ? t('ui.focusExclusive') : t('ui.focusPriority'), course: testMode.urgentAssessments[0].course.shortName, test: testMode.urgentAssessments[0].assessment.title, days: testMode.urgentAssessments[0].daysLeft })
-                    : t('ui.testBalance', { list: testMode.urgentAssessments.map((u) => `${u.course.shortName} (${u.daysLeft}d)`).join(' · ') })}
-                </p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="grid size-8 place-items-center rounded-full bg-surface/80 text-coral dark:bg-black/25">
+                <Flame size={16} aria-hidden="true" />
+              </span>
+              <span className="text-sm font-semibold">
+                {testMode.mode === 'single_test'
+                  ? t('testModeSingleTitle')
+                  : t('testModeMultiTitle', { count: testMode.urgentCourseIds.length })}
+              </span>
+              <Badge tone={testMode.mode === 'single_test' ? 'warn' : 'danger'}>
+                {testMode.mode === 'single_test' ? t('testModeFocusBadge') : t('testModeBalanceBadge')}
+              </Badge>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() =>
-                openUniCheckIn({
-                  kind: 'exam_prep',
-                  assessmentId: testMode.urgentAssessments[0]?.assessment.id,
-                  courseId: testMode.urgentAssessments[0]?.course.id,
-                })
-              }
-            >
-              {t('alignWithUni')}
-            </Button>
-            <Button size="sm" variant="primary" onClick={generate}>
-              <Sparkles size={14} /> {t('recalculate')}
-            </Button>
-          </div>
-        </div>
+
+          <ul className="space-y-1.5">
+            {testMode.urgentAssessments.map((u) => {
+              const when =
+                u.daysLeft === 0
+                  ? t('session.today')
+                  : u.daysLeft === 1
+                    ? t('session.tomorrow')
+                    : t('session.inDays', { n: u.daysLeft });
+              return (
+                <li
+                  key={u.assessment.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-surface/75 px-3 py-1.5 dark:bg-black/20"
+                >
+                  <span className="min-w-0 flex-1 truncate text-xs font-medium text-fg">
+                    {t('testModeLine', {
+                      course: u.course.shortName,
+                      title: u.assessment.title,
+                      when,
+                    })}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() =>
+                      openUniCheckIn({
+                        kind: 'exam_prep',
+                        assessmentId: u.assessment.id,
+                        courseId: u.course.id,
+                      })
+                    }
+                  >
+                    {t('alignShort')}
+                  </Button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
       )}
 
       {starterOnlyMode && (
@@ -560,35 +523,46 @@ export default function Planner() {
                 </div>
               }
             >
-              <ul className="divide-y divide-line">
-                {overdue.map((s) => {
-                  const topic = s.topicId ? topicById.get(s.topicId) : undefined;
+              <div className="space-y-4">
+                {overdueGroups.map(([courseId, group]) => {
+                  const groupMinutes = group.items.reduce((sum, x) => sum + x.minutes, 0);
                   return (
-                    <li key={s.id} className="flex flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <CourseChip course={courseById.get(s.courseId)} />
-                          <span className="text-xs tabular text-muted">
-                            {format(parseISO(s.date), 'EEE d MMM', { locale: dfLocale })}
-                          </span>
-                        </div>
-                        <p className="mt-1 truncate text-sm font-medium">
-                          {formatSessionDisplay(s, topic, i18n.language).title}
-                        </p>
-                        <p className="text-xs tabular text-muted">{s.minutes} min</p>
+                    <div key={courseId} className="space-y-2 rounded-2xl border border-line/70 bg-surface-2/40 p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <CourseChip course={group.course} />
+                        <span className="text-xs font-medium text-muted tabular">
+                          {group.items.length} · {fmtMinutes(groupMinutes)}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button size="sm" onClick={() => moveOneToToday(s)}>
-                          {t('ui.moveToday')}
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => remove('sessions', s.id)}>
-                          {t('ui.discard')}
-                        </Button>
-                      </div>
-                    </li>
+                      <ul className="divide-y divide-line">
+                        {group.items.map((s) => {
+                          const topic = s.topicId ? topicById.get(s.topicId) : undefined;
+                          return (
+                            <li key={s.id} className="flex flex-wrap items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs tabular whitespace-nowrap text-muted">
+                                  {format(parseISO(s.date), 'EEE d MMM', { locale: dfLocale })} · {s.minutes} min
+                                </p>
+                                <p className="mt-0.5 truncate text-sm font-medium">
+                                  {formatSessionDisplay(s, topic, i18n.language).title}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button size="sm" onClick={() => moveOneToToday(s)}>
+                                  {t('ui.moveToday')}
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => remove('sessions', s.id)}>
+                                  {t('ui.discard')}
+                                </Button>
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
                   );
                 })}
-              </ul>
+              </div>
             </Card>
           )}
 
@@ -652,13 +626,25 @@ export default function Planner() {
                   weekdaySchedule: plannerPrefs?.weekdaySchedule,
                   preferredPeriod: plannerPrefs?.preferredPeriod,
                   preExamMarathon: plannerPrefs?.preExamMarathon,
+                  dateOverrides: plannerPrefs?.dateOverrides,
+                });
+                const dayBudget = computeDayBudget({
+                  dateKey: activeDayKey,
+                  weekday: selectedDate.getDay(),
+                  dayProfile: profile,
+                  classes,
+                  events,
+                  extraPenaltyMinutes: extraPenaltyByWeekday.get(selectedDate.getDay()) ?? 0,
+                  latestCheckInMood: weeklyCheckIns[0]?.mood,
                 });
                 return (
                   <DayColumn
                     date={selectedDate}
                     sessions={byDay.get(activeDayKey) ?? []}
-                    budget={profile.baseBudget}
+                    budget={dayBudget.budget}
+                    budgetReason={dayBudget.reducedReason}
                     isToday={activeDayKey === today}
+                    isPast={activeDayKey < today}
                     isStudyDay={profile.enabled}
                     isMarathonDay={profile.isMarathonDay}
                     weekDates={weekKeys}
@@ -694,14 +680,26 @@ export default function Planner() {
                   weekdaySchedule: plannerPrefs?.weekdaySchedule,
                   preferredPeriod: plannerPrefs?.preferredPeriod,
                   preExamMarathon: plannerPrefs?.preExamMarathon,
+                  dateOverrides: plannerPrefs?.dateOverrides,
+                });
+                const dayBudget = computeDayBudget({
+                  dateKey: key,
+                  weekday: d.getDay(),
+                  dayProfile: profile,
+                  classes,
+                  events,
+                  extraPenaltyMinutes: extraPenaltyByWeekday.get(d.getDay()) ?? 0,
+                  latestCheckInMood: weeklyCheckIns[0]?.mood,
                 });
                 return (
                   <DayColumn
                     key={key}
                     date={d}
                     sessions={byDay.get(key) ?? []}
-                    budget={profile.baseBudget}
+                    budget={dayBudget.budget}
+                    budgetReason={dayBudget.reducedReason}
                     isToday={key === today}
+                    isPast={key < today}
                     isStudyDay={profile.enabled}
                     isMarathonDay={profile.isMarathonDay}
                     weekDates={weekKeys}
@@ -782,8 +780,15 @@ export default function Planner() {
             },
           },
           {
+            id: 'prefs',
+            label: t('ui.preferences'),
+            hint: t('ui.preferencesHint'),
+            icon: <SlidersHorizontal size={16} />,
+            onSelect: () => setPrefsOpen(true),
+          },
+          {
             id: 'review-due',
-            label: dueReviewCount > 0 ? t('ui.reviewDueN', { count: dueReviewCount }) : t('ui.practiceReview'),
+            label: dueReviewCount > 0 ? t('ui.quickReviewN', { count: dueReviewCount }) : t('ui.quickReview'),
             hint: t('ui.practiceHint'),
             icon: <Brain size={16} />,
             onSelect: () => setReviewOpen(true),
@@ -821,27 +826,9 @@ export default function Planner() {
         </Suspense>
       )}
 
-      {builderOpen && (
+      {prefsOpen && (
         <Suspense fallback={null}>
-          <PlanBuilderModal
-            open
-            onClose={() => setBuilderOpen(false)}
-            courses={courses}
-            assessments={assessments}
-            classes={classes}
-            events={events}
-            materials={materials}
-            sessions={sessions}
-            settings={settings}
-            difficultCourseIds={academicProfile.difficultCourseIds}
-            weeklyCheckIns={weeklyCheckIns}
-            studyLogs={studyLogs}
-            extraActivities={academicProfile.extraActivities}
-            today={today}
-            overdueCount={overdue.length}
-            hasPendingGenerated={hasPendingGenerated}
-            onApply={applyCustomPlan}
-          />
+          <PlanPreferencesSheet open={prefsOpen} onClose={() => setPrefsOpen(false)} />
         </Suspense>
       )}
     </AnimatedPage>

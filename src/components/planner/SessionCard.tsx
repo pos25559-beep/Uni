@@ -6,6 +6,7 @@ import {
   FileText,
   Lock,
   LockOpen,
+  MoreHorizontal,
   Pencil,
   Play,
   Trash2,
@@ -24,7 +25,7 @@ import {
 import { useStore } from '../../store/useStore';
 import type { Assessment, Course, Material, StudySession, Topic } from '../../types';
 import { ActionSheet, Badge, Button, CourseChip } from '../ui';
-import { cx } from '../../lib/uiHelpers';
+import { cx, showToast } from '../../lib/uiHelpers';
 
 interface SessionCardProps {
   session: StudySession;
@@ -69,7 +70,9 @@ export default function SessionCard({
   const dfLocale = resolveDateFnsLocale(i18n.language);
   const patch = useStore((s) => s.patch);
   const remove = useStore((s) => s.remove);
+  const upsert = useStore((s) => s.upsert);
   const [moveOpen, setMoveOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const color = course ? courseColors[course.color].hex : undefined;
   const { title, badge, isPersonalized } = formatSessionDisplay(session, topic, i18n.language);
@@ -78,6 +81,18 @@ export default function SessionCard({
   const toggle = () => {
     if (session.done) patch('sessions', session.id, { done: false, actualMinutes: undefined });
     else patch('sessions', session.id, { done: true, actualMinutes: session.minutes });
+  };
+
+  const handleDeleteWithUndo = () => {
+    const snapshot = { ...session };
+    remove('sessions', session.id);
+    showToast(t('session.deletedUndo'), {
+      tone: 'neutral',
+      action: {
+        label: t('replan.undo'),
+        onPress: () => upsert('sessions', snapshot),
+      },
+    });
   };
 
   const targetDays = (() => {
@@ -193,52 +208,110 @@ export default function SessionCard({
             </Button>
           )}
           <div className="ml-auto flex items-center">
-            {!session.done && onToggleLock && (
+            <div className="hidden items-center md:flex">
+              {!session.done && onToggleLock && (
+                <button
+                  type="button"
+                  onClick={() => onToggleLock(session)}
+                  aria-label={session.locked ? t('session.unlock') : t('session.lock')}
+                  title={session.locked ? t('session.unlock') : t('session.lock')}
+                  className={cx(
+                    'grid size-11 place-items-center rounded-full transition',
+                    session.locked
+                      ? 'text-accent hover:bg-accent-soft'
+                      : 'text-muted hover:bg-surface hover:text-fg',
+                  )}
+                >
+                  {session.locked ? <Lock size={15} /> : <LockOpen size={15} />}
+                </button>
+              )}
+              {!session.done && onQuickMove && (
+                <button
+                  type="button"
+                  onClick={() => setMoveOpen(true)}
+                  aria-label={t('session.moveDay')}
+                  title={t('session.moveDay')}
+                  className="grid size-11 place-items-center rounded-full text-muted hover:bg-surface hover:text-fg"
+                >
+                  <CalendarArrowUp size={15} />
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() => onToggleLock(session)}
-                aria-label={session.locked ? t('session.unlock') : t('session.lock')}
-                title={session.locked ? t('session.unlock') : t('session.lock')}
-                className={cx(
-                  'grid size-11 place-items-center rounded-full transition',
-                  session.locked
-                    ? 'text-accent hover:bg-accent-soft'
-                    : 'text-muted hover:bg-surface hover:text-fg',
-                )}
-              >
-                {session.locked ? <Lock size={15} /> : <LockOpen size={15} />}
-              </button>
-            )}
-            {!session.done && onQuickMove && (
-              <button
-                type="button"
-                onClick={() => setMoveOpen(true)}
-                aria-label={t('session.moveDay')}
-                title={t('session.moveDay')}
+                onClick={() => onEdit(session)}
+                aria-label={t('session.edit')}
                 className="grid size-11 place-items-center rounded-full text-muted hover:bg-surface hover:text-fg"
               >
-                <CalendarArrowUp size={15} />
+                <Pencil size={15} />
               </button>
-            )}
-            <button
-              type="button"
-              onClick={() => onEdit(session)}
-              aria-label={t('session.edit')}
-              className="grid size-11 place-items-center rounded-full text-muted hover:bg-surface hover:text-fg"
-            >
-              <Pencil size={15} />
-            </button>
-            <button
-              type="button"
-              onClick={() => remove('sessions', session.id)}
-              aria-label={t('session.delete')}
-              className="-mr-1.5 grid size-11 place-items-center rounded-full text-muted hover:bg-danger/12 hover:text-danger"
-            >
-              <Trash2 size={15} />
-            </button>
+              <button
+                type="button"
+                onClick={handleDeleteWithUndo}
+                aria-label={t('session.delete')}
+                className="-mr-1.5 grid size-11 place-items-center rounded-full text-muted hover:bg-danger/12 hover:text-danger"
+              >
+                <Trash2 size={15} />
+              </button>
+            </div>
+
+            <div className="flex items-center md:hidden">
+              <button
+                type="button"
+                onClick={() => onEdit(session)}
+                aria-label={t('session.edit')}
+                className="grid size-11 place-items-center rounded-full text-muted hover:bg-surface hover:text-fg"
+              >
+                <Pencil size={15} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(true)}
+                aria-label={t('session.actionsBtn')}
+                className="-mr-1.5 grid size-11 place-items-center rounded-full text-muted hover:bg-surface hover:text-fg"
+              >
+                <MoreHorizontal size={16} />
+              </button>
+            </div>
           </div>
         </div>
       </article>
+
+      <ActionSheet
+        open={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+        title={title}
+        actions={[
+          ...(!session.done && onQuickMove
+            ? [
+                {
+                  id: 'move',
+                  label: t('session.moveDay'),
+                  icon: <CalendarArrowUp size={16} />,
+                  danger: false,
+                  onSelect: () => setMoveOpen(true),
+                },
+              ]
+            : []),
+          ...(!session.done && onToggleLock
+            ? [
+                {
+                  id: 'lock',
+                  label: session.locked ? t('session.unlock') : t('session.lockShort'),
+                  icon: session.locked ? <LockOpen size={16} /> : <Lock size={16} />,
+                  danger: false,
+                  onSelect: () => onToggleLock(session),
+                },
+              ]
+            : []),
+          {
+            id: 'delete',
+            label: t('session.deleteShort'),
+            danger: true,
+            icon: <Trash2 size={16} />,
+            onSelect: handleDeleteWithUndo,
+          },
+        ]}
+      />
 
       {onQuickMove && (
         <ActionSheet

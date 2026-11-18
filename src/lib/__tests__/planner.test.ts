@@ -2,7 +2,13 @@ import { addDays, format } from 'date-fns';
 import { describe, expect, it } from 'vitest';
 import type { Assessment, ClassSlot, Course, Settings, StudySession } from '../../types';
 import { useStore } from '../../store/useStore';
-import { analyzeTestMode, generatePlan, rescheduleOverdueSessions } from '../planner';
+import {
+  analyzeTestMode,
+  computeDayBudget,
+  generatePlan,
+  rescheduleOverdueSessions,
+  resolveDayPlanProfile,
+} from '../planner';
 import { pickActiveInAppNudge } from '../uniNotifications';
 import { formatSessionDisplay } from '../selectors';
 
@@ -68,6 +74,23 @@ describe('planner.analyzeTestMode', () => {
       },
     ];
     expect(analyzeTestMode([baseCourse], assessments, '2026-11-15').mode).toBe('normal');
+  });
+
+  it('ignora cadeiras em pausa no banner do Modo Teste', () => {
+    const assessments: Assessment[] = [
+      {
+        id: 'a1',
+        courseId: 'c1',
+        kind: 'teste',
+        title: '1.º Teste',
+        date: '2026-11-18T10:00:00',
+        weight: 50,
+        topicIds: ['t1'],
+        source: 'local',
+      },
+    ];
+    expect(analyzeTestMode([baseCourse], assessments, '2026-11-15', ['c1']).mode).toBe('normal');
+    expect(analyzeTestMode([baseCourse], assessments, '2026-11-15', ['c1']).urgentAssessments).toEqual([]);
   });
 });
 
@@ -188,6 +211,49 @@ describe('planner.generatePlan', () => {
         expect(overlaps).toBe(false);
       }
     }
+  });
+
+  it('computeDayBudget devolve o mesmo orçamento reduzido que o motor usa num dia com muitas aulas', () => {
+    const classes: ClassSlot[] = [
+      {
+        id: 'cl-heavy',
+        courseId: 'c1',
+        type: 'T',
+        weekday: 1, // segunda 2026-11-16
+        start: '09:00',
+        end: '13:30', // 270 min >= 240 min -> reduz 25% e assinala heavy_classes
+        source: 'local',
+      },
+    ];
+    const profile = resolveDayPlanProfile({
+      dateKey: '2026-11-16',
+      weekday: 1,
+      settings: { ...baseSettings, dailyStudyMinutes: 200 },
+      assessments: [],
+    });
+    const budgetResult = computeDayBudget({
+      dateKey: '2026-11-16',
+      weekday: 1,
+      dayProfile: profile,
+      classes,
+      events: [],
+    });
+    expect(budgetResult.budget).toBe(150);
+    expect(budgetResult.reducedReason).toBe('heavy_classes');
+
+    const sessions = generatePlan({
+      courses: [baseCourse],
+      assessments: [],
+      classes,
+      events: [],
+      settings: { ...baseSettings, dailyStudyMinutes: 200 },
+      from: '2026-11-16',
+      days: 1,
+      preferredPeriod: 'afternoon',
+      blockMinutes: 50,
+    });
+    const mondayPlanned = sessions.filter((s) => s.date === '2026-11-16').reduce((sum, s) => sum + s.minutes, 0);
+    expect(mondayPlanned).toBeLessThanOrEqual(budgetResult.budget);
   });
 
   it('aplica foco personalizado do Diário do Uni (ex.: Refazer testes antigos) nos blocos do teste', () => {

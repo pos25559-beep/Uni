@@ -197,8 +197,8 @@ export function useDashboardAgenda({
   );
 
   const testMode = useMemo(
-    () => analyzeTestMode(courses, assessments, today),
-    [courses, assessments, today],
+    () => analyzeTestMode(courses, assessments, today, settings.plannerPrefs?.pausedCourseIds),
+    [courses, assessments, today, settings.plannerPrefs?.pausedCourseIds],
   );
 
   return {

@@ -1,17 +1,19 @@
 import { differenceInCalendarDays } from 'date-fns';
-import type { Assessment, Course, StudySession, TestModeStatus } from '../../types';
+import type { Assessment, Course, ID, StudySession, TestModeStatus } from '../../types';
 import { sessionMinutes } from '../selectors';
 import { parseDay } from './slots';
 import { TEST_MODE_DAYS, type CourseMinutes } from './types';
 
-/** Analisa se o estudante está em Modo Teste (< 10 dias para 1 ou 2+ avaliações). */
+/** Analisa se o estudante está em Modo Teste (< 10 dias para 1 ou 2+ avaliações). Cadeiras em pausa são ignoradas. */
 export function analyzeTestMode(
   courses: Course[],
   assessments: Assessment[],
   from: string,
+  pausedCourseIds: ID[] = [],
 ): TestModeStatus {
   const refDay = parseDay(from);
-  const courseById = new Map(courses.map((c) => [c.id, c]));
+  const pausedSet = new Set(pausedCourseIds);
+  const courseById = new Map(courses.filter((c) => !pausedSet.has(c.id)).map((c) => [c.id, c]));
 
   const urgentAssessments = assessments
     .filter((a) => a.grade === undefined)

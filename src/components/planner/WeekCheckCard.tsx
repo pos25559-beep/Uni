@@ -11,7 +11,7 @@ import { fmtMinutes } from '../../lib/selectors';
 import { cx } from '../../lib/uiHelpers';
 import { useStore } from '../../store/useStore';
 import type { Course, Topic } from '../../types';
-import { Badge, Button, Switch, Textarea } from '../ui';
+import { Button, Switch, Textarea } from '../ui';
 
 function formatShortDate(isoDate: string, locale: ReturnType<typeof resolveDateFnsLocale>): string {
   try {
@@ -188,17 +188,12 @@ export default function WeekCheckCard() {
     const items = intent.items;
     return (
       <section className="space-y-3 rounded-2xl border border-line bg-surface p-4 shadow-card">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <h2 className="flex items-center gap-1.5 font-display text-sm font-bold text-fg">
-              <Sparkles size={15} className="text-accent" aria-hidden="true" />
-              {t('weekCheck.understood')}
-            </h2>
-            <p className="mt-0.5 text-xs text-muted">{t('weekCheck.understoodHint')}</p>
-          </div>
-          {!intent.usedAi && (
-            <Badge tone="neutral">{simpleReason === 'ai_failed' ? t('weekCheck.read') : t('weekCheck.open')}</Badge>
-          )}
+        <div>
+          <h2 className="flex items-center gap-1.5 font-display text-sm font-bold text-fg">
+            <Sparkles size={15} className="text-accent" aria-hidden="true" />
+            {t('weekCheck.understood')}
+          </h2>
+          <p className="mt-0.5 text-xs text-muted">{t('weekCheck.understoodHint')}</p>
         </div>
 
         {simpleReason && (
