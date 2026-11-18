@@ -1,11 +1,14 @@
 import { useTranslation } from 'react-i18next';
-import { X } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
+import { Info, X } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useEffect, useId, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { UNIPEDIA_SPRING } from '../../lib/motionTokens';
 import { hapticTap } from '../../lib/nativeBridge';
-import { cx, getToastQueue, subscribeToasts, type ToastItem } from '../../lib/uiHelpers';
+import { cx, dismissToast, getToastQueue, subscribeToasts, type ToastItem } from '../../lib/uiHelpers';
 import { useSheetSwipeDismiss } from '../../lib/useSheetSwipeDismiss';
+import { UniBuddy } from '../brand/UnipediaMarks';
+import LottieAccent from '../motion/LottieAccent';
 import { Button } from './Button';
 
 export function Modal({
@@ -217,6 +220,8 @@ export function ActionSheet({
 }
 
 export function ToastViewport() {
+  const { t } = useTranslation('common');
+  const reducedMotion = useReducedMotion();
   const [items, setItems] = useState<ToastItem[]>(() => getToastQueue());
 
   useEffect(() => subscribeToasts(setItems), []);
@@ -226,27 +231,51 @@ export function ToastViewport() {
       aria-live="polite"
       className="pointer-events-none fixed inset-x-0 top-[max(0.75rem,env(safe-area-inset-top))] z-[70] flex flex-col items-center gap-2 px-4"
     >
-      <AnimatePresence>
-        {items.map((t) => (
-          <motion.div
-            key={t.id}
-            initial={{ opacity: 0, y: -12, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.96 }}
-            transition={{ type: 'spring', stiffness: 380, damping: 28 }}
-            className={cx(
-              'pointer-events-auto flex items-center gap-2 rounded-full border px-4 py-2.5 text-xs font-semibold shadow-float',
-              t.tone === 'danger'
-                ? 'border-coral/40 bg-coral-soft text-coral'
-                : t.tone === 'ok'
-                  ? 'border-accent/35 bg-ink-cta text-ink-cta-fg'
-                  : 'border-line bg-surface text-fg',
-            )}
-          >
-            {t.message}
-          </motion.div>
-        ))}
+      <AnimatePresence mode="popLayout">
+        {items.map((item) => {
+          const isDanger = item.tone === 'danger';
+          const isOk = item.tone === 'ok';
+          const isCelebrate = isOk && (item.effect === 'celebrate' || item.effect === 'confetti');
+
+          return (
+            <motion.button
+              key={item.id}
+              layout
+              type="button"
+              onClick={() => dismissToast(item.id)}
+              aria-label={`${item.message} — ${t('actions.close')}`}
+              initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -14, scale: 0.94 }}
+              animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+              exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.94 }}
+              transition={UNIPEDIA_SPRING}
+              className={cx(
+                'pointer-events-auto flex min-h-11 max-w-sm items-center gap-2 rounded-full border px-3.5 py-2 text-left text-xs font-semibold shadow-float transition active:scale-[0.98]',
+                isDanger
+                  ? 'border-coral/40 bg-coral-soft text-coral-ink'
+                  : isOk
+                    ? 'border-accent/35 bg-ink-cta text-ink-cta-fg'
+                    : 'border-line bg-surface text-fg',
+              )}
+            >
+              {isDanger ? (
+                <span className="flex shrink-0 items-center gap-1" aria-hidden="true">
+                  <UniBuddy mood="shy" size={22} interactive={false} />
+                  <LottieAccent kind="alertPulse" loop={false} className="size-4" />
+                </span>
+              ) : isOk ? (
+                <span className="flex shrink-0 items-center gap-1" aria-hidden="true">
+                  {isCelebrate && <UniBuddy mood="celebrate" size={24} interactive={false} />}
+                  <LottieAccent kind="checkBurst" loop={false} className="size-5" />
+                </span>
+              ) : (
+                <Info size={15} className="shrink-0 text-muted" aria-hidden="true" />
+              )}
+              <span className="min-w-0 leading-snug">{item.message}</span>
+            </motion.button>
+          );
+        })}
       </AnimatePresence>
     </div>
   );
 }
+

@@ -15,6 +15,7 @@ import { colorNames, kindLabel, weekdayLong } from '../../lib/colors';
 import { newId, useStore } from '../../store/useStore';
 import type { Assessment, CalendarEvent, ClassSlot, Course, CourseColor } from '../../types';
 import { Button, Modal, Select, Textarea } from '../ui';
+import LoadingUnis from '../brand/LoadingUnis';
 import { cx } from '../../lib/uiHelpers';
 import { errorMessage } from './helpers';
 
@@ -492,6 +493,16 @@ export default function ClipImportModal({ onClose }: { onClose: () => void }) {
                 <FileText size={16} />
                 {t('importSchedule.analyse')}
               </Button>
+            </div>
+          )}
+
+          {reading && (
+            <div className="rounded-2xl border border-line bg-surface-2/60 px-3 py-1.5">
+              <LoadingUnis
+                variant="courses"
+                compact
+                label={tab === 'ics' ? t('importSchedule.readingFile') : t('importSchedule.readingPage')}
+              />
             </div>
           )}
 

@@ -10,8 +10,9 @@ import {
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Course } from '../../types';
-import { Badge, Button, EmptyState, Input, Modal } from '../ui';
-import { cx } from '../../lib/uiHelpers';
+import LoadingUnis from '../brand/LoadingUnis';
+import { Badge, Button, EmptyState, Input, Modal, SkeletonList } from '../ui';
+import { cx, showToast } from '../../lib/uiHelpers';
 import { useAcademicEmails } from '../../hooks/useGoogleData';
 import type { AcademicEmail } from '../../services/googleService';
 import { matchesCourse } from '../../lib/courseAliases';
@@ -90,6 +91,7 @@ export default function CourseEmailsTab({ course }: Props) {
       priority: 2,
     });
     setTaskAdded(true);
+    showToast(t('emails.taskCreated'), 'ok');
     setTimeout(() => setTaskAdded(false), 2500);
   };
 
@@ -179,7 +181,14 @@ export default function CourseEmailsTab({ course }: Props) {
             </Button>
           }
         />
-      ) : needsPermission ? null : courseEmails.length === 0 ? (
+      ) : needsPermission ? null : loading && emails.length === 0 ? (
+        <div className="overflow-hidden rounded-2xl border border-line bg-surface">
+          <div className="border-b border-line px-4 pt-3">
+            <LoadingUnis variant="courses" compact label={t('toast.emailsLoading')} />
+          </div>
+          <SkeletonList rows={3} />
+        </div>
+      ) : courseEmails.length === 0 ? (
         <EmptyState
           icon={<Mail size={24} />}
           title={showAllFaculty ? t('emails.emptyAll') : t('emails.emptyCourse')}

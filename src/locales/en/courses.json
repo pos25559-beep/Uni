@@ -501,7 +501,10 @@
       "sharepointFolderBody": "This folder belongs to an institutional repository of exams and exercises. Due to Microsoft security policies, it opens directly with your academic sign-in.",
       "openSharepointFolder": "Open Repository in SharePoint",
       "externalBody": "This material is available directly via its official link.",
-      "openMaterial": "Open Material"
+      "openMaterial": "Open Material",
+      "loadFailed": "Could not open this document.",
+      "loadFailedHint": "Check if the file is still on this device or try again.",
+      "retry": "Try again"
     }
   },
   "assessForm": {
@@ -618,5 +621,41 @@
     "close": "Close",
     "nextTopic": "Next topic",
     "finish": "Finish review"
+  },
+  "toast": {
+    "courseCreated": "Course “{{name}}” created!",
+    "courseUpdated": "Course “{{name}}” updated.",
+    "courseDeleted": "Course “{{name}}” deleted.",
+    "rulesSaved": "Course rules saved!",
+    "rulesExtracted": "Rules extracted automatically!",
+    "rulesNoMatch": "No automatic criteria detected in the text. You can fill in the fields below.",
+    "assessCreated": "Assessment “{{title}}” added!",
+    "assessUpdated": "Assessment “{{title}}” updated.",
+    "assessDeleted": "Assessment “{{title}}” deleted.",
+    "gradeSaved": "Grade saved!",
+    "gradeCleared": "Grade removed.",
+    "topicAdded": "Topic “{{title}}” added.",
+    "topicUpdated": "Topic updated.",
+    "topicStudied": "Nice! Study logged for this topic.",
+    "topicDeleted": "Topic “{{title}}” deleted.",
+    "taskAdded": "Task “{{title}}” added.",
+    "taskDone": "Task completed!",
+    "taskDeleted": "Task “{{title}}” deleted.",
+    "classSaved": "Class saved to schedule.",
+    "classDeleted": "Class deleted from schedule.",
+    "linkSaved": "Link “{{title}}” saved!",
+    "fileUploaded": "File “{{title}}” saved to library!",
+    "filesImported_one": "{{count}} file imported successfully!",
+    "filesImported_other": "{{count}} files imported successfully!",
+    "materialRemoved": "“{{title}}” removed from materials.",
+    "materialPinned": "Material pinned to top.",
+    "materialUnpinned": "Material unpinned.",
+    "emailsLoading": "The Unis are checking instructor notices…",
+    "uniLoading": "The Unis are preparing tips for this course…"
+  },
+  "loadingUnis": {
+    "courses": "The Unis are organizing your courses…",
+    "grades": "The Unis are reviewing your grades…",
+    "materials": "The Unis are gathering your materials…"
   }
 }

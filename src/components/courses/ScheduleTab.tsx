@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { weekdayLong } from '../../lib/colors';
 import { useStore } from '../../store/useStore';
 import type { ClassSlot, Course } from '../../types';
+import { showToast } from '../../lib/uiHelpers';
 import { Badge, Button, Card, EmptyState } from '../ui';
 import ClassFormModal from './ClassFormModal';
 import { DeleteButton } from './ConfirmModal';
@@ -52,7 +53,10 @@ export default function ScheduleTab({ course }: Props) {
                     key={slot.id}
                     slot={slot}
                     onEdit={() => setEditing(slot)}
-                    onDelete={() => remove('classes', slot.id)}
+                    onDelete={() => {
+                      remove('classes', slot.id);
+                      showToast(t('toast.classDeleted'), 'neutral');
+                    }}
                   />
                 ))}
               </ul>

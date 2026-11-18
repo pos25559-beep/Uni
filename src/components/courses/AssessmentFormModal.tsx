@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { kindLabel } from '../../lib/colors';
 import { newId, useStore } from '../../store/useStore';
 import type { Assessment, AssessmentKind, Course } from '../../types';
+import { showToast } from '../../lib/uiHelpers';
 import { Button, DateTimeField, Field, Input, Modal, Select, Textarea } from '../ui';
 import { fromDatetimeLocal, toDatetimeLocal } from './helpers';
 
@@ -56,6 +57,10 @@ export default function AssessmentFormModal({ course, assessment, onClose }: Pro
       source: assessment?.source ?? 'local',
     };
     upsert('assessments', item);
+    showToast(
+      t(assessment ? 'toast.assessUpdated' : 'toast.assessCreated', { title: item.title }),
+      { tone: 'ok', effect: 'celebrate' },
+    );
     onClose();
   };
 

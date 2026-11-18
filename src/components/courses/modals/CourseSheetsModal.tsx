@@ -10,6 +10,7 @@ import { cx, showToast } from '../../../lib/uiHelpers';
 import { newId, useStore } from '../../../store/useStore';
 import type { Course, Material } from '../../../types';
 import { Markdown } from '../../assistant/Markdown';
+import LoadingUnis from '../../brand/LoadingUnis';
 import { Button, Field, Modal, Textarea } from '../../ui';
 
 export function CourseSheetsModal({
@@ -220,6 +221,12 @@ export function CourseSheetsModal({
             {busy ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
             {busy ? t('memory.extracting') : t('memory.generate')}
           </Button>
+
+          {busy && (
+            <div className="rounded-2xl border border-line bg-surface-2/60 px-3 py-1.5">
+              <LoadingUnis variant="grades" compact label={t('memory.extracting')} />
+            </div>
+          )}
         </div>
 
         {sheets.length > 0 && (

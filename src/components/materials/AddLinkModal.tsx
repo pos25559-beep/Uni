@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Badge, Button, Field, Input, Modal, Select } from '../ui';
+import { showToast } from '../../lib/uiHelpers';
 import { newId, useStore } from '../../store/useStore';
 import { providerLabel } from '../../lib/colors';
 import { detectProvider, parseWebUrl } from './meta';
@@ -39,6 +40,7 @@ export default function AddLinkModal({ onClose }: { onClose: () => void }) {
       provider,
       pinned: false,
     });
+    showToast(t('toast.linkSaved', { title: title.trim() }), 'ok');
     onClose();
   };
 

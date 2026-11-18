@@ -9,7 +9,7 @@ import { newId, useStore } from '../../store/useStore';
 import type { Course, Topic, TopicStatus } from '../../types';
 import ActiveReviewModal from '../practice/ActiveReviewModal';
 import { Button, EmptyState, Input, Select } from '../ui';
-import { cx } from '../../lib/uiHelpers';
+import { cx, showToast } from '../../lib/uiHelpers';
 import { DeleteButton } from './ConfirmModal';
 import { lastStudiedLabel, topicStatuses } from './helpers';
 
@@ -33,10 +33,13 @@ export default function TopicsTab({ course }: Props) {
     const topic: Topic = { id: newId(), title, status: 'todo', confidence: 1 };
     patch('courses', course.id, { topics: [...topics, topic] });
     setDraft('');
+    showToast(tc('toast.topicAdded', { title }), 'ok');
   };
 
-  const removeTopic = (topicId: string) =>
+  const removeTopic = (topicId: string, title: string) => {
     patch('courses', course.id, { topics: topics.filter((t) => t.id !== topicId) });
+    showToast(tc('toast.topicDeleted', { title }), 'neutral');
+  };
 
   const onAddKey = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.nativeEvent.isComposing || e.keyCode === 229) return;
@@ -77,7 +80,10 @@ export default function TopicsTab({ course }: Props) {
                   onBlur={(e) => {
                     const v = e.target.value.trim();
                     if (!v) { e.target.value = t.title; return; }
-                    if (v !== t.title) updateTopic(course.id, t.id, { title: v });
+                    if (v !== t.title) {
+                      updateTopic(course.id, t.id, { title: v });
+                      showToast(tc('toast.topicUpdated'), 'ok');
+                    }
                   }}
                   onKeyDown={(e) => {
                     if (e.nativeEvent.isComposing || e.keyCode === 229) return;
@@ -162,13 +168,14 @@ export default function TopicsTab({ course }: Props) {
                           ...srs,
                           status: t.status === 'todo' ? 'learning' : srs.status,
                         });
+                        showToast(tc('toast.topicStudied'), { tone: 'ok', effect: 'celebrate' });
                       }}
                     >
                       <CheckCircle2 size={14} /> {tc('topics.studied')}
                     </Button>
                     <DeleteButton
                       message={tc('topics.delete', { title: t.title })}
-                      onConfirm={() => removeTopic(t.id)}
+                      onConfirm={() => removeTopic(t.id, t.title)}
                     />
                   </div>
                 </div>

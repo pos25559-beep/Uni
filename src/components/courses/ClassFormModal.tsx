@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { weekdayLong } from '../../lib/colors';
 import { newId, useStore } from '../../store/useStore';
 import type { ClassSlot, ClassType, Course } from '../../types';
+import { showToast } from '../../lib/uiHelpers';
 import { Button, Field, Input, Modal, Select, TimeField } from '../ui';
 import { weekOrder } from './helpers';
 
@@ -42,6 +43,7 @@ export default function ClassFormModal({ course, initialSlot, onClose }: Props) 
       source: initialSlot?.source ?? 'local',
     };
     upsert('classes', item);
+    showToast(t('toast.classSaved'), 'ok');
     onClose();
   };
 
@@ -58,6 +60,7 @@ export default function ClassFormModal({ course, initialSlot, onClose }: Props) 
               className="mr-auto"
               onClick={() => {
                 remove('classes', initialSlot.id);
+                showToast(t('toast.classDeleted'), 'neutral');
                 onClose();
               }}
             >

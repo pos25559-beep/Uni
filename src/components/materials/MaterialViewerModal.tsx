@@ -1,9 +1,11 @@
-import { ExternalLink, HardDrive, FolderOpen, FileText, X } from 'lucide-react';
+import { AlertTriangle, ExternalLink, HardDrive, FolderOpen, FileText, RotateCcw, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Material } from '../../types';
-import { Badge, Button } from '../ui';
+import LoadingUnis from '../brand/LoadingUnis';
+import { Badge, Button, Skeleton } from '../ui';
 import { providerLabel } from '../../lib/colors';
+import { toFriendlyError } from '../../lib/errorMessages';
 import { getFileUrl } from '../../lib/fileStorage';
 import { googleService } from '../../services/googleService';
 
@@ -16,19 +18,33 @@ export default function MaterialViewerModal({ material, onClose }: Props) {
   const { t } = useTranslation('courses');
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(() => material.provider === 'upload');
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [retryTick, setRetryTick] = useState(0);
 
   useEffect(() => {
     if (material.provider !== 'upload') return;
     let cancelled = false;
-    void getFileUrl(material.id).then((url) => {
-      if (cancelled) return;
-      setBlobUrl(url);
-      setLoading(false);
-    });
+    void getFileUrl(material.id)
+      .then((url) => {
+        if (cancelled) return;
+        if (!url) {
+          setBlobUrl(null);
+          setLoadError(t('materialsModals.viewer.loadFailed'));
+        } else {
+          setBlobUrl(url);
+        }
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setBlobUrl(null);
+        setLoadError(toFriendlyError(err, t('materialsModals.viewer.loadFailed')));
+        setLoading(false);
+      });
     return () => {
       cancelled = true;
     };
-  }, [material]);
+  }, [material, retryTick, t]);
 
   // Extrai o ID e tipo se for Google Drive
   const rawUrl = material.url || '';
@@ -78,7 +94,7 @@ export default function MaterialViewerModal({ material, onClose }: Props) {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {material.url && (
+            {material.url && material.provider !== 'upload' && (
               <a
                 href={material.url}
                 target="_blank"
@@ -98,8 +114,33 @@ export default function MaterialViewerModal({ material, onClose }: Props) {
         {/* Corpo do Visualizador Embutido */}
         <div className="flex-1 relative bg-surface-2/30 overflow-hidden">
           {loading ? (
-            <div className="flex h-full items-center justify-center text-xs text-muted">
-              {t('materialsModals.viewer.loading')}
+            <div className="flex h-full flex-col items-center justify-center gap-4 p-6">
+              <LoadingUnis variant="materials" label={t('materialsModals.viewer.loading')} />
+              <div className="w-full max-w-md space-y-2.5">
+                <Skeleton className="h-44 w-full rounded-2xl" />
+                <Skeleton className="h-3 w-2/3 rounded-full" />
+              </div>
+            </div>
+          ) : loadError ? (
+            <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+              <div className="grid size-12 place-items-center rounded-2xl bg-coral-soft text-coral-ink">
+                <AlertTriangle size={22} />
+              </div>
+              <div className="max-w-sm space-y-1">
+                <h4 className="text-sm font-semibold text-fg">{loadError}</h4>
+                <p className="text-xs text-muted">{t('materialsModals.viewer.loadFailedHint')}</p>
+              </div>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  setLoading(true);
+                  setLoadError(null);
+                  setRetryTick((n) => n + 1);
+                }}
+              >
+                <RotateCcw size={14} /> {t('materialsModals.viewer.retry')}
+              </Button>
             </div>
           ) : embedUrl ? (
             <iframe

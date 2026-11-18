@@ -29,11 +29,13 @@ import {
   retrieveRelevantSheets,
   stageFromMastery,
 } from '../../lib/uniMastery';
+import { toFriendlyError } from '../../lib/errorMessages';
 import { showToast } from '../../lib/uiHelpers';
 import { useStore } from '../../store/useStore';
 import type { AppLanguage, Course, UniPetId, UniSkinId } from '../../types';
+import LoadingUnis from '../brand/LoadingUnis';
 import { UniBuddy, UniPetBuddy } from '../brand/UnipediaMarks';
-import { Badge, Button, Card, Progress } from '../ui';
+import { Badge, Button, Card, Progress, Skeleton } from '../ui';
 import {
   AdoptUniModal,
   CourseSheetsModal,
@@ -43,7 +45,7 @@ import {
 } from './CourseUniModals';
 
 export default function CourseUniCard({ course }: { course: Course }) {
-  const { t, i18n } = useTranslation('uni');
+  const { t, i18n } = useTranslation(['uni', 'courses']);
   const appLang: AppLanguage = normalizeAppLanguage(i18n.language);
   const navigate = useNavigate();
   const courses = useStore((s) => s.courses);
@@ -196,7 +198,18 @@ export default function CourseUniCard({ course }: { course: Course }) {
     );
   };
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <Card className="space-y-3">
+        <LoadingUnis
+          variant="courses"
+          compact
+          label={t('courses:toast.uniLoading')}
+        />
+        <Skeleton className="h-2.5 w-full rounded-full" />
+      </Card>
+    );
+  }
 
   if (!agent) {
     return (
@@ -274,7 +287,7 @@ export default function CourseUniCard({ course }: { course: Course }) {
         }),
       );
     } catch (err) {
-      showToast(err instanceof Error ? err.message : t('card.expeditionFail'), 'danger');
+      showToast(toFriendlyError(err, t('card.expeditionFail')), 'danger');
     } finally {
       setPreparingExpedition(false);
     }
@@ -412,6 +425,12 @@ export default function CourseUniCard({ course }: { course: Course }) {
             </Button>
           )}
         </div>
+
+        {preparingExpedition && (
+          <div className="rounded-2xl border border-line bg-surface-2/60 px-3 py-1.5">
+            <LoadingUnis variant="courses" compact label={t('card.preparingExpedition')} />
+          </div>
+        )}
       </Card>
 
       {adoptOpen && (

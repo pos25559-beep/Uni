@@ -520,4 +520,5 @@ export { Button } from './ui/Button';
 export { Modal, ActionSheet, ToastViewport } from './ui/Dialogs';
 export { Field, Input, Select, PillSelect, Textarea } from './ui/FormControls';
 export type { PillSelectOption } from './ui/FormControls';
+export { Skeleton, SkeletonList } from './ui/Skeleton';
 export { DateField, DateTimeField, TimeField } from './DateTimeFields';

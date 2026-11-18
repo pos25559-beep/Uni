@@ -22,6 +22,7 @@ import {
 import { readNormalizedScreenshot } from '../../lib/imageUpload';
 import { newId, useStore } from '../../store/useStore';
 import type { Assessment, ClassSlot, Course, CourseColor } from '../../types';
+import LoadingUnis from '../brand/LoadingUnis';
 import { StickerBadge } from '../motion/Primitives';
 import { Badge, Button, Modal, Select } from '../ui';
 import { cx } from '../../lib/uiHelpers';
@@ -603,13 +604,18 @@ export default function SmartScheduleImportModal({
                 }}
               />
             </label>
-            {busy && pickedNames.length > 0 && (
-              <p className="flex items-center gap-2 rounded-xl bg-white/75 px-3 py-2 text-xs font-medium text-[#141312] dark:bg-black/30 dark:text-[#FAF6EC]">
-                <Loader2 size={13} className="shrink-0 animate-spin text-accent" />
-                <span className="truncate">
-                  {t('smartImport.analysing', { names: pickedNames.join(', ') })}
-                </span>
-              </p>
+            {busy && (
+              <div className="rounded-xl bg-white/80 px-3 py-2 text-xs font-medium text-[#141312] dark:bg-black/30 dark:text-[#FAF6EC]">
+                <LoadingUnis
+                  variant={focus === 'assessments' ? 'grades' : 'courses'}
+                  compact
+                  label={
+                    pickedNames.length > 0
+                      ? t('smartImport.analysing', { names: pickedNames.join(', ') })
+                      : t('smartImport.reading')
+                  }
+                />
+              </div>
             )}
           </div>
         ) : (
@@ -643,6 +649,15 @@ export default function SmartScheduleImportModal({
                 </Button>
               )}
             </div>
+            {busy && (
+              <div className="rounded-xl border border-line bg-surface px-3 py-1.5">
+                <LoadingUnis
+                  variant={focus === 'assessments' ? 'grades' : 'courses'}
+                  compact
+                  label={t('smartImport.syncing')}
+                />
+              </div>
+            )}
           </div>
         )}
 

@@ -35,6 +35,7 @@ import {
   readStoredTutorSessionState,
   useAssistantChat,
 } from '../components/assistant/useAssistantChat';
+import UniDuoStage from '../components/brand/UniDuoStage';
 import { UniBuddy, UniPetBuddy } from '../components/brand/UnipediaMarks';
 import { UniNotebookMemoryModal } from '../components/courses/CourseUniModals';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
@@ -43,6 +44,7 @@ import { hasCustomGeminiKey } from '../integrations/gemini';
 import { recordWrongAnswerFeedback } from '../lib/aiQuota';
 import { normalizeAppLanguage } from '../lib/grading';
 import { courseColors } from '../lib/colors';
+import { toFriendlyError } from '../lib/errorMessages';
 import { TUTOR_SUBJECTS, subjectLabel } from '../lib/geminiConversations';
 import { commitScheduleSyncToStore } from '../lib/scheduleSync';
 import { cx, showToast } from '../lib/uiHelpers';
@@ -836,12 +838,8 @@ export default function Assistant() {
         )}
 
         {loading && !streamingText && (
-          <div
-            role="status"
-            className="rise flex w-fit items-center gap-2.5 rounded-3xl rounded-bl-md bg-surface px-4 py-2.5 text-sm text-muted shadow-card"
-          >
-            <UniBuddy mood="thinking" accessory={uniAccessory} size={30} interactive={false} />
-            <span>{t('page.thinkingNow')}</span>
+          <div className="rise w-fit rounded-3xl rounded-bl-md bg-surface px-4 py-2 shadow-card">
+            <UniDuoStage context="thinking" compact label={t('page.thinkingNow')} />
           </div>
         )}
 
@@ -930,7 +928,7 @@ export default function Assistant() {
                   setDriveAuthNeeded(false);
                   showToast(t('page.driveOk'));
                 } catch (e) {
-                  showToast((e as Error)?.message || t('page.driveFail'));
+                  showToast(toFriendlyError(e, t('page.driveFail')), 'danger');
                 } finally {
                   setAuthorizingDrive(false);
                 }

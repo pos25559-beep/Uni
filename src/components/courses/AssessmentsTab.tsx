@@ -6,6 +6,7 @@ import type { KeyboardEvent } from 'react';
 import { kindLabel } from '../../lib/colors';
 import { GRADE_SCALES } from '../../lib/grading';
 import { daysUntil, fmtGrade, gradeSummary, parsePtGrade } from '../../lib/selectors';
+import { showToast } from '../../lib/uiHelpers';
 import { useStore } from '../../store/useStore';
 import type { AppLanguage, Assessment, Course, GradingScale } from '../../types';
 import { Badge, Button, Card, EmptyState, Input, Modal, Progress } from '../ui';
@@ -113,6 +114,10 @@ export default function AssessmentsTab({ course }: Props) {
                       return;
                     }
                     patch('assessments', a.id, { grade });
+                    showToast(
+                      t(grade !== undefined ? 'toast.gradeSaved' : 'toast.gradeCleared'),
+                      grade !== undefined ? { tone: 'ok', effect: 'celebrate' } : 'neutral',
+                    );
                   }}
                 />
                 <div className="flex items-center gap-1">
@@ -121,7 +126,10 @@ export default function AssessmentsTab({ course }: Props) {
                   </Button>
                   <DeleteButton
                     message={t('assess.delete', { title: a.title })}
-                    onConfirm={() => remove('assessments', a.id)}
+                    onConfirm={() => {
+                      remove('assessments', a.id);
+                      showToast(t('toast.assessDeleted', { title: a.title }), 'neutral');
+                    }}
                   />
                 </div>
               </div>
@@ -157,6 +165,7 @@ export default function AssessmentsTab({ course }: Props) {
                 variant="primary"
                 onClick={() => {
                   patch('assessments', pendingFutureGrade.assessment.id, { grade: pendingFutureGrade.grade });
+                  showToast(t('toast.gradeSaved'), { tone: 'ok', effect: 'celebrate' });
                   setPendingFutureGrade(null);
                 }}
               >

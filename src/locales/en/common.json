@@ -550,7 +550,13 @@
     "reauthPasswordRequired": "Enter your current password to confirm this action.",
     "reauthRequired": "For security, this action requires recent session confirmation.",
     "cloudSignInToShare": "Sign in to Cloud before sharing a plan.",
-    "cloudSignInToSync": "Sign in to Cloud to sync and recover your account."
+    "cloudSignInToSync": "Sign in to Cloud to sync and recover your account.",
+    "unexpected": "Something went wrong. Please try again.",
+    "storageQuota": "This device's storage is almost full. Free up space or remove large files.",
+    "networkOffline": "No internet connection right now. Check your network and try again.",
+    "timeout": "The request took too long. Please try again in a moment.",
+    "permissionDenied": "Permissions are missing or your session expired. Re-authorise access and try again.",
+    "fileNotFound": "This file is no longer available in local device storage."
   },
   "googleSvc": {
     "connectingDrive": "Connecting to Drive…",

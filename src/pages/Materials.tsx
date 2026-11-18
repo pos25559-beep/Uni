@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BookOpen, ChevronDown, ChevronRight, ChevronUp, FileUp, FolderOpen, HardDrive, HelpCircle, Link2, Loader2, Pin, Plus, Search, Sparkles, X } from 'lucide-react';
 import { AnimatedPage } from '../components/motion/Primitives';
+import LoadingUnis from '../components/brand/LoadingUnis';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import { ActionSheet, Button, CourseChip, EmptyState, Input, PageHeader, PillSelect } from '../components/ui';
 import { cx, showToast } from '../lib/uiHelpers';
@@ -360,12 +361,21 @@ export default function Materials() {
               </div>
             )}
 
-            {scanningDrive && scanProgress && (
-              <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/75 px-3.5 py-2.5 text-xs text-[#141312] dark:bg-black/25 dark:text-[#FAF6EC]">
-                <span className="min-w-0 truncate font-medium">
-                  {scanProgress.stage ? `${scanProgress.stage} · ` : ''}
-                  {t('courses:materialsPage.progress', { folders: scanProgress.foldersScanned, files: scanProgress.filesFound })}
-                </span>
+            {scanningDrive && (
+              <div className="rounded-2xl bg-white/80 px-4 py-2 text-[#141312] dark:bg-black/25 dark:text-[#FAF6EC]">
+                <LoadingUnis
+                  variant="materials"
+                  compact
+                  label={scanProgress?.stage || t('courses:materialsPage.scanning')}
+                  sublabel={
+                    scanProgress
+                      ? t('courses:materialsPage.progress', {
+                          folders: scanProgress.foldersScanned,
+                          files: scanProgress.filesFound,
+                        })
+                      : undefined
+                  }
+                />
               </div>
             )}
 

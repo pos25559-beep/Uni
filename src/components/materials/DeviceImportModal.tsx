@@ -12,7 +12,9 @@ import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { tr } from '../../i18n/tr';
 import type { ChangeEvent, DragEvent } from 'react';
+import LoadingUnis from '../brand/LoadingUnis';
 import { Badge, Button, Input, Modal, Select } from '../ui';
+import { toFriendlyError } from '../../lib/errorMessages';
 import { cx, showToast } from '../../lib/uiHelpers';
 import { formatBytes, saveFile } from '../../lib/fileStorage';
 import { newId, useStore } from '../../store/useStore';
@@ -331,10 +333,14 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
       }
 
       upsertMany('materials', newMaterials);
+      showToast(t('toast.filesImported', { count: newMaterials.length }), {
+        tone: 'ok',
+        effect: 'confetti',
+      });
       onClose();
     } catch (err) {
       console.error('Erro ao guardar ficheiros no disco:', err);
-      showToast(t('device.saveError'), 'danger');
+      showToast(toFriendlyError(err, t('device.saveError')), 'danger');
     } finally {
       setSaving(false);
     }
@@ -595,22 +601,15 @@ export default function DeviceImportModal({ initialCourseId, onClose }: Props) {
           </div>
         )}
 
-        {/* Barra de Progresso durante a gravação */}
+        {/* Progresso e Unis Vivos em Lottie durante a gravação */}
         {saving && (
-          <div className="space-y-1.5 p-3 rounded-xl bg-surface-2 border border-line">
-            <div className="flex items-center justify-between text-xs font-medium">
-              <span className="flex items-center gap-1.5 text-accent">
-                <Loader2 size={13} className="animate-spin" />
-                {t('device.saving')}
-              </span>
-              <span>{saveProgress}%</span>
-            </div>
-            <div className="w-full h-1.5 rounded-full bg-surface overflow-hidden">
-              <div
-                className="h-full bg-accent transition-all duration-200"
-                style={{ width: `${saveProgress}%` }}
-              />
-            </div>
+          <div className="rounded-2xl border border-line bg-surface-2 p-3">
+            <LoadingUnis
+              variant="materials"
+              compact
+              label={t('device.saving')}
+              progress={saveProgress}
+            />
           </div>
         )}
 

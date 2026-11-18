@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { newId, useStore } from '../../store/useStore';
 import type { Course, Task } from '../../types';
 import { Badge, Button, DateField, EmptyState, Input } from '../ui';
-import { cx } from '../../lib/uiHelpers';
+import { cx, showToast } from '../../lib/uiHelpers';
 import { DeleteButton } from './ConfirmModal';
 import { dueLabel, fmtShortDate } from './helpers';
 
@@ -45,6 +45,7 @@ export default function TasksTab({ course }: Props) {
       priority: 2,
     };
     upsert('tasks', item);
+    showToast(tc('toast.taskAdded', { title: item.title }), 'ok');
     setTitle('');
     setDue('');
   };
@@ -74,7 +75,13 @@ export default function TasksTab({ course }: Props) {
                   type="checkbox"
                   aria-label={tc('tasks.completeAria', { title: task.title })}
                   checked={task.done}
-                  onChange={() => patch('tasks', task.id, { done: !task.done })}
+                  onChange={() => {
+                    const nextDone = !task.done;
+                    patch('tasks', task.id, { done: nextDone });
+                    if (nextDone) {
+                      showToast(tc('toast.taskDone'), { tone: 'ok', effect: 'celebrate' });
+                    }
+                  }}
                   className="size-4 accent-[var(--accent)]"
                 />
               </label>
@@ -89,7 +96,13 @@ export default function TasksTab({ course }: Props) {
                 </div>
               </div>
               <Badge tone={priorityTone[task.priority]}>{tc(`tasks.priority.${task.priority}`)}</Badge>
-              <DeleteButton message={tc('tasks.deleteConfirm', { title: task.title })} onConfirm={() => remove('tasks', task.id)} />
+              <DeleteButton
+                message={tc('tasks.deleteConfirm', { title: task.title })}
+                onConfirm={() => {
+                  remove('tasks', task.id);
+                  showToast(tc('toast.taskDeleted', { title: task.title }), 'neutral');
+                }}
+              />
             </li>
           ))}
         </ul>

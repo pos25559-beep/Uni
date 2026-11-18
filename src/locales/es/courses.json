@@ -501,7 +501,10 @@
       "sharepointFolderBody": "Esta carpeta pertenece a un repositorio institucional de exámenes y ejercicios. Por políticas de seguridad de Microsoft, se abre directamente con tu sesión académica.",
       "openSharepointFolder": "Abrir repositorio en SharePoint",
       "externalBody": "Este material está disponible directamente a través del enlace oficial.",
-      "openMaterial": "Abrir material"
+      "openMaterial": "Abrir material",
+      "loadFailed": "No se pudo abrir este documento.",
+      "loadFailedHint": "Comprueba si el archivo sigue en el dispositivo o inténtalo de nuevo.",
+      "retry": "Reintentar"
     }
   },
   "assessForm": {
@@ -618,5 +621,41 @@
     "close": "Cerrar",
     "nextTopic": "Siguiente tema",
     "finish": "Completar repaso"
+  },
+  "toast": {
+    "courseCreated": "¡Asignatura «{{name}}» creada!",
+    "courseUpdated": "Asignatura «{{name}}» actualizada.",
+    "courseDeleted": "Asignatura «{{name}}» eliminada.",
+    "rulesSaved": "¡Normas de la asignatura guardadas!",
+    "rulesExtracted": "¡Normas extraídas automáticamente!",
+    "rulesNoMatch": "No detectamos criterios automáticos en el texto. Puedes rellenar los campos abajo.",
+    "assessCreated": "¡Evaluación «{{title}}» añadida!",
+    "assessUpdated": "Evaluación «{{title}}» actualizada.",
+    "assessDeleted": "Evaluación «{{title}}» eliminada.",
+    "gradeSaved": "¡Nota guardada!",
+    "gradeCleared": "Nota eliminada.",
+    "topicAdded": "Tema «{{title}}» añadido.",
+    "topicUpdated": "Tema actualizado.",
+    "topicStudied": "¡Bien! Estudio registrado en el tema.",
+    "topicDeleted": "Tema «{{title}}» eliminado.",
+    "taskAdded": "Tarea «{{title}}» añadida.",
+    "taskDone": "¡Tarea completada!",
+    "taskDeleted": "Tarea «{{title}}» eliminada.",
+    "classSaved": "Clase guardada en el horario.",
+    "classDeleted": "Clase eliminada del horario.",
+    "linkSaved": "¡Enlace «{{title}}» guardado!",
+    "fileUploaded": "¡Archivo «{{title}}» guardado en la biblioteca!",
+    "filesImported_one": "¡{{count}} archivo importado correctamente!",
+    "filesImported_other": "¡{{count}} archivos importados correctamente!",
+    "materialRemoved": "«{{title}}» quitado de los materiales.",
+    "materialPinned": "Material fijado arriba.",
+    "materialUnpinned": "Material desfijado.",
+    "emailsLoading": "Los Unis están revisando avisos docentes…",
+    "uniLoading": "Los Unis están preparando consejos para esta asignatura…"
+  },
+  "loadingUnis": {
+    "courses": "Los Unis están organizando tus asignaturas…",
+    "grades": "Los Unis están revisando tus notas…",
+    "materials": "Los Unis están preparando tus materiales…"
   }
 }

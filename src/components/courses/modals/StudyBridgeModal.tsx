@@ -8,6 +8,7 @@ import { buildStudyGuideExport, parseAndImportQuizResult } from '../../../lib/st
 import { showToast } from '../../../lib/uiHelpers';
 import { useStore } from '../../../store/useStore';
 import type { Course } from '../../../types';
+import LoadingUnis from '../../brand/LoadingUnis';
 import { Button, Field, Modal, SegmentedControl, Select, Textarea } from '../../ui';
 
 export function StudyBridgeModal({
@@ -169,6 +170,11 @@ export function StudyBridgeModal({
             >
               <Sparkles size={14} /> {t('uni:bridge.importBtn')}
             </Button>
+            {importing && (
+              <div className="rounded-2xl border border-line bg-surface-2/60 px-3 py-1.5">
+                <LoadingUnis variant="grades" compact label={t('uni:bridge.importBtn')} />
+              </div>
+            )}
           </div>
         )}
       </div>

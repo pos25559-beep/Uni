@@ -2,6 +2,7 @@ import { Download, ExternalLink, Pin, PinOff, Trash2 } from 'lucide-react';
 import { createElement, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Badge, Button, Select } from '../ui';
+import { toFriendlyError } from '../../lib/errorMessages';
 import { cx, showToast } from '../../lib/uiHelpers';
 import { ConfirmModal } from '../courses/ConfirmModal';
 import { useStore } from '../../store/useStore';
@@ -35,9 +36,13 @@ export default function MaterialRow({ material: m, courses, course, onView }: {
       return;
     }
     if (m.provider === 'upload') {
-      const blobUrl = await getFileUrl(m.id);
-      if (blobUrl) window.open(blobUrl, '_blank');
-      else showToast(t('materialsModals.row.fileNotFound'), 'danger');
+      try {
+        const blobUrl = await getFileUrl(m.id);
+        if (blobUrl) window.open(blobUrl, '_blank');
+        else showToast(t('materialsModals.row.fileNotFound'), 'danger');
+      } catch (err) {
+        showToast(toFriendlyError(err, t('materialsModals.row.fileNotFound')), 'danger');
+      }
     } else if (href) {
       window.open(href, '_blank');
     }
@@ -48,6 +53,7 @@ export default function MaterialRow({ material: m, courses, course, onView }: {
       await deleteFile(m.id).catch(() => {});
     }
     remove('materials', m.id);
+    showToast(t('toast.materialRemoved', { title: m.title }), 'neutral');
   };
 
   return (
@@ -95,7 +101,11 @@ export default function MaterialRow({ material: m, courses, course, onView }: {
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => patch('materials', m.id, { pinned: !m.pinned })}
+            onClick={() => {
+              const nextPinned = !m.pinned;
+              patch('materials', m.id, { pinned: nextPinned });
+              showToast(t(nextPinned ? 'toast.materialPinned' : 'toast.materialUnpinned'), 'neutral');
+            }}
             aria-pressed={!!m.pinned}
           >
             {m.pinned ? <PinOff size={14} /> : <Pin size={14} />}

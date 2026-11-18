@@ -550,7 +550,13 @@
     "reauthPasswordRequired": "Introduce tu contraseña actual para confirmar esta acción.",
     "reauthRequired": "Por seguridad, esta operación requiere confirmación reciente de sesión.",
     "cloudSignInToShare": "Inicia sesión en la Nube antes de compartir un plan.",
-    "cloudSignInToSync": "Inicia sesión en la Nube para sincronizar y recuperar tu cuenta."
+    "cloudSignInToSync": "Inicia sesión en la Nube para sincronizar y recuperar tu cuenta.",
+    "unexpected": "Algo salió mal. Inténtalo de nuevo.",
+    "storageQuota": "El almacenamiento de este dispositivo está casi lleno. Libera espacio o elimina archivos grandes.",
+    "networkOffline": "Sin conexión a internet en este momento. Comprueba la red e inténtalo de nuevo.",
+    "timeout": "La operación tardó demasiado tiempo. Inténtalo de nuevo en un momento.",
+    "permissionDenied": "Faltan permisos o la sesión caducó. Vuelve a autorizar el acceso e inténtalo de nuevo.",
+    "fileNotFound": "Este archivo ya no está disponible en el almacenamiento local del dispositivo."
   },
   "googleSvc": {
     "connectingDrive": "Conectando a Drive…",

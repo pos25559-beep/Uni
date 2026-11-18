@@ -3,7 +3,8 @@ import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { providerLabel } from '../../lib/colors';
-import { getFileUrl, formatBytes } from '../../lib/fileStorage';
+import { toFriendlyError } from '../../lib/errorMessages';
+import { deleteFile, getFileUrl, formatBytes } from '../../lib/fileStorage';
 import { showToast } from '../../lib/uiHelpers';
 import { newId, useStore } from '../../store/useStore';
 import type { Course, Material } from '../../types';
@@ -41,6 +42,7 @@ export default function MaterialsTab({ course }: Props) {
     setError(null);
     const item: Material = { id: newId(), courseId: course.id, title: title.trim(), url: link, provider: 'link' };
     upsert('materials', item);
+    showToast(t('toast.linkSaved', { title: item.title }), 'ok');
     setTitle('');
     setUrl('');
   };
@@ -51,15 +53,31 @@ export default function MaterialsTab({ course }: Props) {
       return;
     }
     if (m.provider === 'upload') {
-      const blobUrl = await getFileUrl(m.id);
-      if (blobUrl) {
-        window.open(blobUrl, '_blank');
-      } else {
-        showToast(t('courseMaterials.fileNotFound'), 'danger');
+      try {
+        const blobUrl = await getFileUrl(m.id);
+        if (blobUrl) {
+          window.open(blobUrl, '_blank');
+        } else {
+          showToast(t('courseMaterials.fileNotFound'), 'danger');
+        }
+      } catch (err) {
+        showToast(toFriendlyError(err, t('courseMaterials.fileNotFound')), 'danger');
       }
     } else {
       window.open(m.url, '_blank');
     }
+  };
+
+  const handleRemove = async (m: Material) => {
+    if (m.provider === 'upload') {
+      try {
+        await deleteFile(m.id);
+      } catch {
+        // Ignora caso o ficheiro já não exista localmente.
+      }
+    }
+    remove('materials', m.id);
+    showToast(t('toast.materialRemoved', { title: m.title }), 'neutral');
   };
 
   return (
@@ -119,11 +137,18 @@ export default function MaterialsTab({ course }: Props) {
                 variant="ghost"
                 aria-label={m.pinned ? t('courseMaterials.unpin') : t('courseMaterials.pin')}
                 title={m.pinned ? t('courseMaterials.unpin') : t('courseMaterials.pin')}
-                onClick={() => patch('materials', m.id, { pinned: !m.pinned })}
+                onClick={() => {
+                  const nextPinned = !m.pinned;
+                  patch('materials', m.id, { pinned: nextPinned });
+                  showToast(t(nextPinned ? 'toast.materialPinned' : 'toast.materialUnpinned'), 'neutral');
+                }}
               >
                 {m.pinned ? <PinOff size={14} /> : <Pin size={14} />}
               </Button>
-              <DeleteButton message={t('courseMaterials.removeConfirm', { title: m.title })} onConfirm={() => remove('materials', m.id)} />
+              <DeleteButton
+                message={t('courseMaterials.removeConfirm', { title: m.title })}
+                onConfirm={() => void handleRemove(m)}
+              />
             </li>
           ))}
         </ul>

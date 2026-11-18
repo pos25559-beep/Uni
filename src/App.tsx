@@ -3,6 +3,7 @@ import { Suspense, lazy, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import AppShell from './components/AppShell';
+import LoadingUnis from './components/brand/LoadingUnis';
 import { UnipediaLogoMark } from './components/brand/UnipediaMarks';
 import { loadDemoData } from './lib/demoSeed';
 
@@ -31,6 +32,24 @@ const TermsOfUsePage = lazy(() =>
 
 function RouteLoadingFallback() {
   const { t } = useTranslation('common');
+  const { pathname } = useLocation();
+
+  const variant = pathname.startsWith('/cadeiras')
+    ? 'courses'
+    : pathname.startsWith('/progresso')
+      ? 'grades'
+      : pathname.startsWith('/materiais')
+        ? 'materials'
+        : null;
+
+  if (variant) {
+    return (
+      <div className="grid min-h-[45vh] place-items-center py-12">
+        <LoadingUnis variant={variant} />
+      </div>
+    );
+  }
+
   return (
     <div className="grid min-h-[45vh] place-items-center py-12 text-muted">
       <div className="flex flex-col items-center gap-3">

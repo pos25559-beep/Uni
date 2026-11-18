@@ -17,13 +17,14 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { FormEvent } from 'react';
 import type { Assessment, Course, Material } from '../../types';
+import LoadingUnis from '../brand/LoadingUnis';
 import { Badge, Button, EmptyState, Input } from '../ui';
-import { cx } from '../../lib/uiHelpers';
+import { cx, showToast } from '../../lib/uiHelpers';
 import { newId, useStore } from '../../store/useStore';
 import { filterMaterialsForCourse } from '../../lib/courseMaterials';
 import { courseColors, providerLabel } from '../../lib/colors';
 import { daysUntil } from '../../lib/selectors';
-import { formatBytes } from '../../lib/fileStorage';
+import { deleteFile, formatBytes } from '../../lib/fileStorage';
 import { useDriveAutoScan } from '../../hooks/useGoogleData';
 import { DeleteButton } from './ConfirmModal';
 import { fmtShortDate, normalizeUrl } from './helpers';
@@ -168,7 +169,10 @@ export default function CourseRepositoryTab({
   const handleOpenFile = (item: Material) => {
     let url = item.url?.trim();
     // Se o URL contiver caminhos antigos inválidos (que davam Google 400)
-    if (!url || url.includes('folders/shared-lemc') || url.includes('id=shared-lemc')) {
+    if (
+      item.provider !== 'upload' &&
+      (!url || url.includes('folders/shared-lemc') || url.includes('id=shared-lemc'))
+    ) {
       if (course.sharedDriveUrl) {
         url = course.sharedDriveUrl;
       } else {
@@ -176,7 +180,7 @@ export default function CourseRepositoryTab({
       }
     }
 
-    setViewingMaterial({ ...item, url });
+    setViewingMaterial({ ...item, url: url || item.url });
   };
 
   const handleAddLink = (e: FormEvent) => {
@@ -195,9 +199,22 @@ export default function CourseRepositoryTab({
       category: 'outro',
     };
     upsert('materials', item);
+    showToast(t('toast.linkSaved', { title: item.title }), 'ok');
     setQuickLinkTitle('');
     setQuickLinkUrl('');
     setShowAddLinkForm(false);
+  };
+
+  const handleRemoveItem = async (item: Material) => {
+    if (item.provider === 'upload') {
+      try {
+        await deleteFile(item.id);
+      } catch {
+        // Ficheiro já ausente no armazenamento local.
+      }
+    }
+    remove('materials', item.id);
+    showToast(t('toast.materialRemoved', { title: item.title }), 'neutral');
   };
 
   return (
@@ -344,6 +361,12 @@ export default function CourseRepositoryTab({
           </Button>
         </div>
       </div>
+
+      {scanningDrive && (
+        <div className="rounded-2xl border border-line bg-surface-2/60 px-4 py-2">
+          <LoadingUnis variant="materials" compact label={t('repo.scanning')} />
+        </div>
+      )}
 
       {scanFeedback && (
         <div className="rounded-xl border border-accent/30 bg-accent-soft p-3 text-xs text-fg flex items-center justify-between">
@@ -503,7 +526,11 @@ export default function CourseRepositoryTab({
                   variant="ghost"
                   aria-label={item.pinned ? t('repo.unpin') : t('repo.pin')}
                   title={item.pinned ? t('repo.unpin') : t('repo.pin')}
-                  onClick={() => patch('materials', item.id, { pinned: !item.pinned })}
+                  onClick={() => {
+                    const nextPinned = !item.pinned;
+                    patch('materials', item.id, { pinned: nextPinned });
+                    showToast(t(nextPinned ? 'toast.materialPinned' : 'toast.materialUnpinned'), 'neutral');
+                  }}
                 >
                   {item.pinned ? <PinOff size={14} /> : <Pin size={14} />}
                 </Button>
@@ -516,7 +543,7 @@ export default function CourseRepositoryTab({
                 </button>
                 <DeleteButton
                   message={t('repo.removeConfirm', { title: item.title })}
-                  onConfirm={() => remove('materials', item.id)}
+                  onConfirm={() => void handleRemoveItem(item)}
                 />
               </div>
             </div>

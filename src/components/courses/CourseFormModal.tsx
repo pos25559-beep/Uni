@@ -7,7 +7,7 @@ import { newId, useStore } from '../../store/useStore';
 import type { Course, CourseColor } from '../../types';
 import { DeleteButton } from './ConfirmModal';
 import { Button, Field, Input, Modal } from '../ui';
-import { cx } from '../../lib/uiHelpers';
+import { cx, showToast } from '../../lib/uiHelpers';
 
 interface Props {
   /** Cadeira a editar; omitir para criar uma nova. */
@@ -64,6 +64,10 @@ export default function CourseFormModal({ course, onClose, onDelete }: Props) {
       driveFolderUrl: opt(driveFolderUrl),
       clipUrl: opt(clipUrl),
     } satisfies Course);
+    showToast(
+      t(course ? 'toast.courseUpdated' : 'toast.courseCreated', { name: name.trim() }),
+      course ? { tone: 'ok', effect: 'celebrate' } : { tone: 'ok', effect: 'confetti' },
+    );
     onClose();
   };
 

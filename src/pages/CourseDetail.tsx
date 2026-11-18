@@ -29,7 +29,7 @@ import FileUploadModal from '../components/materials/FileUploadModal';
 import { AnimatedPage } from '../components/motion/Primitives';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
 import { Button, EmptyState, Stat, SubpageHeader } from '../components/ui';
-import { cx } from '../lib/uiHelpers';
+import { cx, showToast } from '../lib/uiHelpers';
 import { normalizeAppLanguage } from '../lib/grading';
 import { courseColors } from '../lib/colors';
 import {
@@ -298,7 +298,9 @@ export default function CourseDetail() {
           course={course}
           onClose={() => setEditing(false)}
           onDelete={() => {
+            const deletedName = course.name;
             remove('courses', course.id);
+            showToast(t('toast.courseDeleted', { name: deletedName }), 'neutral');
             navigate('/cadeiras');
           }}
         />

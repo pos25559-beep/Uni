@@ -5,7 +5,6 @@
     "": {
       "name": "unipedia",
       "dependencies": {
-        "@azure/msal-browser": "^5.29.0",
         "@capacitor/android": "^8.6.2",
         "@capacitor/app": "^8.1.2",
         "@capacitor/browser": "^8.0.5",
@@ -30,6 +29,7 @@
         "html-to-image": "1.11.13",
         "i18next": "^27.1.2",
         "katex": "^0.19.1",
+        "lottie-web": "^5.13.0",
         "lucide-react": "^1.72.0",
         "motion": "^14.13.0",
         "pdf-lib": "^1.17.1",
@@ -59,10 +59,6 @@
     },
   },
   "packages": {
-    "@azure/msal-browser": ["@azure/msal-browser@5.29.1", "", { "dependencies": { "@azure/msal-common": "16.16.2" } }, "sha512-+TMoU/4h3KYUvQKZH+p1/9/iDaepDlVJQ7UMUAB6q8prPsMfsOoqA9m2alpPqLUQ48Bp7sXqN2wdhA9rOg9q1A=="],
-
-    "@azure/msal-common": ["@azure/msal-common@16.16.2", "", {}, "sha512-IVoPgAup0hnpzwC8esxPxrrnDDVe0n3mmK+UU3JRmKWySKxBQrl+a30tTP3okmJ9Wc7dh+IgoNaUXkCxb2DBSg=="],
-
     "@capacitor/android": ["@capacitor/android@8.6.2", "", { "peerDependencies": { "@capacitor/core": "^8.6.0" } }, "sha512-dWXnXmOVTtxU91n5h11MzoQ7PAMjyzU1qguw0mBJZiwSuhGvLKTG/IlsQ75H8qeE0a1acV2f573x15wYvyzuVA=="],
 
     "@capacitor/app": ["@capacitor/app@8.1.2", "", { "peerDependencies": { "@capacitor/core": ">=8.0.0" } }, "sha512-uKBlsrXH0IdvUn69e/KKYbZ32A06pcrUdG8LWuZ/6y33YMXZXLEEdNSwl+jKS/SrsTWqnePs8EqSWaiQM3mUGA=="],
@@ -724,6 +720,8 @@
     "lodash.camelcase": ["lodash.camelcase@4.3.0", "", {}, "sha512-TwuEnCnxbc3rAvhf/LbG7tJUDzhqXyFnv3dtzLOPgCG/hODL7WFnsbwktkD7yUV0RrreP/l1PALq/YSg6VvjlA=="],
 
     "long": ["long@5.3.2", "", {}, "sha512-mNAgZ1GmyNhD7AuqnTG3/VQ26o760+ZYBPKjPvugO8+nLbYfX6TVpJPseBvopbdY+qpZ/lKUnmEc1LeZYS3QAA=="],
+
+    "lottie-web": ["lottie-web@5.13.0", "", {}, "sha512-+gfBXl6sxXMPe8tKQm7qzLnUy5DUPJPKIyRHwtpCpyUEYjHYRJC/5gjUvdkuO2c3JllrPtHXH5UJJK8LRYl5yQ=="],
 
     "lru-cache": ["lru-cache@11.5.3", "", {}, "sha512-U4N8FgzmWxc8k1VH8Kr6lQg18U7Fjvby6wXHVRX/ZZ7IwWbRMgrRbP0Wrb5q5NVinryp4SQampHKdvtecItxUg=="],
 

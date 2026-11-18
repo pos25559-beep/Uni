@@ -2,6 +2,7 @@ import { CheckCircle, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Course, CourseRules } from '../../types';
+import { showToast } from '../../lib/uiHelpers';
 import { Button, Input, Modal } from '../ui';
 import { useStore } from '../../store/useStore';
 
@@ -24,23 +25,29 @@ export default function ClipCourseModal({ course, onClose }: Props) {
     const text = rawText.trim();
     if (!text) return;
 
+    let matched = false;
     // Procura fórmulas comuns (ex: NF = ... ou Nota Final = ...)
     const formulaMatch = /(?:NF|Nota\s+Final|Classifica[çc][ãa]o)\s*=\s*([^\n.;]+)/i.exec(text);
     if (formulaMatch) {
       setFormula(formulaMatch[0].trim());
+      matched = true;
     }
 
     // Procura notas mínimas (ex: 8.0, 9.5 valores)
     const minMatch = /(?:m[íi]nimo|m[íi]nima|nota\s+m[íi]nima)\s*(?:de)?\s*([0-9.,]+\s*valores[^\n.;]*)/i.exec(text);
     if (minMatch) {
       setMinGrade(minMatch[0].trim());
+      matched = true;
     }
 
     // Procura menção de faltas / presenças
     const attMatch = /(?:presen[çc]a|assiduidade|faltas|frequ[êe]ncia)\s*([^\n.;]{10,80})/i.exec(text);
     if (attMatch) {
       setAttendance(attMatch[0].trim());
+      matched = true;
     }
+
+    showToast(t(matched ? 'toast.rulesExtracted' : 'toast.rulesNoMatch'), matched ? 'ok' : 'neutral');
   };
 
   const handleSave = () => {
@@ -59,6 +66,7 @@ export default function ClipCourseModal({ course, onClose }: Props) {
       rules: updatedRules,
       clipUrl: clipUrl.trim(),
     });
+    showToast(t('toast.rulesSaved'), { tone: 'ok', effect: 'celebrate' });
 
     onClose();
   };

@@ -2,9 +2,12 @@ import { Upload } from 'lucide-react';
 import { useState } from 'react';
 import type { ChangeEvent, DragEvent, FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { toFriendlyError } from '../../lib/errorMessages';
 import { saveFile, formatBytes } from '../../lib/fileStorage';
+import { showToast } from '../../lib/uiHelpers';
 import { newId, useStore } from '../../store/useStore';
 import type { Course, Material } from '../../types';
+import LoadingUnis from '../brand/LoadingUnis';
 import { Button, Field, Input, Modal, Select } from '../ui';
 
 interface Props {
@@ -82,17 +85,19 @@ export default function FileUploadModal({ initialCourseId, onClose }: Props) {
       };
 
       upsert('materials', material);
+      showToast(t('toast.fileUploaded', { title: material.title }), { tone: 'ok', effect: 'celebrate' });
       onClose();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : '';
-      setError(msg || t('materialsModals.upload.saveError'));
+      const msg = toFriendlyError(err, t('materialsModals.upload.saveError'));
+      setError(msg);
+      showToast(msg, 'danger');
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <Modal open onClose={onClose} title={t('materialsModals.upload.title')}>
+    <Modal open onClose={busy ? () => {} : onClose} title={t('materialsModals.upload.title')}>
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         {/* Zona de Drag & Drop */}
         <div
@@ -160,13 +165,23 @@ export default function FileUploadModal({ initialCourseId, onClose }: Props) {
           </Select>
         </Field>
 
-        {error && <p className="text-xs text-danger">{error}</p>}
+        {busy && (
+          <div className="rounded-2xl border border-line bg-surface-2/65 px-3 py-1.5">
+            <LoadingUnis variant="materials" compact label={t('materialsModals.upload.saving')} />
+          </div>
+        )}
+
+        {error && (
+          <p role="alert" className="text-xs font-medium text-coral-ink">
+            {error}
+          </p>
+        )}
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" onClick={onClose} disabled={busy}>
             {t('materialsModals.upload.cancel')}
           </Button>
-          <Button type="submit" variant="primary" disabled={busy || !file}>
+          <Button type="submit" variant="primary" loading={busy} disabled={busy || !file}>
             {busy ? t('materialsModals.upload.saving') : t('materialsModals.upload.submit')}
           </Button>
         </div>

@@ -501,7 +501,10 @@
       "sharepointFolderBody": "Esta pasta pertence a um repositório institucional de provas e exercícios. Devido às políticas de segurança da Microsoft, abre diretamente com seu login acadêmico.",
       "openSharepointFolder": "Abrir repositório no SharePoint",
       "externalBody": "Este material está disponível diretamente através do link oficial.",
-      "openMaterial": "Abrir material"
+      "openMaterial": "Abrir material",
+      "loadFailed": "Não foi possível abrir este documento.",
+      "loadFailedHint": "Verifique se o arquivo ainda está no dispositivo ou tente novamente.",
+      "retry": "Tentar novamente"
     }
   },
   "assessForm": {
@@ -618,5 +621,41 @@
     "close": "Fechar",
     "nextTopic": "Próximo tópico",
     "finish": "Concluir revisão"
+  },
+  "toast": {
+    "courseCreated": "Disciplina «{{name}}» criada!",
+    "courseUpdated": "Disciplina «{{name}}» atualizada.",
+    "courseDeleted": "Disciplina «{{name}}» apagada.",
+    "rulesSaved": "Regras da disciplina salvas!",
+    "rulesExtracted": "Regras extraídas automaticamente!",
+    "rulesNoMatch": "Não detectamos critérios automáticos no texto. Você pode preencher os campos abaixo.",
+    "assessCreated": "Avaliação «{{title}}» adicionada!",
+    "assessUpdated": "Avaliação «{{title}}» atualizada.",
+    "assessDeleted": "Avaliação «{{title}}» apagada.",
+    "gradeSaved": "Nota salva!",
+    "gradeCleared": "Nota removida.",
+    "topicAdded": "Tópico «{{title}}» adicionado.",
+    "topicUpdated": "Tópico atualizado.",
+    "topicStudied": "Boa! Estudo registrado no tópico.",
+    "topicDeleted": "Tópico «{{title}}» apagado.",
+    "taskAdded": "Tarefa «{{title}}» adicionada.",
+    "taskDone": "Tarefa concluída!",
+    "taskDeleted": "Tarefa «{{title}}» apagada.",
+    "classSaved": "Aula salva no horário.",
+    "classDeleted": "Aula apagada do horário.",
+    "linkSaved": "Link «{{title}}» salvo!",
+    "fileUploaded": "Arquivo «{{title}}» salvo na biblioteca!",
+    "filesImported_one": "{{count}} arquivo importado com sucesso!",
+    "filesImported_other": "{{count}} arquivos importados com sucesso!",
+    "materialRemoved": "«{{title}}» removido dos materiais.",
+    "materialPinned": "Material fixado no topo.",
+    "materialUnpinned": "Material desafixado.",
+    "emailsLoading": "Os Unis estão verificando avisos de professores…",
+    "uniLoading": "Os Unis estão preparando dicas para esta disciplina…"
+  },
+  "loadingUnis": {
+    "courses": "Os Unis estão organizando suas disciplinas…",
+    "grades": "Os Unis estão revisando suas notas…",
+    "materials": "Os Unis estão preparando seus materiais…"
   }
 }

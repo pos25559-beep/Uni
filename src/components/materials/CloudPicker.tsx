@@ -3,8 +3,10 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { tr } from '../../i18n/tr';
 import { ChevronRight, Folder, HardDrive, LoaderCircle } from 'lucide-react';
-import { Badge, Button, EmptyState, Field, Input, Modal, Select } from '../ui';
-import { cx } from '../../lib/uiHelpers';
+import LoadingUnis from '../brand/LoadingUnis';
+import { Badge, Button, EmptyState, Field, Input, Modal, Select, SkeletonList } from '../ui';
+import { toFriendlyError } from '../../lib/errorMessages';
+import { cx, showToast } from '../../lib/uiHelpers';
 import { useStore } from '../../store/useStore';
 import type { CloudSource } from '../../lib/cloudSources';
 import { googleService, type CloudFile } from '../../services/googleService';
@@ -59,7 +61,7 @@ export default function CloudPicker({ source, onClose }: { source: CloudSource; 
         setAuthError(tp('cloud.errPopup'));
         return;
       }
-      const msg = err instanceof Error ? err.message : tp('cloud.errAuth');
+      const msg = toFriendlyError(err, tp('cloud.errAuth'));
       setAuthError(msg);
       setError(msg);
     } finally {
@@ -101,7 +103,7 @@ export default function CloudPicker({ source, onClose }: { source: CloudSource; 
         });
       } catch (e: unknown) {
         if (cancelled) return;
-        const msg = e instanceof Error ? e.message : tr('courses:cloud.errUnknown');
+        const msg = toFriendlyError(e, tr('courses:cloud.errUnknown'));
         setFiles([]);
         setLoading(false);
         setError(msg);
@@ -140,6 +142,10 @@ export default function CloudPicker({ source, onClose }: { source: CloudSource; 
         pinned: pinned.has(id),
       };
     }));
+    showToast(tp('toast.filesImported', { count: chosen.length }), {
+      tone: 'ok',
+      effect: 'celebrate',
+    });
     onClose();
   };
 
@@ -194,8 +200,11 @@ export default function CloudPicker({ source, onClose }: { source: CloudSource; 
   const renderList = () => {
     if (loading) {
       return (
-        <div className="flex items-center justify-center gap-2 px-4 py-10 text-sm text-muted">
-          <LoaderCircle size={16} className="animate-spin" /> {tp('cloud.loading')}
+        <div>
+          <div className="border-b border-line px-4 pt-2">
+            <LoadingUnis variant="materials" compact label={tp('cloud.loading')} />
+          </div>
+          <SkeletonList rows={4} />
         </div>
       );
     }
