@@ -12,7 +12,7 @@ import {
   Plus,
   Sparkles,
 } from 'lucide-react';
-import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { resolveDateFnsLocale } from '../lib/grading';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -40,7 +40,6 @@ import { hapticTap } from '../lib/nativeBridge';
 import {
   analyzeTestMode,
   findFirstFreeSlotOnDate,
-  generatePlan,
   planSummary,
   rescheduleOverdueSessions,
   resolveDayPlanProfile,
@@ -49,6 +48,7 @@ import { getDueReviewQueue } from '../lib/spacedRepetition';
 import { capitalizeFirst, fmtMinutes, formatSessionDisplay, sessionMinutes, todayStr } from '../lib/selectors';
 import { useHubUiStore } from '../store/useHubUiStore';
 import { useStore } from '../store/useStore';
+import { consumeSilentPlanAdjust } from '../store/planUndo';
 import {
   maxDailyMinutes,
   minutesForWeekday,
@@ -83,8 +83,7 @@ export default function Planner() {
   const academicProfile = useStore((s) => s.academicProfile);
   const weeklyCheckIns = useStore((s) => s.weeklyCheckIns);
   const studyLogs = useStore((s) => s.studyLogs);
-  const replaceGeneratedSessions = useStore((s) => s.replaceGeneratedSessions);
-  const reconcileFuturePlan = useStore((s) => s.reconcileFuturePlan);
+  const replan = useStore((s) => s.replan);
   const batchUpdateTopicStates = useStore((s) => s.batchUpdateTopicStates);
   const upsertMany = useStore((s) => s.upsertMany);
   const patch = useStore((s) => s.patch);
@@ -94,21 +93,10 @@ export default function Planner() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const today = useMemo(() => todayStr(), []);
-  const legacyReconciledRef = useRef(false);
-
+  // Recálculos silenciosos (acabar um foco, prática) avisam-se aqui, sem interromper quem estudava.
   useEffect(() => {
-    if (legacyReconciledRef.current || courses.length === 0) return;
-    const hasLegacySystemSession = sessions.some(
-      (s) =>
-        s.generated &&
-        !s.done &&
-        s.date >= today &&
-        (s.notes === 'Equilíbrio Modo Teste' || s.notes === 'Foco Modo Teste'),
-    );
-    if (!hasLegacySystemSession) return;
-    legacyReconciledRef.current = true;
-    reconcileFuturePlan(true);
-  }, [courses.length, sessions, today, reconcileFuturePlan]);
+    if (consumeSilentPlanAdjust()) showToast(t('replan.adjusted'), 'neutral');
+  }, [t]);
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedDayKey, setSelectedDayKey] = useState(today);
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
@@ -218,40 +206,16 @@ export default function Planner() {
           time: fmtMinutes(maxDailyMinutes(resolvedSchedule)),
         });
 
+  const futureGeneratedCount = () =>
+    useStore.getState().sessions.filter((x) => x.generated && !x.done && x.date >= today).length;
+
+  /** Recalcular: o mesmo motor de sempre, com as preferências guardadas. */
   const generate = () => {
     void hapticTap();
-    const now = new Date();
-    const plan = generatePlan({
-      courses,
-      assessments,
-      classes,
-      events,
-      materials,
-      settings,
-      from: today,
-      nowMinutes: now.getHours() * 60 + now.getMinutes(),
-      days: plannerPrefs?.horizonDays ?? 14,
-      existing: sessions.filter((s) => !s.generated || s.done || s.locked || s.date < today),
-      difficultCourseIds: academicProfile.difficultCourseIds,
-      weeklyCheckIns,
-      studyLogs,
-      extraActivities: academicProfile.extraActivities,
-      preferredPeriod: plannerPrefs?.preferredPeriod,
-      blockMinutes: plannerPrefs?.blockMinutes,
-      strategy: plannerPrefs?.strategy,
-      boostCourseIds: plannerPrefs?.boostCourseIds,
-      pausedCourseIds: plannerPrefs?.pausedCourseIds,
-      exclusiveTestFocus: plannerPrefs?.exclusiveTestFocus,
-      weekdaySchedule: plannerPrefs?.weekdaySchedule,
-      fillClassGaps: plannerPrefs?.fillClassGaps,
-      preExamMarathon: plannerPrefs?.preExamMarathon,
-      contentMix: plannerPrefs?.contentMix,
-      briefingCourseFocus: plannerPrefs?.briefingCourseFocus,
-    });
-    replaceGeneratedSessions(today, plan);
+    const changed = replan('manual', { force: true });
     setBuilderOpen(false);
     celebrateStationery();
-    showToast(t('ui.toastGenerated', { count: plan.length }), 'ok');
+    if (!changed) showToast(t('ui.toastGenerated', { count: futureGeneratedCount() }), 'ok');
   };
 
   const applyCustomPlan = ({
@@ -268,15 +232,16 @@ export default function Planner() {
     topicUpdates?: Array<{ courseId: ID; topicId: ID; changes: Partial<Topic> }>;
   }) => {
     void hapticTap();
+    const prevPrefs = settings.plannerPrefs;
+    const prevCourses = courses;
     if (topicUpdates && topicUpdates.length > 0) {
       batchUpdateTopicStates(topicUpdates);
     }
-    updateSettings({
-      plannerPrefs: prefs,
-      dailyStudyMinutes,
-      studyDays,
-    });
-    replaceGeneratedSessions(today, plan);
+    updateSettings({ plannerPrefs: prefs, dailyStudyMinutes, studyDays }, { replan: false });
+    // Blocos que o estudante fixou na pré-visualização ficam como estão; o resto vem do motor.
+    const keptFromPreview = plan.filter((x) => x.locked);
+    if (keptFromPreview.length > 0) upsertMany('sessions', keptFromPreview);
+    replan('prefs', { force: true, prevPrefs, prevCourses });
     if (prefs.includeOverdue && overdue.length > 0) {
       const now = new Date();
       const { updated } = rescheduleOverdueSessions({
@@ -285,7 +250,7 @@ export default function Planner() {
           ...sessions
             .filter((s) => !s.generated || s.done || s.locked || s.date < today)
             .filter((s) => s.date >= today),
-          ...plan,
+          ...useStore.getState().sessions.filter((s) => s.generated && !s.done && s.date >= today),
         ],
         classes,
         events,
@@ -297,12 +262,13 @@ export default function Planner() {
         preferredPeriod: prefs.preferredPeriod,
         weekdaySchedule: prefs.weekdaySchedule,
         preExamMarathon: prefs.preExamMarathon,
+        pausedCourseIds: prefs.pausedCourseIds,
       });
       if (updated.length > 0) upsertMany('sessions', updated);
     }
     setBuilderOpen(false);
     celebrateStationery();
-    showToast(t('ui.toastApplied', { count: plan.length }), 'ok');
+    showToast(t('ui.toastApplied', { count: futureGeneratedCount() }), 'ok');
   };
 
   const toggleSessionLock = (session: StudySession) => {
@@ -346,7 +312,10 @@ export default function Planner() {
 
   const applyBriefingPlan = (briefingSessions: StudySession[], briefingNote: string) => {
     void hapticTap();
-    replaceGeneratedSessions(today, briefingSessions);
+    const prevPrefs = settings.plannerPrefs;
+    // Transição até ao briefing por intenção: os blocos do briefing ficam fixados e o motor
+    // completa o resto do horizonte à volta deles (antes eram apagados no recálculo seguinte).
+    upsertMany('sessions', briefingSessions.map((x) => ({ ...x, locked: true })));
     updateSettings({
       plannerPrefs: {
         horizonDays: plannerPrefs?.horizonDays ?? 14,
@@ -359,15 +328,55 @@ export default function Planner() {
         ...(plannerPrefs ?? {}),
         ...(briefingNote ? { briefingNote } : {}),
       },
-    });
+    }, { replan: false });
+    replan('briefing', { force: true, prevPrefs });
     celebrateStationery();
     showToast(t('ui.toastApplied', { count: briefingSessions.length }), 'ok');
   };
 
+  /** Encaixa uma sessão hoje numa hora livre (fixada, para o recálculo não a apagar). */
+  const placeToday = (session: StudySession, others: StudySession[]): StudySession | null => {
+    const now = new Date();
+    const avail = resolvePlannerPrefs(settings).weekdaySchedule?.[String(new Date().getDay())];
+    const slot = findFirstFreeSlotOnDate({
+      dateKey: today,
+      minutes: session.minutes,
+      preferredPeriod: avail?.window ?? 'auto',
+      nowMinutes: now.getHours() * 60 + now.getMinutes(),
+      classes,
+      events,
+      existingSessions: others.filter((x) => x.id !== session.id),
+      blockedPeriods: avail?.blockedPeriods,
+      assessments,
+    });
+    return slot ? { ...session, date: today, start: slot, locked: true } : null;
+  };
+
+  const moveOneToToday = (session: StudySession) => {
+    void hapticTap();
+    const moved = placeToday(session, sessions.filter((x) => x.date === today));
+    if (!moved) {
+      showToast(t('ui.noRoom'), 'neutral');
+      return;
+    }
+    patch('sessions', session.id, { date: moved.date, start: moved.start, locked: true });
+    showToast(t('ui.movedToday'), 'ok');
+  };
+
   const moveAllToToday = () => {
     void hapticTap();
-    upsertMany('sessions', overdue.map((s) => ({ ...s, date: today })));
-    showToast(t('ui.movedToday'), 'ok');
+    const placed: StudySession[] = [];
+    for (const s of overdue) {
+      const moved = placeToday(s, [...sessions.filter((x) => x.date === today), ...placed]);
+      if (moved) placed.push(moved);
+    }
+    if (placed.length > 0) upsertMany('sessions', placed);
+    showToast(
+      placed.length === overdue.length
+        ? t('ui.movedToday')
+        : t('ui.rescheduledPartial', { count: placed.length, left: overdue.length - placed.length }),
+      placed.length > 0 ? 'ok' : 'neutral',
+    );
   };
 
   const rescheduleOverdueSmart = () => {
@@ -386,6 +395,7 @@ export default function Planner() {
       preferredPeriod: plannerPrefs?.preferredPeriod ?? 'auto',
       weekdaySchedule: plannerPrefs?.weekdaySchedule,
       preExamMarathon: plannerPrefs?.preExamMarathon,
+      pausedCourseIds: plannerPrefs?.pausedCourseIds,
     });
     if (updated.length > 0) {
       upsertMany('sessions', updated);
@@ -610,7 +620,7 @@ export default function Planner() {
                         <p className="text-xs tabular text-muted">{s.minutes} min</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button size="sm" onClick={() => patch('sessions', s.id, { date: today })}>
+                        <Button size="sm" onClick={() => moveOneToToday(s)}>
                           {t('ui.moveToday')}
                         </Button>
                         <Button size="sm" variant="ghost" onClick={() => remove('sessions', s.id)}>

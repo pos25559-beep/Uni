@@ -10,7 +10,6 @@ import {
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { askGemini, buildStudyContext, SYSTEM_PROMPT, type ChatMessage } from '../../integrations/gemini';
-import { generatePlan } from '../../lib/planner';
 import { todayStr } from '../../lib/selectors';
 import { resolveUniAccessory } from '../../lib/uniAccessories';
 import { newId, useStore } from '../../store/useStore';
@@ -49,17 +48,11 @@ export default function WeeklyTutorModal({
 }: WeeklyTutorModalProps) {
   const { t } = useTranslation('assistant');
   const courses = useStore((s) => s.courses);
-  const assessments = useStore((s) => s.assessments);
-  const classes = useStore((s) => s.classes);
-  const events = useStore((s) => s.events);
-  const sessions = useStore((s) => s.sessions);
-  const settings = useStore((s) => s.settings);
   const academicProfile = useStore((s) => s.academicProfile);
   const weeklyCheckIns = useStore((s) => s.weeklyCheckIns);
-  const studyLogs = useStore((s) => s.studyLogs);
 
   const addWeeklyCheckIn = useStore((s) => s.addWeeklyCheckIn);
-  const replaceGeneratedSessions = useStore((s) => s.replaceGeneratedSessions);
+  const replan = useStore((s) => s.replan);
 
   const [currentWeekKey] = useState(getCurrentWeekKey);
   const latest = weeklyCheckIns[0];
@@ -110,23 +103,11 @@ export default function WeeklyTutorModal({
 
     addWeeklyCheckIn(checkIn);
 
+    // Um só motor: o check-in entra pelos dados (addWeeklyCheckIn) e o plano recalcula com as
+    // preferências guardadas e sem marcar por cima de blocos fixados.
+    replan('checkin', { force: true });
     const today = todayStr();
-    const updatedCheckIns = [checkIn, ...weeklyCheckIns.filter((w) => w.weekOf !== currentWeekKey)];
-    const plan = generatePlan({
-      courses,
-      assessments,
-      classes,
-      events,
-      settings,
-      from: today,
-      days: 14,
-      existing: sessions.filter((s) => !s.generated || s.done || s.date < today),
-      difficultCourseIds: hardCourseIds,
-      weeklyCheckIns: updatedCheckIns,
-      studyLogs,
-      extraActivities: academicProfile.extraActivities,
-    });
-    replaceGeneratedSessions(today, plan);
+    const plan = useStore.getState().sessions.filter((x) => x.generated && !x.done && x.date >= today);
     setSavedMsg(t('weekly.saved', { n: plan.length }));
 
     if (openChatAfter) {

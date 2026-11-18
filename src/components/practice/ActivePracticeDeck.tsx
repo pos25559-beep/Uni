@@ -58,7 +58,7 @@ export default function ActivePracticeDeck({
   const studyLogs = useStore((s) => s.studyLogs);
   const aiConsent = Boolean(useStore((s) => s.settings.aiConsent));
   const updateTopic = useStore((s) => s.updateTopic);
-  const reconcileFuturePlan = useStore((s) => s.reconcileFuturePlan);
+  const replan = useStore((s) => s.replan);
 
   const initialCards = useMemo(
     () => orderPracticeDeckForReview(topic.practiceCards ?? []).slice(0, cardCount),
@@ -169,7 +169,7 @@ export default function ActivePracticeDeck({
         ...srsUpdate,
         practiceCards: updatedDeck,
       });
-      reconcileFuturePlan();
+      replan('topic', { silent: true });
     }
 
     const summary: PracticeOutcomeSummary = {
@@ -209,7 +209,7 @@ export default function ActivePracticeDeck({
       total: 1,
     });
     updateTopic(course.id, topic.id, srsUpdate);
-    reconcileFuturePlan();
+    replan('topic', { silent: true });
     const summary: PracticeOutcomeSummary = {
       hits: score >= 2 ? 1 : 0,
       total: 1,

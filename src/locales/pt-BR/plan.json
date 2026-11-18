@@ -1,4 +1,10 @@
 {
+  "replan": {
+      "updated": "Plano atualizado",
+      "undo": "Desfazer",
+      "undone": "Plano restaurado como estava",
+      "adjusted": "O plano foi ajustado ao que você estudou"
+  },
   "plannerEyebrow": "Planejador",
   "plannerTitle": "Plano de",
   "plannerAccent": "estudos",

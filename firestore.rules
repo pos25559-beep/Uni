@@ -54,7 +54,7 @@ service cloud.firestore {
     //   - sharedHubDriveUrls: list (optional, max 30 items)
     //   - seenTabGuides: list (optional, max 30 items)
     //   - notifications: map (optional, max 20 entries)
-    //   - plannerPrefs: map (optional, max 20 entries)
+    //   - plannerPrefs: map (optional, max 28 entries)
     //   - settings: map (optional, containing settings key-values)
     //   - createdAt: timestamp/string (optional, immutable)
     //   - updatedAt: timestamp/string (optional)
@@ -532,7 +532,7 @@ service cloud.firestore {
         (!('sharedHubDriveUrls' in settings) || (settings.sharedHubDriveUrls is list && settings.sharedHubDriveUrls.size() <= 30 && (settings.sharedHubDriveUrls.size() == 0 || (settings.sharedHubDriveUrls[0] is string && settings.sharedHubDriveUrls[0].size() <= 1000)) && (settings.sharedHubDriveUrls.size() <= 1 || (settings.sharedHubDriveUrls[settings.sharedHubDriveUrls.size() - 1] is string && settings.sharedHubDriveUrls[settings.sharedHubDriveUrls.size() - 1].size() <= 1000)))) &&
         (!('seenTabGuides' in settings) || (settings.seenTabGuides is list && settings.seenTabGuides.size() <= 30 && (settings.seenTabGuides.size() == 0 || (settings.seenTabGuides[0] is string && settings.seenTabGuides[0].size() <= 150)) && (settings.seenTabGuides.size() <= 1 || (settings.seenTabGuides[settings.seenTabGuides.size() - 1] is string && settings.seenTabGuides[settings.seenTabGuides.size() - 1].size() <= 150)))) &&
         (!('notifications' in settings) || (settings.notifications is map && settings.notifications.size() <= 20)) &&
-        (!('plannerPrefs' in settings) || (settings.plannerPrefs is map && settings.plannerPrefs.size() <= 20));
+        (!('plannerPrefs' in settings) || (settings.plannerPrefs is map && settings.plannerPrefs.size() <= 28));
     }
 
     // Validates user profile & settings document
@@ -596,7 +596,7 @@ service cloud.firestore {
         (!('sharedHubDriveUrls' in data) || (data.sharedHubDriveUrls is list && data.sharedHubDriveUrls.size() <= 30 && (data.sharedHubDriveUrls.size() == 0 || (data.sharedHubDriveUrls[0] is string && data.sharedHubDriveUrls[0].size() <= 1000)) && (data.sharedHubDriveUrls.size() <= 1 || (data.sharedHubDriveUrls[data.sharedHubDriveUrls.size() - 1] is string && data.sharedHubDriveUrls[data.sharedHubDriveUrls.size() - 1].size() <= 1000)))) &&
         (!('seenTabGuides' in data) || (data.seenTabGuides is list && data.seenTabGuides.size() <= 30 && (data.seenTabGuides.size() == 0 || (data.seenTabGuides[0] is string && data.seenTabGuides[0].size() <= 150)) && (data.seenTabGuides.size() <= 1 || (data.seenTabGuides[data.seenTabGuides.size() - 1] is string && data.seenTabGuides[data.seenTabGuides.size() - 1].size() <= 150)))) &&
         (!('notifications' in data) || (data.notifications is map && data.notifications.size() <= 20)) &&
-        (!('plannerPrefs' in data) || (data.plannerPrefs is map && data.plannerPrefs.size() <= 20)) &&
+        (!('plannerPrefs' in data) || (data.plannerPrefs is map && data.plannerPrefs.size() <= 28)) &&
         (!('settings' in data) || isValidSettingsMap(data.settings)) &&
         isValidOptionalDateOrTimestamp(data, 'createdAt') &&
         isValidOptionalDateOrTimestamp(data, 'updatedAt');

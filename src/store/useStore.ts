@@ -13,7 +13,10 @@ import {
   syncStudyLog,
   syncUpsert,
   syncWeeklyCheckIn,
+  isRemoteSyncing,
 } from '../lib/firestoreSync';
+import { computeReplan, isReplaceable, type ReplanReason } from '../lib/planner/replan';
+import { notifyPlanReplanned, recordPlanUndo, takePlanUndo } from './planUndo';
 import { migrateStoreState, rehydrateStoreState, sanitizeMaterials } from '../lib/storeMigration';
 import { reconcileAvailabilityChanges } from '../lib/planner/availability';
 import type {
@@ -31,7 +34,6 @@ import type {
 } from '../types';
 import { setAppLanguage } from '../i18n';
 import { normalizeAppLanguage } from '../lib/grading';
-import { generatePlan } from '../lib/planner';
 import { todayStr } from '../lib/selectors';
 
 type Key = keyof Collections;
@@ -83,8 +85,14 @@ export interface AppState extends Collections {
     source: Source,
     items: Item<K>[],
   ) => void;
-  replaceGeneratedSessions: (fromDate: string, sessions: Collections['sessions']) => void;
-  /** Regenera sessões futuras pendentes se já existir um plano gerado ativo (ou quando `force = true`). */
+  /**
+   * O ÚNICO caminho para (re)gerar o plano. Sem `force`, só recalcula se já houver plano.
+   * Mostra «Plano atualizado · Desfazer» (exceto `silent`). Devolve se o plano mudou.
+   */
+  replan: (reason: ReplanReason, opts?: ReplanOptions) => boolean;
+  /** Desfaz o último recálculo (sessões e, se mudaram, preferências e tópicos). */
+  undoLastReplan: (token?: number) => boolean;
+  /** @deprecated Usar `replan`. Mantido para chamadas antigas. */
   reconcileFuturePlan: (force?: boolean) => void;
   updateTopic: (courseId: ID, topicId: ID, changes: Partial<Topic>) => void;
   /** Atualiza vários tópicos em lote (ex.: calibração de meio do semestre no construtor). */
@@ -97,7 +105,14 @@ export interface AppState extends Collections {
     title: string,
     opts?: { status?: Topic['status']; confidence?: Topic['confidence']; lastStudied?: string },
   ) => Topic | null;
-  updateSettings: (changes: Partial<Settings>) => void;
+  /**
+   * Mudar disponibilidade/preferências do plano recalcula o plano (exceto vindo da nuvem).
+   * `replan: false` adia o recálculo (para juntar várias mudanças num só Desfazer).
+   */
+  updateSettings: (
+    changes: Partial<Settings>,
+    opts?: { replan?: ReplanReason | false; force?: boolean },
+  ) => void;
   setIntegration: (key: IntegrationKey, status: Partial<IntegrationStatus>) => void;
   cleanupMismatchedMaterials: () => number;
   saveAcademicProfile: (changes: Partial<AcademicProfile>) => void;
@@ -111,60 +126,16 @@ export interface AppState extends Collections {
 
 export const newId = (): ID => crypto.randomUUID();
 
-function maybeReconcileSessions(
-  s: Pick<
-    AppState,
-    | 'courses'
-    | 'assessments'
-    | 'classes'
-    | 'events'
-    | 'materials'
-    | 'settings'
-    | 'sessions'
-    | 'academicProfile'
-    | 'weeklyCheckIns'
-    | 'studyLogs'
-  >,
-  force = false,
-): AppState['sessions'] {
-  const today = todayStr();
-  const hasPendingGenerated = s.sessions.some((x) => x.generated && !x.done && !x.locked && x.date >= today);
-  if (!force && !hasPendingGenerated) return s.sessions;
-  if (s.courses.length === 0) {
-    return s.sessions.filter((x) => !x.generated || x.done || x.locked || x.date < today);
-  }
-  const now = new Date();
-  const preserved = s.sessions.filter((x) => !x.generated || x.done || x.locked || x.date < today);
-  const prefs = s.settings.plannerPrefs;
-  const nextPlan = generatePlan({
-    courses: s.courses,
-    assessments: s.assessments,
-    classes: s.classes,
-    events: s.events,
-    materials: s.materials,
-    settings: s.settings,
-    from: today,
-    nowMinutes: now.getHours() * 60 + now.getMinutes(),
-    days: prefs?.horizonDays ?? 14,
-    preferredPeriod: prefs?.preferredPeriod ?? 'auto',
-    blockMinutes: prefs?.blockMinutes,
-    strategy: prefs?.strategy,
-    boostCourseIds: prefs?.boostCourseIds,
-    pausedCourseIds: prefs?.pausedCourseIds,
-    exclusiveTestFocus: prefs?.exclusiveTestFocus,
-    weekdaySchedule: prefs?.weekdaySchedule,
-    fillClassGaps: prefs?.fillClassGaps,
-    preExamMarathon: prefs?.preExamMarathon,
-    contentMix: prefs?.contentMix,
-    briefingCourseFocus: prefs?.briefingCourseFocus,
-    existing: preserved,
-    difficultCourseIds: s.academicProfile.difficultCourseIds,
-    weeklyCheckIns: s.weeklyCheckIns,
-    studyLogs: s.studyLogs,
-    extraActivities: s.academicProfile.extraActivities,
-  });
-  return [...preserved, ...nextPlan];
+export interface ReplanOptions {
+  force?: boolean;
+  silent?: boolean;
+  /** Preferências antes da mudança que levou a este recálculo (para o Desfazer as repor). */
+  prevPrefs?: Settings['plannerPrefs'];
+  /** Cadeiras antes da mudança (briefing que mexeu em tópicos). */
+  prevCourses?: Course[];
 }
+
+const PLAN_SETTING_KEYS: Array<keyof Settings> = ['plannerPrefs', 'studyDays', 'dailyStudyMinutes'];
 
 export const useStore = create<AppState>()(
   persist(
@@ -178,62 +149,40 @@ export const useStore = create<AppState>()(
 
       upsert: (key, item) => {
         syncUpsert(key as any, item).catch(() => {});
-        let prevSessions: Collections['sessions'] = [];
-        let nextSessions: Collections['sessions'] = [];
         set((s) => {
           const list = s[key] as { id: ID }[];
           const exists = list.some((x) => x.id === item.id);
-          const updated = {
-            ...s,
+          return {
             [key]: exists ? list.map((x) => (x.id === item.id ? item : x)) : [...list, item],
-          };
-          if (key === 'assessments') {
-            prevSessions = s.sessions;
-            nextSessions = maybeReconcileSessions(updated);
-            return {
-              [key]: updated[key],
-              sessions: nextSessions,
-            } as Partial<AppState>;
-          }
-          return { [key]: updated[key] } as Partial<AppState>;
+          } as Partial<AppState>;
         });
-        if (key === 'assessments' && prevSessions !== nextSessions) {
-          syncSessionsDiff(prevSessions, nextSessions).catch(() => {});
-        }
+        if (key === 'assessments') get().replan('assessment');
+        else if (key === 'classes' || key === 'events') get().replan('schedule');
       },
       upsertMany: (key, items) => {
         items.forEach((item) => syncUpsert(key as any, item).catch(() => {}));
-        return set((s) => {
+        set((s) => {
           const map = new Map((s[key] as { id: ID }[]).map((x) => [x.id, x]));
           for (const it of items) map.set(it.id, it);
           return { [key]: [...map.values()] } as Partial<AppState>;
         });
+        if (items.length > 0 && (key === 'assessments' || key === 'classes' || key === 'events')) {
+          get().replan(key === 'assessments' ? 'assessment' : 'schedule');
+        }
       },
       patch: (key, id, changes, opts) => {
         syncPatch(key as any, id, changes).catch(() => {});
-        let prevSessions: Collections['sessions'] = [];
-        let nextSessions: Collections['sessions'] = [];
         set((s) => {
           const nextList = (s[key] as { id: ID }[]).map((x) => (x.id === id ? { ...x, ...changes } : x));
-          if (key === 'assessments' && !opts?.skipReconcile) {
-            const updated = { ...s, assessments: nextList as AppState['assessments'] };
-            prevSessions = s.sessions;
-            nextSessions = maybeReconcileSessions(updated);
-            return {
-              [key]: nextList,
-              sessions: nextSessions,
-            } as Partial<AppState>;
-          }
           return { [key]: nextList } as Partial<AppState>;
         });
-        if (key === 'assessments' && !opts?.skipReconcile && prevSessions !== nextSessions) {
-          syncSessionsDiff(prevSessions, nextSessions).catch(() => {});
+        if (!opts?.skipReconcile) {
+          if (key === 'assessments') get().replan('assessment');
+          else if (key === 'classes' || key === 'events') get().replan('schedule');
         }
       },
       remove: (key, id) => {
         syncRemove(key as any, id).catch(() => {});
-        let prevSessions: Collections['sessions'] = [];
-        let nextSessions: Collections['sessions'] = [];
         set((s) => {
           const next: Partial<Collections> = {
             [key]: (s[key] as { id: ID }[]).filter((x) => x.id !== id),
@@ -244,17 +193,11 @@ export const useStore = create<AppState>()(
             next.sessions = s.sessions.filter((x) => x.courseId !== id);
             next.tasks = s.tasks.filter((x) => x.courseId !== id);
             next.materials = s.materials.filter((x) => x.courseId !== id);
-          } else if (key === 'assessments') {
-            const updated = { ...s, assessments: next.assessments! };
-            prevSessions = s.sessions;
-            nextSessions = maybeReconcileSessions(updated);
-            next.sessions = nextSessions;
           }
           return next as Partial<AppState>;
         });
-        if (key === 'assessments' && prevSessions !== nextSessions) {
-          syncSessionsDiff(prevSessions, nextSessions).catch(() => {});
-        }
+        if (key === 'assessments') get().replan('assessment');
+        else if (key === 'classes' || key === 'events') get().replan('schedule');
       },
       replaceSource: (key, source, items) => {
         let prevItems: Collections[typeof key] = [];
@@ -268,36 +211,64 @@ export const useStore = create<AppState>()(
           return { [key]: nextItems } as Partial<AppState>;
         });
         syncCollectionDiff(key, prevItems, nextItems).catch(() => {});
+        // Importações de calendário/horário: recálculo silencioso (não interrompe a importação).
+        get().replan(key === 'assessments' ? 'assessment' : 'schedule', { silent: key !== 'assessments' });
       },
-      replaceGeneratedSessions: (fromDate, sessions) => {
-        let prevSessions: Collections['sessions'] = [];
-        let nextSessions: Collections['sessions'] = [];
-        set((s) => {
-          prevSessions = s.sessions;
-          const kept = s.sessions.filter(
-            (x) => !x.generated || x.done || x.locked || x.date < fromDate,
-          );
-          const keptIds = new Set(kept.map((x) => x.id));
-          nextSessions = [...kept, ...sessions.filter((x) => !keptIds.has(x.id))];
-          return { sessions: nextSessions };
+      replan: (reason, opts = {}) => {
+        const now = new Date();
+        const state = get();
+        const result = computeReplan(state, {
+          today: todayStr(),
+          nowMinutes: now.getHours() * 60 + now.getMinutes(),
+          force: opts.force,
         });
-        syncSessionsDiff(prevSessions, nextSessions).catch(() => {});
+        const prevSessions = state.sessions;
+        const sessionsChanged = result.sessions !== prevSessions && result.changed;
+        if (result.prunedPrefs) {
+          // Limpeza de notas/exceções expiradas: grava sem recalcular de novo.
+          const settings = { ...get().settings, plannerPrefs: result.prunedPrefs };
+          set({ settings });
+          syncSettings({ plannerPrefs: result.prunedPrefs }).catch(() => {});
+        }
+        if (!sessionsChanged) return false;
+        set({ sessions: result.sessions });
+        syncSessionsDiff(prevSessions, result.sessions).catch(() => {});
+        const token = recordPlanUndo({
+          reason,
+          prevFuture: result.previousFuture,
+          ...(opts.prevPrefs !== undefined ? { prevPrefs: opts.prevPrefs } : {}),
+          ...(opts.prevCourses ? { prevCourses: opts.prevCourses } : {}),
+        });
+        notifyPlanReplanned(token, reason, Boolean(opts.silent));
+        return true;
+      },
+      undoLastReplan: (token) => {
+        const snap = takePlanUndo(token);
+        if (!snap) return false;
+        const today = todayStr();
+        const prev = get();
+        const restored = [
+          ...prev.sessions.filter((s) => !isReplaceable(s, today)),
+          ...snap.prevFuture,
+        ];
+        const patch: Partial<AppState> = { sessions: restored };
+        if (snap.prevPrefs !== undefined) {
+          patch.settings = { ...prev.settings, plannerPrefs: snap.prevPrefs };
+          if (snap.prevPrefs) syncSettings({ plannerPrefs: snap.prevPrefs }).catch(() => {});
+        }
+        if (snap.prevCourses) {
+          patch.courses = snap.prevCourses;
+          syncCourseBatch(snap.prevCourses).catch(() => {});
+        }
+        set(patch);
+        syncSessionsDiff(prev.sessions, restored).catch(() => {});
+        return true;
       },
       reconcileFuturePlan: (force = false) => {
-        let prevSessions: Collections['sessions'] = [];
-        let nextSessions: Collections['sessions'] = [];
-        set((s) => {
-          prevSessions = s.sessions;
-          nextSessions = maybeReconcileSessions(s, force);
-          return { sessions: nextSessions };
-        });
-        if (prevSessions !== nextSessions) {
-          syncSessionsDiff(prevSessions, nextSessions).catch(() => {});
-        }
+        get().replan(force ? 'manual' : 'topic', { force, silent: !force });
       },
       updateTopic: (courseId, topicId, changes) => {
-        let prevSessions: Collections['sessions'] = [];
-        let nextSessions: Collections['sessions'] = [];
+        let shouldReconcile = false;
         set((s) => {
           const nextCourses = s.courses.map((c) =>
             c.id !== courseId
@@ -306,22 +277,14 @@ export const useStore = create<AppState>()(
           );
           const updatedCourse = nextCourses.find((c) => c.id === courseId);
           if (updatedCourse) syncUpsert('courses', updatedCourse).catch(() => {});
-          const shouldReconcile =
+          shouldReconcile =
             changes.nextReviewDate !== undefined ||
             changes.confidence !== undefined ||
             changes.status !== undefined;
-          if (shouldReconcile) {
-            prevSessions = s.sessions;
-            nextSessions = maybeReconcileSessions({ ...s, courses: nextCourses });
-          }
-          return {
-            courses: nextCourses,
-            ...(shouldReconcile ? { sessions: nextSessions } : {}),
-          };
+          return { courses: nextCourses };
         });
-        if (prevSessions !== nextSessions) {
-          syncSessionsDiff(prevSessions, nextSessions).catch(() => {});
-        }
+        // Progresso num tópico ajusta o plano em silêncio (não interrompe quem está a estudar).
+        if (shouldReconcile) get().replan('topic', { silent: true });
       },
       batchUpdateTopicStates: (updates) => {
         if (updates.length === 0) return;
@@ -392,7 +355,8 @@ export const useStore = create<AppState>()(
         });
         return created;
       },
-      updateSettings: (changes) => {
+      updateSettings: (changes, opts) => {
+        const prevPrefs = get().settings.plannerPrefs;
         // Horário por dia e valores antigos (dias, minutos) ficam sempre coerentes.
         let nextChanges = reconcileAvailabilityChanges(get().settings, changes);
         if (changes.language !== undefined) {
@@ -401,7 +365,12 @@ export const useStore = create<AppState>()(
           setAppLanguage(normalizedLang);
         }
         syncSettings(nextChanges).catch(() => {});
-        return set((s) => ({ settings: { ...s.settings, ...nextChanges } }));
+        set((s) => ({ settings: { ...s.settings, ...nextChanges } }));
+        // Mudou o que o plano usa → recalcula (nunca para mudanças vindas da nuvem: evita pingue-pongue).
+        const touchesPlan = PLAN_SETTING_KEYS.some((k) => k in changes);
+        if (touchesPlan && opts?.replan !== false && !isRemoteSyncing()) {
+          get().replan(opts?.replan ?? 'prefs', { force: opts?.force, prevPrefs: prevPrefs ?? undefined });
+        }
       },
       setIntegration: (key, status) =>
         set((s) => ({

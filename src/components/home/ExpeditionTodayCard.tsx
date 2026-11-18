@@ -23,7 +23,7 @@ export default function ExpeditionTodayCard() {
   const { t } = useTranslation('uni');
   const courses = useStore((s) => s.courses);
   const updateTopic = useStore((s) => s.updateTopic);
-  const reconcileFuturePlan = useStore((s) => s.reconcileFuturePlan);
+  const replan = useStore((s) => s.replan);
   const agents = useUniAgents();
 
   const [revealedHints, setRevealedHints] = useState<Record<string, boolean>>({});
@@ -67,7 +67,7 @@ export default function ExpeditionTodayCard() {
             total: outcome.total,
           });
           updateTopic(targetCourse.id, targetTopic.id, srsUpdate);
-          reconcileFuturePlan();
+          replan('topic', { silent: true });
         }
       }
 

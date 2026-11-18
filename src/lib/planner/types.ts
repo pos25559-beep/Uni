@@ -18,6 +18,7 @@ import type {
   Topic,
   WeekdayAvailability,
   WeeklyCheckIn,
+  PlannerCourseNote,
 } from '../../types';
 
 export interface PlanInput {
@@ -67,8 +68,10 @@ export interface PlanInput {
   preExamMarathon?: PreExamMarathonConfig;
   /** Equilíbrio entre matéria nova e prática/testes antigos. */
   contentMix?: PlannerContentMix;
-  /** Foco personalizado por cadeira definido no briefing ao Uni. */
+  /** @deprecated Foco por cadeira sem validade; usar `courseNotes`. */
   briefingCourseFocus?: Record<string, string>;
+  /** Nota de foco por cadeira com validade (só aparece nos dias da janela). */
+  courseNotes?: Record<ID, PlannerCourseNote>;
 }
 
 export interface CourseMinutes {

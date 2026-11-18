@@ -312,8 +312,31 @@ export interface PlannerPreferences {
   contentMix?: PlannerContentMix;
   /** Último briefing em linguagem natural explicado ao Uni no construtor. */
   briefingNote?: string;
-  /** Foco personalizado por cadeira extraído do briefing ao Uni. */
+  /** @deprecated Substituído por `courseNotes` (com validade). Lido só para migrar. */
   briefingCourseFocus?: Record<string, string>;
+  /** Nota de foco por cadeira com validade (do briefing ou do Uni). Expiradas são limpas no replan. */
+  courseNotes?: Record<ID, PlannerCourseNote>;
+  /** Exceções pontuais por data («esta sexta não posso»), por cima do horário semanal. */
+  dateOverrides?: Record<string, PlannerDateOverride>;
+  /** Até quando vale o reforço/pausa de cada cadeira (sem entrada = sem fim). */
+  courseModeUntil?: Record<ID, string>;
+  /** Quando o último briefing foi aplicado (ISO). */
+  briefingAppliedAt?: string;
+}
+
+export interface PlannerCourseNote {
+  text: string;
+  /** Primeiro dia (yyyy-MM-dd) em que a nota vale; omisso = já. */
+  from?: string;
+  /** Último dia (yyyy-MM-dd) em que a nota vale. */
+  until: string;
+  source: 'briefing' | 'tool';
+}
+
+export interface PlannerDateOverride {
+  enabled?: boolean;
+  minutes?: number;
+  window?: PlannerWindowMode;
 }
 
 export interface ExtraActivity {

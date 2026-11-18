@@ -21,7 +21,6 @@ import { useGoogleAccounts } from '../../hooks/useGoogleData';
 import { todayStr } from '../../lib/selectors';
 import { kindLabel } from '../../lib/colors';
 import { hapticSuccess, hapticTap } from '../../lib/nativeBridge';
-import { generatePlan } from '../../lib/planner';
 import {
   HUB_FLOWS,
   getHubProgress,
@@ -66,15 +65,13 @@ export default function PostOnboardingHubModal({
   const classes = useStore((s) => s.classes);
   const assessments = useStore((s) => s.assessments);
   const materials = useStore((s) => s.materials);
-  const events = useStore((s) => s.events);
   const sessions = useStore((s) => s.sessions);
   const settings = useStore((s) => s.settings);
   const academicProfile = useStore((s) => s.academicProfile);
-  const weeklyCheckIns = useStore((s) => s.weeklyCheckIns);
   const upsert = useStore((s) => s.upsert);
   const patch = useStore((s) => s.patch);
   const updateSettings = useStore((s) => s.updateSettings);
-  const replaceGeneratedSessions = useStore((s) => s.replaceGeneratedSessions);
+  const replan = useStore((s) => s.replan);
 
   const { scanDrive, scanningDrive, isPersonalConnected } = useGoogleAccounts();
 
@@ -237,20 +234,10 @@ export default function PostOnboardingHubModal({
     const today = todayStr();
     const pendingAssessmentsCount = assessments.filter((a) => a.grade === undefined).length;
     const starterOnly = pendingAssessmentsCount === 0 && courses.length > 0;
-    const nextSessions = generatePlan({
-      courses,
-      assessments,
-      classes,
-      events,
-      settings,
-      from: today,
-      days: 14,
-      existing: sessions.filter((s) => !s.generated || s.done || s.date < today),
-      difficultCourseIds: academicProfile.difficultCourseIds,
-      weeklyCheckIns,
-      extraActivities: academicProfile.extraActivities,
-    });
-    replaceGeneratedSessions(today, nextSessions);
+    replan('onboarding', { force: true });
+    const nextSessions = useStore
+      .getState()
+      .sessions.filter((x) => x.generated && !x.done && x.date >= today);
     updateSettings({
       hubSetupFlow: selectedFlow,
       hubSetupCompleted: true,

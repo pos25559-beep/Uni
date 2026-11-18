@@ -238,18 +238,17 @@ export function ToastViewport() {
           const isCelebrate = isOk && (item.effect === 'celebrate' || item.effect === 'confetti');
 
           return (
-            <motion.button
+            <motion.div
               key={item.id}
               layout
-              type="button"
-              onClick={() => dismissToast(item.id)}
-              aria-label={`${item.message} — ${t('actions.close')}`}
+              role="status"
+              aria-live="polite"
               initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -14, scale: 0.94 }}
               animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
               exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.94 }}
               transition={UNIPEDIA_SPRING}
               className={cx(
-                'pointer-events-auto flex min-h-11 max-w-sm items-center gap-2 rounded-full border px-3.5 py-2 text-left text-xs font-semibold shadow-float transition active:scale-[0.98]',
+                'pointer-events-auto flex min-h-11 max-w-sm items-center rounded-full border text-left text-xs font-semibold shadow-float',
                 isDanger
                   ? 'border-coral/40 bg-coral-soft text-coral-ink'
                   : isOk
@@ -257,21 +256,45 @@ export function ToastViewport() {
                     : 'border-line bg-surface text-fg',
               )}
             >
-              {isDanger ? (
-                <span className="flex shrink-0 items-center gap-1" aria-hidden="true">
-                  <UniBuddy mood="shy" size={22} interactive={false} />
-                  <LottieAccent kind="alertPulse" loop={false} className="size-4" />
-                </span>
-              ) : isOk ? (
-                <span className="flex shrink-0 items-center gap-1" aria-hidden="true">
-                  {isCelebrate && <UniBuddy mood="celebrate" size={24} interactive={false} />}
-                  <LottieAccent kind="checkBurst" loop={false} className="size-5" />
-                </span>
-              ) : (
-                <Info size={15} className="shrink-0 text-muted" aria-hidden="true" />
+              {/* Zona da mensagem: tocar fecha o aviso (botão irmão da ação, nunca aninhado). */}
+              <button
+                type="button"
+                onClick={() => dismissToast(item.id)}
+                aria-label={`${item.message} — ${t('actions.close')}`}
+                className={cx(
+                  'flex min-h-11 min-w-0 flex-1 items-center gap-2 py-2 pl-3.5 text-left transition active:opacity-80',
+                  item.action ? 'rounded-l-full pr-2' : 'rounded-full pr-3.5',
+                )}
+              >
+                {isDanger ? (
+                  <span className="flex shrink-0 items-center gap-1" aria-hidden="true">
+                    <UniBuddy mood="shy" size={22} interactive={false} />
+                    <LottieAccent kind="alertPulse" loop={false} className="size-4" />
+                  </span>
+                ) : isOk ? (
+                  <span className="flex shrink-0 items-center gap-1" aria-hidden="true">
+                    {isCelebrate && <UniBuddy mood="celebrate" size={24} interactive={false} />}
+                    <LottieAccent kind="checkBurst" loop={false} className="size-5" />
+                  </span>
+                ) : (
+                  <Info size={15} className="shrink-0 text-muted" aria-hidden="true" />
+                )}
+                <span className="min-w-0 leading-snug">{item.message}</span>
+              </button>
+              {item.action && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const act = item.action;
+                    dismissToast(item.id);
+                    act?.onPress();
+                  }}
+                  className="mr-1 flex min-h-11 shrink-0 items-center rounded-full px-3.5 text-xs font-bold underline underline-offset-2 transition hover:bg-black/10 active:scale-[0.97]"
+                >
+                  {item.action.label}
+                </button>
               )}
-              <span className="min-w-0 leading-snug">{item.message}</span>
-            </motion.button>
+            </motion.div>
           );
         })}
       </AnimatePresence>

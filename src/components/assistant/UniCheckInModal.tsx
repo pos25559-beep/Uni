@@ -208,7 +208,7 @@ function UniCheckInModalInner({
   const addWeeklyCheckIn = useStore((s) => s.addWeeklyCheckIn);
   const ensureCourseTopic = useStore((s) => s.ensureCourseTopic);
   const patchAssessment = useStore((s) => s.patch);
-  const reconcileFuturePlan = useStore((s) => s.reconcileFuturePlan);
+  const replan = useStore((s) => s.replan);
 
   useSheetSwipeDismiss({
     ref: dialogRef,
@@ -666,7 +666,7 @@ function UniCheckInModalInner({
     const wasAlreadySaved = Boolean(savedEntryForContext);
     addStudyLog(entry);
     clearCheckInDraft(activeContextKey);
-    reconcileFuturePlan(true);
+    replan('checkin', { force: true });
 
     showToast(
       wasAlreadySaved

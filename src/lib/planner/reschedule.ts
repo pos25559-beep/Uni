@@ -8,9 +8,9 @@ import type {
   Settings,
   StudySession,
   WeekdayAvailability,
+  ID,
 } from '../../types';
 import {
-  MIN_BLOCK,
   MIN_DAY_BUDGET,
   PERIOD_BUSY_RANGES,
   BREAK,
@@ -22,14 +22,27 @@ import {
   fmtTime,
   occupied,
   parseDay,
+  parseDueMinutes,
   resolveDayPlanProfile,
   roundUp5,
   toMin,
 } from './slots';
 
+const EXAM_REASONS = new Set(['exam_prep', 'exam_marathon', 'exam_eve']);
+/** Folga mínima (min) entre o fim do bloco e a hora de uma avaliação no mesmo dia. */
+const EXAM_GAP = 30;
+
 /**
  * Redistribui sessões em atraso pelos próximos dias de estudo disponíveis,
  * respeitando aulas, eventos, sessões já agendadas e o limite diário do estudante.
+ *
+ * - Nunca trunca blocos: só coloca um bloco se os `minutes` completos couberem
+ *   no orçamento do dia e num intervalo livre; senão tenta o dia seguinte.
+ * - Nunca coloca um bloco no dia (ou depois) da avaliação a que está ligado
+ *   (`assessmentId`) nem, se o motivo for de exame, da próxima avaliação por
+ *   classificar da cadeira. No dia de uma avaliação com hora, termina ≥30 min antes.
+ * - `pausedCourseIds`: sessões dessas cadeiras ficam por agendar (contam em `unscheduledCount`).
+ * - Os blocos devolvidos ficam `locked: true`, para o próximo replaneamento automático não os apagar.
  */
 export function rescheduleOverdueSessions(args: {
   overdue: StudySession[];
@@ -44,6 +57,7 @@ export function rescheduleOverdueSessions(args: {
   weekdaySchedule?: Record<string, WeekdayAvailability>;
   preExamMarathon?: PreExamMarathonConfig;
   assessments?: Assessment[];
+  pausedCourseIds?: ID[];
 }): { updated: StudySession[]; unscheduledCount: number } {
   const {
     overdue,
@@ -58,16 +72,39 @@ export function rescheduleOverdueSessions(args: {
     weekdaySchedule,
     preExamMarathon,
     assessments = [],
+    pausedCourseIds = [],
   } = args;
 
   if (overdue.length === 0) return { updated: [], unscheduledCount: 0 };
 
+  const paused = new Set(pausedCourseIds);
   const start = parseDay(from);
-  const queue = [...overdue].sort((a, b) => a.date.localeCompare(b.date));
+  const queue = overdue
+    .filter((s) => !paused.has(s.courseId))
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const pausedCount = overdue.length - queue.length;
   const updated: StudySession[] = [];
-  let qIdx = 0;
 
-  for (let i = 0; i < days && qIdx < queue.length; i++) {
+  const ungraded = assessments.filter((a) => a.grade === undefined);
+  /** Primeiro dia (exclusivo) em que a sessão já não pode ser colocada. */
+  const cutoffOf = (t: StudySession): string | undefined => {
+    if (t.assessmentId) {
+      const a = assessments.find((x) => x.id === t.assessmentId);
+      if (a) return a.date.slice(0, 10);
+    }
+    if (t.reason && EXAM_REASONS.has(t.reason.code)) {
+      const next = ungraded
+        .filter((a) => a.courseId === t.courseId && a.date.slice(0, 10) >= from)
+        .map((a) => a.date.slice(0, 10))
+        .sort()[0];
+      return next;
+    }
+    return undefined;
+  };
+  const cutoffs = new Map(queue.map((t) => [t.id, cutoffOf(t)] as const));
+  let pending = [...queue];
+
+  for (let i = 0; i < days && pending.length > 0; i++) {
     const day = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
     const key = dayKey(day);
     const weekday = day.getDay();
@@ -134,30 +171,47 @@ export function rescheduleOverdueSessions(args: {
     let remaining = Math.max(0, budget - existingMinutes);
     let cursor = baseStart;
 
-    while (qIdx < queue.length && remaining >= MIN_BLOCK) {
-      const target = queue[qIdx]!;
-      const duration = Math.min(target.minutes, remaining);
-      if (duration < MIN_BLOCK) break;
-      cursor = advanceCursorPastBusy(cursor, duration, dayBusy);
-      if (cursor + duration > 23 * 60 + 30) break;
-
+    const stillPending: StudySession[] = [];
+    for (const target of pending) {
+      const cutoff = cutoffs.get(target.id);
+      if (cutoff && key >= cutoff) {
+        // Fora do prazo: nunca mais cabe; fica por agendar.
+        stillPending.push(target);
+        continue;
+      }
+      if (target.minutes > remaining) {
+        stillPending.push(target);
+        continue;
+      }
+      // No dia de uma avaliação com hora da mesma cadeira, acaba ≥30 min antes.
+      let maxEnd = 23 * 60 + 30;
+      for (const a of ungraded) {
+        if (a.courseId !== target.courseId || a.date.slice(0, 10) !== key) continue;
+        const due = parseDueMinutes(a.date);
+        if (due !== undefined) maxEnd = Math.min(maxEnd, due - EXAM_GAP);
+      }
+      const at = advanceCursorPastBusy(cursor, target.minutes, dayBusy);
+      if (at + target.minutes > maxEnd) {
+        stillPending.push(target);
+        continue;
+      }
       updated.push({
         ...target,
         date: key,
-        start: fmtTime(cursor),
-        minutes: duration,
+        start: fmtTime(at),
+        locked: true,
         reason: target.reason ?? { code: 'overdue' },
       });
-      dayBusy.push({ start: cursor, end: cursor + duration });
+      dayBusy.push({ start: at, end: at + target.minutes });
       dayBusy.sort((a, b) => a.start - b.start);
-      remaining -= duration;
-      cursor = roundUp5(cursor + duration + BREAK);
-      qIdx++;
+      remaining -= target.minutes;
+      cursor = roundUp5(at + target.minutes + BREAK);
     }
+    pending = stillPending;
   }
 
   return {
     updated,
-    unscheduledCount: Math.max(0, queue.length - qIdx),
+    unscheduledCount: pending.length + pausedCount,
   };
 }

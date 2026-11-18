@@ -186,7 +186,7 @@ export function commitScheduleSyncToStore(bundle: {
   if (newClasses.length > 0) store.upsertMany('classes', newClasses);
   if (assessmentsToUpsert.length > 0) store.upsertMany('assessments', assessmentsToUpsert);
   if (createdCourses.length > 0 || newClasses.length > 0 || assessmentsToUpsert.length > 0) {
-    store.reconcileFuturePlan(true);
+    store.replan('schedule', { force: true, silent: true });
   }
 
   return {

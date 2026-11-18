@@ -15,6 +15,7 @@ import { resolveWeekdayAvailability } from '../plannerBriefing';
 import { sessionMinutes } from '../selectors';
 import { isTopicReviewDue } from '../spacedRepetition';
 import { extractStudyFocusPhrase } from '../uniCheckInNlu';
+import { isWithinWindow, parseFocusWindow, type FocusWindow } from './focusWindow';
 import {
   advanceCursorPastBusy,
   availableWindowMinutes,
@@ -75,8 +76,10 @@ function extractLogSignals(
     courseId?: ID;
     due?: Date;
     logDate: string;
+    /** Janela escrita na frase («de sexta a segunda»); fora dela a nota não aparece. */
+    window?: FocusWindow;
   }> = [];
-  const examFocusByAssessmentId = new Map<ID, string>();
+  const examFocusByAssessmentId = new Map<ID, { focus: string; window?: FocusWindow }>();
   const classFocusByCourseId = new Map<ID, string>();
   let recentTiredDay = false;
 
@@ -103,8 +106,20 @@ function extractLogSignals(
     if (!focus) continue;
     if (log.kind === 'exam_prep') {
       const linkedAssessment = log.assessmentId ? assessmentById.get(log.assessmentId) : undefined;
-      if (log.assessmentId && openAssessmentIds.has(log.assessmentId) && !examFocusByAssessmentId.has(log.assessmentId)) {
-        examFocusByAssessmentId.set(log.assessmentId, focus);
+      if (
+        log.assessmentId &&
+        openAssessmentIds.has(log.assessmentId) &&
+        !examFocusByAssessmentId.has(log.assessmentId)
+      ) {
+        examFocusByAssessmentId.set(log.assessmentId, { focus, window: parseFocusWindow(focus, log.date) });
+      }
+      // Sem teste ligado, um registo só vale 14 dias (antes valia para sempre).
+      if (!linkedAssessment) {
+        try {
+          if (differenceInCalendarDays(start, parseDay(log.date)) > 14) continue;
+        } catch {
+          continue;
+        }
       }
       examFocusEntries.push({
         focus,
@@ -112,6 +127,7 @@ function extractLogSignals(
         courseId: log.courseId,
         due: linkedAssessment ? parseDay(linkedAssessment.date) : undefined,
         logDate: log.date,
+        window: parseFocusWindow(focus, log.date),
       });
       for (const tid of log.topicIds ?? []) logHighlightedTopicIds.add(tid);
     } else if (log.courseId && !classFocusByCourseId.has(log.courseId)) {
@@ -185,7 +201,15 @@ export function generatePlan(input: PlanInput): StudySession[] {
     preExamMarathon,
     contentMix = 'balanced',
     briefingCourseFocus = {},
+    courseNotes = {},
   } = input;
+
+  /** Nota de foco da cadeira válida neste dia (com validade); a antiga sem validade só se não houver nova. */
+  const courseNoteFor = (courseId: ID, day: Date): string | undefined => {
+    const note = courseNotes[courseId];
+    if (note) return isWithinWindow(dayKey(day), note) ? note.text : undefined;
+    return briefingCourseFocus[courseId];
+  };
 
   const extraPenaltyByWeekday = computeExtraActivityPenaltyByWeekday(extraActivities);
   const days = input.days ?? 14;
@@ -249,7 +273,7 @@ export function generatePlan(input: PlanInput): StudySession[] {
       const target = assessmentById.get(assessmentId);
       if (target && target.grade === undefined && differenceInCalendarDays(parseDay(target.date), day) >= 0) {
         const exact = examFocusByAssessmentId.get(assessmentId);
-        if (exact) return exact;
+        if (exact && (!exact.window || isWithinWindow(dayKey(day), exact.window))) return exact.focus;
       }
     }
     const hasUrgentCourseExam = activeCourseAssessments.some(
@@ -260,6 +284,7 @@ export function generatePlan(input: PlanInput): StudySession[] {
       if (entry.courseId !== courseId) continue;
       if (entry.due && differenceInCalendarDays(entry.due, day) < 0) continue;
       if (assessmentId && entry.assessmentId && entry.assessmentId !== assessmentId) continue;
+      if (entry.window && !isWithinWindow(dayKey(day), entry.window)) continue;
       return entry.focus;
     }
     return undefined;
@@ -284,9 +309,15 @@ export function generatePlan(input: PlanInput): StudySession[] {
   const effort = new Map<ID, number>();
   for (const c of activeCourses) {
     for (const t of c.topics) {
+      // Conta o que já foi feito e o que já está marcado de forma fixa (fixado ou manual, por fazer):
+      // assim um bloco reagendado ou manual não leva o motor a planear a mesma matéria outra vez.
       const studied = existing
-        .filter((s) => s.done && s.topicId === t.id)
-        .reduce((sum, s) => sum + sessionMinutes(s), 0);
+        .filter(
+          (s) =>
+            s.topicId === t.id &&
+            (s.done || (s.date >= from && (!s.generated || s.locked))),
+        )
+        .reduce((sum, s) => sum + (s.done ? sessionMinutes(s) : s.minutes), 0);
       const checkInExtra = isTopicHighlightedByCheckIn(t.title, t.id) ? 35 : 0;
       const estimate = effortBase[t.status] * (1.3 - t.confidence * 0.1) + checkInExtra;
       effort.set(t.id, Math.max(0, Math.round(estimate) - studied));
@@ -565,7 +596,7 @@ export function generatePlan(input: PlanInput): StudySession[] {
       if (it.daysLeft !== 1 || !canTake() || !courseOk(it.courseId)) continue;
       const eveFocus =
         getValidExamFocus(it.courseId, day, active, it.assessment.id) ??
-        briefingCourseFocus[it.courseId];
+        courseNoteFor(it.courseId, day);
       const matId = matchBestMaterialForTopic({
         courseId: it.courseId,
         topic: it.topics[0] ?? null,
@@ -731,7 +762,7 @@ export function generatePlan(input: PlanInput): StudySession[] {
         else fallbackEffortByAssessment.set(best.item.assessment.id, 0);
         continue;
       }
-      const briefingFocus = briefingCourseFocus[best.item.courseId];
+      const briefingFocus = courseNoteFor(best.item.courseId, day);
       const customFocus =
         getValidExamFocus(best.item.courseId, day, active, best.item.assessment.id) ??
         classFocusByCourseId.get(best.item.courseId) ??
@@ -892,7 +923,7 @@ export function generatePlan(input: PlanInput): StudySession[] {
             : targetBlock;
         const minutes = Math.min(targetMinutes, remaining);
         if (minutes < MIN_BLOCK) break;
-        const starterBriefing = briefingCourseFocus[picked.course.id];
+        const starterBriefing = courseNoteFor(picked.course.id, day);
         const starterFocus =
           getValidExamFocus(picked.course.id, day, active) ??
           classFocusByCourseId.get(picked.course.id) ??

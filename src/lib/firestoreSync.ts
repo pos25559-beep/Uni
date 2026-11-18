@@ -133,6 +133,79 @@ export function isRemoteSyncing() {
 }
 
 
+const ISO_DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return !!v && typeof v === 'object' && !Array.isArray(v);
+}
+
+/** Limpa os campos novos das preferências do plano (limites e entradas inválidas). */
+function sanitizePlannerPrefs(prefs: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...prefs };
+
+  if ('courseNotes' in out) {
+    const entries: [string, Record<string, unknown>][] = [];
+    if (isPlainObject(out.courseNotes)) {
+      for (const [id, n] of Object.entries(out.courseNotes)) {
+        if (!id || !isPlainObject(n)) continue;
+        const text = typeof n.text === 'string' ? n.text.trim().slice(0, 80) : '';
+        if (!text || typeof n.until !== 'string' || !ISO_DAY_RE.test(n.until)) continue;
+        if (n.source !== 'briefing' && n.source !== 'tool') continue;
+        const from = typeof n.from === 'string' && ISO_DAY_RE.test(n.from) ? n.from : undefined;
+        entries.push([id, { text, ...(from ? { from } : {}), until: n.until, source: n.source }]);
+      }
+    }
+    // Mantém as 12 com validade mais tardia.
+    entries.sort((a, b) => String(b[1].until).localeCompare(String(a[1].until)));
+    out.courseNotes = Object.fromEntries(entries.slice(0, 12));
+  }
+
+  if ('dateOverrides' in out) {
+    const entries: [string, Record<string, unknown>][] = [];
+    if (isPlainObject(out.dateOverrides)) {
+      for (const [day, o] of Object.entries(out.dateOverrides)) {
+        if (!ISO_DAY_RE.test(day) || !isPlainObject(o)) continue;
+        const clean: Record<string, unknown> = {};
+        if (typeof o.enabled === 'boolean') clean.enabled = o.enabled;
+        if (typeof o.minutes === 'number' && Number.isFinite(o.minutes)) {
+          clean.minutes = Math.max(0, Math.min(720, Math.round(o.minutes)));
+        }
+        if (typeof o.window === 'string' && o.window.trim()) clean.window = o.window.trim().slice(0, 40);
+        if (Object.keys(clean).length === 0) continue;
+        entries.push([day, clean]);
+      }
+    }
+    // Mantém as 21 datas mais próximas (primeiro as mais cedo).
+    entries.sort((a, b) => a[0].localeCompare(b[0]));
+    out.dateOverrides = Object.fromEntries(entries.slice(0, 21));
+  }
+
+  if ('courseModeUntil' in out) {
+    const entries: [string, string][] = [];
+    if (isPlainObject(out.courseModeUntil)) {
+      for (const [id, until] of Object.entries(out.courseModeUntil)) {
+        if (id && typeof until === 'string' && ISO_DAY_RE.test(until)) entries.push([id, until]);
+      }
+    }
+    entries.sort((a, b) => b[1].localeCompare(a[1]));
+    out.courseModeUntil = Object.fromEntries(entries.slice(0, 30));
+  }
+
+  if ('briefingAppliedAt' in out && typeof out.briefingAppliedAt !== 'string') {
+    delete out.briefingAppliedAt;
+  }
+  return out;
+}
+
+/**
+ * Opções de escrita das definições: `mergeFields` com as chaves de topo do payload.
+ * Cada campo de topo é substituído por inteiro (um merge profundo nunca apagaria
+ * chaves removidas dentro de `plannerPrefs`); os outros campos ficam como estão.
+ */
+export function settingsWriteOptions(payload: Record<string, unknown>): { mergeFields: string[] } {
+  return { mergeFields: Object.keys(payload) };
+}
+
 export function sanitizeSettingsPayload(
   changes: Partial<Settings>,
   isPatch: boolean,
@@ -158,7 +231,7 @@ export function sanitizeSettingsPayload(
       continue;
     }
     if (key === 'plannerPrefs') {
-      payload[key] = stripUndefined(raw);
+      payload[key] = sanitizePlannerPrefs(stripUndefined(raw) as unknown as Record<string, unknown>);
       continue;
     }
     payload[key] = raw;
@@ -693,7 +766,7 @@ export async function syncSettings(changes: Partial<Settings>) {
   const userDocRef = doc(db, 'users', user.uid);
   pendingSettingsWrites += 1;
   try {
-    await setDoc(userDocRef, payload, { merge: true });
+    await setDoc(userDocRef, payload, settingsWriteOptions(payload));
   } finally {
     pendingSettingsWrites = Math.max(0, pendingSettingsWrites - 1);
   }

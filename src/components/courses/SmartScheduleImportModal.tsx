@@ -98,7 +98,7 @@ export default function SmartScheduleImportModal({
   const isExpressive = appTone !== 'serio';
   const upsertMany = useStore((s) => s.upsertMany);
   const remove = useStore((s) => s.remove);
-  const reconcileFuturePlan = useStore((s) => s.reconcileFuturePlan);
+  const replan = useStore((s) => s.replan);
 
   const [mode, setMode] = useState<SmartImportInitialMode>(initialMode);
   const [busy, setBusy] = useState(false);
@@ -459,7 +459,7 @@ export default function SmartScheduleImportModal({
     }
     if (newAssessments.length > 0) upsertMany('assessments', newAssessments);
     if (createdCourses.length > 0 || newClasses.length > 0 || newAssessments.length > 0) {
-      reconcileFuturePlan(true);
+      replan('schedule', { force: true });
     }
 
     onImported?.({

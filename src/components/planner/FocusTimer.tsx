@@ -110,7 +110,7 @@ export default function FocusTimer({
   const navigate = useNavigate();
   const patch = useStore((s) => s.patch);
   const updateTopic = useStore((s) => s.updateTopic);
-  const reconcileFuturePlan = useStore((s) => s.reconcileFuturePlan);
+  const replan = useStore((s) => s.replan);
   const aiConsent = Boolean(useStore((s) => s.settings.aiConsent));
   const setFocusTimerOpen = useHubUiStore((s) => s.setFocusTimerOpen);
   const setFocusShieldRunning = useHubUiStore((s) => s.setFocusShieldRunning);
@@ -539,7 +539,7 @@ export default function FocusTimer({
         ...(topic?.status === 'todo' ? { status: 'learning' as const } : {}),
       });
     }
-    reconcileFuturePlan();
+    replan('session_done', { silent: true });
     syncCourseUniProgression(true);
   };
 
@@ -585,7 +585,7 @@ export default function FocusTimer({
     setConfidenceSet(level);
     if (!activePracticeTopic) return;
     updateTopic(session.courseId, activePracticeTopic.id, { confidence: level });
-    reconcileFuturePlan();
+    replan('session_done', { silent: true });
     syncCourseUniProgression(false);
   };
 

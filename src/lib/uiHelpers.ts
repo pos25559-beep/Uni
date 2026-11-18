@@ -9,6 +9,8 @@ export type ToastOptions = {
   tone?: ToastTone;
   effect?: ToastEffect;
   durationMs?: number;
+  /** Um único botão de ação (ex.: «Desfazer»). Com ação, a duração por omissão sobe para 6 s. */
+  action?: { label: string; onPress: () => void };
 };
 
 export type ToastItem = {
@@ -16,6 +18,7 @@ export type ToastItem = {
   message: string;
   tone?: ToastTone;
   effect?: ToastEffect;
+  action?: { label: string; onPress: () => void };
 };
 
 let toastListeners: Array<(items: ToastItem[]) => void> = [];
@@ -46,15 +49,15 @@ export function dismissToast(id: number) {
 export function showToast(
   message: string,
   toneOrOptions: ToastTone | ToastOptions = 'ok',
-) {
+): number {
   const opts: ToastOptions =
     typeof toneOrOptions === 'string' ? { tone: toneOrOptions } : toneOrOptions;
   const tone: ToastTone = opts.tone ?? 'ok';
   const effect: ToastEffect = opts.effect ?? 'default';
-  const durationMs = opts.durationMs ?? (tone === 'danger' ? 4600 : 3200);
+  const durationMs = opts.durationMs ?? (opts.action ? 6000 : tone === 'danger' ? 4600 : 3200);
 
   const id = Date.now() + Math.floor(Math.random() * 1000);
-  toastQueue = [...toastQueue.slice(-2), { id, message, tone, effect }];
+  toastQueue = [...toastQueue.slice(-2), { id, message, tone, effect, action: opts.action }];
   toastListeners.forEach((fn) => fn(toastQueue));
 
   if (effect === 'confetti') {
@@ -65,5 +68,6 @@ export function showToast(
     dismissToast(id);
   }, durationMs);
   toastTimers.set(id, timer);
+  return id;
 }
 

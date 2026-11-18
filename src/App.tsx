@@ -5,6 +5,10 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from
 import AppShell from './components/AppShell';
 import { UnipediaLogoMark } from './components/brand/UnipediaMarks';
 import { loadDemoData } from './lib/demoSeed';
+import { tr } from './i18n/tr';
+import { showToast } from './lib/uiHelpers';
+import { setPlanReplanNotifier } from './store/planUndo';
+import { useStore } from './store/useStore';
 
 const TourManager = lazy(() => import('./components/onboarding/TourManager'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -62,11 +66,31 @@ function DemoQueryBootstrap() {
   return null;
 }
 
+/** «Plano atualizado · Desfazer» para qualquer recálculo do plano, em qualquer ecrã. */
+function PlanReplanNotifier() {
+  useEffect(() => {
+    setPlanReplanNotifier((token) => {
+      showToast(tr('plan:replan.updated'), {
+        tone: 'ok',
+        action: {
+          label: tr('plan:replan.undo'),
+          onPress: () => {
+            if (useStore.getState().undoLastReplan(token)) showToast(tr('plan:replan.undone'), 'neutral');
+          },
+        },
+      });
+    });
+    return () => setPlanReplanNotifier(null);
+  }, []);
+  return null;
+}
+
 export default function App() {
   return (
     <MotionConfig reducedMotion="user">
       <BrowserRouter>
         <DemoQueryBootstrap />
+        <PlanReplanNotifier />
         <Suspense fallback={null}>
           <TourManager />
         </Suspense>

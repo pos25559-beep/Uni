@@ -419,7 +419,7 @@ export async function executeReadOnlyOrRecallUniTool(
 
   const nextSrs = computeNextSrsState(topic, score, confidence, today);
   store.updateTopic(targetCourse.id, topic.id, nextSrs);
-  store.reconcileFuturePlan();
+  store.replan('uni_tool', { silent: true });
 
   return {
     ok: true,
@@ -660,8 +660,8 @@ export async function commitUniToolProposal(
         pausedCourseIds,
         exclusiveTestFocus: proposal.planFocus.exclusive,
       },
-    });
-    store.reconcileFuturePlan(true);
+    }, { replan: false });
+    store.replan('uni_tool', { force: true, prevPrefs: prev });
     return {
       summary: tr('uni:uniTools.planFocusApplied', {
         course: course.shortName || course.name,

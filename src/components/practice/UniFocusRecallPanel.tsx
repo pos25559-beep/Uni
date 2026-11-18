@@ -60,7 +60,7 @@ export default function UniFocusRecallPanel({
   const appLang: AppLanguage = normalizeAppLanguage(i18n.language);
   const gradingScale = useStore((s) => s.settings.gradingScale) ?? 'pt20';
   const updateTopic = useStore((s) => s.updateTopic);
-  const reconcileFuturePlan = useStore((s) => s.reconcileFuturePlan);
+  const replan = useStore((s) => s.replan);
 
   const [loadingPrompt, setLoadingPrompt] = useState(true);
   const [evaluating, setEvaluating] = useState(false);
@@ -141,7 +141,7 @@ export default function UniFocusRecallPanel({
       });
 
       updateTopic(course.id, topic.id, srsUpdate);
-      reconcileFuturePlan();
+      replan('topic', { silent: true });
 
       const freshState = useStore.getState();
       const freshCourse = freshState.courses.find((c) => c.id === course.id) ?? course;
