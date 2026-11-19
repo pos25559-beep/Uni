@@ -69,15 +69,16 @@ export default function DayColumn({
   return (
     <div
       className={cx(
-        'flex flex-col rounded-2xl border p-3',
+        'flex flex-col rounded-[22px] border p-3.5 shadow-card',
         isPast
           ? 'border-line/70 bg-surface-2/45 opacity-90'
-          : isMarathonDay
-            ? 'border-warn/50 bg-pastel-butter/40 dark:bg-surface'
-            : isStudyDay
-              ? 'border-line bg-surface'
-              : 'border-line bg-surface-2/65',
-        isToday && 'border-accent ring-1 ring-accent',
+          : isToday
+            ? 'border-accent/60 bg-pastel-mint/40 ring-1 ring-accent dark:bg-[#17312B]/65'
+            : isMarathonDay
+              ? 'border-warn/50 bg-pastel-butter/55 dark:bg-[#352D14]/70'
+              : isStudyDay
+                ? 'border-line/80 bg-surface'
+                : 'border-line/70 bg-surface-2/65',
       )}
     >
       <div className="space-y-1">

@@ -26,9 +26,9 @@ import CourseRepositoryTab from '../components/courses/CourseRepositoryTab';
 import CourseEmailsTab from '../components/courses/CourseEmailsTab';
 import ClipCourseModal from '../components/courses/ClipCourseModal';
 import FileUploadModal from '../components/materials/FileUploadModal';
-import { AnimatedPage } from '../components/motion/Primitives';
+import { AnimatedPage, BentoMetricTile } from '../components/motion/Primitives';
 import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
-import { Button, EmptyState, Stat, SubpageHeader } from '../components/ui';
+import { Button, EmptyState, SubpageHeader } from '../components/ui';
 import { cx, showToast } from '../lib/uiHelpers';
 import { normalizeAppLanguage } from '../lib/grading';
 import { courseColors } from '../lib/colors';
@@ -161,23 +161,19 @@ export default function CourseDetail() {
         </div>
       )}
 
-      {/* Estatísticas e Painel Superior */}
+      {/* Estatísticas e Painel Superior estilo Estúdio Caderno Vivo */}
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat
+        <BentoMetricTile
+          tone="butter"
           label={t('currentGrade')}
           value={fmtGrade(summary.current, gradingScale, appLang)}
           hint={`${Math.round(summary.gradedWeight)}% ${t('weightGraded')}`}
           icon={<TrendingUp size={14} />}
         />
-        <Stat
+        <BentoMetricTile
+          tone={nextAssessment ? 'blush' : 'peach'}
           label={t('nextAssessment')}
-          value={
-            nextAssessment ? (
-              <span className="text-accent">{nextAssessment.title}</span>
-            ) : (
-              '—'
-            )
-          }
+          value={nextAssessment ? nextAssessment.title : '—'}
           hint={
             nextAssessment
               ? `${daysUntil(nextAssessment.date)}d · ${nextAssessment.weight}%`
@@ -185,13 +181,15 @@ export default function CourseDetail() {
           }
           icon={<Clock size={14} />}
         />
-        <Stat
+        <BentoMetricTile
+          tone="mint"
           label={t('topicProgress')}
           value={`${Math.round(progress * 100)}%`}
           hint={`${course.topics.length}`}
           icon={<Target size={14} />}
         />
-        <Stat
+        <BentoMetricTile
+          tone="sky"
           label={t('hoursStudied')}
           value={fmtMinutes(studiedMinutes)}
           hint={t('completedSessions')}

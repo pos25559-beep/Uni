@@ -136,7 +136,7 @@ export default function ProgressPage() {
       </div>
 
       {/* Cartão Hero Bento "Progresso Geral" com anel estilo papelaria */}
-      <section className="flex flex-wrap items-center justify-between gap-5 rounded-3xl bg-pastel-sky/75 p-5 text-[#141312] shadow-card dark:bg-surface-2 dark:text-[#FAF6EC]">
+      <section className="flex flex-wrap items-center justify-between gap-5 rounded-3xl bg-pastel-sky/75 p-5 text-[#141312] shadow-card dark:bg-[#192A3D] dark:text-[#FAF6EC]">
         <div className="min-w-0 flex-1 space-y-1">
           <p className="text-xs font-semibold uppercase tracking-wider opacity-70">{t('hero.title')}</p>
           <p className="font-display text-4xl font-bold tracking-tight tabular">{summary.pctLabel}</p>
@@ -201,7 +201,7 @@ export default function ProgressPage() {
       <>
       {!hasSessions && !showEmptyCharts ? (
         <div className="space-y-6">
-          <section className="space-y-4 rounded-3xl bg-pastel-mint/55 p-5 text-[#141312] shadow-card dark:bg-surface-2 dark:text-[#FAF6EC]">
+          <section className="space-y-4 rounded-3xl bg-pastel-mint/55 p-5 text-[#141312] shadow-card dark:bg-[#17312B] dark:text-[#FAF6EC]">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="max-w-lg space-y-1">
                 <p className="text-xs font-bold uppercase tracking-[0.1em] opacity-75">

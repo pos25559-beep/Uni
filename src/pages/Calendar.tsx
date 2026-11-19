@@ -252,7 +252,7 @@ export default function Calendar() {
       {saturdayClasses.length > 0 && !satNoticeDismissed && (
         <div
           data-testid="saturday-classes-banner"
-          className="flex flex-wrap items-center justify-between gap-2.5 rounded-2xl border border-warn/35 bg-warn/10 px-4 py-3 text-xs text-fg"
+          className="flex flex-wrap items-center justify-between gap-2.5 rounded-3xl bg-pastel-butter/75 px-4 py-3 text-xs text-[#141312] shadow-card dark:bg-[#352D14] dark:text-[#FAF6EC]"
         >
           <span>
             {t('cal.satFound')}{' '}
@@ -312,7 +312,9 @@ export default function Calendar() {
               onClick={() => toggleKind(k)}
               className={cx(
                 'inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border px-3.5 text-xs font-medium transition',
-                on ? 'border-line bg-surface text-fg' : 'border-transparent bg-surface-2 text-muted',
+                on
+                  ? 'border-line bg-pastel-butter/45 font-semibold text-[#141312] shadow-card dark:bg-[#352D14]/80 dark:text-[#FAF6EC]'
+                  : 'border-transparent bg-surface-2 text-muted',
               )}
             >
               <span className={cx('size-2 rounded-full', KIND_META[k].dot, !on && 'opacity-30')} />
@@ -327,7 +329,7 @@ export default function Calendar() {
 
       {view === 'mes' && (
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-5">
-          <div className="rise min-w-0 rounded-2xl border border-line bg-surface p-2 sm:p-3">
+          <div className="rise min-w-0 rounded-3xl border border-line/80 bg-surface p-2.5 shadow-card sm:p-3">
             <MonthView
               days={range.days}
               anchor={cursor}
@@ -350,7 +352,7 @@ export default function Calendar() {
       )}
 
       {view === 'semana' && (
-        <div className="rise rounded-2xl border border-line bg-surface p-2 sm:p-3">
+        <div className="rise rounded-3xl border border-line/80 bg-surface p-2.5 shadow-card sm:p-3">
           <WeekView
             days={range.days}
             byDay={byDay}

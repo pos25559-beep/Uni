@@ -59,10 +59,38 @@ const mobilePrimaryNav = [
 ];
 
 const mobileMoreRoutes = [
-  { to: '/calendario', key: 'nav.calendar', hintKey: 'moreSheet.calendarHint', icon: CalendarDays },
-  { to: '/progresso', key: 'nav.progress', hintKey: 'moreSheet.progressHint', icon: ChartNoAxesColumn },
-  { to: '/materiais', key: 'nav.materials', hintKey: 'moreSheet.materialsHint', icon: FolderOpen },
-  { to: '/definicoes', key: 'nav.settings', hintKey: 'moreSheet.settingsHint', icon: Settings },
+  {
+    to: '/calendario',
+    key: 'nav.calendar',
+    hintKey: 'moreSheet.calendarHint',
+    icon: CalendarDays,
+    tileClass: 'bg-pastel-sky/80 text-[#141312] dark:bg-[#192A3D] dark:text-[#FAF6EC]',
+    iconClass: 'text-[#1D5FAD] dark:text-[#93C5FD]',
+  },
+  {
+    to: '/progresso',
+    key: 'nav.progress',
+    hintKey: 'moreSheet.progressHint',
+    icon: ChartNoAxesColumn,
+    tileClass: 'bg-pastel-butter/85 text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]',
+    iconClass: 'text-[#9A5B00] dark:text-[#FCD34D]',
+  },
+  {
+    to: '/materiais',
+    key: 'nav.materials',
+    hintKey: 'moreSheet.materialsHint',
+    icon: FolderOpen,
+    tileClass: 'bg-pastel-mint/80 text-[#141312] dark:bg-[#17312B] dark:text-[#FAF6EC]',
+    iconClass: 'text-[#157F58] dark:text-[#4ADE80]',
+  },
+  {
+    to: '/definicoes',
+    key: 'nav.settings',
+    hintKey: 'moreSheet.settingsHint',
+    icon: Settings,
+    tileClass: 'bg-pastel-peach/80 text-[#141312] dark:bg-[#382317] dark:text-[#FAF6EC]',
+    iconClass: 'text-[#C24124] dark:text-[#FCA58E]',
+  },
 ];
 
 const BYPASS_ONBOARDING_PATHS = [
@@ -564,23 +592,24 @@ export default function AppShell() {
                 </div>
 
               <div className="grid grid-cols-2 gap-2.5">
-                {mobileMoreRoutes.map(({ to, key, hintKey, icon: Icon }) => (
+                {mobileMoreRoutes.map(({ to, key, hintKey, icon: Icon, tileClass, iconClass }) => (
                   <NavLink
                     key={to}
                     to={to}
                     className={({ isActive }) =>
                       cx(
-                        'flex min-h-[84px] flex-col justify-between gap-1.5 rounded-2xl border p-3.5 transition',
-                        isActive
-                          ? 'border-accent bg-accent-soft text-accent'
-                          : 'border-line bg-bg text-fg hover:bg-surface-2',
+                        'flex min-h-[92px] flex-col justify-between gap-2 rounded-[22px] p-3.5 shadow-card transition',
+                        tileClass,
+                        isActive && 'ring-2 ring-ink-cta/80 dark:ring-accent',
                       )
                     }
                   >
-                    <Icon size={18} aria-hidden="true" />
+                    <span className="grid size-8 place-items-center rounded-xl bg-white/80 dark:bg-black/25">
+                      <Icon size={17} className={iconClass} aria-hidden="true" />
+                    </span>
                     <div>
                       <span className="block font-display text-sm font-bold">{t(key)}</span>
-                      <span className="mt-0.5 block text-xs leading-snug text-muted">
+                      <span className="mt-0.5 block text-xs leading-snug opacity-80">
                         {t(hintKey)}
                       </span>
                     </div>
@@ -591,16 +620,16 @@ export default function AppShell() {
               <div className="mt-4 space-y-3">
                 <AuthStatus />
 
-                <div className="flex items-center justify-between rounded-2xl border border-line bg-bg px-3.5 py-2">
+                <div className="flex items-center justify-between rounded-2xl bg-pastel-sage/55 px-3.5 py-2 text-[#141312] dark:bg-[#23311B] dark:text-[#FAF6EC]">
                   <NavLink
                     to="/definicoes"
-                    className="inline-flex min-h-[44px] items-center gap-2 text-xs font-semibold text-fg"
+                    className="inline-flex min-h-[44px] items-center gap-2 text-xs font-semibold"
                   >
                     <Settings size={15} /> {t('moreSheet.openTheme')}
                   </NavLink>
                   <NavLink
                     to="/privacidade"
-                    className="inline-flex min-h-[44px] items-center gap-1 text-xs font-semibold text-accent underline"
+                    className="inline-flex min-h-[44px] items-center gap-1 text-xs font-semibold text-accent-ink underline dark:text-accent"
                   >
                     <ShieldCheck size={14} /> {t('moreSheet.privacy')}
                   </NavLink>

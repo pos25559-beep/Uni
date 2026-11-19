@@ -328,7 +328,7 @@ export default function Dashboard() {
         <div className="flex items-center justify-between gap-2 sm:items-start sm:gap-3">
           <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
             {!isMinimal && (
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-pastel-sage/85 ring-1 ring-line/50 dark:bg-surface-2 sm:size-12">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-pastel-sage/85 ring-1 ring-line/50 dark:bg-[#23311B] sm:size-12">
                 <UniBuddy
                   mood={streak >= 3 || progressToday >= 1 ? 'celebrate' : 'happy'}
                   accessory={uniAccessory}
@@ -634,7 +634,7 @@ export default function Dashboard() {
               'p-4 shadow-card sm:p-5',
               isMinimal
                 ? 'rounded-2xl border border-line bg-surface text-fg'
-                : 'rounded-3xl bg-pastel-butter/75 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]',
+                : 'rounded-3xl bg-pastel-butter/75 text-[#141312] dark:bg-[#352D14] dark:text-[#FAF6EC]',
             )}
           >
             <div className="flex items-start justify-between gap-3">
@@ -773,7 +773,7 @@ export default function Dashboard() {
                 'flex min-h-11 items-center justify-between gap-2 py-1 pr-1 pl-3.5 shadow-card',
                 isMinimal
                   ? 'rounded-2xl border border-line bg-surface text-fg'
-                  : 'rounded-2xl bg-pastel-sage/50 text-[#141312] dark:bg-surface dark:text-fg dark:ring-1 dark:ring-white/10',
+                  : 'rounded-2xl bg-pastel-sage/50 text-[#141312] dark:bg-[#23311B] dark:text-[#FAF6EC] dark:ring-1 dark:ring-white/10',
               )}
             >
               <button
@@ -806,7 +806,7 @@ export default function Dashboard() {
                 'p-4 shadow-card',
                 isMinimal
                   ? 'rounded-2xl border border-line bg-surface text-fg'
-                  : 'rounded-3xl bg-pastel-sage/55 text-[#141312] dark:bg-surface dark:text-fg dark:ring-1 dark:ring-white/10',
+                  : 'rounded-3xl bg-pastel-sage/55 text-[#141312] dark:bg-[#23311B] dark:text-[#FAF6EC] dark:ring-1 dark:ring-white/10',
               )}
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

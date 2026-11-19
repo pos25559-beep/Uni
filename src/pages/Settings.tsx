@@ -181,7 +181,7 @@ export default function SettingsPage() {
         className={
           isMinimal
             ? 'flex flex-col gap-4 rounded-2xl border border-line bg-surface p-5 shadow-card sm:flex-row sm:items-center sm:justify-between'
-            : 'flex flex-col gap-4 rounded-3xl bg-pastel-butter/75 p-5 text-[#141312] shadow-card dark:bg-surface-2 dark:text-[#FAF6EC] sm:flex-row sm:items-center sm:justify-between'
+            : 'flex flex-col gap-4 rounded-3xl bg-pastel-butter/75 p-5 text-[#141312] shadow-card dark:bg-[#352D14] dark:text-[#FAF6EC] sm:flex-row sm:items-center sm:justify-between'
         }
       >
         <div className="flex min-w-0 items-center gap-3.5">
@@ -268,7 +268,7 @@ export default function SettingsPage() {
         className={
           isMinimal
             ? 'order-3 space-y-3 rounded-2xl border border-line/70 bg-surface-2/65 p-4 md:order-2'
-            : 'order-3 space-y-3 rounded-3xl bg-pastel-sky/50 p-5 text-[#141312] shadow-card dark:bg-surface-2 dark:text-[#FAF6EC] md:order-2'
+            : 'order-3 space-y-3 rounded-3xl bg-pastel-sky/50 p-5 text-[#141312] shadow-card dark:bg-[#192A3D] dark:text-[#FAF6EC] md:order-2'
         }
       >
         <div className="flex flex-wrap items-center justify-between gap-3">

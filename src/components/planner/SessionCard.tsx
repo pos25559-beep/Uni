@@ -74,7 +74,8 @@ export default function SessionCard({
   const [moveOpen, setMoveOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const color = course ? courseColors[course.color].hex : undefined;
+  const colorPalette = course ? courseColors[course.color] : undefined;
+  const color = colorPalette?.hex;
   const { title, badge, isPersonalized } = formatSessionDisplay(session, topic, i18n.language);
   const reasonText = formatSessionReason(session, assessment, i18n.language);
 
@@ -109,8 +110,10 @@ export default function SessionCard({
     <>
       <article
         className={cx(
-          'overflow-hidden rounded-xl border border-line p-3 transition',
-          session.done ? 'border-dashed bg-surface' : 'bg-surface-2/60',
+          'overflow-hidden rounded-2xl border p-3 transition',
+          session.done
+            ? 'border-dashed border-line bg-surface'
+            : colorPalette?.tint ?? 'border-line bg-surface-2/60',
           session.locked && !session.done && 'ring-1 ring-accent/45',
         )}
         style={{ borderLeftWidth: 4, borderLeftColor: color }}

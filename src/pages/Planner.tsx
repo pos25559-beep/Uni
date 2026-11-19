@@ -587,7 +587,7 @@ export default function Planner() {
                 aria-label={t('ui.testModeExpandAria', { count: testMode.urgentAssessments.length })}
                 title={t('ui.testModeExpandAria', { count: testMode.urgentAssessments.length })}
                 className={cx(
-                  'relative inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border border-coral/40 bg-pastel-blush/75 px-3 text-xs font-semibold text-[#141312] transition hover:border-coral dark:bg-surface-2 dark:text-[#FAF6EC]',
+                  'relative inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border border-coral/35 bg-pastel-blush/85 px-3 text-xs font-semibold text-[#141312] transition hover:border-coral dark:bg-[#381E21] dark:text-[#FAF6EC]',
                   activeSheet === 'testMode' && 'border-coral ring-2 ring-coral/30',
                 )}
               >
@@ -609,11 +609,11 @@ export default function Planner() {
               aria-label={t('weekCheck.compactOpenAria')}
               title={t('weekCheck.compactOpenAria')}
               className={cx(
-                'relative inline-flex size-11 items-center justify-center rounded-xl border border-line bg-surface text-xs font-medium text-fg transition hover:border-accent',
+                'relative inline-flex size-11 items-center justify-center rounded-xl border border-accent/25 bg-pastel-mint/70 text-xs font-medium text-[#141312] transition hover:border-accent dark:bg-[#17312B] dark:text-[#FAF6EC]',
                 activeSheet === 'weekCheck' && 'border-accent ring-2 ring-accent/25',
               )}
             >
-              <MessageSquareText size={16} className="text-accent" aria-hidden="true" />
+              <MessageSquareText size={16} className="text-accent-ink dark:text-accent" aria-hidden="true" />
               {(plannerPrefs?.briefingNote || weekCheckNeedsAttention) && (
                 <span
                   className={cx(
@@ -633,7 +633,10 @@ export default function Planner() {
                 aria-label={t('conscience.compactAria')}
                 title={t('conscience.compactAria')}
                 className={cx(
-                  'inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border border-line bg-surface px-2.5 text-xs font-medium text-fg transition hover:border-accent',
+                  'inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border px-2.5 text-xs font-medium text-[#141312] transition hover:border-accent dark:text-[#FAF6EC]',
+                  visibleConscienceCount > 0
+                    ? 'border-warn/35 bg-pastel-butter/85 dark:bg-[#352D14]'
+                    : 'border-accent/20 bg-pastel-sage/65 dark:bg-[#23311B]',
                   activeSheet === 'conscience' && 'border-accent ring-2 ring-accent/25',
                 )}
               >
@@ -666,7 +669,7 @@ export default function Planner() {
       )}
 
       {starterOnlyMode && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl bg-pastel-sage/75 px-4 py-3 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl bg-pastel-sage/75 px-4 py-3 text-[#141312] dark:bg-[#23311B] dark:text-[#FAF6EC]">
           <div className="min-w-0 flex-1 text-xs leading-relaxed">
             <span className="font-bold">{t('starterModeTitle')}</span> {t('starterModeBody')}
           </div>
@@ -721,10 +724,11 @@ export default function Planner() {
       ) : (
         <>
           {overdue.length > 0 && (
-            <Card
-              className="border-warn/40"
-              title={t('ui.overdueTitle', { count: overdue.length })}
-              action={
+            <section className="rise space-y-4 rounded-[24px] border border-coral/30 bg-pastel-blush/50 p-4 text-[#141312] shadow-card dark:bg-[#381E21]/75 dark:text-[#FAF6EC] sm:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="font-display text-base font-bold tracking-tight">
+                  {t('ui.overdueTitle', { count: overdue.length })}
+                </h2>
                 <div className="flex flex-wrap items-center gap-1.5">
                   <Button size="sm" variant="primary" onClick={rescheduleOverdueSmart}>
                     <Sparkles size={13} /> {t('ui.smartReschedule')}
@@ -733,13 +737,12 @@ export default function Planner() {
                     {t('ui.moveToday')}
                   </Button>
                 </div>
-              }
-            >
-              <div className="space-y-4">
+              </div>
+              <div className="space-y-3">
                 {overdueGroups.map(([courseId, group]) => {
                   const groupMinutes = group.items.reduce((sum, x) => sum + x.minutes, 0);
                   return (
-                    <div key={courseId} className="space-y-2 rounded-2xl border border-line/70 bg-surface-2/40 p-3">
+                    <div key={courseId} className="space-y-2 rounded-2xl border border-line/70 bg-surface/90 p-3 text-fg dark:bg-black/25">
                       <div className="flex items-center justify-between gap-2">
                         <CourseChip course={group.course} />
                         <span className="text-xs font-medium text-muted tabular">
@@ -775,7 +778,7 @@ export default function Planner() {
                   );
                 })}
               </div>
-            </Card>
+            </section>
           )}
 
           <section className="space-y-4">
@@ -916,15 +919,16 @@ export default function Planner() {
                   <div
                     key={key}
                     className={cx(
-                      'rounded-2xl border p-3',
+                      'rounded-[22px] border p-3.5 shadow-card',
                       isPast
                         ? 'border-line/70 bg-surface-2/45 opacity-90'
-                        : profile.isMarathonDay
-                          ? 'border-warn/50 bg-pastel-butter/35 dark:bg-surface'
-                          : profile.enabled
-                            ? 'border-line bg-surface'
-                            : 'border-line bg-surface-2/60',
-                      isToday && 'border-accent ring-1 ring-accent',
+                        : isToday
+                          ? 'border-accent/60 bg-pastel-mint/45 ring-1 ring-accent dark:bg-[#17312B]/70'
+                          : profile.isMarathonDay
+                            ? 'border-warn/50 bg-pastel-butter/55 dark:bg-[#352D14]/70'
+                            : profile.enabled
+                              ? 'border-line/80 bg-surface'
+                              : 'border-line/70 bg-surface-2/60',
                     )}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -969,7 +973,7 @@ export default function Planner() {
                           type="button"
                           onClick={() => openNewSession(key)}
                           aria-label={t('dayCol.addAria', { date: format(d, 'd MMM', { locale: dfLocale }) })}
-                          className="-mr-1 grid size-11 shrink-0 place-items-center rounded-full text-muted hover:bg-surface-2 hover:text-fg"
+                          className="-mr-1 grid size-11 shrink-0 place-items-center rounded-full text-muted hover:bg-black/5 hover:text-fg dark:hover:bg-white/10"
                         >
                           <Plus size={16} />
                         </button>
@@ -990,23 +994,23 @@ export default function Planner() {
                                 type="button"
                                 onClick={() => setModal({ session: s, date: s.date })}
                                 className={cx(
-                                  'flex min-h-11 w-full items-center gap-2 rounded-xl border border-line/70 bg-bg/75 px-2.5 py-2 text-left text-xs transition hover:border-accent',
-                                  s.done && 'opacity-65',
+                                  'flex min-h-11 w-full items-center gap-2 rounded-xl border px-2.5 py-2 text-left text-xs transition hover:brightness-[0.98]',
+                                  s.done
+                                    ? 'border-dashed border-line bg-surface/80 opacity-65'
+                                    : color.tint,
                                 )}
                               >
-                                <span
-                                  className={cx('size-2 shrink-0 rounded-full', color.dot)}
-                                  aria-hidden="true"
-                                />
                                 {s.start && (
                                   <span className="shrink-0 font-mono text-xs text-muted tabular">
                                     {s.start}
                                   </span>
                                 )}
-                                <span className="shrink-0 font-semibold text-fg">
-                                  {c?.shortName ?? ''}
-                                </span>
-                                <span className={cx('min-w-0 flex-1 truncate text-muted', s.done && 'line-through')}>
+                                {c?.shortName && (
+                                  <span className={cx('shrink-0 rounded-md px-1.5 py-0.5 text-xs font-bold', color.soft)}>
+                                    {c.shortName}
+                                  </span>
+                                )}
+                                <span className={cx('min-w-0 flex-1 truncate font-medium text-fg', s.done && 'line-through')}>
                                   {disp.title}
                                 </span>
                                 <span className="shrink-0 font-mono text-xs text-muted tabular">

@@ -61,6 +61,12 @@
   --ok-ink: #4ADE80;
   --warn: #FBBF24;
   --danger: #FB7185;
+  --pastel-butter: #352D14;
+  --pastel-sage: #23311B;
+  --pastel-mint: #17312B;
+  --pastel-sky: #192A3D;
+  --pastel-peach: #382317;
+  --pastel-blush: #381E21;
   --shadow-card: 0 4px 16px -6px rgba(0, 0, 0, 0.35);
   --shadow-float: 0 18px 40px -14px rgba(0, 0, 0, 0.52);
   --shadow-dock: 0 14px 32px -10px rgba(0, 0, 0, 0.55);

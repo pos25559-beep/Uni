@@ -8,7 +8,7 @@ const LoadingUnis = lazy(() => import('../components/brand/LoadingUnis'));
 import { ActionSheet, Button, CourseChip, EmptyState, Input, PageHeader, PillSelect } from '../components/ui';
 import { cx, showToast } from '../lib/uiHelpers';
 import { useStore } from '../store/useStore';
-import { providerLabel } from '../lib/colors';
+import { courseColors, providerLabel } from '../lib/colors';
 import { driveFolderIdFromUrl } from '../integrations/drive';
 import { filterMaterialsForCourse } from '../lib/courseMaterials';
 import type { Material, MaterialProvider } from '../types';
@@ -245,7 +245,7 @@ export default function Materials() {
               scanCardExpanded || rootFolderOpen || scanningDrive ? 'space-y-3 p-4 sm:p-5' : 'px-4 py-2',
               isMinimal
                 ? 'rounded-2xl border border-line bg-surface text-fg'
-                : 'rounded-3xl bg-pastel-mint/70 text-[#141312] dark:bg-surface-2 dark:text-[#FAF6EC]',
+                : 'rounded-3xl bg-pastel-mint/70 text-[#141312] dark:bg-[#17312B] dark:text-[#FAF6EC]',
             )}
           >
             <div className="flex items-center justify-between gap-3">
@@ -503,7 +503,7 @@ export default function Materials() {
                       : 'rounded-[24px] border border-line/70 bg-surface',
                   )}
                 >
-                  <header className="flex items-center justify-between gap-3 border-b border-line/70 bg-pastel-butter/45 px-4 py-2.5 dark:bg-surface-2">
+                  <header className="flex items-center justify-between gap-3 border-b border-line/70 bg-pastel-butter/55 px-4 py-2.5 dark:bg-[#352D14]">
                     <h2 className="flex items-center gap-2 font-display text-sm font-bold text-fg">
                       <Pin size={14} className="text-accent-ink dark:text-accent" /> {t('courses:materialsPage.pinnedTitle')}
                     </h2>
@@ -542,7 +542,10 @@ export default function Materials() {
                         }))
                       }
                       className={cx(
-                        'flex min-h-[48px] w-full items-center justify-between gap-3 bg-surface-2/60 px-4 py-2.5 text-left transition hover:bg-surface-2',
+                        'flex min-h-[48px] w-full items-center justify-between gap-3 px-4 py-2.5 text-left transition hover:brightness-[0.98]',
+                        !isMinimal && g.course
+                          ? courseColors[g.course.color].tint
+                          : 'bg-surface-2/60 hover:bg-surface-2',
                         isGroupOpen && 'border-b border-line/70',
                       )}
                     >
