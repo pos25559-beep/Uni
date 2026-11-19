@@ -16,6 +16,8 @@
     "mainAria": "Main navigation",
     "barAria": "Navigation bar",
     "moreAria": "More options and settings",
+    "showTabs": "Show tabs",
+    "hideTabs": "Hide tabs",
     "collapseSidebar": "Collapse sidebar",
     "expandSidebar": "Expand sidebar"
   },

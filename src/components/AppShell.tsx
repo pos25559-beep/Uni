@@ -148,6 +148,8 @@ export default function AppShell() {
   const closeHubModal = useHubUiStore((s) => s.closeModal);
   const sidebarCollapsed = useHubUiStore((s) => s.sidebarCollapsed);
   const toggleSidebarCollapsed = useHubUiStore((s) => s.toggleSidebarCollapsed);
+  const tutorTabsOpenRaw = useHubUiStore((s) => s.tutorTabsOpen);
+  const setTutorTabsOpen = useHubUiStore((s) => s.setTutorTabsOpen);
   const aiConsentOpen = useAiConsentStore((s) => s.open);
 
   const isBypassRoute = BYPASS_ONBOARDING_PATHS.some((p) => location.pathname.startsWith(p));
@@ -157,9 +159,58 @@ export default function AppShell() {
     location.pathname.startsWith('/onboarding');
   const isTutorRoute = location.pathname.startsWith('/assistente');
   const isPlannerRoute = location.pathname.startsWith('/plano');
+  // Móvel, em todas as abas com a dock: a barra recolhe para dar espaço ao conteúdo.
+  // Fonte única: `tutorTabsOpen` (store) → variável CSS `--tutor-bar-space`, lida aqui (padding)
+  // e em Assistant.tsx (altura do chat).
+  const isCollapsibleRoute = !isBypassRoute && !isFullBleedRoute;
+  const tabsCollapsed = isCollapsibleRoute && !tutorTabsOpenRaw;
+  const openBarSpace = isTutorRoute ? '4.75rem' : '6.25rem';
+  const tabBarRef = useRef<HTMLDivElement>(null);
   const needsLoginGate = !isBypassRoute && !guestMode && !firebaseUser;
   const needsOnboardingSetup =
     !isBypassRoute && !needsLoginGate && !academicProfile?.onboardingCompleted;
+
+  // Comportamento igual em todas as abas: recolhe ao focar um campo e ao deslizar para baixo;
+  // volta com o puxador ou ao deslizar para cima. Ao entrar numa aba a barra aparece, exceto
+  // no Tutor, que abre recolhido (a conversa precisa do espaço e desliza sozinha para o fim,
+  // por isso aí só o puxador a volta a mostrar).
+  useEffect(() => {
+    setTutorTabsOpen(!isTutorRoute);
+  }, [location.pathname, isTutorRoute, setTutorTabsOpen]);
+
+  useEffect(() => {
+    if (!isCollapsibleRoute) return;
+    const lastTop = new WeakMap<EventTarget, number>();
+    const onFocusIn = (e: FocusEvent) => {
+      const el = e.target;
+      if (el instanceof HTMLElement && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT')) {
+        setTutorTabsOpen(false);
+      }
+    };
+    const onScroll = (e: Event) => {
+      const el = e.target;
+      if (!(el instanceof HTMLElement) || !el.closest('#main-content')) return;
+      const prev = lastTop.get(el) ?? el.scrollTop;
+      lastTop.set(el, el.scrollTop);
+      const delta = el.scrollTop - prev;
+      if (delta > 12) setTutorTabsOpen(false);
+      else if (delta < -12 && !isTutorRoute) setTutorTabsOpen(true);
+    };
+    document.addEventListener('focusin', onFocusIn);
+    document.addEventListener('scroll', onScroll, { capture: true, passive: true });
+    return () => {
+      document.removeEventListener('focusin', onFocusIn);
+      document.removeEventListener('scroll', onScroll, { capture: true });
+    };
+  }, [isCollapsibleRoute, isTutorRoute, setTutorTabsOpen]);
+
+  // Abas recolhidas ficam fora do foco e da árvore de acessibilidade.
+  useEffect(() => {
+    const el = tabBarRef.current;
+    if (!el) return;
+    if (tabsCollapsed) el.setAttribute('inert', '');
+    else el.removeAttribute('inert');
+  }, [tabsCollapsed, isBypassRoute]);
 
   const isMoreRouteActive = mobileMoreRoutes.some((r) => location.pathname.startsWith(r.to));
   const [checkInModal, setCheckInModal] = useState<(UniCheckInRequest & { open: boolean })>({
@@ -452,6 +503,11 @@ export default function AppShell() {
       <main
         id="main-content"
         tabIndex={-1}
+        style={
+          isCollapsibleRoute
+            ? ({ '--tutor-bar-space': tabsCollapsed ? '2rem' : openBarSpace } as React.CSSProperties)
+            : undefined
+        }
         className={cx(
           'min-w-0 flex-1 overflow-x-hidden overflow-y-auto focus:outline-none md:pt-0',
           isFullBleedRoute
@@ -461,8 +517,8 @@ export default function AppShell() {
               : isBypassRoute
                 ? 'pt-[env(safe-area-inset-top)] pb-[calc(1rem+env(safe-area-inset-bottom)+var(--keyboard-height,0px))] md:pb-6'
                 : isTutorRoute
-                  ? 'pt-[env(safe-area-inset-top)] pb-[calc(4.75rem+env(safe-area-inset-bottom)+var(--keyboard-height,0px))] md:pb-6'
-                  : 'pt-[env(safe-area-inset-top)] pb-[calc(6.25rem+env(safe-area-inset-bottom)+var(--keyboard-height,0px))] md:pb-6',
+                  ? 'pt-[env(safe-area-inset-top)] pb-[calc(var(--tutor-bar-space,4.75rem)+env(safe-area-inset-bottom)+var(--keyboard-height,0px))] md:pb-6'
+                  : 'pt-[env(safe-area-inset-top)] pb-[calc(var(--tutor-bar-space,6.25rem)+env(safe-area-inset-bottom)+var(--keyboard-height,0px))] md:pb-6',
         )}
       >
         <div
@@ -484,7 +540,14 @@ export default function AppShell() {
 
       {/* Dock flutuante em cápsula (Tinta Negra) estilo Estúdio Caderno Vivo */}
       {!isBypassRoute && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 flex justify-center px-3 md:hidden">
+        <>
+        <motion.div
+          ref={tabBarRef}
+          initial={false}
+          animate={tabsCollapsed ? { y: '170%', opacity: 0 } : { y: 0, opacity: 1 }}
+          transition={{ duration: 0.22, ease: 'easeOut' }}
+          className="pointer-events-none fixed inset-x-0 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 flex justify-center px-3 md:hidden"
+        >
         <nav
           aria-label={t('nav.barAria')}
           className="pointer-events-auto grid w-full max-w-md grid-cols-5 items-center gap-1 rounded-3xl bg-[#141312] p-1.5 text-[#FAF8F2] shadow-dock dark:border dark:border-white/10 dark:bg-[#23201B]"
@@ -550,7 +613,25 @@ export default function AppShell() {
             <span className="relative z-10 leading-none">{t('nav.more')}</span>
           </button>
         </nav>
-      </div>
+      </motion.div>
+      {isCollapsibleRoute && (
+        <button
+          type="button"
+          aria-expanded={!tabsCollapsed}
+          aria-label={tabsCollapsed ? t('nav.showTabs') : t('nav.hideTabs')}
+          onClick={() => {
+            void hapticTap();
+            setTutorTabsOpen(tabsCollapsed);
+          }}
+          className={cx(
+            'fixed inset-x-0 bottom-0 z-40 mx-auto flex h-11 w-24 items-end justify-center pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden',
+            tabsCollapsed ? '' : 'pointer-events-none opacity-0',
+          )}
+        >
+          <span aria-hidden="true" className="h-1.5 w-12 rounded-full bg-muted/60" />
+        </button>
+      )}
+      </>
       )}
 
       {/* Folha móvel "Mais" */}

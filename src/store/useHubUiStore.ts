@@ -52,6 +52,9 @@ interface HubUiState {
   sidebarCollapsed: boolean;
   /** Muda quando um foco fecha, para quem mostra «Retomar foco» voltar a ler o estado guardado. */
   focusSnapshotNonce: number;
+  /** Tutor (móvel): abas inferiores visíveis. Por omissão recolhidas para dar espaço à conversa. */
+  tutorTabsOpen: boolean;
+  setTutorTabsOpen: (open: boolean) => void;
   openModal: (step?: HubStepKey | null) => void;
   closeModal: () => void;
   setFocusTimerOpen: (open: boolean) => void;
@@ -77,6 +80,8 @@ export const useHubUiStore = create<HubUiState>((set) => ({
   focusBubbleCompact: readStoredFlag(BUBBLE_COMPACT_KEY, false),
   sidebarCollapsed: readStoredFlag(SIDEBAR_COLLAPSED_KEY, false),
   focusSnapshotNonce: 0,
+  tutorTabsOpen: false,
+  setTutorTabsOpen: (open) => set({ tutorTabsOpen: open }),
   openModal: (step = null) => set({ modalOpen: true, focusStep: step }),
   closeModal: () => set({ modalOpen: false, focusStep: null }),
   setFocusTimerOpen: (open) => set({ focusTimerOpen: open }),

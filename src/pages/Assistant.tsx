@@ -183,7 +183,7 @@ export default function Assistant() {
   const firstName = userName?.trim().split(/\s+/)[0] || '';
 
   return (
-    <div className="flex h-[calc(100dvh-5.25rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)-var(--keyboard-height,0px))] min-h-0 flex-col md:h-[calc(100dvh-3.5rem)]">
+    <div className="flex h-[calc(100dvh-var(--tutor-bar-space,4.75rem)-0.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)-var(--keyboard-height,0px))] min-h-0 flex-col md:h-[calc(100dvh-3.5rem)]">
       <AssistantHeader
         personas={personas}
         uniPersona={uniPersona}

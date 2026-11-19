@@ -16,6 +16,8 @@
     "mainAria": "Navegación principal",
     "barAria": "Barra de navegación",
     "moreAria": "Más opciones y ajustes",
+    "showTabs": "Mostrar pestañas",
+    "hideTabs": "Ocultar pestañas",
     "collapseSidebar": "Minimizar barra lateral",
     "expandSidebar": "Expandir barra lateral"
   },
