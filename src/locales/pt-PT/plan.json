@@ -314,7 +314,19 @@
     },
     "pastSummary": "feito {{done}} · ficou {{left}}",
     "showDay": "Ver dia ({{count}})",
-    "hideDay": "Recolher"
+    "hideDay": "Recolher",
+    "openDay": "Abrir dia",
+    "openDayAria": "Abrir detalhes de {{date}}"
+  },
+  "dayModal": {
+    "prevDay": "Dia anterior",
+    "nextDay": "Dia seguinte",
+    "schedule": "Agenda do dia",
+    "classLabel": "Aula",
+    "examLabel": "Prova",
+    "eventLabel": "Evento",
+    "addBlock": "Adicionar bloco",
+    "emptyHint": "Sem blocos marcados para este dia."
   },
   "cal": {
     "view": {

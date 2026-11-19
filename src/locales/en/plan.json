@@ -314,7 +314,19 @@
     },
     "pastSummary": "done {{done}} · left {{left}}",
     "showDay": "View day ({{count}})",
-    "hideDay": "Collapse"
+    "hideDay": "Collapse",
+    "openDay": "Open day",
+    "openDayAria": "Open details for {{date}}"
+  },
+  "dayModal": {
+    "prevDay": "Previous day",
+    "nextDay": "Next day",
+    "schedule": "Day schedule",
+    "classLabel": "Class",
+    "examLabel": "Exam",
+    "eventLabel": "Event",
+    "addBlock": "Add block",
+    "emptyHint": "No study blocks scheduled for this day."
   },
   "cal": {
     "view": {

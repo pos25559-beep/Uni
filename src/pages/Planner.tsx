@@ -27,7 +27,9 @@ import {
 } from '../components/motion/Primitives';
 import { celebrateStationery } from '../lib/motionTokens';
 import CourseDistribution from '../components/planner/CourseDistribution';
+import CompactWeekDayCard from '../components/planner/CompactWeekDayCard';
 import DayColumn from '../components/planner/DayColumn';
+import DayDetailModal from '../components/planner/DayDetailModal';
 import FocusResumeCard from '../components/planner/FocusResumeCard';
 import PlanConscienceCard from '../components/planner/PlanConscienceCard';
 import WeekCheckCard from '../components/planner/WeekCheckCard';
@@ -128,6 +130,7 @@ export default function Planner() {
   }, [t]);
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedDayKey, setSelectedDayKey] = useState(today);
+  const [dayModalKey, setDayModalKey] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
   const [actionsOpen, setActionsOpen] = useState(false);
   const [prefsOpen, setPrefsOpen] = useState(false);
@@ -539,6 +542,47 @@ export default function Planner() {
   const selectedIndex = Math.max(0, weekKeys.indexOf(activeDayKey));
   const selectedDate = weekDays[selectedIndex];
 
+  const computeDayContext = (date: Date, dateKey: string) => {
+    const profile = resolveDayPlanProfile({
+      dateKey,
+      weekday: date.getDay(),
+      settings,
+      assessments,
+      pausedCourseIds: plannerPrefs?.pausedCourseIds,
+      weekdaySchedule: plannerPrefs?.weekdaySchedule,
+      preferredPeriod: plannerPrefs?.preferredPeriod,
+      preExamMarathon: plannerPrefs?.preExamMarathon,
+      dateOverrides: plannerPrefs?.dateOverrides,
+    });
+    const dayBudget = computeDayBudget({
+      dateKey,
+      weekday: date.getDay(),
+      dayProfile: profile,
+      classes,
+      events,
+      extraPenaltyMinutes: extraPenaltyByWeekday.get(date.getDay()) ?? 0,
+      latestCheckInMood: weeklyCheckIns[0]?.mood,
+    });
+    return { profile, dayBudget };
+  };
+
+  const handleSelectDayPill = (key: string) => {
+    setSelectedDayKey(key);
+    if (typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches) {
+      setDayModalKey(key);
+    }
+  };
+
+  const stepDayModal = (delta: -1 | 1) => {
+    if (!dayModalKey) return;
+    const nextDate = addDays(parseISO(dayModalKey), delta);
+    const nextKey = format(nextDate, 'yyyy-MM-dd');
+    setSelectedDayKey(nextKey);
+    setDayModalKey(nextKey);
+    if (nextKey < weekKeys[0]) setWeekOffset((w) => w - 1);
+    else if (nextKey > weekKeys[weekKeys.length - 1]) setWeekOffset((w) => w + 1);
+  };
+
   return (
     <AnimatedPage className="space-y-5">
       <PageHeader
@@ -884,33 +928,14 @@ export default function Planner() {
               <WeekDayPills
                 days={pillDays}
                 selectedKey={activeDayKey}
-                onSelect={(key) => setSelectedDayKey(key)}
+                onSelect={handleSelectDayPill}
               />
             </div>
 
             {/* Mobile: vista de Dia selecionado */}
             <div className={viewMode === 'day' ? 'lg:hidden' : 'hidden'}>
               {(() => {
-                const profile = resolveDayPlanProfile({
-                  dateKey: activeDayKey,
-                  weekday: selectedDate.getDay(),
-                  settings,
-                  assessments,
-                  pausedCourseIds: plannerPrefs?.pausedCourseIds,
-                  weekdaySchedule: plannerPrefs?.weekdaySchedule,
-                  preferredPeriod: plannerPrefs?.preferredPeriod,
-                  preExamMarathon: plannerPrefs?.preExamMarathon,
-                  dateOverrides: plannerPrefs?.dateOverrides,
-                });
-                const dayBudget = computeDayBudget({
-                  dateKey: activeDayKey,
-                  weekday: selectedDate.getDay(),
-                  dayProfile: profile,
-                  classes,
-                  events,
-                  extraPenaltyMinutes: extraPenaltyByWeekday.get(selectedDate.getDay()) ?? 0,
-                  latestCheckInMood: weeklyCheckIns[0]?.mood,
-                });
+                const { profile, dayBudget } = computeDayContext(selectedDate, activeDayKey);
                 return (
                   <DayColumn
                     date={selectedDate}
@@ -943,26 +968,7 @@ export default function Planner() {
                 const daySessions = byDay.get(key) ?? [];
                 const isToday = key === today;
                 const isPast = key < today;
-                const profile = resolveDayPlanProfile({
-                  dateKey: key,
-                  weekday: d.getDay(),
-                  settings,
-                  assessments,
-                  pausedCourseIds: plannerPrefs?.pausedCourseIds,
-                  weekdaySchedule: plannerPrefs?.weekdaySchedule,
-                  preferredPeriod: plannerPrefs?.preferredPeriod,
-                  preExamMarathon: plannerPrefs?.preExamMarathon,
-                  dateOverrides: plannerPrefs?.dateOverrides,
-                });
-                const dayBudget = computeDayBudget({
-                  dateKey: key,
-                  weekday: d.getDay(),
-                  dayProfile: profile,
-                  classes,
-                  events,
-                  extraPenaltyMinutes: extraPenaltyByWeekday.get(d.getDay()) ?? 0,
-                  latestCheckInMood: weeklyCheckIns[0]?.mood,
-                });
+                const { profile, dayBudget } = computeDayContext(d, key);
                 const planned = daySessions.reduce(
                   (sum, s) => sum + (s.done ? sessionMinutes(s) : s.minutes),
                   0,
@@ -1091,50 +1097,31 @@ export default function Planner() {
               })}
             </div>
 
-            <div className="hidden lg:grid lg:grid-cols-3 lg:gap-3 xl:grid-cols-4">
+            {/* Desktop: 7 dias numa única linha com blocos compactos; clicar num dia abre a aba do dia */}
+            <div className="hidden lg:grid lg:grid-flow-col lg:auto-cols-[minmax(148px,1fr)] lg:gap-2 lg:overflow-x-auto lg:pb-1 xl:grid-cols-7 xl:auto-cols-auto xl:gap-2.5 xl:overflow-visible xl:pb-0">
               {weekDays.map((d, i) => {
                 const key = weekKeys[i];
-                const profile = resolveDayPlanProfile({
-                  dateKey: key,
-                  weekday: d.getDay(),
-                  settings,
-                  assessments,
-                  pausedCourseIds: plannerPrefs?.pausedCourseIds,
-                  weekdaySchedule: plannerPrefs?.weekdaySchedule,
-                  preferredPeriod: plannerPrefs?.preferredPeriod,
-                  preExamMarathon: plannerPrefs?.preExamMarathon,
-                  dateOverrides: plannerPrefs?.dateOverrides,
-                });
-                const dayBudget = computeDayBudget({
-                  dateKey: key,
-                  weekday: d.getDay(),
-                  dayProfile: profile,
-                  classes,
-                  events,
-                  extraPenaltyMinutes: extraPenaltyByWeekday.get(d.getDay()) ?? 0,
-                  latestCheckInMood: weeklyCheckIns[0]?.mood,
-                });
+                const { profile, dayBudget } = computeDayContext(d, key);
                 return (
-                  <DayColumn
+                  <CompactWeekDayCard
                     key={key}
                     date={d}
+                    dateKey={key}
                     sessions={byDay.get(key) ?? []}
                     budget={dayBudget.budget}
-                    budgetReason={dayBudget.reducedReason}
                     isToday={key === today}
+                    isSelected={key === activeDayKey}
                     isPast={key < today}
                     isStudyDay={profile.enabled}
                     isMarathonDay={profile.isMarathonDay}
-                    weekDates={weekKeys}
                     courseById={courseById}
                     topicById={topicById}
-                    assessmentById={assessmentById}
-                    materialById={materialById}
-                    onFocus={(s) => setFocusId(s.id)}
-                    onEdit={(s) => setModal({ session: s, date: s.date })}
-                    onAdd={openNewSession}
-                    onToggleLock={toggleSessionLock}
-                    onQuickMove={quickMoveSession}
+                    onOpenDay={(k) => {
+                      setSelectedDayKey(k);
+                      setDayModalKey(k);
+                    }}
+                    onEditSession={(s) => setModal({ session: s, date: s.date })}
+                    onAddSession={openNewSession}
                   />
                 );
               })}
@@ -1243,6 +1230,38 @@ export default function Planner() {
           },
         ]}
       />
+
+      {dayModalKey && (() => {
+        const modalDateObj = parseISO(dayModalKey);
+        const { profile, dayBudget } = computeDayContext(modalDateObj, dayModalKey);
+        return (
+          <DayDetailModal
+            dateKey={dayModalKey}
+            sessions={byDay.get(dayModalKey) ?? []}
+            budget={dayBudget.budget}
+            budgetReason={dayBudget.reducedReason}
+            isToday={dayModalKey === today}
+            isPast={dayModalKey < today}
+            isStudyDay={profile.enabled}
+            isMarathonDay={profile.isMarathonDay}
+            classes={classes}
+            events={events}
+            assessments={assessments}
+            weekDates={weekKeys}
+            courseById={courseById}
+            topicById={topicById}
+            assessmentById={assessmentById}
+            materialById={materialById}
+            onClose={() => setDayModalKey(null)}
+            onStepDay={stepDayModal}
+            onFocus={(s) => setFocusId(s.id)}
+            onEdit={(s) => setModal({ session: s, date: s.date })}
+            onAdd={openNewSession}
+            onToggleLock={toggleSessionLock}
+            onQuickMove={quickMoveSession}
+          />
+        );
+      })()}
 
       {modal && (
         <Suspense fallback={null}>
