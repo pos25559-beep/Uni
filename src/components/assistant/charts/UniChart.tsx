@@ -50,7 +50,7 @@ export function UniChart({ model }: { model: ChartModel }) {
   const arrowId = (c: ChartColor) => `uc-arrow-${uid}-${c}`;
 
   return (
-    <figure className="my-2 overflow-hidden rounded-2xl border border-line bg-surface p-3">
+    <figure className="my-2 w-full max-w-[480px] overflow-hidden rounded-2xl border border-line bg-surface p-3">
       {model.title && <figcaption className="mb-1 text-sm font-semibold text-fg">{model.title}</figcaption>}
       <svg
         viewBox={`0 0 ${W} ${H}`}

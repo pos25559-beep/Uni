@@ -181,10 +181,16 @@ export default function AppShell() {
   useEffect(() => {
     if (!isCollapsibleRoute) return;
     const lastTop = new WeakMap<EventTarget, number>();
+    // Depois de mostrar/recolher, ignora deslizes durante um instante (evita entrar em ciclo).
+    let quietUntil = 0;
+    const setOpen = (open: boolean) => {
+      quietUntil = Date.now() + 400;
+      setTutorTabsOpen(open);
+    };
     const onFocusIn = (e: FocusEvent) => {
       const el = e.target;
       if (el instanceof HTMLElement && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT')) {
-        setTutorTabsOpen(false);
+        setOpen(false);
       }
     };
     const onScroll = (e: Event) => {
@@ -192,9 +198,13 @@ export default function AppShell() {
       if (!(el instanceof HTMLElement) || !el.closest('#main-content')) return;
       const prev = lastTop.get(el) ?? el.scrollTop;
       lastTop.set(el, el.scrollTop);
+      if (Date.now() < quietUntil) return;
+      // Ressalto no topo/fim da página (iOS) não conta como deslize.
+      const atEdge = el.scrollTop <= 0 || el.scrollTop + el.clientHeight >= el.scrollHeight - 2;
+      if (atEdge) return;
       const delta = el.scrollTop - prev;
-      if (delta > 12) setTutorTabsOpen(false);
-      else if (delta < -12 && !isTutorRoute) setTutorTabsOpen(true);
+      if (delta > 12) setOpen(false);
+      else if (delta < -12 && !isTutorRoute) setOpen(true);
     };
     document.addEventListener('focusin', onFocusIn);
     document.addEventListener('scroll', onScroll, { capture: true, passive: true });
@@ -505,7 +515,11 @@ export default function AppShell() {
         tabIndex={-1}
         style={
           isCollapsibleRoute
-            ? ({ '--tutor-bar-space': tabsCollapsed ? '2rem' : openBarSpace } as React.CSSProperties)
+            ? ({
+                // Só o Tutor recupera o espaço; nas outras abas o espaço fica fixo (mudar o
+                // padding ao deslizar fazia a página saltar e a barra entrar em ciclo).
+                '--tutor-bar-space': isTutorRoute && tabsCollapsed ? '2rem' : openBarSpace,
+              } as React.CSSProperties)
             : undefined
         }
         className={cx(
