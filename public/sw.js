@@ -1,4 +1,4 @@
-const CACHE_NAME = 'unipedia-shell-v2';
+const CACHE_NAME = 'unipedia-shell-v3';
 const APP_SHELL = ['/manifest.webmanifest', '/favicon.svg', '/icons/icon-192.png'];
 
 self.addEventListener('install', (event) => {
@@ -56,7 +56,9 @@ self.addEventListener('fetch', (event) => {
       caches.match(req).then((cached) => {
         if (cached) return cached;
         return fetch(req).then((res) => {
-          if (res.ok) {
+          // Nunca guardar HTML no lugar de um ficheiro (asset de uma publicação antiga que já não existe).
+          const type = res.headers.get('content-type') || '';
+          if (res.ok && !type.includes('text/html')) {
             const copy = res.clone();
             void caches.open(CACHE_NAME).then((c) => c.put(req, copy));
           }
