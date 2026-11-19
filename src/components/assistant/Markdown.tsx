@@ -3,6 +3,7 @@ import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import type { ReactNode } from 'react';
 import { formatInlineLatexToText } from '../../lib/latexText';
+import { ChartBlock, CHART_LANGS } from './charts/ChartBlock';
 
 const FENCE = /^\s*```/;
 const BLOCK_MATH_START = /^\s*(\$\$|\\\[)/;
@@ -122,10 +123,16 @@ export function Markdown({ text }: { text: string }) {
     const key = `b${k++}`;
 
     if (FENCE.test(line)) {
+      const lang = line.trim().slice(3).trim().toLowerCase();
       const code: string[] = [];
       i++;
       while (i < lines.length && !FENCE.test(lines[i])) { code.push(lines[i]); i++; }
+      const closed = i < lines.length;
       i++; // fecho da cerca (ou fim do texto)
+      if (CHART_LANGS.has(lang)) {
+        blocks.push(<ChartBlock key={key} source={code.join('\n')} complete={closed} />);
+        continue;
+      }
       blocks.push(
         <pre key={key} className="overflow-x-auto rounded-xl border border-line bg-bg p-3 font-mono text-xs leading-relaxed">
           <code>{code.join('\n')}</code>

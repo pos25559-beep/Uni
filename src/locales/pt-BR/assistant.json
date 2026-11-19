@@ -637,5 +637,10 @@
     "syncPrepErr": "Não foi possível preparar a sincronização agora.",
     "focusDocNote": "DOCUMENTO PEDIDO PELO ESTUDANTE: «{{title}}». É deste arquivo que vem o enunciado; as outras provas e exames não foram enviados. Comece transcrevendo a questão pedida, com a página.",
     "ambiguousDocNote": "O estudante não disse ao certo qual é o documento. Possíveis: {{titles}}. Pergunte qual é antes de resolver (uma pergunta curta com estas opções)."
+  },
+  "chart": {
+    "aria": "Gráfico do Uni",
+    "drawing": "Desenhando o gráfico…",
+    "failed": "Não consegui desenhar este gráfico. Ver o texto original"
   }
 }

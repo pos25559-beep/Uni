@@ -637,5 +637,10 @@
     "syncPrepErr": "Couldn't prepare the sync right now.",
     "focusDocNote": "DOCUMENT REQUESTED BY THE STUDENT: \"{{title}}\". The question comes from this file; the other tests and exams were not sent. Start by transcribing the requested item, with the page.",
     "ambiguousDocNote": "The student did not say exactly which document. Possible ones: {{titles}}. Ask which one before solving (one short question with these options)."
+  },
+  "chart": {
+    "aria": "Uni chart",
+    "drawing": "Drawing the chart…",
+    "failed": "I couldn't draw this chart. Show the original text"
   }
 }
