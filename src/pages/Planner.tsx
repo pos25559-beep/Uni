@@ -57,6 +57,7 @@ import { getDueReviewQueue } from '../lib/spacedRepetition';
 import { capitalizeFirst, fmtMinutes, formatSessionDisplay, sessionMinutes, todayStr } from '../lib/selectors';
 import { useHubUiStore } from '../store/useHubUiStore';
 import { useStore } from '../store/useStore';
+import { isReplaceable } from '../lib/planner/replan';
 import { consumeSilentPlanAdjust } from '../store/planUndo';
 import {
   DEFAULT_PLANNER_PREFS,
@@ -65,7 +66,7 @@ import {
   resolvePlannerPrefs,
   weeklyStudyMinutes,
 } from '../lib/planner/availability';
-import type { Course, StudySession } from '../types';
+import type { StudySession } from '../types';
 
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 const TEST_MODE_ACK_KEY = 'uni-test-mode-ack-v1';
@@ -276,26 +277,25 @@ export default function Planner() {
     [sorted, weekFrom, weekTo],
   );
 
-  const overdue = useMemo(() => {
-    const classified = classifyOverdue({
-      sessions: sorted,
-      today,
-      assessments,
-      pausedCourseIds: plannerPrefs?.pausedCourseIds,
-    });
-    return [...classified.manual, ...classified.missedGenerated].sort(
-      (a, b) => a.date.localeCompare(b.date) || (a.start ?? '').localeCompare(b.start ?? ''),
-    );
-  }, [sorted, today, assessments, plannerPrefs?.pausedCourseIds]);
-  const overdueGroups = useMemo(() => {
-    const groups = new Map<string, { course?: Course; items: StudySession[] }>();
-    for (const s of overdue) {
-      const cur = groups.get(s.courseId);
-      if (cur) cur.items.push(s);
-      else groups.set(s.courseId, { course: courseById.get(s.courseId), items: [s] });
-    }
-    return [...groups.entries()];
-  }, [overdue, courseById]);
+  // Atrasos em três grupos: blocos gerados que o plano novo já cobre (só arrumar), sessões
+  // do estudante por encaixar, e sessões de testes que já passaram (descartar).
+  const overdueBuckets = useMemo(
+    () =>
+      classifyOverdue({
+        sessions: sorted,
+        today,
+        assessments,
+        pausedCourseIds: plannerPrefs?.pausedCourseIds,
+      }),
+    [sorted, today, assessments, plannerPrefs?.pausedCourseIds],
+  );
+  const overdue = useMemo(
+    () =>
+      [...overdueBuckets.manual, ...overdueBuckets.missedGenerated].sort(
+        (a, b) => a.date.localeCompare(b.date) || (a.start ?? '').localeCompare(b.start ?? ''),
+      ),
+    [overdueBuckets],
+  );
 
   const stats = useMemo(() => {
     const planned = weekSessions.reduce((sum, s) => sum + s.minutes, 0);
@@ -450,37 +450,27 @@ export default function Planner() {
 
   const moveOneToToday = (session: StudySession) => {
     void hapticTap();
-    const moved = placeToday(session, sessions.filter((x) => x.date === today));
+    // Os blocos gerados de hoje cedem o lugar: o plano recalcula à volta da sessão fixada.
+    const moved = placeToday(
+      session,
+      sessions.filter((x) => x.date === today && !isReplaceable(x, today)),
+    );
     if (!moved) {
       showToast(t('ui.noRoom'), 'neutral');
       return;
     }
     patch('sessions', session.id, { date: moved.date, start: moved.start, locked: true });
+    replan('manual', { force: true, silent: true });
     showToast(t('ui.movedToday'), 'ok');
   };
 
-  const moveAllToToday = () => {
-    void hapticTap();
-    const placed: StudySession[] = [];
-    for (const s of overdue) {
-      const moved = placeToday(s, [...sessions.filter((x) => x.date === today), ...placed]);
-      if (moved) placed.push(moved);
-    }
-    if (placed.length > 0) upsertMany('sessions', placed);
-    showToast(
-      placed.length === overdue.length
-        ? t('ui.movedToday')
-        : t('ui.rescheduledPartial', { count: placed.length, left: overdue.length - placed.length }),
-      placed.length > 0 ? 'ok' : 'neutral',
-    );
-  };
-
-  const rescheduleOverdueSmart = () => {
+  const rescheduleOverdueSmart = (targets: StudySession[] = overdueBuckets.manual) => {
     void hapticTap();
     const now = new Date();
     const { updated, unscheduledCount } = rescheduleOverdueSessions({
-      overdue,
-      existing: sessions.filter((s) => s.date >= today),
+      overdue: targets,
+      // Blocos gerados cedem o lugar às sessões do estudante; o plano recalcula a seguir.
+      existing: sessions.filter((s) => s.date >= today && !isReplaceable(s, today)),
       classes,
       events,
       assessments,
@@ -496,6 +486,7 @@ export default function Planner() {
     });
     if (updated.length > 0) {
       upsertMany('sessions', updated);
+      replan('manual', { force: true, silent: true });
       showToast(
         unscheduledCount > 0
           ? t('ui.rescheduledPartial', { count: updated.length, left: unscheduledCount })
@@ -505,6 +496,18 @@ export default function Planner() {
     } else {
       showToast(t('ui.noRoom'), 'neutral');
     }
+  };
+
+  /** Arruma sessões passadas (apagar), com Desfazer. */
+  const clearPastSessions = (items: StudySession[], message: string) => {
+    if (items.length === 0) return;
+    void hapticTap();
+    const removed = [...items];
+    for (const x of removed) remove('sessions', x.id);
+    showToast(message, {
+      tone: 'neutral',
+      action: { label: t('replan.undo'), onPress: () => upsertMany('sessions', removed) },
+    });
   };
 
   const weekLabel = `${format(weekDays[0], 'd MMM', { locale: dfLocale })} – ${format(weekDays[6], 'd MMM yyyy', { locale: dfLocale })}`;
@@ -723,61 +726,104 @@ export default function Planner() {
         />
       ) : (
         <>
-          {overdue.length > 0 && (
-            <section className="rise space-y-4 rounded-[24px] border border-coral/30 bg-pastel-blush/50 p-4 text-[#141312] shadow-card dark:bg-[#381E21]/75 dark:text-[#FAF6EC] sm:p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="font-display text-base font-bold tracking-tight">
-                  {t('ui.overdueTitle', { count: overdue.length })}
-                </h2>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <Button size="sm" variant="primary" onClick={rescheduleOverdueSmart}>
-                    <Sparkles size={13} /> {t('ui.smartReschedule')}
-                  </Button>
-                  <Button size="sm" variant="secondary" onClick={moveAllToToday}>
-                    {t('ui.moveToday')}
+          {(overdueBuckets.manual.length > 0 ||
+            overdueBuckets.missedGenerated.length > 0 ||
+            overdueBuckets.expired.length > 0) && (
+            <section
+              aria-label={t('overdue.aria')}
+              className="rise space-y-3 rounded-[24px] border border-coral/30 bg-pastel-blush/50 p-4 text-[#141312] shadow-card dark:bg-[#381E21]/75 dark:text-[#FAF6EC] sm:p-5"
+            >
+              <h2 className="font-display text-base font-bold tracking-tight">{t('overdue.title')}</h2>
+
+              {overdueBuckets.manual.length > 0 && (
+                <div className="space-y-2 rounded-2xl border border-line/70 bg-surface/90 p-3 text-fg dark:bg-black/25">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-semibold">
+                      {t('overdue.yours', { count: overdueBuckets.manual.length })}
+                    </p>
+                    {overdueBuckets.manual.length > 1 && (
+                      <Button size="sm" variant="primary" onClick={() => rescheduleOverdueSmart(overdueBuckets.manual)}>
+                        <Sparkles size={13} /> {t('overdue.fitAll')}
+                      </Button>
+                    )}
+                  </div>
+                  <ul className="divide-y divide-line">
+                    {overdueBuckets.manual.map((s) => {
+                      const topic = s.topicId ? topicById.get(s.topicId) : undefined;
+                      return (
+                        <li key={s.id} className="space-y-2 py-2.5 first:pt-0 last:pb-0">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <CourseChip course={courseById.get(s.courseId)} />
+                              <span className="text-xs tabular text-muted">
+                                {format(parseISO(s.date), 'EEE d MMM', { locale: dfLocale })} · {fmtMinutes(s.minutes)}
+                              </span>
+                            </div>
+                            <p className="mt-1 line-clamp-2 text-sm font-medium">
+                              {formatSessionDisplay(s, topic, i18n.language).title}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Button size="sm" onClick={() => rescheduleOverdueSmart([s])}>
+                              {t('overdue.fit')}
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => moveOneToToday(s)}>
+                              {t('ui.moveToday')}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => clearPastSessions([s], t('overdue.discarded', { count: 1 }))}
+                            >
+                              {t('ui.discard')}
+                            </Button>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+
+              {overdueBuckets.missedGenerated.length > 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line/70 bg-surface/90 p-3 text-fg dark:bg-black/25">
+                  <p className="min-w-0 flex-1 text-sm">
+                    {t('overdue.missed', { count: overdueBuckets.missedGenerated.length })}
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() =>
+                      clearPastSessions(
+                        overdueBuckets.missedGenerated,
+                        t('overdue.discarded', { count: overdueBuckets.missedGenerated.length }),
+                      )
+                    }
+                  >
+                    {t('overdue.missedOk')}
                   </Button>
                 </div>
-              </div>
-              <div className="space-y-3">
-                {overdueGroups.map(([courseId, group]) => {
-                  const groupMinutes = group.items.reduce((sum, x) => sum + x.minutes, 0);
-                  return (
-                    <div key={courseId} className="space-y-2 rounded-2xl border border-line/70 bg-surface/90 p-3 text-fg dark:bg-black/25">
-                      <div className="flex items-center justify-between gap-2">
-                        <CourseChip course={group.course} />
-                        <span className="text-xs font-medium text-muted tabular">
-                          {group.items.length} · {fmtMinutes(groupMinutes)}
-                        </span>
-                      </div>
-                      <ul className="divide-y divide-line">
-                        {group.items.map((s) => {
-                          const topic = s.topicId ? topicById.get(s.topicId) : undefined;
-                          return (
-                            <li key={s.id} className="flex flex-wrap items-center gap-3 py-2.5 first:pt-0 last:pb-0">
-                              <div className="min-w-0 flex-1">
-                                <p className="text-xs tabular whitespace-nowrap text-muted">
-                                  {format(parseISO(s.date), 'EEE d MMM', { locale: dfLocale })} · {s.minutes} min
-                                </p>
-                                <p className="mt-0.5 truncate text-sm font-medium">
-                                  {formatSessionDisplay(s, topic, i18n.language).title}
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Button size="sm" onClick={() => moveOneToToday(s)}>
-                                  {t('ui.moveToday')}
-                                </Button>
-                                <Button size="sm" variant="ghost" onClick={() => remove('sessions', s.id)}>
-                                  {t('ui.discard')}
-                                </Button>
-                              </div>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
-                  );
-                })}
-              </div>
+              )}
+
+              {overdueBuckets.expired.length > 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line/70 bg-surface/90 p-3 text-fg dark:bg-black/25">
+                  <p className="min-w-0 flex-1 text-sm">
+                    {t('overdue.expired', { count: overdueBuckets.expired.length })}
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() =>
+                      clearPastSessions(
+                        overdueBuckets.expired,
+                        t('overdue.discarded', { count: overdueBuckets.expired.length }),
+                      )
+                    }
+                  >
+                    {t('overdue.discardAll')}
+                  </Button>
+                </div>
+              )}
             </section>
           )}
 

@@ -1,4 +1,20 @@
 {
+  "overdue": {
+    "aria": "Sesiones atrasadas",
+    "title": "Se quedó atrás",
+    "yours_one": "{{count}} sesión tuya por encajar",
+    "yours_other": "{{count}} sesiones tuyas por encajar",
+    "fit": "Encajar",
+    "fitAll": "Encajar todas",
+    "missed_one": "{{count}} bloque del plan quedó sin hacer. El plan nuevo ya cuenta con esa materia.",
+    "missed_other": "{{count}} bloques del plan quedaron sin hacer. El plan nuevo ya cuenta con esa materia.",
+    "missedOk": "Ordenar",
+    "expired_one": "{{count}} sesión era para un examen que ya pasó.",
+    "expired_other": "{{count}} sesiones eran para exámenes que ya pasaron.",
+    "discardAll": "Descartar",
+    "discarded_one": "{{count}} sesión ordenada",
+    "discarded_other": "{{count}} sesiones ordenadas"
+  },
   "weekCheck": {
     "title": "¿Cómo va tu semana?",
     "hintEmpty": "Cuéntale a Uni qué cambia esta semana y el plan se ajusta.",
@@ -228,8 +244,10 @@
   "ui": {
     "toastGenerated": "Plan generado con {{count}} sesiones",
     "movedToday": "Sesiones movidas a hoy",
-    "rescheduledPartial": "{{count}} sesiones reprogramadas · {{left}} siguen atrasadas",
-    "rescheduledAll": "{{count}} sesiones repartidas en los próximos días libres",
+    "rescheduledPartial_one": "{{count}} sesión reprogramada · {{left}} siguen atrasadas",
+    "rescheduledPartial_other": "{{count}} sesiones reprogramadas · {{left}} siguen atrasadas",
+    "rescheduledAll_one": "1 sesión encajada en el plan",
+    "rescheduledAll_other": "{{count}} sesiones encajadas en el plan",
     "noRoom": "No hay margen libre en los próximos días: puedes moverlas a hoy o subir la meta.",
     "moreActionsAria": "Más acciones del plan",
     "moreActions": "Más acciones",

@@ -1,4 +1,20 @@
 {
+  "overdue": {
+    "aria": "Sessões atrasadas",
+    "title": "Ficou para trás",
+    "yours_one": "{{count}} sessão sua para encaixar",
+    "yours_other": "{{count}} sessões suas para encaixar",
+    "fit": "Encaixar",
+    "fitAll": "Encaixar todas",
+    "missed_one": "{{count}} bloco do plano ficou por fazer. O plano novo já conta com essa matéria.",
+    "missed_other": "{{count}} blocos do plano ficaram por fazer. O plano novo já conta com essa matéria.",
+    "missedOk": "Arrumar",
+    "expired_one": "{{count}} sessão era para uma prova que já passou.",
+    "expired_other": "{{count}} sessões eram para provas que já passaram.",
+    "discardAll": "Descartar",
+    "discarded_one": "{{count}} sessão arrumada",
+    "discarded_other": "{{count}} sessões arrumadas"
+  },
   "weekCheck": {
     "title": "Como está a sua semana?",
     "hintEmpty": "Conte ao Uni o que muda nesta semana e o plano se ajusta.",
@@ -228,8 +244,10 @@
   "ui": {
     "toastGenerated": "Plano gerado com {{count}} sessões",
     "movedToday": "Sessões movidas para hoje",
-    "rescheduledPartial": "{{count}} sessões reagendadas · {{left}} continuam atrasadas",
-    "rescheduledAll": "{{count}} sessões distribuídas pelos próximos dias livres",
+    "rescheduledPartial_one": "{{count}} sessão reagendada · {{left}} ainda atrasadas",
+    "rescheduledPartial_other": "{{count}} sessões reagendadas · {{left}} ainda atrasadas",
+    "rescheduledAll_one": "1 sessão encaixada no plano",
+    "rescheduledAll_other": "{{count}} sessões encaixadas no plano",
     "noRoom": "Sem espaço livre nos próximos dias — você pode mover para hoje ou aumentar a meta.",
     "moreActionsAria": "Mais ações do plano",
     "moreActions": "Mais ações",

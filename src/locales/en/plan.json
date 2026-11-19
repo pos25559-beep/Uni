@@ -1,4 +1,20 @@
 {
+  "overdue": {
+    "aria": "Overdue sessions",
+    "title": "Left behind",
+    "yours_one": "{{count}} of your sessions to fit in",
+    "yours_other": "{{count}} of your sessions to fit in",
+    "fit": "Fit in",
+    "fitAll": "Fit all in",
+    "missed_one": "{{count}} plan block was missed. The new plan already covers that material.",
+    "missed_other": "{{count}} plan blocks were missed. The new plan already covers that material.",
+    "missedOk": "Tidy up",
+    "expired_one": "{{count}} session was for a test that's already passed.",
+    "expired_other": "{{count}} sessions were for tests that have already passed.",
+    "discardAll": "Discard",
+    "discarded_one": "{{count}} session tidied up",
+    "discarded_other": "{{count}} sessions tidied up"
+  },
   "weekCheck": {
     "title": "How's your week?",
     "hintEmpty": "Tell Uni what changes this week and the plan adjusts.",
@@ -228,8 +244,10 @@
   "ui": {
     "toastGenerated": "Plan generated with {{count}} sessions",
     "movedToday": "Sessions moved to today",
-    "rescheduledPartial": "{{count}} sessions rescheduled · {{left}} still overdue",
-    "rescheduledAll": "{{count}} sessions spread over the next free days",
+    "rescheduledPartial_one": "{{count}} session rescheduled · {{left}} still overdue",
+    "rescheduledPartial_other": "{{count}} sessions rescheduled · {{left}} still overdue",
+    "rescheduledAll_one": "1 session fitted into the plan",
+    "rescheduledAll_other": "{{count}} sessions fitted into the plan",
     "noRoom": "No free time in the coming days — move them to today or raise your goal.",
     "moreActionsAria": "More plan actions",
     "moreActions": "More actions",
