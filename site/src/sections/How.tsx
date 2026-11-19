@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { useState, type ReactNode } from 'react';
 import { useCopy } from '../i18n';
+import { pagePath, useRoute } from '../routes';
 import { FocusRing, PlanWeek, Reveal, RetentionBars, SectionHead, SPRING } from '../ui';
 
 export function PromiseStrip() {
@@ -24,7 +25,7 @@ export function PromiseStrip() {
 }
 
 /** Cartão de prática: toca para revelar, avalia com os 3 botões da app. */
-function PracticeCard() {
+export function PracticeCard() {
   const m = useCopy().mock;
   const [revealed, setRevealed] = useState(false);
   const [rated, setRated] = useState<number | null>(null);
@@ -78,6 +79,8 @@ function Step({
   tone,
   visual,
   flip,
+  href,
+  more,
 }: {
   index: number;
   label: string;
@@ -87,6 +90,8 @@ function Step({
   tone: string;
   visual: ReactNode;
   flip?: boolean;
+  href: string;
+  more: string;
 }) {
   return (
     <Reveal>
@@ -102,6 +107,9 @@ function Step({
             <span aria-hidden="true">✦</span>
             {detail}
           </p>
+          <a href={href} className="mt-5 flex min-h-11 w-fit items-center gap-1.5 rounded-full text-sm font-semibold text-fg underline decoration-fg/30 underline-offset-4 hover:decoration-fg">
+            {more} <span aria-hidden="true">→</span>
+          </a>
         </div>
         <div className={flip ? 'md:order-1' : undefined}>{visual}</div>
       </article>
@@ -110,18 +118,21 @@ function Step({
 }
 
 export default function How() {
-  const { how, mock } = useCopy();
+  const { how, mock, common } = useCopy();
+  const { lang } = useRoute();
   const s = how.steps;
+  const link = (id: 'plano' | 'foco' | 'pratica' | 'progresso') => ({ href: pagePath(lang, id), more: `${common.learnMore}: ${s[({ plano: 'plan', foco: 'focus', pratica: 'practice', progresso: 'measure' } as const)[id]].label}` });
   return (
     <section id="como-funciona" aria-labelledby="how-title" className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
       <SectionHead id="how-title" kicker={how.kicker} title={how.title} em={how.titleEm} sub={how.sub} />
       <div className="mt-12 space-y-5 sm:space-y-6">
-        <Step index={1} tone="bg-pastel-sky" {...s.plan} visual={<div className="rounded-[20px] bg-surface/60 p-3 sm:p-4"><PlanWeek /></div>} />
+        <Step index={1} tone="bg-pastel-sky" {...s.plan} {...link('plano')} visual={<div className="rounded-[20px] bg-surface/60 p-3 sm:p-4"><PlanWeek /></div>} />
         <Step
           index={2}
           tone="bg-pastel-sage"
           flip
           {...s.focus}
+          {...link('foco')}
           visual={
             <div className="rounded-[20px] bg-surface/60 p-6">
               <FocusRing />
@@ -131,8 +142,8 @@ export default function How() {
             </div>
           }
         />
-        <Step index={3} tone="bg-pastel-peach" {...s.practice} visual={<PracticeCard />} />
-        <Step index={4} tone="bg-pastel-mint" flip {...s.measure} visual={<div className="rounded-[20px] bg-surface/60 p-5"><RetentionBars /></div>} />
+        <Step index={3} tone="bg-pastel-peach" {...s.practice} {...link('pratica')} visual={<PracticeCard />} />
+        <Step index={4} tone="bg-pastel-mint" flip {...s.measure} {...link('progresso')} visual={<div className="rounded-[20px] bg-surface/60 p-5"><RetentionBars /></div>} />
       </div>
     </section>
   );

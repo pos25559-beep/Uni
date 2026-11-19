@@ -1,63 +1,10 @@
-import { motion, useReducedMotion } from 'motion/react';
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { motion } from 'motion/react';
 import { APP_URL, useCopy } from '../i18n';
-import { PhoneFrame, SPRING, TodayScreen } from '../ui';
-
-const HeroScene = lazy(() => import('../three/HeroScene'));
-
-/**
- * Só liga o 3D quando faz sentido: ecrã ≥ 768 px (no telemóvel o estático lê-se melhor e poupa dados),
- * WebGL, sem movimento reduzido, sem poupança de dados e aparelho com fôlego.
- */
-function can3D(): boolean {
-  if (typeof window === 'undefined') return false;
-  if (!window.matchMedia('(min-width: 768px)').matches) return false;
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
-  const nav = navigator as Navigator & { connection?: { saveData?: boolean }; deviceMemory?: number };
-  if (nav.connection?.saveData) return false;
-  if ((nav.hardwareConcurrency ?? 4) < 4 || (nav.deviceMemory ?? 4) < 3) return false;
-  try {
-    const c = document.createElement('canvas');
-    return Boolean(c.getContext('webgl2') || c.getContext('webgl'));
-  } catch {
-    return false;
-  }
-}
-
-/** Versão estática (pré-render, movimento reduzido ou sem WebGL): telemóvel em CSS e post-its. */
-function StaticStage({ label }: { label: string }) {
-  const reduce = useReducedMotion();
-  const notes = [
-    'left-[4%] top-[12%] rotate-[-8deg] bg-pastel-butter',
-    'right-[2%] top-[6%] rotate-[10deg] bg-pastel-mint',
-    'left-[8%] bottom-[14%] rotate-[6deg] bg-pastel-sky',
-    'right-[6%] bottom-[20%] rotate-[-12deg] bg-pastel-peach',
-  ];
-  return (
-    <div role="img" aria-label={label} className="absolute inset-0 grid place-items-center">
-      {notes.map((n, i) => (
-        <motion.span
-          key={n}
-          aria-hidden="true"
-          className={`absolute size-16 rounded-md shadow-card ring-1 ring-fg/5 sm:size-20 ${n}`}
-          animate={reduce ? undefined : { y: [0, -8, 0] }}
-          transition={{ duration: 4 + i, repeat: Infinity, ease: 'easeInOut' }}
-        />
-      ))}
-      <div className="rotate-[-4deg]">
-        <PhoneFrame>
-          <TodayScreen />
-        </PhoneFrame>
-      </div>
-    </div>
-  );
-}
+import { AppDemo } from '../screens';
+import { SPRING } from '../ui';
 
 export default function Hero() {
   const { hero } = useCopy();
-  const [use3D, setUse3D] = useState(false);
-  const [ready3D, setReady3D] = useState(false);
-  useEffect(() => setUse3D(can3D()), []);
 
   return (
     <section aria-labelledby="hero-title" className="paper-margin relative overflow-hidden pt-[72px]">
@@ -114,19 +61,14 @@ export default function Hero() {
           <p className="mt-5 font-mono text-xs text-muted">{hero.note}</p>
         </div>
 
-        <div className="relative h-[min(560px,118vw)] lg:h-[640px]">
-          {/* O telemóvel estático fica por baixo até a cena 3D pintar o primeiro frame. */}
-          <div className={`absolute inset-0 transition-opacity duration-500 ${ready3D ? 'opacity-0' : 'opacity-100'}`} aria-hidden={ready3D}>
-            <StaticStage label={hero.sceneLabel} />
-          </div>
-          {use3D && (
-            <div className={`absolute inset-0 transition-opacity duration-700 ${ready3D ? 'opacity-100' : 'opacity-0'}`}>
-              <Suspense fallback={null}>
-                <HeroScene label={hero.sceneLabel} onReady={() => setReady3D(true)} />
-              </Suspense>
-            </div>
-          )}
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.1, ease: [0.22, 0.8, 0.26, 1] }}
+          className="relative py-4"
+        >
+          <AppDemo />
+        </motion.div>
       </div>
     </section>
   );

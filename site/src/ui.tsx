@@ -89,7 +89,7 @@ export function UniFace({ size = 120, mood = 'happy', className }: { size?: numb
 
 /* ------------------------------------------------------------------ recortes da app */
 
-function Chip({ children, tone = 'sky' }: { children: ReactNode; tone?: 'sky' | 'mint' | 'butter' | 'peach' }) {
+export function Chip({ children, tone = 'sky' }: { children: ReactNode; tone?: 'sky' | 'mint' | 'butter' | 'peach' }) {
   const bg = { sky: 'bg-pastel-sky', mint: 'bg-pastel-mint', butter: 'bg-pastel-butter', peach: 'bg-pastel-peach' }[tone];
   const dot = { sky: 'bg-[#1D63D8]', mint: 'bg-accent', butter: 'bg-[#C77700]', peach: 'bg-coral' }[tone];
   return (
@@ -97,80 +97,6 @@ function Chip({ children, tone = 'sky' }: { children: ReactNode; tone?: 'sky' | 
       <span className={`size-1.5 rounded-full ${dot}`} />
       {children}
     </span>
-  );
-}
-
-/** Ecrã «Hoje» da app, desenhado em HTML (nítido em qualquer tamanho, também dentro da cena 3D). */
-export function TodayScreen() {
-  const m = useCopy().mock;
-  const rows = [
-    { course: m.course1, tone: 'sky' as const, time: '17:00', topic: m.topic1, min: 25, done: false, active: true },
-    { course: m.course2, tone: 'mint' as const, time: '18:30', topic: m.topic2, min: 25, done: false },
-    { course: m.course3, tone: 'butter' as const, time: '19:05', topic: m.topic3, min: 25, done: false },
-  ];
-  return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden bg-bg px-4 pb-3 pt-9 text-fg">
-      <div className="flex items-center gap-2">
-        <div className="grid size-8 place-items-center rounded-full bg-pastel-sage">
-          <UniFace size={26} />
-        </div>
-        <span className="truncate text-xs text-muted">{m.today} · {m.week.toLowerCase()}</span>
-      </div>
-      <p className="font-display mt-3 text-[22px] font-bold leading-tight">
-        {m.greeting} <em className="font-serif font-normal italic text-accent-ink">{m.name}</em>
-      </p>
-      <div className="mt-3 flex rounded-full bg-surface-2 p-1 text-xs font-semibold">
-        <span className="flex-1 rounded-full bg-surface py-1.5 text-center shadow-card">{m.today} 3</span>
-        <span className="flex-1 py-1.5 text-center text-muted">{m.week}</span>
-      </div>
-      <div className="mt-3 overflow-hidden rounded-[18px] border border-line bg-surface">
-        <div className="flex items-center justify-between bg-pastel-sage px-3 py-2.5">
-          <span className="text-sm font-bold">✦ {m.focusToday}</span>
-          <span className="rounded-full bg-surface px-2.5 py-1 text-xs font-semibold">{m.openPlan} →</span>
-        </div>
-        <div className="paper-lines space-y-2 p-2.5">
-          {rows.map((r) => (
-            <div
-              key={r.topic}
-              className={`flex items-center gap-2.5 rounded-xl px-2.5 py-2 ${r.active ? 'bg-pastel-butter/60 ring-1 ring-fg/10' : 'bg-surface-2'}`}
-            >
-              <span className={`size-5 shrink-0 rounded-full border-2 ${r.active ? 'border-accent' : 'border-muted/50'}`} />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <Chip tone={r.tone}>{r.course}</Chip>
-                  <span className="font-mono text-xs text-muted">{r.time}</span>
-                </div>
-                <p className="mt-0.5 truncate text-[13px] font-medium">{r.topic}</p>
-              </div>
-              <span className="font-mono text-xs text-muted">{r.min}′</span>
-            </div>
-          ))}
-          <p className="px-1 pt-0.5 text-xs leading-snug text-muted">{m.why}</p>
-        </div>
-      </div>
-      <div className="mt-auto flex items-center justify-around rounded-full bg-ink-cta px-2 py-2 text-ink-cta-fg">
-        {m.dock.map((d, i) => (
-          <span
-            key={d}
-            className={`rounded-full px-2.5 py-1 text-xs font-medium ${i === 2 ? 'bg-ink-cta-fg text-ink-cta' : 'opacity-70'}`}
-          >
-            {d}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/** Moldura de telemóvel em CSS (usada quando a cena 3D não corre). */
-export function PhoneFrame({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <div
-      className={`relative aspect-[9/19] w-[min(300px,72vw)] rounded-[44px] bg-[#141312] p-[10px] shadow-[0_40px_80px_-30px_rgba(20,19,18,0.45)] ${className ?? ''}`}
-    >
-      <div className="absolute left-1/2 top-[18px] z-10 h-[22px] w-[86px] -translate-x-1/2 rounded-full bg-[#141312]" />
-      <div className="h-full w-full overflow-hidden rounded-[35px]">{children}</div>
-    </div>
   );
 }
 

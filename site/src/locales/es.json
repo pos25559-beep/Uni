@@ -4,14 +4,19 @@
     "description": "Unipedia conoce tu semestre: planifica el estudio alrededor de tus exámenes, protege tu concentración, te pregunta el temario de tus apuntes y te muestra lo que se te ha quedado. Para bachillerato y universidad."
   },
   "nav": {
-    "how": "Cómo funciona",
-    "uni": "Uni",
-    "privacy": "Tus datos",
-    "faq": "Preguntas",
     "open": "Abrir Unipedia",
     "language": "Idioma",
     "menu": "Menú",
-    "home": "Unipedia, inicio"
+    "home": "Unipedia, inicio",
+    "features": {
+      "plano": "Plan",
+      "foco": "Foco",
+      "pratica": "Práctica",
+      "progresso": "Progreso",
+      "uni": "Uni"
+    },
+    "toLight": "Cambiar al tema claro",
+    "toDark": "Cambiar al tema oscuro"
   },
   "hero": {
     "kicker": "Compañero de estudio · Bachillerato y universidad",
@@ -20,13 +25,21 @@
     "sub": "Unipedia conoce tus asignaturas, tus exámenes y tus apuntes. Abres la app y te espera una sola cosa: el bloque adecuado, con el porqué. Cierras el bloque y sabes lo que se te ha quedado.",
     "ctaOpen": "Abrir Unipedia",
     "ctaHow": "Ver cómo funciona",
-    "note": "Sin cuenta obligatoria · funciona sin conexión",
-    "sceneLabel": "Móvil con la pantalla «Hoy» de Unipedia"
+    "note": "Sin cuenta obligatoria · funciona sin conexión"
   },
   "promise": [
-    { "lead": "Abres la app", "text": "y sabes qué estudiar ahora." },
-    { "lead": "Cierras el bloque", "text": "y sabes lo que se te ha quedado." },
-    { "lead": "Llegas al examen", "text": "sin sorpresas." }
+    {
+      "lead": "Abres la app",
+      "text": "y sabes qué estudiar ahora."
+    },
+    {
+      "lead": "Cierras el bloque",
+      "text": "y sabes lo que se te ha quedado."
+    },
+    {
+      "lead": "Llegas al examen",
+      "text": "sin sorpresas."
+    }
   ],
   "how": {
     "kicker": "Cómo funciona",
@@ -116,18 +129,44 @@
     "review": "Repasar ahora",
     "retention": "Retención",
     "estimate": "estimación",
-    "days": ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"],
-    "dock": ["Asignaturas", "Plan", "Hoy", "Tutor", "Más"]
+    "days": [
+      "LUN",
+      "MAR",
+      "MIÉ",
+      "JUE",
+      "VIE",
+      "SÁB",
+      "DOM"
+    ],
+    "dock": [
+      "Asignaturas",
+      "Plan",
+      "Hoy",
+      "Tutor",
+      "Más"
+    ]
   },
   "principles": {
     "kicker": "Lo que prometemos",
     "title": "Principios que",
     "titleEm": "no cambian.",
     "items": [
-      { "title": "Una decisión por pantalla", "body": "Cada pantalla tiene una acción principal evidente. El resto está a un toque, no a la vista." },
-      { "title": "Sin castigos", "body": "Fallar un día es normal. No hay contadores en rojo ni rachas que se pierden por una gripe." },
-      { "title": "Honestidad antes que comodidad", "body": "Si el temario no cabe antes del examen, la app lo dice y propone qué recortar. Uni dice cuando algo no está en tus materiales." },
-      { "title": "Tus datos son tuyos", "body": "Funciona sin cuenta y sin conexión. Lo que sale del móvil es lo mínimo, y sabes qué y adónde." }
+      {
+        "title": "Una decisión por pantalla",
+        "body": "Cada pantalla tiene una acción principal evidente. El resto está a un toque, no a la vista."
+      },
+      {
+        "title": "Sin castigos",
+        "body": "Fallar un día es normal. No hay contadores en rojo ni rachas que se pierden por una gripe."
+      },
+      {
+        "title": "Honestidad antes que comodidad",
+        "body": "Si el temario no cabe antes del examen, la app lo dice y propone qué recortar. Uni dice cuando algo no está en tus materiales."
+      },
+      {
+        "title": "Tus datos son tuyos",
+        "body": "Funciona sin cuenta y sin conexión. Lo que sale del móvil es lo mínimo, y sabes qué y adónde."
+      }
     ]
   },
   "uni": {
@@ -150,21 +189,48 @@
     "titleEm": "es tuyo.",
     "body": "Puedes usar Unipedia sin crear una cuenta: todo se queda en tu dispositivo. Si quieres sincronizar entre el móvil y el ordenador, creas una cuenta, y decides tú.",
     "items": [
-      { "title": "Sin cuenta", "body": "Modo local en el dispositivo, desde el primer minuto." },
-      { "title": "Sin conexión", "body": "Plan, foco y tarjetas funcionan sin internet." },
-      { "title": "Sabes qué sale", "body": "La IA solo se usa cuando activas a Uni, y se explica adónde van los datos." }
+      {
+        "title": "Sin cuenta",
+        "body": "Modo local en el dispositivo, desde el primer minuto."
+      },
+      {
+        "title": "Sin conexión",
+        "body": "Plan, foco y tarjetas funcionan sin internet."
+      },
+      {
+        "title": "Sabes qué sale",
+        "body": "La IA solo se usa cuando activas a Uni, y se explica adónde van los datos."
+      }
     ]
   },
   "faq": {
     "kicker": "Preguntas",
     "title": "Preguntas frecuentes",
     "items": [
-      { "q": "¿Para quién es Unipedia?", "a": "Para estudiantes de bachillerato y universidad, y para quien estudia en español, portugués o inglés." },
-      { "q": "¿Necesito crear una cuenta?", "a": "No. Puedes usarlo todo en tu dispositivo. La cuenta sirve para guardar y sincronizar el cuaderno entre dispositivos." },
-      { "q": "¿Funciona en el móvil y en el ordenador?", "a": "Sí. Se abre en el navegador de cualquiera de los dos y se adapta a la pantalla." },
-      { "q": "¿De dónde salen las preguntas de práctica?", "a": "De los materiales que subes (PDF, diapositivas, exámenes antiguos) y de tus notas. También puedes crear tarjetas a mano." },
-      { "q": "¿Y si fallo un día?", "a": "No pasa nada. El plan reparte lo que quedó pendiente, te dice qué ha cambiado y puedes deshacerlo." },
-      { "q": "¿Uni usa inteligencia artificial?", "a": "Sí, Uni usa IA de Google (Gemini) y solo funciona después de activarlo. El resto de la app no la necesita." }
+      {
+        "q": "¿Para quién es Unipedia?",
+        "a": "Para estudiantes de bachillerato y universidad, y para quien estudia en español, portugués o inglés."
+      },
+      {
+        "q": "¿Necesito crear una cuenta?",
+        "a": "No. Puedes usarlo todo en tu dispositivo. La cuenta sirve para guardar y sincronizar el cuaderno entre dispositivos."
+      },
+      {
+        "q": "¿Funciona en el móvil y en el ordenador?",
+        "a": "Sí. Se abre en el navegador de cualquiera de los dos y se adapta a la pantalla."
+      },
+      {
+        "q": "¿De dónde salen las preguntas de práctica?",
+        "a": "De los materiales que subes (PDF, diapositivas, exámenes antiguos) y de tus notas. También puedes crear tarjetas a mano."
+      },
+      {
+        "q": "¿Y si fallo un día?",
+        "a": "No pasa nada. El plan reparte lo que quedó pendiente, te dice qué ha cambiado y puedes deshacerlo."
+      },
+      {
+        "q": "¿Uni usa inteligencia artificial?",
+        "a": "Sí, Uni usa IA de Google (Gemini) y solo funciona después de activarlo. El resto de la app no la necesita."
+      }
     ]
   },
   "cta": {
@@ -180,5 +246,507 @@
     "terms": "Términos de uso",
     "delete": "Eliminar cuenta",
     "rights": "© 2026 Unipedia"
+  },
+  "common": {
+    "learnMore": "Saber más",
+    "explore": "Explora el resto de Unipedia",
+    "howTo": "Cómo se usa",
+    "questions": "Preguntas sobre",
+    "back": "Volver al inicio"
+  },
+  "demo": {
+    "label": "Demostración de la app Unipedia",
+    "tabsLabel": "Elegir pantalla de la demostración",
+    "pause": "Pausar demostración",
+    "play": "Continuar demostración",
+    "tabs": {
+      "hoje": "Hoy",
+      "plano": "Plan",
+      "foco": "Foco",
+      "pratica": "Práctica",
+      "progresso": "Progreso",
+      "uni": "Uni"
+    },
+    "captions": {
+      "hoje": "Abres la app y te espera una sola cosa: el bloque adecuado, con el porqué.",
+      "plano": "La semana se ordena alrededor de tus exámenes, y lo pendiente vuelve a caber.",
+      "foco": "Un bloque cada vez, con escudo antidistracciones y sonido ambiente.",
+      "pratica": "Al final del bloque, preguntas de tu temario. Tú dices cómo te ha ido.",
+      "progresso": "Ves lo que se te ha quedado: retención por asignatura y qué repasar después.",
+      "uni": "Uni conoce tu semestre y responde con tus materiales."
+    }
+  },
+  "pages": {
+    "plano": {
+      "meta": {
+        "title": "Plan de estudio — Unipedia",
+        "description": "Un plan semanal que conoce tus exámenes, recoloca lo pendiente y se ajusta cuando la vida pasa. Siempre con «Deshacer»."
+      },
+      "kicker": "Plan",
+      "title": "La semana se ordena",
+      "titleEm": "sola.",
+      "sub": "Indicas tus asignaturas, cuándo son los exámenes y cuánto tiempo tienes al día. El plan reparte el temario, adelanta lo que más pesa y lo reordena todo cuando un día no sale como esperabas.",
+      "sections": [
+        {
+          "title": "Hecho alrededor de tus exámenes",
+          "body": "Los bloques aparecen en la semana según las fechas y el peso de cada evaluación. Tú eliges los días y la meta diaria; la app hace las cuentas.",
+          "points": [
+            "Tira semanal de lunes a domingo, con vista de día y de semana",
+            "Ritmo a tu medida, por ejemplo de lunes a sábado, 2 h al día",
+            "Cada bloque indica la asignatura, el tema y los minutos"
+          ]
+        },
+        {
+          "title": "Lo pendiente vuelve a caber",
+          "body": "Un bloque que no hiciste no se queda en rojo para siempre. Aparece en «Se quedó atrás» y eliges: encajarlo otro día, moverlo a hoy o descartarlo.",
+          "points": [
+            "Sin contadores de retraso ni castigos",
+            "El plan nuevo ya cuenta con lo que quedó por hacer",
+            "Siempre con «Deshacer» cuando el plan cambia"
+          ]
+        },
+        {
+          "title": "Automático o manual",
+          "body": "En modo automático el plan se recalcula cuando algo cambia. En modo manual tus bloques se quedan como los dejaste y la app solo sugiere.",
+          "points": [
+            "Cambia de modo cuando quieras",
+            "«Tengo ahora 10, 25 o 50 min» en la pantalla Hoy",
+            "Los bloques se pueden editar a mano"
+          ]
+        },
+        {
+          "title": "Conversaciones cortas que afinan el plan",
+          "body": "Después de clase, al final del día, el domingo o antes de un examen, le cuentas a Uni cómo te ha ido, con tus palabras. Él ajusta los temas y los próximos bloques.",
+          "points": [
+            "«Entra hasta la diapositiva 8 y ya repasé T01–T03»",
+            "Si dices que estás cansado, los bloques de mañana son más cortos",
+            "Borradores guardados automáticamente"
+          ]
+        }
+      ],
+      "steps": {
+        "title": "Cómo se usa",
+        "items": [
+          {
+            "title": "Añade tus asignaturas",
+            "body": "Elige la carrera y las asignaturas, o hazle una foto al horario."
+          },
+          {
+            "title": "Marca los exámenes",
+            "body": "Fechas y temario de cada evaluación. Puedes añadirlos más tarde."
+          },
+          {
+            "title": "Deja trabajar al plan",
+            "body": "Abre Hoy y empieza por el primer bloque."
+          }
+        ]
+      },
+      "faq": [
+        {
+          "q": "¿Y si todavía no sé las fechas de los exámenes?",
+          "a": "El plan empieza con un estudio equilibrado entre asignaturas y se reorganiza cuando añadas las fechas."
+        },
+        {
+          "q": "¿Puedo mover los bloques a mano?",
+          "a": "Sí. En modo manual tus bloques se quedan como los dejaste; en automático, cada cambio muestra «Plan actualizado · Deshacer»."
+        },
+        {
+          "q": "¿Qué pasa si fallo un día?",
+          "a": "Los bloques de ese día aparecen en «Se quedó atrás». Los encajas, los mueves a hoy o los descartas; nada cuenta en tu contra."
+        }
+      ]
+    },
+    "foco": {
+      "meta": {
+        "title": "Modo foco — Unipedia",
+        "description": "Un temporizador tranquilo para un bloque cada vez, con escudo antidistracciones opcional, sonido ambiente y registro honesto de las salidas de pantalla."
+      },
+      "kicker": "Foco",
+      "title": "Un bloque cada vez,",
+      "titleEm": "sin ruido.",
+      "sub": "Pulsas «Iniciar» y el resto espera. El anillo muestra cuánto falta, el sonido te ayuda a coger ritmo y, si sales de la pantalla, vuelves sin perder nada.",
+      "sections": [
+        {
+          "title": "Un anillo, un bloque, una decisión",
+          "body": "La pantalla de foco muestra solo lo importante: la asignatura, el tema y el tiempo. ¿Necesitas más? «+ 5 min». ¿Has terminado? «Terminar».",
+          "points": [
+            "Bloques del plan o rápidos de 10, 25 y 50 min",
+            "Pausar y reanudar cuando lo necesites",
+            "Si la pantalla se recarga, el bloque sigue donde lo dejaste"
+          ]
+        },
+        {
+          "title": "Escudo antidistracciones, si quieres",
+          "body": "El escudo es opcional. Pone la app en pantalla completa, mantiene la pantalla encendida y silencia los recordatorios de la app durante el bloque.",
+          "points": [
+            "Pantalla completa y pantalla siempre encendida",
+            "En Android: modo No molestar y fijar la app",
+            "Sin penalizar tu progreso"
+          ]
+        },
+        {
+          "title": "Sonido ambiente para coger ritmo",
+          "body": "Silencio, lluvia o ruido blanco, generados en tu propio dispositivo. Lo activas y desactivas sin salir del bloque.",
+          "points": [
+            "Funciona sin conexión",
+            "Lo eliges en el panel del escudo",
+            "Lo apagas cuando quieras"
+          ]
+        },
+        {
+          "title": "Honesto, no castigador",
+          "body": "Si sales de la pantalla, la app registra la salida y te dice «Bienvenido de vuelta». Si terminas antes, se guardan los minutos reales y el resto vuelve al plan.",
+          "points": [
+            "«Foco limpio · 0 salidas de pantalla» cuando ha ido bien",
+            "Terminar antes: guardar los minutos reales o descartar",
+            "Al final, pasas directo a la práctica"
+          ]
+        }
+      ],
+      "steps": {
+        "title": "Cómo se usa",
+        "items": [
+          {
+            "title": "Elige el bloque",
+            "body": "El siguiente del plan, o «Tengo ahora 25 min» en Hoy."
+          },
+          {
+            "title": "Pulsa «Iniciar»",
+            "body": "Activa el escudo y el sonido, si quieres."
+          },
+          {
+            "title": "Cierra con práctica",
+            "body": "Al final, tres preguntas del tema que acabas de estudiar."
+          }
+        ]
+      },
+      "faq": [
+        {
+          "q": "¿El escudo bloquea otras apps?",
+          "a": "En el navegador pone Unipedia en pantalla completa y mantiene la pantalla encendida. En la app de Android también puede activar No molestar y fijar la app, con tu permiso."
+        },
+        {
+          "q": "¿Pierdo el bloque si se bloquea el móvil?",
+          "a": "No. El bloque sigue donde lo dejaste y puedes pulsar «Reanudar»."
+        },
+        {
+          "q": "¿Salir de la pantalla cuenta en mi contra?",
+          "a": "No. Las salidas quedan registradas para que lo sepas, pero tu progreso sigue intacto."
+        }
+      ]
+    },
+    "pratica": {
+      "meta": {
+        "title": "Práctica y repaso — Unipedia",
+        "description": "Preguntas sacadas de tus apuntes al final de cada bloque, tarjetas hechas por ti y repasos espaciados el día adecuado."
+      },
+      "kicker": "Práctica",
+      "title": "Recordar es lo que",
+      "titleEm": "cuenta.",
+      "sub": "Releer no basta. Al final de cada bloque la app te pregunta el temario a partir de tus PDF, diapositivas y notas. Tú dices cómo te ha ido y vuelve a preguntarte el día adecuado.",
+      "sections": [
+        {
+          "title": "Preguntas de tu temario",
+          "body": "La práctica usa los materiales que has subido y tus notas recientes para crear tarjetas del tema que acabas de estudiar.",
+          "points": [
+            "De 3 a 5 tarjetas al final de cada bloque",
+            "A partir de PDF, diapositivas, exámenes antiguos y notas",
+            "También desde el botón «Practicar» de cada tema"
+          ]
+        },
+        {
+          "title": "Explícalo con tus palabras",
+          "body": "Antes de girar la tarjeta, intenta explicar la idea sin mirar los apuntes. Después muestras la respuesta y comparas.",
+          "points": [
+            "Mostrar la respuesta con un toque",
+            "Pistas antes de la respuesta",
+            "Funciona incluso sin IA: escribes y te evalúas tú"
+          ]
+        },
+        {
+          "title": "Tres botones, sin dramas",
+          "body": "«Repasar ya», «Con esfuerzo» o «Dominado». Tu respuesta decide cuándo vuelve la tarjeta.",
+          "points": [
+            "Repasar ya: vuelve mañana",
+            "Con esfuerzo: consolida pronto",
+            "Dominado: avanza en el ciclo de repaso espaciado"
+          ]
+        },
+        {
+          "title": "Tarjetas tuyas, sin conexión",
+          "body": "Escribe una tarjeta a mano en segundos, incluso sin internet. Los repasos pendientes forman una cola corta que cabe en un trayecto de autobús.",
+          "points": [
+            "«+ Nueva tarjeta» en cualquier tema",
+            "«Repaso rápido» en el Plan",
+            "Repasos pendientes también en Progreso"
+          ]
+        }
+      ],
+      "steps": {
+        "title": "Cómo se usa",
+        "items": [
+          {
+            "title": "Sube tus materiales",
+            "body": "PDF, diapositivas o exámenes antiguos de cada asignatura."
+          },
+          {
+            "title": "Estudia un bloque",
+            "body": "Al final, la práctica aparece sola."
+          },
+          {
+            "title": "Evalúate con honestidad",
+            "body": "La app se ocupa de cuándo volver a preguntar."
+          }
+        ]
+      },
+      "faq": [
+        {
+          "q": "¿Necesito IA para practicar?",
+          "a": "No. Puedes escribir tarjetas a mano y evaluarte tú mismo. La IA solo ayuda a generar preguntas a partir de los materiales."
+        },
+        {
+          "q": "¿De dónde salen las preguntas?",
+          "a": "De los materiales que has subido a la asignatura y de las notas recientes de tu Diario de Uni."
+        },
+        {
+          "q": "¿Cuándo vuelve una tarjeta que fallé?",
+          "a": "Con «Repasar ya», vuelve al día siguiente. Con «Dominado», el intervalo va aumentando."
+        }
+      ]
+    },
+    "progresso": {
+      "meta": {
+        "title": "Progreso y retención — Unipedia",
+        "description": "Retención estimada por tema y por asignatura, repasos pendientes, tiempo de estudio y las prioridades que marcan la diferencia antes del examen."
+      },
+      "kicker": "Progreso",
+      "title": "Ves lo que se te queda,",
+      "titleEm": "no solo las horas.",
+      "sub": "El tiempo de estudio es solo la mitad de la historia. Progreso estima lo que se te ha quedado, tema a tema, y señala lo que conviene repasar ahora.",
+      "sections": [
+        {
+          "title": "El semestre de un vistazo",
+          "body": "Progreso general, temas completados o repasados, media, tiempo estudiado, racha y repasos pendientes, en la misma tarjeta.",
+          "points": [
+            "Vistas de 7 días, 30 días y cuatrimestre",
+            "Repasos pendientes a un toque",
+            "Sin rankings ni comparaciones con compañeros"
+          ]
+        },
+        {
+          "title": "Retención estimada, y dicha como estimación",
+          "body": "La retención combina el tiempo desde el último repaso, los aciertos reales en la práctica y la racha de recuerdo. Es una estimación y la app la muestra como tal.",
+          "points": [
+            "Por tema y por asignatura",
+            "Temas flojos destacados",
+            "Se actualiza con cada práctica"
+          ]
+        },
+        {
+          "title": "Cuánto has estudiado, sin culpa",
+          "body": "Un gráfico sencillo del tiempo por día frente a tu meta. Sirve para ajustar el ritmo, no para castigarte.",
+          "points": [
+            "Tiempo real de los bloques de foco",
+            "Meta diaria que defines tú",
+            "Calidad del foco: salidas de pantalla"
+          ]
+        },
+        {
+          "title": "Hasta 3 prioridades, no 30",
+          "body": "Retención y Calidad de Foco termina con como mucho tres acciones concretas: el tema a repasar, la asignatura a reforzar, el hábito a ajustar.",
+          "points": [
+            "Cada prioridad abre la acción adecuada",
+            "Pensado para la semana antes del examen",
+            "Colección de tus Unis en la Estantería"
+          ]
+        }
+      ],
+      "steps": {
+        "title": "Cómo se usa",
+        "items": [
+          {
+            "title": "Estudia y practica",
+            "body": "Cada bloque y cada tarjeta alimentan Progreso."
+          },
+          {
+            "title": "Abre Progreso",
+            "body": "En el menú «Más», cuando quieras ver el cuadro general."
+          },
+          {
+            "title": "Sigue las prioridades",
+            "body": "Un toque te lleva al repaso o al bloque adecuado."
+          }
+        ]
+      },
+      "faq": [
+        {
+          "q": "¿La retención es exacta?",
+          "a": "No, y la app lo dice. Es una estimación que mejora con la práctica real, no una nota."
+        },
+        {
+          "q": "¿Se comparan mis datos con los de otros?",
+          "a": "No. Progreso es solo tuyo y se calcula en tu dispositivo."
+        },
+        {
+          "q": "¿Qué es la Estantería?",
+          "a": "La colección de Unis que vas desbloqueando mientras estudias. Es un extra; lo esencial son las prioridades."
+        }
+      ]
+    },
+    "uni": {
+      "meta": {
+        "title": "Uni, el tutor de Unipedia",
+        "description": "Uni conoce tu semestre: explica el temario a partir de tus materiales, propone sesiones y tarjetas con tu confirmación y convierte tus apuntes en guías, quizzes y pódcasts."
+      },
+      "kicker": "Uni",
+      "title": "Un tutor que conoce",
+      "titleEm": "tu semestre.",
+      "sub": "Uni sabe tus asignaturas, las fechas de los exámenes y lo que fallaste en la práctica. Por eso responde a lo que necesitas ahora, con tus materiales, y te dice cuando algo no está en ellos.",
+      "sections": [
+        {
+          "title": "Pregunta como a un compañero",
+          "body": "Escribe, adjunta una foto de la pizarra o un PDF, o empieza por una sugerencia. Uni responde a tu ritmo, en una conversación que se guarda.",
+          "points": [
+            "«¿Qué debería estudiar hoy?»",
+            "«¿Dónde estoy más flojo?» y «Resumen de mi semana»",
+            "Quiz rápido y explicaciones con ejemplo y error típico"
+          ]
+        },
+        {
+          "title": "Propone, y tú decides",
+          "body": "Cuando tiene sentido, Uni propone una acción: una sesión de estudio, tarjetas de práctica o una duda para llevar a clase. Nada se guarda sin que pulses «Confirmar y guardar».",
+          "points": [
+            "Sesiones de estudio con día y minutos",
+            "Tarjetas de práctica ligadas al tema",
+            "Dudas guardadas para clase"
+          ]
+        },
+        {
+          "title": "Cuaderno de Uni",
+          "body": "Pega apuntes, añade PDF, fotos o una grabación de la clase y elige lo que quieres: una guía de estudio, un quiz con citas, un resumen rápido o un pódcast a dos voces.",
+          "points": [
+            "Citas con la fuente de cada respuesta",
+            "Exporta en PDF o Markdown",
+            "Apuntes de voz transcritos"
+          ]
+        },
+        {
+          "title": "Diario de Uni",
+          "body": "Conversaciones cortas después de clase, al final del día, el domingo o antes de un examen. Lo que cuentes ajusta los temas y el plan.",
+          "points": [
+            "Respuestas rápidas para cuando no hay ganas",
+            "«Entra hasta la diapositiva 8» pasa a ser el temario del examen",
+            "Todo queda en tu historial de Progreso"
+          ]
+        }
+      ],
+      "steps": {
+        "title": "Cómo se usa",
+        "items": [
+          {
+            "title": "Activa a Uni",
+            "body": "Un toque, y sabrás qué datos van a Google (Gemini)."
+          },
+          {
+            "title": "Elige las fuentes",
+            "body": "Una asignatura, todas, o solo los apuntes que adjuntes."
+          },
+          {
+            "title": "Pregunta",
+            "body": "O empieza por una de las sugerencias."
+          }
+        ]
+      },
+      "faq": [
+        {
+          "q": "¿Uni es gratis?",
+          "a": "Incluye hasta 15 mensajes al día. Si quieres más, puedes usar una clave personal gratuita de Google, explicada en la app."
+        },
+        {
+          "q": "¿Uni puede equivocarse?",
+          "a": "Sí. Por eso cada respuesta tiene «Esto es incorrecto» para marcarla, y Uni avisa cuando algo no está en tus materiales."
+        },
+        {
+          "q": "¿Uni hace los trabajos por mí?",
+          "a": "El objetivo es que entiendas el temario: explica, da pistas y muestra el método. Toda la app funciona sin Uni activado."
+        }
+      ]
+    }
+  },
+  "app": {
+    "plan": {
+      "title": "Plan de",
+      "auto": "Automático",
+      "manual": "Manual",
+      "behind": "Se quedó atrás",
+      "fit": "Encajar",
+      "moveToday": "Mover a hoy",
+      "discard": "Descartar",
+      "update": "Actualizar",
+      "day": "Día",
+      "week": "Semana",
+      "replanned": "Plan actualizado",
+      "undo": "Deshacer",
+      "titleEm": "estudio"
+    },
+    "focus": {
+      "start": "Iniciar",
+      "finish": "Terminar",
+      "shield": "Escudo antidistracción",
+      "optional": "Opcional",
+      "fullscreen": "Pantalla completa",
+      "awake": "Pantalla encendida",
+      "sound": "Sonido ambiente",
+      "silence": "Silencio",
+      "rain": "Lluvia",
+      "white": "Blanco",
+      "done": "Sesión completada",
+      "clean": "Foco limpio · 0 salidas de pantalla",
+      "early": "¿Terminar la sesión antes?",
+      "keep": "Seguir estudiando",
+      "pause": "Pausar"
+    },
+    "practice": {
+      "reveal": "Mostrar respuesta",
+      "newCard": "Nueva tarjeta",
+      "againHint": "Fallé puntos clave — vuelve mañana (1d)",
+      "effortHint": "Recordé una parte — consolida pronto",
+      "masteredHint": "Lo expliqué sin apuntes — avanza en el ciclo SRS",
+      "quickReview": "Repaso rápido"
+    },
+    "uni": {
+      "starter2": "Crea un plan hasta el próximo examen",
+      "starter3": "Hazme un quiz rápido",
+      "weekL": "Resumen de mi semana",
+      "weakL": "¿Dónde estoy más flojo?",
+      "proposal": "Acción propuesta por Uni",
+      "createSession": "Nueva sesión de estudio",
+      "createFlashcards": "Nuevas tarjetas de práctica",
+      "markDoubt": "Guardar duda para clase",
+      "confirm": "Confirmar y guardar",
+      "cancel": "Rechazar",
+      "askUni": "Pregunta a Uni…",
+      "wrong": "Esto es incorrecto",
+      "guide": "Guía de estudio",
+      "quiz": "Quiz con citas",
+      "summary": "Resumen rápido",
+      "podcast": "Pódcast",
+      "notebook": "Cuaderno de Uni",
+      "tabClass": "Clase",
+      "tabDay": "Día",
+      "tabWeek": "Semana",
+      "tabExam": "Examen",
+      "photoPdf": "Foto / PDF"
+    },
+    "progress": {
+      "sevenDays": "7 días",
+      "thirtyDays": "30 días",
+      "semester": "Cuatrimestre",
+      "overall": "Progreso general del cuatrimestre",
+      "retention": "Retención",
+      "streak": "Racha",
+      "reviews": "Repasos",
+      "perDay": "¿Cuánto he estudiado al día?"
+    }
   }
 }

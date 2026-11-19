@@ -1,11 +1,58 @@
 import { UnipediaLogoMark } from '@app/components/brand/UnipediaLogo';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
-import { APP_URL, LANGS, useCopy, useLang } from '../i18n';
+import { APP_URL, LANGS, useCopy } from '../i18n';
+import { FEATURES, pagePath, useRoute } from '../routes';
 import { SPRING } from '../ui';
 
+const THEME_KEY = 'unipedia-site-theme';
+
+/** Alterna claro/escuro e guarda a escolha (por omissão segue o sistema). */
+function ThemeToggle() {
+  const { nav } = useCopy();
+  const [dark, setDark] = useState(false);
+  useEffect(() => {
+    const el = document.documentElement;
+    setDark(el.classList.contains('dark'));
+    const mo = new MutationObserver(() => setDark(el.classList.contains('dark')));
+    mo.observe(el, { attributes: true, attributeFilter: ['class'] });
+    return () => mo.disconnect();
+  }, []);
+  const toggle = () => {
+    const next = !dark;
+    const el = document.documentElement;
+    el.classList.toggle('dark', next);
+    el.style.colorScheme = next ? 'dark' : 'light';
+    try {
+      localStorage.setItem(THEME_KEY, next ? 'dark' : 'light');
+    } catch {
+      /* Sem armazenamento: o tema muda só nesta visita. */
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-label={dark ? nav.toLight : nav.toDark}
+      title={dark ? nav.toLight : nav.toDark}
+      className="grid size-11 shrink-0 place-items-center rounded-full text-fg transition-colors hover:bg-surface-2"
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+        {dark ? (
+          <>
+            <circle cx="12" cy="12" r="4.2" />
+            <path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4" />
+          </>
+        ) : (
+          <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" />
+        )}
+      </svg>
+    </button>
+  );
+}
+
 function LangSwitch() {
-  const lang = useLang();
+  const { lang, page } = useRoute();
   const { nav } = useCopy();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -53,7 +100,7 @@ function LangSwitch() {
               <li key={l.code} role="none">
                 <a
                   role="menuitem"
-                  href={l.path}
+                  href={pagePath(l, page)}
                   hrefLang={l.code}
                   lang={l.code}
                   aria-current={l.code === lang.code ? 'true' : undefined}
@@ -75,7 +122,7 @@ function LangSwitch() {
 
 export default function Nav() {
   const { nav } = useCopy();
-  const lang = useLang();
+  const { lang, page } = useRoute();
   const [scrolled, setScrolled] = useState(false);
   const [menu, setMenu] = useState(false);
 
@@ -86,12 +133,7 @@ export default function Nav() {
     return () => window.removeEventListener('scroll', on);
   }, []);
 
-  const links = [
-    { href: '#como-funciona', label: nav.how },
-    { href: '#uni', label: nav.uni },
-    { href: '#dados', label: nav.privacy },
-    { href: '#perguntas', label: nav.faq },
-  ];
+  const links = FEATURES.map((id) => ({ id, href: pagePath(lang, id), label: nav.features[id] }));
 
   return (
     <header
@@ -99,41 +141,43 @@ export default function Nav() {
         scrolled || menu ? 'bg-bg/85 shadow-[0_1px_0_var(--line)] backdrop-blur-md' : 'bg-transparent'
       }`}
     >
-      <nav className="mx-auto flex h-[72px] max-w-6xl items-center gap-2 px-4 sm:px-6">
-        <a href={lang.path} aria-label={nav.home} className="mr-auto flex min-h-11 items-center gap-2.5 rounded-xl">
+      <nav className="mx-auto flex h-[72px] max-w-6xl items-center gap-1 px-4 sm:px-6">
+        <a href={pagePath(lang, 'home')} aria-label={nav.home} className="mr-auto flex min-h-11 items-center gap-2.5 rounded-xl">
           <UnipediaLogoMark size={34} />
           <span className="font-display text-lg font-bold tracking-tight">Unipedia</span>
         </a>
-        <ul className="hidden items-center gap-1 md:flex">
+        <ul className="hidden items-center gap-0.5 lg:flex">
           {links.map((l) => (
-            <li key={l.href}>
-              <a href={l.href} className="flex h-11 items-center rounded-full px-3.5 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-fg">
+            <li key={l.id}>
+              <a
+                href={l.href}
+                aria-current={page === l.id ? 'page' : undefined}
+                className={`flex h-11 items-center rounded-full px-3.5 text-sm font-medium transition-colors hover:bg-surface-2 hover:text-fg ${
+                  page === l.id ? 'bg-surface-2 text-fg' : 'text-muted'
+                }`}
+              >
                 {l.label}
               </a>
             </li>
           ))}
         </ul>
+        <ThemeToggle />
         <LangSwitch />
         <a
           href={APP_URL}
-          className="hidden h-11 items-center rounded-full bg-ink-cta px-5 text-sm font-semibold text-ink-cta-fg transition-transform hover:-translate-y-px active:scale-[0.98] sm:flex"
+          className="ml-1 hidden h-11 items-center rounded-full bg-ink-cta px-5 text-sm font-semibold text-ink-cta-fg transition-transform hover:-translate-y-px active:scale-[0.98] sm:flex"
         >
           {nav.open}
         </a>
         <button
           type="button"
-          className="grid size-11 place-items-center rounded-full hover:bg-surface-2 md:hidden"
+          className="grid size-11 place-items-center rounded-full hover:bg-surface-2 lg:hidden"
           aria-label={nav.menu}
           aria-expanded={menu}
           onClick={() => setMenu((v) => !v)}
         >
           <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
-            <path
-              d={menu ? 'M5 5l12 12M17 5L5 17' : 'M3.5 7h15M3.5 15h15'}
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-            />
+            <path d={menu ? 'M5 5l12 12M17 5L5 17' : 'M3.5 7h15M3.5 15h15'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
           </svg>
         </button>
       </nav>
@@ -144,12 +188,16 @@ export default function Nav() {
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.25 }}
-            className="overflow-hidden border-t border-line md:hidden"
+            className="overflow-hidden border-t border-line lg:hidden"
           >
             <ul className="space-y-1 px-4 py-3">
               {links.map((l) => (
-                <li key={l.href}>
-                  <a href={l.href} onClick={() => setMenu(false)} className="flex min-h-12 items-center rounded-xl px-3 text-base font-medium hover:bg-surface-2">
+                <li key={l.id}>
+                  <a
+                    href={l.href}
+                    aria-current={page === l.id ? 'page' : undefined}
+                    className={`flex min-h-12 items-center rounded-xl px-3 text-base font-medium hover:bg-surface-2 ${page === l.id ? 'bg-surface-2' : ''}`}
+                  >
                     {l.label}
                   </a>
                 </li>

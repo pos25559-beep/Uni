@@ -9,11 +9,19 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <!--head-->
     <script>
+      // Tema: o que o visitante escolheu (guardado) ou, por omissão, o do sistema.
       (function () {
         var m = window.matchMedia('(prefers-color-scheme: dark)');
-        var set = function () { document.documentElement.classList.toggle('dark', m.matches); };
-        set();
-        m.addEventListener ? m.addEventListener('change', set) : m.addListener(set);
+        var saved = null;
+        try { saved = localStorage.getItem('unipedia-site-theme'); } catch (e) {}
+        var apply = function () {
+          var dark = saved ? saved === 'dark' : m.matches;
+          document.documentElement.classList.toggle('dark', dark);
+          document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+        };
+        apply();
+        var onChange = function () { try { saved = localStorage.getItem('unipedia-site-theme'); } catch (e) {} if (!saved) apply(); };
+        m.addEventListener ? m.addEventListener('change', onChange) : m.addListener(onChange);
       })();
     </script>
   </head>

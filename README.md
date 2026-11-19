@@ -38,12 +38,14 @@ npm run android:sync # Build web + npx cap sync android
 
 ## Site de apresentação (`site/`)
 
-Página pública da Unipedia («Sabes o que estudar agora»), separada da app mas no mesmo repositório e no mesmo projeto Firebase (2.º site do Hosting, `unipedia-site`).
+Site público da Unipedia, separado da app mas no mesmo repositório e no mesmo projeto Firebase (2.º site do Hosting, `unipedia-site`, em https://unipedia-site.web.app).
 
-- **Stack**: React 19 + Vite (`vite.site.config.ts`, raiz `site/`), Tailwind v4 com os mesmos tokens da app (`src/styles/tokens.css`), Motion e Three.js (`@react-three/fiber`) só no hero.
-- **Línguas**: pt-PT (`/`), pt-BR (`/br`), es (`/es`) e en (`/en`); textos em `site/src/locales/*.json` (paridade verificada por `scripts/site-i18n-check.mjs`).
-- **Pré-render**: `scripts/site-prerender.mjs` gera o HTML de cada língua com `<title>`, descrição, `canonical` e `hreflang`.
-- **3D**: telemóvel com o ecrã «Hoje» desenhado em canvas, folhas pautadas e post-its. Só liga em ecrãs ≥ 768 px com WebGL, sem movimento reduzido e sem poupança de dados; caso contrário mostra o telemóvel em CSS. O chunk 3D carrega à parte (não pesa na primeira visita).
+- **Stack**: React 19 + Vite (`vite.site.config.ts`, raiz `site/`), Tailwind v4 com os mesmos tokens da app (`src/styles/tokens.css`) e Motion.
+- **Páginas**: início + uma página por área (Plano, Foco, Prática, Progresso, Uni), com endereço traduzido (`/foco`, `/en/focus`, `/es/practica`…); rotas em `site/src/routes.ts`.
+- **Línguas**: pt-PT (`/`), pt-BR (`/br`), es (`/es`) e en (`/en`); textos em `site/src/locales/*.json` (paridade verificada por `scripts/site-i18n-check.mjs`). Os textos dos ecrãs simulados (`app.*`) vêm dos textos reais da app.
+- **Demonstração**: telemóvel em HTML (`site/src/screens.tsx`) que percorre Hoje → Plano → Foco → Prática → Progresso → Uni, com separadores e pausa; para com movimento reduzido e fora do ecrã.
+- **Tema**: claro/escuro pelo botão da barra (guardado no navegador); por omissão segue o sistema.
+- **Pré-render**: `scripts/site-prerender.mjs` gera as 24 páginas (6 × 4 línguas) com `<title>`, descrição, `canonical` e `hreflang`.
 
 ```bash
 npm run site:dev      # http://localhost:5174

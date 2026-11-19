@@ -1,5 +1,6 @@
 import { UnipediaLogoMark } from '@app/components/brand/UnipediaLogo';
-import { APP_URL, LANGS, useCopy, useLang } from '../i18n';
+import { APP_URL, LANGS, useCopy } from '../i18n';
+import { pagePath, useRoute } from '../routes';
 import { Reveal, SectionHead, UniFace } from '../ui';
 
 export function Faq() {
@@ -49,7 +50,7 @@ export function FinalCta() {
 
 export function Footer() {
   const { footer } = useCopy();
-  const lang = useLang();
+  const { lang, page } = useRoute();
   return (
     <footer className="border-t border-line">
       <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-10 sm:px-6 md:flex-row md:items-start md:justify-between">
@@ -76,7 +77,7 @@ export function Footer() {
           {LANGS.map((l) => (
             <li key={l.code}>
               <a
-                href={l.path}
+                href={pagePath(l, page)}
                 hrefLang={l.code}
                 lang={l.code}
                 aria-current={l.code === lang.code ? 'true' : undefined}

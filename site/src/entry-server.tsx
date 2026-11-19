@@ -1,13 +1,20 @@
+import { StrictMode } from 'react';
 import { renderToString } from 'react-dom/server';
 import App from './App';
-import { headTags, LANGS } from './i18n';
+import { headTags } from './head';
+import { allRoutes, pagePath } from './routes';
 
-/** Usado por scripts/site-prerender.mjs: devolve o HTML e o <head> de cada língua. */
+/** Usado por scripts/site-prerender.mjs: HTML, <head> e caminho de cada página × língua. */
 export function renderAll() {
-  return LANGS.map((lang) => ({
-    code: lang.code,
-    path: lang.path,
-    head: headTags(lang),
-    html: renderToString(<App lang={lang} />),
+  return allRoutes().map((route) => ({
+    code: route.lang.code,
+    page: route.page,
+    path: pagePath(route.lang, route.page),
+    head: headTags(route),
+    html: renderToString(
+      <StrictMode>
+        <App route={route} />
+      </StrictMode>,
+    ),
   }));
 }

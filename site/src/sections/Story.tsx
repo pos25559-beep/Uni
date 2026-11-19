@@ -1,5 +1,6 @@
 import { motion, useReducedMotion } from 'motion/react';
 import { useCopy } from '../i18n';
+import { pagePath, useRoute } from '../routes';
 import { Reveal, SectionHead, UniFace } from '../ui';
 
 export function Principles() {
@@ -26,7 +27,8 @@ export function Principles() {
 }
 
 export function Uni() {
-  const { uni } = useCopy();
+  const { uni, common, nav } = useCopy();
+  const { lang } = useRoute();
   const reduce = useReducedMotion();
   return (
     <section id="uni" aria-labelledby="uni-title" className="px-4 sm:px-6">
@@ -43,6 +45,9 @@ export function Uni() {
                 </li>
               ))}
             </ul>
+            <a href={pagePath(lang, 'uni')} className="mt-7 inline-flex min-h-11 items-center gap-1.5 rounded-full bg-ink-cta px-5 text-sm font-semibold text-ink-cta-fg transition-transform hover:-translate-y-px">
+              {common.learnMore}: {nav.features.uni} <span aria-hidden="true">→</span>
+            </a>
           </Reveal>
         </div>
         <Reveal delay={0.15} className="relative">
