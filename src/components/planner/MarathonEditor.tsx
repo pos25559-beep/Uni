@@ -18,7 +18,7 @@ export default function MarathonEditor({ marathon, onChangeMarathon }: Props) {
   const { t } = useTranslation('plan');
 
   return (
-    <section className="space-y-3 rounded-2xl border border-warn/40 bg-pastel-butter/45 p-4 dark:bg-surface-2">
+    <section className="space-y-3 rounded-2xl border border-[#DFD2AE] bg-pastel-butter/60 p-4 dark:border-warn/30 dark:bg-[#352D14]/75">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">

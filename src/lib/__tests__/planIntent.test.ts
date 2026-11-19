@@ -9,6 +9,7 @@ import {
   sanitizeIntentItems,
 } from '../planner/intent';
 import { computeReplan } from '../planner/replan';
+import { generatePlan } from '../planner/engine';
 import { parsePlannerBriefing } from '../plannerBriefing';
 
 const courses: Course[] = [
@@ -279,5 +280,166 @@ describe('planner intent (Fase C)', () => {
     expect(prefs.pausedCourseIds).toContain('c-fab');
     expect(prefs.courseModeUntil?.['c-tep']).toBe('2026-11-20');
     expect(prefs.courseModeUntil?.['c-fab']).toBe('2026-11-20');
+  });
+
+  it('suporta pedido sequencial multi-fases (TEP até sexta 16h -> Fabrico Aditivo só depois -> semana normal 2.ºs testes)', () => {
+    const today = '2026-11-16'; // segunda-feira
+    const tepCourse: Course = {
+      id: 'c-tep',
+      code: 'TEP',
+      name: 'Tecnologia de Produção',
+      shortName: 'TEP',
+      ects: 6,
+      color: 'emerald',
+      targetGrade: 14,
+      topics: [
+        { id: 't-tep-1', title: 'Plasticidade', status: 'todo', confidence: 2 },
+        { id: 't-tep-2', title: 'Fatia elementar', status: 'todo', confidence: 2 },
+      ],
+    };
+    const fabCourse: Course = {
+      id: 'c-fab',
+      code: 'FA',
+      name: 'Fabrico Aditivo',
+      shortName: 'Fabrico Aditivo',
+      ects: 6,
+      color: 'amber',
+      targetGrade: 14,
+      topics: [
+        { id: 't-fab-1', title: 'Fotopolimerização', status: 'todo', confidence: 2 },
+        { id: 't-fab-2', title: 'SLS / SLM', status: 'todo', confidence: 2 },
+      ],
+    };
+    const cdiCourse = courses[0];
+
+    const multiAssessments: Assessment[] = [
+      {
+        id: 'a-tep-1',
+        courseId: 'c-tep',
+        kind: 'teste',
+        title: '1.º Teste TEP',
+        date: '2026-11-20T16:00:00',
+        weight: 40,
+        topicIds: ['t-tep-1'],
+        source: 'local',
+      },
+      {
+        id: 'a-fab-1',
+        courseId: 'c-fab',
+        kind: 'teste',
+        title: '1.º Teste Fabrico Aditivo',
+        date: '2026-11-23T14:00:00',
+        weight: 40,
+        topicIds: ['t-fab-1'],
+        source: 'local',
+      },
+      {
+        id: 'a-tep-2',
+        courseId: 'c-tep',
+        kind: 'teste',
+        title: '2.º Teste TEP',
+        date: '2026-12-10T10:00:00',
+        weight: 40,
+        topicIds: ['t-tep-2'],
+        source: 'local',
+      },
+      {
+        id: 'a-cdi-2',
+        courseId: 'c-cdi',
+        kind: 'teste',
+        title: '2.º Teste CDI',
+        date: '2026-12-12T10:00:00',
+        weight: 40,
+        topicIds: ['t-der'],
+        source: 'local',
+      },
+    ];
+
+    const prompt =
+      'Quero estudar só para TEP até meu teste na sexta as 16h e depois estudar e focar somente em Fabrico Aditivo. Depois disso poderiamos voltar a ter uma semana de estudos mais normal focando para os segundos testes.';
+
+    const parsed = parsePlannerBriefing({
+      text: prompt,
+      courses: [tepCourse, fabCourse, cdiCourse],
+    });
+    expect(parsed.sequentialPhases?.length).toBe(3);
+
+    const intent = intentFromParsedBriefing(parsed, today, multiAssessments);
+    const phaseItems = intent.items.filter((it) => it.kind === 'focus_phase');
+    expect(phaseItems.length).toBe(3);
+    if (
+      phaseItems[0]?.kind !== 'focus_phase' ||
+      phaseItems[1]?.kind !== 'focus_phase' ||
+      phaseItems[2]?.kind !== 'focus_phase'
+    ) {
+      throw new Error('Expected 3 focus_phase items');
+    }
+
+    expect(phaseItems[0].phase.courseIds).toEqual(['c-tep']);
+    expect(phaseItems[0].phase.mode).toBe('exclusive');
+    expect(phaseItems[0].phase.untilDate).toBe('2026-11-20');
+    expect(phaseItems[0].phase.untilTime).toBe('16:00');
+
+    expect(phaseItems[1].phase.courseIds).toEqual(['c-fab']);
+    expect(phaseItems[1].phase.mode).toBe('exclusive');
+    expect(phaseItems[1].phase.fromDate).toBe('2026-11-20');
+    expect(phaseItems[1].phase.fromTime).toBe('16:00');
+    expect(phaseItems[1].phase.untilDate).toBe('2026-11-23');
+    expect(phaseItems[1].phase.untilTime).toBe('14:00');
+
+    expect(phaseItems[2].phase.mode).toBe('balanced');
+    expect(phaseItems[2].phase.fromDate).toBe('2026-11-23');
+    expect(phaseItems[2].phase.fromTime).toBe('14:00');
+    expect(phaseItems[2].phase.strategy).toBe('exams_first');
+
+    const { prefs } = applyPlanIntent(undefined, intent.items);
+    expect(prefs.focusPhases?.length).toBe(3);
+
+    const sessions = generatePlan({
+      courses: [tepCourse, fabCourse, cdiCourse],
+      assessments: multiAssessments,
+      classes: [],
+      events: [],
+      settings: {
+        ...settings,
+        studyDays: [0, 1, 2, 3, 4, 5, 6],
+        dailyStudyMinutes: 300,
+      },
+      from: today,
+      days: 10,
+      blockMinutes: 50,
+      focusPhases: prefs.focusPhases,
+    });
+
+    // Seg–Qui: 100% TEP
+    for (const d of ['2026-11-16', '2026-11-17', '2026-11-18', '2026-11-19']) {
+      const daySessions = sessions.filter((s) => s.date === d);
+      expect(daySessions.length).toBeGreaterThan(0);
+      expect(daySessions.every((s) => s.courseId === 'c-tep')).toBe(true);
+    }
+
+    // Sexta 2026-11-20: antes das 16:00 apenas TEP; depois das 16:00 apenas Fabrico Aditivo
+    const friday = sessions.filter((s) => s.date === '2026-11-20');
+    expect(friday.length).toBeGreaterThan(0);
+    const friBefore = friday.filter((s) => (s.start ?? '00:00') < '16:00');
+    const friAfter = friday.filter((s) => (s.start ?? '00:00') >= '16:00');
+    expect(friBefore.length).toBeGreaterThan(0);
+    expect(friBefore.every((s) => s.courseId === 'c-tep')).toBe(true);
+    expect(friAfter.length).toBeGreaterThan(0);
+    expect(friAfter.every((s) => s.courseId === 'c-fab')).toBe(true);
+
+    // Sáb–Dom: apenas Fabrico Aditivo
+    for (const d of ['2026-11-21', '2026-11-22']) {
+      const daySessions = sessions.filter((s) => s.date === d);
+      expect(daySessions.length).toBeGreaterThan(0);
+      expect(daySessions.every((s) => s.courseId === 'c-fab')).toBe(true);
+    }
+
+    // Após teste de FA (2026-11-24 e 2026-11-25): semana normal equilibrada pelos 2.ºs testes (>1 cadeira)
+    const afterSessions = sessions.filter((s) => s.date === '2026-11-24' || s.date === '2026-11-25');
+    expect(afterSessions.length).toBeGreaterThan(0);
+    const distinctCoursesAfter = new Set(afterSessions.map((s) => s.courseId));
+    expect(distinctCoursesAfter.size).toBeGreaterThan(1);
+    expect(distinctCoursesAfter.has('c-tep') || distinctCoursesAfter.has('c-cdi')).toBe(true);
   });
 });

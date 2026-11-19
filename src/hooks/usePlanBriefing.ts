@@ -72,10 +72,10 @@ export function usePlanBriefing() {
 
   const enabledItems: IntentItem[] = intent ? intent.items.filter((it) => !disabledIds.has(it.id)) : [];
 
-  const apply = useCallback(() => {
+  const apply = useCallback((opts?: { allowInManualMode?: boolean }) => {
     if (!intent) return false;
     const items = intent.items.filter((it) => !disabledIds.has(it.id));
-    useStore.getState().applyBriefing(items, lastText);
+    useStore.getState().applyBriefing(items, lastText, opts);
     setStatus('applied');
     return true;
   }, [intent, disabledIds, lastText]);

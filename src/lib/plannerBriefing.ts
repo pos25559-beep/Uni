@@ -5,6 +5,7 @@ import type {
   Material,
   PlannerContentMix,
   PlannerDayPeriod,
+  PlannerStrategy,
   PlannerWindowMode,
   PreExamMarathonConfig,
   Settings,
@@ -134,6 +135,14 @@ export interface ParsedBriefingInsight {
   contentMix?: PlannerContentMix;
 }
 
+export interface ParsedBriefingPhase {
+  courseIds: ID[];
+  mode: 'exclusive' | 'boost' | 'balanced';
+  strategy?: PlannerStrategy;
+  untilTime?: string;
+  clauseText: string;
+}
+
 export interface ParsedPlannerBriefing {
   rawText: string;
   midSemesterCatchUp: boolean;
@@ -145,6 +154,8 @@ export interface ParsedPlannerBriefing {
   pausedCourseIds: ID[];
   /** Cadeira em foco exclusivo («só focar em TEP até ao teste»). */
   exclusiveFocusCourseId?: ID;
+  /** Fases sequenciais detetadas quando o estudante descreve uma ordem temporal («só A até sexta 16h, depois só B, depois normal»). */
+  sequentialPhases?: ParsedBriefingPhase[];
   briefingCourseFocus: Record<string, string>;
   /** Texto da frase que mencionou reforço/pausa da cadeira, para resolver validade («até quarta»). */
   courseModeClauses?: Record<ID, string>;
@@ -193,6 +204,76 @@ function matchCourseInClause(normClause: string, courses: Course[]): Course[] {
     }
   }
   return matched;
+}
+
+function parseTimeOfDay(clause: string): string | undefined {
+  const norm = stripDiacritics(clause);
+  const m24 = norm.match(/\b(?:as|at|a\s+las)?\s*([01]?\d|2[0-3])\s*(?:h|:)\s*([0-5]\d)?\b/);
+  if (m24) {
+    const hour = Number(m24[1]);
+    const min = Number(m24[2] ?? '0');
+    const hasPrefix = /\b(?:as|at|a\s+las)\b/.test(m24[0]);
+    if (hasPrefix || hour >= 7 || Boolean(m24[2])) {
+      return `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+    }
+  }
+  const mAmPm = norm.match(/\b(?:at\s*)?(1[0-2]|[1-9])\s*(am|pm)\b/);
+  if (mAmPm) {
+    let hour = Number(mAmPm[1]);
+    if (mAmPm[2] === 'pm' && hour < 12) hour += 12;
+    if (mAmPm[2] === 'am' && hour === 12) hour = 0;
+    return `${String(hour).padStart(2, '0')}:00`;
+  }
+  return undefined;
+}
+
+const SEQUENTIAL_SPLIT_RE =
+  /(?:\s*[.;!?\n]+\s*|\s*,\s*|\s+)(?=(?:e\s+depois\b|depois\s+disso\b|apos\s+isso\b|depois\s+(?:estudar|focar|voltar|mudar|passar|so|apenas|somente|em|na|no)\b|seguido\s+(?:de|disso)\b|then\b|after\s+that\b|afterwards\b|despues\b|y\s+luego\b))/i;
+
+function extractSequentialPhases(rawText: string, courses: Course[]): ParsedBriefingPhase[] {
+  if (!SEQUENTIAL_SPLIT_RE.test(rawText)) return [];
+  const rawSegments = rawText
+    .split(SEQUENTIAL_SPLIT_RE)
+    .map((s) => cleanSpaces(s))
+    .filter((s) => s.length >= 4);
+  if (rawSegments.length < 2) return [];
+
+  const phases: ParsedBriefingPhase[] = [];
+  for (const seg of rawSegments) {
+    const nc = stripDiacritics(seg);
+    const mentioned = matchCourseInClause(nc, courses);
+    const wantsNormal =
+      /\b(?:normal|equilibrad\w*|voltar|outras|todas|segundos?\s+testes?|2\.?o?s?\s+testes?|balanced|regular)\b/.test(
+        nc,
+      );
+    const wantsExclusive =
+      /\b(?:so|apenas|somente|exclusiv\w*|only|just|100%)\b/.test(nc);
+    const wantsPause =
+      /\b(?:pausar|nao\s+estudar|deixar\s+(?:[\w-]+\s+){0,5}para\s+depois|tirar|ignorar)\b/.test(nc);
+
+    if (wantsPause && !wantsNormal) continue;
+    if (mentioned.length === 0 && !wantsNormal) continue;
+
+    const untilTime = parseTimeOfDay(seg);
+    if (mentioned.length > 0 && !wantsNormal) {
+      phases.push({
+        courseIds: mentioned.map((c) => c.id),
+        mode: wantsExclusive ? 'exclusive' : 'boost',
+        ...(untilTime ? { untilTime } : {}),
+        clauseText: seg,
+      });
+    } else if (wantsNormal) {
+      const focusExams = /\b(?:segundos?\s+testes?|2\.?o?s?\s+testes?|testes?|provas?|exames?|exams?)\b/.test(nc);
+      phases.push({
+        courseIds: mentioned.map((c) => c.id),
+        mode: 'balanced',
+        strategy: focusExams ? 'exams_first' : 'balanced',
+        ...(untilTime ? { untilTime } : {}),
+        clauseText: seg,
+      });
+    }
+  }
+  return phases.length >= 2 ? phases : [];
 }
 
 /**
@@ -287,6 +368,9 @@ export function parsePlannerBriefing(args: {
     });
   }
 
+  const sequentialPhases = extractSequentialPhases(rawText, args.courses);
+  const skipFlatCourseFocus = sequentialPhases.length >= 2;
+
   // Separa em frases/orações para interpretações locais mais precisas
   const clauses = rawText
     .split(
@@ -301,7 +385,7 @@ export function parsePlannerBriefing(args: {
     // Dias precedidos de «até/hasta/until» servem para definir validade («reforçar CDI até quarta»),
     // nunca disponibilidade desse dia da semana.
     const ncForWeekdays = nc.replace(
-      /\b(?:ate|hasta|until)\s+(?:a\s+|o\s+|el\s+)?(?:segunda|terca|quarta|quinta|sexta|sabado|domingo|monday|tuesday|wednesday|thursday|friday|saturday|sunday)(?:-feira)?\b/g,
+      /\b(?:ate|hasta|until)[^.,;\n]{0,36}?\b(?:segunda|terca|quarta|quinta|sexta|sabado|domingo|monday|tuesday|wednesday|thursday|friday|saturday|sunday)(?:-feira)?(?:\s+(?:as|a\s+las|at)\s+\d{1,2}(?:h|:)?\d{0,2})?\b/g,
       '',
     );
 
@@ -402,6 +486,7 @@ export function parsePlannerBriefing(args: {
     }
 
     // 4) Interpretação por cadeira (matéria já dominada, dúvidas, pausar, foco)
+    if (skipFlatCourseFocus) continue;
     const mentionedCourses = matchCourseInClause(nc, args.courses);
     if (mentionedCourses.length === 0) continue;
 
@@ -512,6 +597,7 @@ export function parsePlannerBriefing(args: {
     boostCourseIds: [...boostCourseSet],
     pausedCourseIds: [...pausedCourseSet],
     ...(exclusiveFocusCourseId ? { exclusiveFocusCourseId } : {}),
+    ...(sequentialPhases.length >= 2 ? { sequentialPhases } : {}),
     briefingCourseFocus,
     ...(Object.keys(courseModeClauses).length > 0 ? { courseModeClauses } : {}),
     weekdayUpdates,

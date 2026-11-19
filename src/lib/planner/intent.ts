@@ -7,6 +7,7 @@ import type {
   Course,
   ID,
   PlannerContentMix,
+  PlannerFocusPhase,
   PlannerPreferences,
   PlannerStrategy,
   PlannerWindowMode,
@@ -23,6 +24,7 @@ type Period = 'morning' | 'afternoon' | 'evening';
 export type IntentItem =
   | { id: string; kind: 'course_mode'; courseId: ID; mode: 'boost' | 'pause'; until?: string }
   | { id: string; kind: 'exclusive_focus'; courseId: ID; until?: string }
+  | { id: string; kind: 'focus_phase'; phase: PlannerFocusPhase }
   | { id: string; kind: 'course_note'; courseId: ID; text: string; from?: string; until: string }
   | {
       id: string;
@@ -96,6 +98,21 @@ function nextAssessmentDate(
     .filter((a) => a.courseId === courseId && a.grade === undefined && a.date.slice(0, 10) >= today)
     .map((a) => a.date.slice(0, 10))
     .sort()[0];
+}
+
+function nextAssessmentDateAndTime(
+  assessments: Assessment[] | undefined,
+  courseId: ID | undefined,
+  minDate: string,
+): { date: string; time?: string } | undefined {
+  if (!assessments || !courseId) return undefined;
+  const hit = assessments
+    .filter((a) => a.courseId === courseId && a.grade === undefined && a.date.slice(0, 10) >= minDate)
+    .sort((a, b) => a.date.localeCompare(b.date))[0];
+  if (!hit) return undefined;
+  const date = hit.date.slice(0, 10);
+  const timeMatch = /^\d{4}-\d{2}-\d{2}T(\d{2}:\d{2})/.exec(hit.date);
+  return { date, ...(timeMatch ? { time: timeMatch[1] } : {}) };
 }
 
 /** Converte a leitura determinística (`parsePlannerBriefing`) em itens de intenção. */
@@ -179,6 +196,69 @@ export function intentFromParsedBriefing(
     });
   }
 
+  if (parsed.sequentialPhases && parsed.sequentialPhases.length >= 2) {
+    let cursorDate = today;
+    let cursorTime: string | undefined;
+    const maxHorizonDate = key(addDays(parseDay(today), 21));
+
+    for (let i = 0; i < parsed.sequentialPhases.length; i++) {
+      const sp = parsed.sequentialPhases[i]!;
+      const isLast = i === parsed.sequentialPhases.length - 1;
+      const fromDate = cursorDate;
+      const fromTime = cursorTime;
+
+      const explicitWin = parseFocusWindow(sp.clauseText, fromDate);
+      const assessHit =
+        sp.courseIds.length > 0
+          ? nextAssessmentDateAndTime(assessments, sp.courseIds[0], fromDate)
+          : undefined;
+
+      let untilDate: string;
+      let untilTime: string | undefined = sp.untilTime;
+
+      if (sp.mode === 'balanced' && !explicitWin?.until) {
+        untilDate = maxHorizonDate;
+        untilTime = undefined;
+      } else if (explicitWin?.until) {
+        untilDate = explicitWin.until;
+      } else if (assessHit) {
+        untilDate = assessHit.date;
+        if (!untilTime && assessHit.time) untilTime = assessHit.time;
+      } else if (sp.untilTime) {
+        untilDate = fromDate;
+      } else {
+        untilDate = isLast ? maxHorizonDate : key(addDays(parseDay(fromDate), 4));
+      }
+
+      if (untilDate < fromDate) untilDate = fromDate;
+      if (untilDate > maxHorizonDate) untilDate = maxHorizonDate;
+
+      items.push({
+        id: `phase-${i}`,
+        kind: 'focus_phase',
+        phase: {
+          id: `phase-${i}`,
+          fromDate,
+          ...(fromTime ? { fromTime } : {}),
+          untilDate,
+          ...(untilTime ? { untilTime } : {}),
+          mode: sp.mode,
+          courseIds: sp.courseIds,
+          ...(sp.strategy ? { strategy: sp.strategy } : {}),
+          label: sp.clauseText.slice(0, 64),
+        },
+      });
+
+      if (untilTime) {
+        cursorDate = untilDate;
+        cursorTime = untilTime;
+      } else {
+        cursorDate = key(addDays(parseDay(untilDate), 1));
+        cursorTime = undefined;
+      }
+    }
+  }
+
   for (const [courseId, note] of Object.entries(parsed.briefingCourseFocus)) {
     const window = parseFocusWindow(note, today) ?? parseFocusWindow(text, today);
     items.push({
@@ -212,9 +292,13 @@ function dedupeById(items: IntentItem[]): IntentItem[] {
   return [...map.values()];
 }
 
-/** Junta a leitura da IA à leitura simples: a IA acrescenta e, no mesmo id, prevalece. */
+/** Junta a leitura da IA à leitura simples: a IA acrescenta e, se devolver fases, substitui as fases determinísticas. */
 export function mergeIntents(base: PlanIntent, ai: IntentItem[]): PlanIntent {
-  return { items: dedupeById([...base.items, ...ai]), usedAi: true };
+  const aiHasPhases = ai.some((it) => it.kind === 'focus_phase');
+  const filteredBase = aiHasPhases
+    ? base.items.filter((it) => it.kind !== 'focus_phase')
+    : base.items;
+  return { items: dedupeById([...filteredBase, ...ai]), usedAi: true };
 }
 
 /**
@@ -259,6 +343,46 @@ export function sanitizeIntentItems(raw: unknown, courses: Course[], today: stri
           });
         }
         break;
+      case 'focus_phase': {
+        const okTime = (tm: unknown): tm is string =>
+          typeof tm === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(tm);
+        const rawMode = r.phaseMode ?? r.mode;
+        const mode: PlannerFocusPhase['mode'] | undefined =
+          rawMode === 'exclusive' || rawMode === 'boost' || rawMode === 'balanced' ? rawMode : undefined;
+        const fromDate = okDate(r.fromDate) ? r.fromDate : okDate(r.from) ? r.from : undefined;
+        const untilDate = okDate(r.untilDate) ? r.untilDate : okDate(r.until) ? r.until : undefined;
+        const rawCourseIds = Array.isArray(r.courseIds)
+          ? (r.courseIds as unknown[]).filter((id): id is string => typeof id === 'string' && courseIds.has(id))
+          : typeof r.courseId === 'string' && courseIds.has(r.courseId)
+            ? [r.courseId]
+            : [];
+        if (mode && fromDate && untilDate && untilDate >= fromDate && (mode === 'balanced' || rawCourseIds.length > 0)) {
+          const strat =
+            r.strategy === 'balanced' ||
+            r.strategy === 'exams_first' ||
+            r.strategy === 'srs_focus' ||
+            r.strategy === 'catch_up'
+              ? r.strategy
+              : undefined;
+          const idx = out.filter((x) => x.kind === 'focus_phase').length;
+          out.push({
+            id: `phase-${idx}`,
+            kind: 'focus_phase',
+            phase: {
+              id: `phase-${idx}`,
+              fromDate,
+              ...(okTime(r.fromTime) ? { fromTime: r.fromTime } : {}),
+              untilDate,
+              ...(okTime(r.untilTime) ? { untilTime: r.untilTime } : {}),
+              mode,
+              courseIds: rawCourseIds,
+              ...(strat ? { strategy: strat } : {}),
+              ...(typeof r.label === 'string' && r.label.trim() ? { label: r.label.trim().slice(0, 64) } : {}),
+            },
+          });
+        }
+        break;
+      }
       case 'course_note':
         if (typeof r.courseId === 'string' && courseIds.has(r.courseId) && typeof r.text === 'string' && r.text.trim()) {
           out.push({
@@ -348,8 +472,16 @@ export function applyPlanIntent(
   const topicUpdates: Array<{ courseId: ID; topicId: ID; changes: Partial<Topic> }> = [];
   let touchedSchedule = false;
 
+  const phaseList: PlannerFocusPhase[] = [];
+  const hasExplicitFlatCourseMode = items.some(
+    (it) => it.kind === 'course_mode' || it.kind === 'exclusive_focus',
+  );
+
   for (const it of items) {
     switch (it.kind) {
+      case 'focus_phase':
+        phaseList.push(it.phase);
+        break;
       case 'course_mode':
         if (it.mode === 'boost') {
           boost.add(it.courseId);
@@ -413,6 +545,16 @@ export function applyPlanIntent(
           changes: { status: it.status, confidence: it.confidence },
         });
         break;
+    }
+  }
+
+  if (phaseList.length > 0) {
+    next.focusPhases = phaseList;
+    if (!hasExplicitFlatCourseMode) {
+      next.exclusiveTestFocus = false;
+      boost.clear();
+      paused.clear();
+      for (const k of Object.keys(modeUntil)) delete modeUntil[k];
     }
   }
 

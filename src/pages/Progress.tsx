@@ -349,7 +349,7 @@ export default function ProgressPage() {
                     className={cx(
                       'min-h-[44px] rounded-full border px-3 py-1 text-xs font-semibold transition',
                       logFilter === f.id
-                        ? 'border-accent bg-accent text-accent-fg'
+                        ? 'border-[#168A45]/45 bg-pastel-mint/85 text-[#0E2918] dark:border-accent/55 dark:bg-accent-soft dark:text-accent-ink'
                         : 'border-line bg-surface-2/60 text-muted hover:text-fg',
                     )}
                   >
@@ -377,7 +377,12 @@ export default function ProgressPage() {
                     return (
                       <li
                         key={log.id}
-                        className="flex items-start justify-between gap-3 rounded-2xl border border-line bg-surface-2/40 p-3.5"
+                        className={cx(
+                          'flex items-start justify-between gap-3 rounded-2xl border p-3.5',
+                          log.kind === 'exam_prep'
+                            ? 'border-[#DFD2AE] bg-pastel-butter/40 dark:border-warn/25 dark:bg-[#352D14]/45'
+                            : 'border-line bg-pastel-mint/25 dark:border-line dark:bg-[#17312B]/35',
+                        )}
                       >
                         <div className="min-w-0 flex-1 space-y-1">
                           <div className="flex flex-wrap items-center gap-1.5">

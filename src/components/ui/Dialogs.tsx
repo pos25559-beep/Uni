@@ -110,7 +110,7 @@ export function Modal({
       <div data-sheet-handle="" className="touch-none sm:touch-auto">
         <div className="mx-auto mt-2.5 h-1.5 w-11 rounded-full bg-line sm:hidden" aria-hidden="true" />
         <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
-          <h2 id={titleId} ref={titleRef} tabIndex={-1} className="font-display text-base font-bold focus:outline-none">{title}</h2>
+          <h2 id={titleId} ref={titleRef} tabIndex={-1} className="font-display text-base font-bold outline-none focus-visible:outline-none">{title}</h2>
           <button
             type="button"
             onClick={onClose}

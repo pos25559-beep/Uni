@@ -53,8 +53,9 @@ Próximas avaliações:
 ${exams || '- (nenhuma)'}
 
 Tipos de regra:
+- focus_phase: USAR SEMPRE que o estudante pedir uma sequência temporal/por etapas (ex.: "só TEP até sexta às 16h, depois só Fab. Aditivo até ao teste, depois semana normal para os 2.ºs testes"). Devolve múltiplos itens focus_phase encadeados com fromDate, fromTime (opcional HH:mm), untilDate, untilTime (opcional HH:mm), phaseMode ("exclusive" | "boost" | "balanced"), courseIds ([ids]; vazio em balanced), strategy (opcional) e label curto.
 - course_mode: reforçar (boost) ou pausar (pause) uma cadeira; "until" = último dia (yyyy-MM-dd) se o estudante disser até quando.
-- exclusive_focus: quando o estudante pede para focar SÓ numa cadeira (ex. "só focar em X até ao teste"): courseId e "until" (data do teste ou dia dito).
+- exclusive_focus: quando o estudante pede para focar SÓ numa cadeira numa única janela (sem sequência de fases): courseId e "until".
 - course_note: foco curto (≤ 80 caracteres, na língua do estudante) para uma cadeira, com "from"/"until" (yyyy-MM-dd). Sem datas ditas, até 7 dias.
 - weekday_rule: mudança PERMANENTE de um dia da semana (todas as semanas): enabled, minutes, window.
 - date_override: mudança só numa DATA ("esta sexta não posso", "amanhã só 1 hora"): date (yyyy-MM-dd), enabled, minutes, window.

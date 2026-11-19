@@ -819,7 +819,7 @@ function UniCheckInModalInner({
                     id={titleId}
                     ref={titleRef}
                     tabIndex={-1}
-                    className="truncate font-display text-base font-bold leading-tight text-fg focus:outline-none"
+                    className="truncate font-display text-base font-bold leading-tight text-fg outline-none focus-visible:outline-none"
                   >
                     {initialAssessmentId && selectedAssessment ? (
                       t('checkin.alignTitle', {

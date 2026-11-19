@@ -82,6 +82,13 @@ export function pruneExpiredPrefs(prefs: PlannerPreferences, today: string): Pla
       changed = true;
     }
   }
+  if (prefs.focusPhases) {
+    const keptPhases = prefs.focusPhases.filter((p) => p.untilDate >= today);
+    if (keptPhases.length !== prefs.focusPhases.length) {
+      next.focusPhases = keptPhases.length > 0 ? keptPhases : undefined;
+      changed = true;
+    }
+  }
   return changed ? next : prefs;
 }
 
@@ -118,6 +125,7 @@ export function buildPlanInput(
     preExamMarathon: prefs.preExamMarathon,
     contentMix: prefs.contentMix,
     courseNotes: prefs.courseNotes,
+    focusPhases: prefs.focusPhases,
     dateOverrides: prefs.dateOverrides,
     // Notas antigas sem validade só contam enquanto não houver notas novas.
     briefingCourseFocus: prefs.courseNotes ? undefined : prefs.briefingCourseFocus,

@@ -292,6 +292,25 @@ export interface PreExamMarathonConfig {
   dailyMinutes: 360 | 480 | 600;
 }
 
+export interface PlannerFocusPhase {
+  id: ID;
+  /** Primeiro dia (yyyy-MM-dd) em que esta fase se aplica. */
+  fromDate: string;
+  /** Hora de início opcional (HH:mm) em `fromDate` (ex.: "16:00" após terminar o teste anterior). */
+  fromTime?: string;
+  /** Último dia (yyyy-MM-dd) em que esta fase se aplica. */
+  untilDate: string;
+  /** Hora limite opcional (HH:mm) em `untilDate` (ex.: "16:00" antes do teste). */
+  untilTime?: string;
+  /** 'exclusive' = só estas cadeiras; 'boost' = reforço forte; 'balanced' = semana normal/equilibrada. */
+  mode: 'exclusive' | 'boost' | 'balanced';
+  courseIds: ID[];
+  /** Estratégia opcional nesta fase (ex.: 'exams_first' para segundos testes). */
+  strategy?: PlannerStrategy;
+  /** Resumo legível da fase para mostrar no planeador. */
+  label?: string;
+}
+
 export interface PlannerPreferences {
   horizonDays: 7 | 14 | 21;
   preferredPeriod: PlannerDayPeriod;
@@ -302,6 +321,8 @@ export interface PlannerPreferences {
   includeOverdue?: boolean;
   /** Em Modo Teste único, se verdadeiro dedica 100% do tempo só à prova urgente. */
   exclusiveTestFocus?: boolean;
+  /** Fases sequenciais com janela de data/hora (ex.: só TEP até sexta 16h -> depois só FA). */
+  focusPhases?: PlannerFocusPhase[];
   /** Disponibilidade individual por dia da semana ("0" = dom … "6" = sáb). */
   weekdaySchedule?: Record<string, WeekdayAvailability>;
   /** Aproveitar janelas livres >= 35m entre aulas durante o dia. */

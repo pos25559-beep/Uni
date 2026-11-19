@@ -8,6 +8,7 @@ import type {
   Material,
   PlannerContentMix,
   PlannerDayPeriod,
+  PlannerFocusPhase,
   PlannerStrategy,
   PlannerWindowMode,
   PreExamMarathonConfig,
@@ -74,7 +75,10 @@ export interface PlanInput {
   /** @deprecated Foco por cadeira sem validade; usar `courseNotes`. */
   briefingCourseFocus?: Record<string, string>;
   /** Nota de foco por cadeira com validade (só aparece nos dias da janela). */
-  courseNotes?: Record<ID, PlannerCourseNote>;  /** Exceções pontuais por data (yyyy-MM-dd). */
+  courseNotes?: Record<ID, PlannerCourseNote>;
+  /** Fases sequenciais com janela de data/hora. */
+  focusPhases?: PlannerFocusPhase[];
+  /** Exceções pontuais por data (yyyy-MM-dd). */
   dateOverrides?: Record<string, PlannerDateOverride>;
 }
 
@@ -111,6 +115,9 @@ export interface Block {
   minutes: number;
   notes?: string;
   reason?: StudySessionReason;
+  /** Limites em minutos do dia quando o bloco pertence a uma fase com hora marcada. */
+  windowStartMin?: number;
+  windowEndMin?: number;
 }
 
 export interface WorkItem {

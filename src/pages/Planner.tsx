@@ -1275,6 +1275,21 @@ export default function Planner() {
               );
             })}
           </ul>
+
+          <div className="flex flex-col gap-2.5 rounded-2xl border border-[#DFD2AE] bg-pastel-butter/55 px-3.5 py-3 text-[#141312] dark:border-line dark:bg-[#352D14]/65 dark:text-[#FAF6EC] sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs leading-relaxed opacity-85">{t('testModePhasesHint')}</p>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="shrink-0 self-start sm:self-center"
+              onClick={() => {
+                acknowledgeTestMode();
+                setActiveSheet('weekCheck');
+              }}
+            >
+              {t('testModePhasesBtn')}
+            </Button>
+          </div>
         </div>
       </Modal>
 

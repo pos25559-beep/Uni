@@ -148,6 +148,27 @@ export default function WeekCheckCard({
           }),
         };
       }
+      case 'focus_phase': {
+        const course = item.phase.courseIds
+          .map((id) => courseMap.get(id)?.shortName ?? id)
+          .join(', ');
+        const fromShort = formatShortDate(item.phase.fromDate, dfLocale);
+        const untilShort = formatShortDate(item.phase.untilDate, dfLocale);
+        const fromStr = item.phase.fromTime ? `${fromShort} ${item.phase.fromTime}` : fromShort;
+        const untilStr = item.phase.untilTime ? `${untilShort} ${item.phase.untilTime}` : untilShort;
+        const baseLabel =
+          item.phase.mode === 'exclusive'
+            ? t('weekCheck.item.phaseExclusive', { course })
+            : item.phase.mode === 'boost'
+              ? t('weekCheck.item.phaseBoost', { course })
+              : item.phase.strategy === 'exams_first'
+                ? t('weekCheck.item.phaseBalancedExams')
+                : t('weekCheck.item.phaseBalanced');
+        return {
+          label: baseLabel,
+          validity: t('weekCheck.range', { from: fromStr, until: untilStr }),
+        };
+      }
     }
   };
 
@@ -313,7 +334,7 @@ export default function WeekCheckCard({
               disabled={enabledItems.length === 0}
               onClick={() => {
                 const count = enabledItems.length;
-                if (apply()) {
+                if (apply({ allowInManualMode: plannerMode === 'manual' })) {
                   setAppliedCount(count);
                   setEditing(false);
                   if (onCollapse) {
@@ -323,7 +344,8 @@ export default function WeekCheckCard({
                 }
               }}
             >
-              <Check size={14} aria-hidden="true" /> {t('weekCheck.apply')}
+              <Check size={14} aria-hidden="true" />{' '}
+              {plannerMode === 'manual' ? t('weekCheck.applyManualBuild') : t('weekCheck.apply')}
             </Button>
           )}
         </div>

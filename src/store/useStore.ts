@@ -98,7 +98,7 @@ export interface AppState extends Collections {
    * «Como está a tua semana?»: aplica a intenção (regras guardadas nas preferências e estado de
    * tópicos) e recalcula o plano. Tudo conta como um só Desfazer.
    */
-  applyBriefing: (items: IntentItem[], text: string) => boolean;
+  applyBriefing: (items: IntentItem[], text: string, opts?: { allowInManualMode?: boolean }) => boolean;
   /** Desfaz o último recálculo (sessões e, se mudaram, preferências e tópicos). */
   undoLastReplan: (token?: number) => boolean;
   updateTopic: (courseId: ID, topicId: ID, changes: Partial<Topic>) => void;
@@ -287,7 +287,7 @@ export const useStore = create<AppState>()(
         notifyPlanReplanned(token, reason, Boolean(opts.silent));
         return true;
       },
-      applyBriefing: (items, text) => {
+      applyBriefing: (items, text, opts) => {
         const state = get();
         const prevPrefs = state.settings.plannerPrefs;
         const prevCourses = state.courses;
@@ -303,7 +303,12 @@ export const useStore = create<AppState>()(
           },
           { replan: false },
         );
-        return get().replan('briefing', { force: true, prevPrefs, prevCourses });
+        return get().replan('briefing', {
+          force: true,
+          ...(opts?.allowInManualMode ? { allowInManualMode: true } : {}),
+          prevPrefs,
+          prevCourses,
+        });
       },
       undoLastReplan: (token) => {
         const snap = takePlanUndo(token);

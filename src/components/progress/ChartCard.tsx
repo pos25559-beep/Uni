@@ -17,10 +17,10 @@ interface ChartCardProps {
 export function ChartCard({ title, takeaway, isEmpty = false, emptyTitle, emptyHint, emptyAction, children }: ChartCardProps) {
   const { t } = useTranslation('progress');
   return (
-    <Card>
+    <Card className="rounded-3xl border-[#E5DEC9]/80 dark:border-line">
       <h2 className="text-sm font-semibold text-fg">{title}</h2>
       {isEmpty ? (
-        <div className="mt-4">
+        <div className="mt-4 rounded-2xl bg-pastel-cream/65 p-2 dark:bg-surface-2/40">
           <EmptyState title={emptyTitle ?? t('charts.noDataPeriod')} hint={emptyHint} action={emptyAction} />
         </div>
       ) : (

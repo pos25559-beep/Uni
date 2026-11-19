@@ -149,8 +149,8 @@ export default function PlanPreferencesSheet({
                 className={cx(
                   'min-h-11 rounded-2xl border p-3 text-left transition',
                   plannerMode === m
-                    ? 'border-accent bg-accent-soft text-accent-ink'
-                    : 'border-line bg-surface-2/50 hover:bg-surface-2',
+                    ? 'border-[#168A45]/45 bg-pastel-mint/75 text-[#0E2918] dark:border-accent/55 dark:bg-accent-soft/75 dark:text-accent-ink'
+                    : 'border-line bg-surface-2/60 hover:bg-surface-2 dark:bg-surface-2/50',
                 )}
               >
                 <p className="text-sm font-semibold">{t(`mode.${m}`)}</p>
@@ -188,7 +188,7 @@ export default function PlanPreferencesSheet({
                   className={cx(
                     'min-h-11 rounded-xl border text-xs font-semibold tabular transition',
                     blockMinutes === m
-                      ? 'border-accent bg-accent-soft text-accent-ink'
+                      ? 'border-[#168A45]/45 bg-pastel-mint/75 text-[#0E2918] dark:border-accent/55 dark:bg-accent-soft/75 dark:text-accent-ink'
                       : 'border-line bg-surface-2/60 text-muted hover:text-fg',
                   )}
                 >
@@ -211,7 +211,7 @@ export default function PlanPreferencesSheet({
                   className={cx(
                     'min-h-11 rounded-xl border text-xs font-semibold tabular transition',
                     horizonDays === d
-                      ? 'border-accent bg-accent-soft text-accent-ink'
+                      ? 'border-[#168A45]/45 bg-pastel-mint/75 text-[#0E2918] dark:border-accent/55 dark:bg-accent-soft/75 dark:text-accent-ink'
                       : 'border-line bg-surface-2/60 text-muted hover:text-fg',
                   )}
                 >
@@ -236,7 +236,7 @@ export default function PlanPreferencesSheet({
                 className={cx(
                   'min-h-11 rounded-2xl border p-3 text-left transition',
                   strategy === id
-                    ? 'border-accent bg-accent-soft text-accent-ink'
+                    ? 'border-[#0E6973]/35 bg-pastel-sky/75 text-[#0E2429] dark:border-sky-400/35 dark:bg-[#192A3D] dark:text-[#FAF6EC]'
                     : 'border-line bg-surface-2/50 hover:bg-surface-2',
                 )}
               >
@@ -259,7 +259,7 @@ export default function PlanPreferencesSheet({
                   className={cx(
                     'min-h-11 rounded-2xl border p-3 text-left transition',
                     contentMix === id
-                      ? 'border-accent bg-accent-soft text-accent-ink'
+                      ? 'border-[#85620A]/35 bg-pastel-butter/75 text-[#141312] dark:border-warn/35 dark:bg-[#352D14]/75 dark:text-[#FAF6EC]'
                       : 'border-line bg-surface-2/50 hover:bg-surface-2',
                   )}
                 >
@@ -270,7 +270,7 @@ export default function PlanPreferencesSheet({
             </div>
           </div>
 
-          <div className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface-2/40 px-4 py-3">
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#DFD2AE] bg-pastel-butter/45 px-4 py-3 dark:border-line dark:bg-[#352D14]/45">
             <p className="min-w-0 flex-1 text-xs font-medium text-fg">
               {t('prefs.mix.exclusiveFocus')}
             </p>
@@ -303,7 +303,7 @@ export default function PlanPreferencesSheet({
                     className={cx(
                       'inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition',
                       boosted
-                        ? 'border-warn bg-warn/15 text-warn'
+                        ? 'border-[#9A3412]/35 bg-pastel-blush/80 text-[#7C2D12] dark:border-warn/45 dark:bg-[#3A2218]/80 dark:text-[#FDBA74]'
                         : paused
                           ? 'border-line bg-surface-2 text-muted line-through opacity-75'
                           : 'border-line bg-surface text-fg hover:border-accent/50',

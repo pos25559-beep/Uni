@@ -16,6 +16,7 @@ import type {
   WeeklyCheckIn,
 } from '../../types';
 import { resolvePlannerPrefs } from './availability';
+import { resolvePhaseAtMoment } from './focusWindow';
 import {
   computeDayBudget,
   dayKey,
@@ -220,8 +221,41 @@ export function analyzePlanConscience(input: AnalyzeConscienceInput): PlanConsci
     }
   }
 
-  // 2) Foco exclusivo ativo com blocos de outras cadeiras
-  if (prefs.exclusiveTestFocus) {
+  // 2) Foco exclusivo ativo (global ou por fases com data/hora) com blocos de outras cadeiras
+  const focusPhases = prefs.focusPhases ?? [];
+  if (focusPhases.length > 0) {
+    const conflicting = futurePending.filter((s) => {
+      if (pausedSet.has(s.courseId)) return false;
+      const startMin = s.start ? toMin(s.start) : undefined;
+      const activePhase = resolvePhaseAtMoment(focusPhases, s.date, startMin);
+      return (
+        activePhase?.mode === 'exclusive' &&
+        activePhase.courseIds.length > 0 &&
+        !activePhase.courseIds.includes(s.courseId)
+      );
+    });
+    if (conflicting.length > 0) {
+      const currentPhase = resolvePhaseAtMoment(focusPhases, today, nowMinutes) ?? focusPhases[0];
+      const targetNames = (currentPhase?.courseIds ?? [])
+        .map((id) => courseMap.get(id)?.shortName || courseMap.get(id)?.name || id)
+        .join(', ');
+      opinions.push({
+        id: 'exclusive-conflict',
+        kind: 'exclusive_violation',
+        severity: 'warn',
+        messageKey: 'conscience.opinions.exclusiveConflict',
+        messageParams: {
+          course: targetNames || 'foco',
+          count: conflicting.length,
+        },
+        action: {
+          kind: 'remove_sessions',
+          sessionIds: conflicting.map((s) => s.id),
+          labelKey: 'conscience.actions.keepFocusOnly',
+        },
+      });
+    }
+  } else if (prefs.exclusiveTestFocus) {
     const urgentCourseIds = new Set(
       assessments
         .filter((a) => {

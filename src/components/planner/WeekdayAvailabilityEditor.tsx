@@ -65,9 +65,9 @@ export default function WeekdayAvailabilityEditor({
               key={p.id}
               type="button"
               onClick={() => onChangeSchedule(applyWeekdayPreset(p.id))}
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-surface-2/65 px-3.5 text-xs font-semibold text-fg transition hover:border-accent/50 hover:bg-surface"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-[#DFD2AE] bg-pastel-butter/65 px-3.5 text-xs font-semibold text-[#141312] transition hover:border-[#85620A]/45 hover:bg-pastel-butter dark:border-line dark:bg-[#352D14]/65 dark:text-[#FAF6EC]"
             >
-              <Sparkles size={13} className="text-accent" aria-hidden="true" />
+              <Sparkles size={13} className="text-[#85620A] dark:text-[#FACC15]" aria-hidden="true" />
               {p.label}
             </button>
           ))}
@@ -173,7 +173,7 @@ export default function WeekdayAvailabilityEditor({
         })}
       </div>
 
-      <div className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface-2/40 px-4 py-3">
+      <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#C6DFD7] bg-pastel-mint/35 px-4 py-3 dark:border-line dark:bg-[#17312B]/40">
         <div className="min-w-0 flex-1">
           <p className="text-xs font-semibold text-fg">{t('prefs.weekly.fillClassGaps')}</p>
           <p className="mt-0.5 text-xs text-muted">{t('prefs.weekly.fillClassGapsHint')}</p>
