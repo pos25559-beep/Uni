@@ -74,6 +74,20 @@ if (
   import.meta.env.PROD &&
   !Capacitor.isNativePlatform()
 ) {
+  // Se um chunk lazy falhar após nova publicação (aba antiga aberta), recarrega uma vez para buscar o index.html novo.
+  window.addEventListener('vite:preloadError', () => {
+    try {
+      const key = 'unipedia-chunk-reload';
+      const prev = Number(sessionStorage.getItem(key) || 0);
+      if (Date.now() - prev > 30_000) {
+        sessionStorage.setItem(key, String(Date.now()));
+        window.location.reload();
+      }
+    } catch {
+      // ignora em contextos sem sessionStorage
+    }
+  });
+
   window.addEventListener('load', () => {
     const hadController = Boolean(navigator.serviceWorker.controller);
     let reloaded = false;

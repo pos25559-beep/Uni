@@ -125,6 +125,27 @@ export function UniBuddy({
 
   const hasKeyframeScale = !isSleeping && (mood === 'celebrate' || mood === 'speaking');
 
+  // Estágio 0 (Ovo): ovo de papel inteiro, com pintas na cor do Uni que vai nascer e um brilho.
+  // Mesmo desenho do filme de marca (motion-studio/scripts/build-marca-film.mjs).
+  const isEgg = stage === 0;
+  const eggArt = (
+    <g>
+      <path
+        d="M40 4C53 4 66 22 66 46C66 62 55 72 40 72C25 72 14 62 14 46C14 22 27 4 40 4Z"
+        fill="#FAF8F2"
+        stroke="#141312"
+        strokeWidth="2.2"
+      />
+      <ellipse cx="31" cy="17" rx="2.6" ry="2" fill={palette.fill} stroke="#141312" strokeWidth="0.6" />
+      <ellipse cx="49" cy="23" rx="1.8" ry="1.4" fill="#FCE99F" stroke="#141312" strokeWidth="0.6" />
+      <ellipse cx="37" cy="30" rx="1.5" ry="1.2" fill={palette.fill} />
+      <ellipse cx="25" cy="53" rx="2.2" ry="1.7" fill={palette.cheek} fillOpacity={0.45} />
+      <ellipse cx="52" cy="59" rx="2.6" ry="2" fill={palette.fill} stroke="#141312" strokeWidth="0.6" />
+      <ellipse cx="43" cy="66" rx="1.6" ry="1.3" fill="#C4E0FD" />
+      <path d="M26 14C23.5 18 22 23 21.3 28" stroke="#FFFFFF" strokeWidth="2.6" strokeLinecap="round" />
+    </g>
+  );
+
   const svg = (
     <motion.svg
       width={size}
@@ -148,6 +169,7 @@ export function UniBuddy({
       }}
       aria-hidden={onClick ? undefined : true}
     >
+      {isEgg ? eggArt : (<>
       {/* Halo suave quando está a ouvir em Voz Live */}
       {mood === 'listening' && (
         <motion.circle
@@ -205,17 +227,6 @@ export function UniBuddy({
         />
       )}
 
-      {/* Estágio 0 (Ovo): casca de papel creme protetora na base */}
-      {stage === 0 && (
-        <path
-          d="M15 49L22 44L29 49L35 44L40 49L46 44L52 49L58 44L65 49C64 62 54 71 40 71C26 71 16 62 15 49Z"
-          fill="#FAF8F2"
-          stroke="#141312"
-          strokeWidth="2"
-          strokeLinejoin="round"
-        />
-      )}
-
       {/* Estágio 3 (Especialista): selo dourado de exame no colarinho */}
       {stage !== undefined && stage >= 3 && (
         <g>
@@ -266,8 +277,8 @@ export function UniBuddy({
       <circle cx="26.5" cy="43.5" r="3.5" fill={palette.cheek} fillOpacity={palette.cheekOpacity} />
       <circle cx="53.5" cy="43.5" r="3.5" fill={palette.cheek} fillOpacity={palette.cheekOpacity} />
 
-      {/* Olhos reativos com piscar natural (ou repouso em Ovo/dormente/a dormir) */}
-      {isSleeping || stage === 0 ? (
+      {/* Olhos reativos com piscar natural (ou repouso quando dormente/a dormir) */}
+      {isSleeping ? (
         <>
           <path d="M26 36C28.2 38 31.8 38 34 36" stroke={ink} strokeWidth="2.4" strokeLinecap="round" />
           <path d="M46 36C48.2 38 51.8 38 54 36" stroke={ink} strokeWidth="2.4" strokeLinecap="round" />
@@ -453,6 +464,7 @@ export function UniBuddy({
           <circle cx="40" cy="62" r="2" fill="#FCE99F" stroke="#141312" strokeWidth="1.3" />
         </g>
       )}
+      </>)}
     </motion.svg>
   );
 
