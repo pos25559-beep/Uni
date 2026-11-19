@@ -11,6 +11,7 @@ import {
 } from '../planner';
 import { pickActiveInAppNudge } from '../uniNotifications';
 import { formatSessionDisplay } from '../selectors';
+import { selectCompactDaySessions } from '../planner/compactView';
 
 const baseSettings: Settings = {
   userName: 'Pedro',
@@ -824,6 +825,35 @@ describe('planner.rescheduleOverdueSessions', () => {
     });
     expect(withPause.filter((s) => s.date <= '2026-11-20').some((s) => s.courseId === 'c-fab')).toBe(false);
     expect(withPause.filter((s) => s.date > '2026-11-20').some((s) => s.courseId === 'c-fab')).toBe(true);
+  });
+
+  it('limita a vista compacta semanal a 6 blocos e faz os blocos seguintes subirem com o passar da hora', () => {
+    const daySessions: StudySession[] = [
+      { id: 's1', courseId: 'c1', date: '2026-11-19', start: '09:00', minutes: 50, done: false, generated: true },
+      { id: 's2', courseId: 'c1', date: '2026-11-19', start: '10:00', minutes: 50, done: false, generated: true },
+      { id: 's3', courseId: 'c1', date: '2026-11-19', start: '11:00', minutes: 50, done: false, generated: true },
+      { id: 's4', courseId: 'c1', date: '2026-11-19', start: '12:00', minutes: 50, done: false, generated: true },
+      { id: 's5', courseId: 'c1', date: '2026-11-19', start: '14:00', minutes: 50, done: false, generated: true },
+      { id: 's6', courseId: 'c1', date: '2026-11-19', start: '15:00', minutes: 50, done: false, generated: true },
+      { id: 's7', courseId: 'c1', date: '2026-11-19', start: '16:00', minutes: 50, done: false, generated: true },
+      { id: 's8', courseId: 'c1', date: '2026-11-19', start: '17:00', minutes: 50, done: false, generated: true },
+    ];
+
+    // Outro dia (não hoje): mostra sempre no máximo 6 + extraCount=2
+    const otherDay = selectCompactDaySessions(daySessions, { isToday: false, nowMinutes: 12 * 60 });
+    expect(otherDay.visible.map((s) => s.id)).toEqual(['s1', 's2', 's3', 's4', 's5', 's6']);
+    expect(otherDay.extraCount).toBe(2);
+
+    // Hoje às 11:00 (s1 09:00–09:50 e s2 10:00–10:50 já passaram): sobem s7 e s8!
+    const today11 = selectCompactDaySessions(daySessions, { isToday: true, nowMinutes: 11 * 60 });
+    expect(today11.rolledOffCount).toBe(2);
+    expect(today11.visible.map((s) => s.id)).toEqual(['s3', 's4', 's5', 's6', 's7', 's8']);
+    expect(today11.extraCount).toBe(0);
+
+    // Hoje às 18:00 (todos passaram): lista compacta fica vazia com flag allPassedToday
+    const todayEnd = selectCompactDaySessions(daySessions, { isToday: true, nowMinutes: 18 * 60 });
+    expect(todayEnd.visible).toEqual([]);
+    expect(todayEnd.allPassedToday).toBe(true);
   });
 });
 

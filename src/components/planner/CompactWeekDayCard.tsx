@@ -1,8 +1,10 @@
 import { format } from 'date-fns';
 import { Check, ChevronRight, Flame, Lock, Plus } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { courseColors, weekdayShort } from '../../lib/colors';
 import { resolveDateFnsLocale } from '../../lib/grading';
+import { selectCompactDaySessions } from '../../lib/planner/compactView';
 import { fmtMinutes, formatSessionDisplay, sessionMinutes } from '../../lib/selectors';
 import { cx } from '../../lib/uiHelpers';
 import type { Course, StudySession, Topic } from '../../types';
@@ -51,6 +53,23 @@ export default function CompactWeekDayCard({
 }: CompactWeekDayCardProps) {
   const { t, i18n } = useTranslation('plan');
   const dfLocale = resolveDateFnsLocale(i18n.language);
+  const [nowMinutes, setNowMinutes] = useState(() => {
+    const n = new Date();
+    return n.getHours() * 60 + n.getMinutes();
+  });
+
+  useEffect(() => {
+    if (!isToday) return;
+    const sync = () => {
+      const n = new Date();
+      setNowMinutes(n.getHours() * 60 + n.getMinutes());
+    };
+    sync();
+    const id = setInterval(sync, 60_000);
+    return () => clearInterval(id);
+  }, [isToday]);
+
+  const dayWindow = selectCompactDaySessions(sessions, { isToday, nowMinutes });
 
   const planned = sessions.reduce((sum, s) => sum + (s.done ? sessionMinutes(s) : s.minutes), 0);
   const doneMinutes = sessions.reduce((sum, s) => sum + sessionMinutes(s), 0);
@@ -161,49 +180,78 @@ export default function CompactWeekDayCard({
               >
                 {isStudyDay || isMarathonDay ? t('dayCol.noSessions') : t('dayCol.offDay')}
               </button>
+            ) : dayWindow.allPassedToday ? (
+              <button
+                type="button"
+                onClick={() => onOpenDay(dateKey)}
+                className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-dashed border-line/90 bg-surface-2/40 px-2 py-4 text-center text-xs font-semibold text-muted transition hover:border-accent/50 hover:text-fg"
+              >
+                <Plus size={14} aria-hidden="true" />
+                <span>{t('dayCol.showDay', { count: sessions.length })}</span>
+              </button>
             ) : (
-              sessions.map((s) => {
-                const course = courseById.get(s.courseId);
-                const topic = s.topicId ? topicById.get(s.topicId) : undefined;
-                const color = courseColors[course?.color ?? 'emerald'];
-                const disp = formatSessionDisplay(s, topic, i18n.language);
-                return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => onEditSession(s)}
-                    className={cx(
-                      'w-full rounded-xl border px-2 py-1.5 text-left transition hover:brightness-[0.98]',
-                      s.done
-                        ? 'border-dashed border-line bg-surface/75 opacity-65'
-                        : color.tint,
-                    )}
-                  >
-                    <div className="flex items-center justify-between gap-1 font-mono text-xs text-muted tabular">
-                      <span>{s.start || '—'}</span>
-                      <div className="flex shrink-0 items-center gap-1">
-                        <span>{s.minutes}m</span>
-                        {s.locked && <Lock size={11} aria-hidden="true" />}
-                        {s.done && <Check size={12} className="text-ok" aria-hidden="true" />}
-                      </div>
-                    </div>
-                    <div className="mt-0.5 flex items-center gap-1 text-xs">
-                      <span className={cx('size-1.5 shrink-0 rounded-full', color.dot)} />
-                      <span className="truncate font-bold text-fg">
-                        {course?.shortName ?? '—'}
-                      </span>
-                    </div>
-                    <p
+              <>
+                {dayWindow.visible.map((s) => {
+                  const course = courseById.get(s.courseId);
+                  const topic = s.topicId ? topicById.get(s.topicId) : undefined;
+                  const color = courseColors[course?.color ?? 'emerald'];
+                  const disp = formatSessionDisplay(s, topic, i18n.language);
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => onEditSession(s)}
                       className={cx(
-                        'mt-0.5 line-clamp-2 text-xs font-medium leading-snug text-fg/85',
-                        s.done && 'line-through',
+                        'w-full rounded-xl border px-2 py-1.5 text-left transition hover:brightness-[0.98]',
+                        s.done
+                          ? 'border-dashed border-line bg-surface/75 opacity-65'
+                          : color.tint,
                       )}
                     >
-                      {disp.title}
-                    </p>
+                      <div className="flex items-center justify-between gap-1 font-mono text-xs text-muted tabular">
+                        <span>{s.start || '—'}</span>
+                        <div className="flex shrink-0 items-center gap-1">
+                          <span>{s.minutes}m</span>
+                          {s.locked && <Lock size={11} aria-hidden="true" />}
+                          {s.done && <Check size={12} className="text-ok" aria-hidden="true" />}
+                        </div>
+                      </div>
+                      <div className="mt-0.5 flex items-center gap-1 text-xs">
+                        <span className={cx('size-1.5 shrink-0 rounded-full', color.dot)} />
+                        <span className="truncate font-bold text-fg">
+                          {course?.shortName ?? '—'}
+                        </span>
+                      </div>
+                      <p
+                        className={cx(
+                          'mt-0.5 line-clamp-2 text-xs font-medium leading-snug text-fg/85',
+                          s.done && 'line-through',
+                        )}
+                      >
+                        {disp.title}
+                      </p>
+                    </button>
+                  );
+                })}
+                {dayWindow.extraCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenDay(dateKey)}
+                    aria-label={t('dayCol.moreBlocksAria', {
+                      count: dayWindow.extraCount,
+                      total: sessions.length,
+                    })}
+                    title={t('dayCol.moreBlocksAria', {
+                      count: dayWindow.extraCount,
+                      total: sessions.length,
+                    })}
+                    className="mt-auto flex min-h-9 w-full items-center justify-center gap-1 rounded-xl border border-dashed border-line/90 bg-surface-2/45 px-2 py-1.5 text-xs font-semibold text-muted transition hover:border-accent/55 hover:bg-surface-2 hover:text-fg"
+                  >
+                    <Plus size={14} aria-hidden="true" />
+                    <span className="font-mono tabular">{dayWindow.extraCount}</span>
                   </button>
-                );
-              })
+                )}
+              </>
             )}
           </div>
         </>

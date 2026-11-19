@@ -316,7 +316,8 @@
     "showDay": "Ver día ({{count}})",
     "hideDay": "Ocultar",
     "openDay": "Abrir día",
-    "openDayAria": "Abrir detalles de {{date}}"
+    "openDayAria": "Abrir detalles de {{date}}",
+    "moreBlocksAria": "Ver {{count}} bloques más ({{total}} en total) en la pestaña del día"
   },
   "dayModal": {
     "prevDay": "Día anterior",
