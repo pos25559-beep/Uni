@@ -17,9 +17,17 @@ interface Props {
   today: string;
   onEditClass?: (item: CalItem) => void;
   onDeleteClass?: (item: CalItem) => void;
+  onEditAssessment?: (item: CalItem) => void;
 }
 
-export default function AgendaView({ items, courseById, today, onEditClass, onDeleteClass }: Props) {
+export default function AgendaView({
+  items,
+  courseById,
+  today,
+  onEditClass,
+  onDeleteClass,
+  onEditAssessment,
+}: Props) {
   const { t } = useTranslation('plan');
   const groups = useMemo(() => {
     const out: { date: string; list: CalItem[] }[] = [];
@@ -97,6 +105,19 @@ export default function AgendaView({ items, courseById, today, onEditClass, onDe
                           <Trash2 size={15} />
                         </button>
                       )}
+                    </div>
+                  )}
+                  {it.kind === 'avaliacao' && onEditAssessment && (
+                    <div className="flex shrink-0 items-center self-center">
+                      <button
+                        type="button"
+                        onClick={() => onEditAssessment(it)}
+                        aria-label={t('courses:assess.edit')}
+                        title={t('cal.clickToEdit')}
+                        className="grid size-11 place-items-center rounded-lg text-muted transition hover:bg-surface-2 hover:text-fg"
+                      >
+                        <Pencil size={15} />
+                      </button>
                     </div>
                   )}
                 </li>

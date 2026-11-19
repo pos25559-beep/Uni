@@ -38,21 +38,26 @@ interface DialogCoords {
   width?: number;
 }
 
-function computeDialogCoords(el: HTMLElement | null, desktopWidth = 340): DialogCoords {
+function computeDialogCoords(
+  el: HTMLElement | null,
+  desktopWidth = 340,
+  desktopHeight = 460,
+): DialogCoords {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
   const rect = el?.getBoundingClientRect();
   if (!isMobile && rect) {
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const openUp = spaceBelow < 360 && rect.top > spaceBelow;
+    const spaceBelow = window.innerHeight - rect.bottom - 12;
+    const spaceAbove = rect.top - 12;
     const width = Math.min(Math.max(rect.width, desktopWidth), window.innerWidth - 24);
     const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 12));
-    return {
-      isMobile: false,
-      left,
-      width,
-      top: openUp ? undefined : rect.bottom + 6,
-      bottom: openUp ? window.innerHeight - rect.top + 6 : undefined,
-    };
+    if (spaceBelow >= desktopHeight) {
+      return { isMobile: false, left, width, top: rect.bottom + 6 };
+    }
+    if (spaceAbove >= desktopHeight) {
+      return { isMobile: false, left, width, bottom: window.innerHeight - rect.top + 6 };
+    }
+    const clampedTop = Math.max(12, window.innerHeight - desktopHeight - 12);
+    return { isMobile: false, left, width, top: clampedTop };
   }
   return { isMobile: true };
 }
@@ -146,7 +151,7 @@ function TopLayerPickerDialog({
           className={cx(
             coords.isMobile
               ? 'rise max-h-[82dvh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-[28px] border-t border-line bg-surface px-4 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-float'
-              : 'rise max-h-[82vh] overflow-y-auto overscroll-contain rounded-[22px] border border-line bg-surface p-3.5 shadow-float',
+              : 'rise max-h-[calc(100vh-24px)] overflow-y-auto overscroll-contain rounded-[22px] border border-line bg-surface p-3.5 shadow-float',
           )}
         >
           <div
@@ -488,7 +493,7 @@ export function TimeField({
   const openPicker = () => {
     if (disabled) return;
     void hapticTap();
-    setCoords(computeDialogCoords(triggerRef.current, 320));
+    setCoords(computeDialogCoords(triggerRef.current, 320, 520));
     setOpen(true);
   };
 
@@ -654,7 +659,7 @@ export function DateTimeField({
     if (disabled) return;
     void hapticTap();
     setTab('date');
-    setCoords(computeDialogCoords(triggerRef.current, 350));
+    setCoords(computeDialogCoords(triggerRef.current, 350, 520));
     setOpen(true);
   };
 

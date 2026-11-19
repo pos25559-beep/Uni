@@ -11,6 +11,7 @@ import AgendaView from '../components/calendar/AgendaView';
 import DayPanel from '../components/calendar/DayPanel';
 import MonthView from '../components/calendar/MonthView';
 import NewEventModal from '../components/calendar/NewEventModal';
+import AssessmentFormModal from '../components/courses/AssessmentFormModal';
 import ClassFormModal from '../components/courses/ClassFormModal';
 import { ConfirmModal } from '../components/courses/ConfirmModal';
 import SmartScheduleImportModal from '../components/courses/SmartScheduleImportModal';
@@ -31,7 +32,7 @@ import {
   planSharedSemesterImport,
 } from '../lib/semesterShare';
 import { newId, useStore } from '../store/useStore';
-import type { ClassSlot, Course } from '../types';
+import type { Assessment, ClassSlot, Course } from '../types';
 
 type View = 'mes' | 'semana' | 'agenda';
 
@@ -64,6 +65,7 @@ export default function Calendar() {
   const [sharedDismissedToken, setSharedDismissedToken] = useState<string | null>(null);
   const [satNoticeDismissed, setSatNoticeDismissed] = useState(false);
   const [editingClass, setEditingClass] = useState<{ slot: ClassSlot; course: Course } | null>(null);
+  const [editingAssessment, setEditingAssessment] = useState<{ assessment: Assessment; course: Course } | null>(null);
   const [deletingClass, setDeletingClass] = useState<{ id: string; title: string } | null>(null);
 
   const [today] = useState(() => toDateStr(new Date()));
@@ -120,6 +122,13 @@ export default function Calendar() {
     const slot = classById.get(item.refId);
     const course = item.courseId ? courseById.get(item.courseId) : undefined;
     if (slot && course) setEditingClass({ slot, course });
+  };
+
+  const openEditAssessmentItem = (item: CalItem) => {
+    if (item.kind !== 'avaliacao') return;
+    const assessment = assessments.find((a) => a.id === item.refId);
+    const course = assessment ? courseById.get(assessment.courseId) : undefined;
+    if (assessment && course) setEditingAssessment({ assessment, course });
   };
 
   const moveSaturdayToFriday = () => {
@@ -361,6 +370,7 @@ export default function Calendar() {
             selected={selected}
             onSelect={setSelected}
             onEditClass={openEditClassItem}
+            onEditAssessment={openEditAssessmentItem}
           />
         </div>
       )}
@@ -372,6 +382,7 @@ export default function Calendar() {
           today={today}
           onEditClass={openEditClassItem}
           onDeleteClass={(it) => setDeletingClass({ id: it.refId, title: it.title })}
+          onEditAssessment={openEditAssessmentItem}
         />
       )}
 
@@ -387,6 +398,14 @@ export default function Calendar() {
           course={editingClass.course}
           initialSlot={editingClass.slot}
           onClose={() => setEditingClass(null)}
+        />
+      )}
+
+      {editingAssessment && (
+        <AssessmentFormModal
+          course={editingAssessment.course}
+          assessment={editingAssessment.assessment}
+          onClose={() => setEditingAssessment(null)}
         />
       )}
 

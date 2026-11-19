@@ -16,6 +16,8 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import AssessmentsTab from '../components/courses/AssessmentsTab';
+import AssessmentFormModal from '../components/courses/AssessmentFormModal';
+import { fmtAssessmentDate } from '../components/courses/helpers';
 import CourseFormModal from '../components/courses/CourseFormModal';
 import CourseUniCard from '../components/courses/CourseUniCard';
 import ScheduleTab from '../components/courses/ScheduleTab';
@@ -42,6 +44,7 @@ import {
   daysUntil,
 } from '../lib/selectors';
 import { useStore } from '../store/useStore';
+import type { Assessment } from '../types';
 
 type TabKey = 'visao' | 'materia' | 'materiais' | 'horario' | 'tarefas';
 
@@ -59,6 +62,7 @@ export default function CourseDetail() {
   const remove = useStore((s) => s.remove);
 
   const [editing, setEditing] = useState(false);
+  const [editingAssessment, setEditingAssessment] = useState<Assessment | null>(null);
   const [tab, setTab] = useState<TabKey>('visao');
   const [emailsExpanded, setEmailsExpanded] = useState(false);
   const [clipModalOpen, setClipModalOpen] = useState(false);
@@ -176,9 +180,11 @@ export default function CourseDetail() {
           value={nextAssessment ? nextAssessment.title : '—'}
           hint={
             nextAssessment
-              ? `${daysUntil(nextAssessment.date)}d · ${nextAssessment.weight}%`
+              ? `${fmtAssessmentDate(nextAssessment.date, appLang)} · ${daysUntil(nextAssessment.date)}d · ${nextAssessment.weight}%`
               : '—'
           }
+          actionLabel={nextAssessment ? t('common:actions.edit') : t('assess.new')}
+          onClick={() => (nextAssessment ? setEditingAssessment(nextAssessment) : setTab('materia'))}
           icon={<Clock size={14} />}
         />
         <BentoMetricTile
@@ -301,6 +307,13 @@ export default function CourseDetail() {
             showToast(t('toast.courseDeleted', { name: deletedName }), 'neutral');
             navigate('/cadeiras');
           }}
+        />
+      )}
+      {editingAssessment && (
+        <AssessmentFormModal
+          course={course}
+          assessment={editingAssessment}
+          onClose={() => setEditingAssessment(null)}
         />
       )}
       {clipModalOpen && <ClipCourseModal course={course} onClose={() => setClipModalOpen(false)} />}

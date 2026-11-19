@@ -12,6 +12,7 @@ import {
   MessageSquare,
   MessageSquareText,
   MoreHorizontal,
+  Pencil,
   Plus,
   SlidersHorizontal,
   Sparkles,
@@ -37,6 +38,7 @@ import { UniBuddy } from '../components/brand/UnipediaMarks';
 import { resolveUniAccessory } from '../lib/uniAccessories';
 
 const ActiveReviewModal = lazy(() => import('../components/practice/ActiveReviewModal'));
+const AssessmentFormModal = lazy(() => import('../components/courses/AssessmentFormModal'));
 const PlanPreferencesSheet = lazy(() => import('../components/planner/PlanPreferencesSheet'));
 const SessionModal = lazy(() => import('../components/planner/SessionModal'));
 import { TabGuideBanner, TabGuideHelpButton, useTabGuideOverlay } from '../components/onboarding/TabGuideBanner';
@@ -69,7 +71,7 @@ import {
   resolvePlannerPrefs,
   weeklyStudyMinutes,
 } from '../lib/planner/availability';
-import type { StudySession } from '../types';
+import type { Assessment, Course, StudySession } from '../types';
 
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 const TEST_MODE_ACK_KEY = 'uni-test-mode-ack-v1';
@@ -136,6 +138,7 @@ export default function Planner() {
   const [prefsOpen, setPrefsOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [modal, setModal] = useState<{ session?: StudySession; date: string; defaultStart?: string } | null>(null);
+  const [editingAssessment, setEditingAssessment] = useState<{ assessment: Assessment; course: Course } | null>(null);
   const openFocus = useHubUiStore((st) => st.openFocus);
   const setFocusId = (id: string) => openFocus(id);
   // Ligações antigas e notificações abrem o foco com ?focus=<id>.
@@ -1259,6 +1262,10 @@ export default function Planner() {
             onAdd={openNewSession}
             onToggleLock={toggleSessionLock}
             onQuickMove={quickMoveSession}
+            onEditAssessment={(a) => {
+              const c = courseById.get(a.courseId);
+              if (c) setEditingAssessment({ assessment: a, course: c });
+            }}
           />
         );
       })()}
@@ -1271,6 +1278,16 @@ export default function Planner() {
             defaultDate={modal.date}
             defaultStart={modal.defaultStart}
             onClose={() => setModal(null)}
+          />
+        </Suspense>
+      )}
+
+      {editingAssessment && (
+        <Suspense fallback={null}>
+          <AssessmentFormModal
+            course={editingAssessment.course}
+            assessment={editingAssessment.assessment}
+            onClose={() => setEditingAssessment(null)}
           />
         </Suspense>
       )}
@@ -1338,22 +1355,34 @@ export default function Planner() {
                       when,
                     })}
                   </span>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="shrink-0"
-                    onClick={() => {
-                      acknowledgeTestMode();
-                      setActiveSheet(null);
-                      openUniCheckIn({
-                        kind: 'exam_prep',
-                        assessmentId: u.assessment.id,
-                        courseId: u.course.id,
-                      });
-                    }}
-                  >
-                    {t('alignShort')}
-                  </Button>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <Button
+                      size="sm"
+                      iconOnly
+                      variant="ghost"
+                      aria-label={t('courses:assess.edit')}
+                      title={t('courses:assess.edit')}
+                      onClick={() => setEditingAssessment({ assessment: u.assessment, course: u.course })}
+                    >
+                      <Pencil size={15} />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="shrink-0"
+                      onClick={() => {
+                        acknowledgeTestMode();
+                        setActiveSheet(null);
+                        openUniCheckIn({
+                          kind: 'exam_prep',
+                          assessmentId: u.assessment.id,
+                          courseId: u.course.id,
+                        });
+                      }}
+                    >
+                      {t('alignShort')}
+                    </Button>
+                  </div>
                 </li>
               );
             })}

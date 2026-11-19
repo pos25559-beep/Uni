@@ -56,9 +56,19 @@ interface Props {
   selected: string;
   onSelect: (date: string) => void;
   onEditClass?: (item: CalItem) => void;
+  onEditAssessment?: (item: CalItem) => void;
 }
 
-export default function WeekView({ days, byDay, courseById, today, selected, onSelect, onEditClass }: Props) {
+export default function WeekView({
+  days,
+  byDay,
+  courseById,
+  today,
+  selected,
+  onSelect,
+  onEditClass,
+  onEditAssessment,
+}: Props) {
   const { t } = useTranslation('plan');
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -171,6 +181,12 @@ export default function WeekView({ days, byDay, courseById, today, selected, onS
               const course = it.courseId ? courseById.get(it.courseId) : undefined;
               const Icon = KIND_META[it.kind].icon;
               const isEditableClass = it.kind === 'aula' && Boolean(onEditClass);
+              const isEditableAssessment = it.kind === 'avaliacao' && Boolean(onEditAssessment);
+              const onEdit = isEditableClass
+                ? () => onEditClass?.(it)
+                : isEditableAssessment
+                  ? () => onEditAssessment?.(it)
+                  : undefined;
               const content = (
                 <div className="flex min-w-0 items-start gap-3">
                   <div className="flex w-16 shrink-0 flex-col pt-0.5 font-mono text-xs font-semibold tabular">
@@ -201,11 +217,11 @@ export default function WeekView({ days, byDay, courseById, today, selected, onS
                 </div>
               );
 
-              return isEditableClass ? (
+              return onEdit ? (
                 <button
                   key={it.id}
                   type="button"
-                  onClick={() => onEditClass?.(it)}
+                  onClick={onEdit}
                   className={cx(
                     'w-full rounded-2xl p-3 text-left transition active:scale-[0.99]',
                     itemTone(it, course),
@@ -320,11 +336,17 @@ export default function WeekView({ days, byDay, courseById, today, selected, onS
                     const course = item.courseId ? courseById.get(item.courseId) : undefined;
                     const width = 100 / lanes;
                     const isEditableClass = item.kind === 'aula' && Boolean(onEditClass);
+                    const isEditableAssessment = item.kind === 'avaliacao' && Boolean(onEditAssessment);
+                    const onEditItem = isEditableClass
+                      ? () => onEditClass?.(item)
+                      : isEditableAssessment
+                        ? () => onEditAssessment?.(item)
+                        : undefined;
                     const cls = cx(
                       'absolute overflow-hidden rounded-lg px-1.5 py-1 text-left text-xs leading-tight transition',
                       itemTone(item, course),
                       item.done && 'line-through',
-                      isEditableClass && 'cursor-pointer hover:ring-2 hover:ring-accent/60',
+                      onEditItem && 'cursor-pointer hover:ring-2 hover:ring-accent/60',
                     );
                     const style = {
                       top,
@@ -339,11 +361,11 @@ export default function WeekView({ days, byDay, courseById, today, selected, onS
                         {item.location && height > 48 && <div className="truncate text-xs opacity-75">{item.location}</div>}
                       </>
                     );
-                    return isEditableClass ? (
+                    return onEditItem ? (
                       <button
                         key={item.id}
                         type="button"
-                        onClick={() => onEditClass?.(item)}
+                        onClick={onEditItem}
                         title={`${timeLabel(item)} · ${item.title} (${t('cal.clickToEdit')})`}
                         className={cls}
                         style={style}

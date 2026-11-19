@@ -243,8 +243,8 @@ export function BentoMetricTile({
         )}
       </div>
 
-      <div className="mt-4 flex items-end justify-between gap-2">
-        <div className="min-w-0 text-xl font-bold leading-tight tracking-tight tabular sm:text-2xl">{value}</div>
+      <div className="mt-4 flex flex-wrap items-end justify-between gap-x-2 gap-y-1">
+        <div className="min-w-0 text-lg font-bold leading-tight tracking-tight tabular sm:text-xl">{value}</div>
         {(actionLabel || onClick) && (
           <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-semibold opacity-85">
             {actionLabel || t('actions.see')}

@@ -6,8 +6,8 @@ import { kindLabel } from '../../lib/colors';
 import { newId, useStore } from '../../store/useStore';
 import type { Assessment, AssessmentKind, Course } from '../../types';
 import { showToast } from '../../lib/uiHelpers';
-import { Button, DateTimeField, Field, Input, Modal, Select, Textarea } from '../ui';
-import { fromDatetimeLocal, toDatetimeLocal } from './helpers';
+import { Button, DateField, Field, Input, Modal, Select, Textarea, TimeField } from '../ui';
+import { fromDatetimeLocal } from './helpers';
 
 interface Props {
   course: Course;
@@ -23,8 +23,13 @@ export default function AssessmentFormModal({ course, assessment, onClose }: Pro
   const upsert = useStore((s) => s.upsert);
   const [kind, setKind] = useState<AssessmentKind>(assessment?.kind ?? 'teste');
   const [title, setTitle] = useState(assessment?.title ?? '');
-  const [date, setDate] = useState(() =>
-    assessment ? toDatetimeLocal(assessment.date) : format(addDays(new Date(), 7), "yyyy-MM-dd'T'HH:mm"),
+  const [datePart, setDatePart] = useState(() =>
+    assessment ? assessment.date.slice(0, 10) : format(addDays(new Date(), 7), 'yyyy-MM-dd'),
+  );
+  const [timePart, setTimePart] = useState(() =>
+    assessment && assessment.date.includes('T') && /^([01]\d|2[0-3]):([0-5]\d)$/.test(assessment.date.slice(11, 16))
+      ? assessment.date.slice(11, 16)
+      : '09:00',
   );
   const [weight, setWeight] = useState(String(assessment?.weight ?? 20));
   const [location, setLocation] = useState(assessment?.location ?? '');
@@ -39,7 +44,7 @@ export default function AssessmentFormModal({ course, assessment, onClose }: Pro
     e.preventDefault();
     const w = Number(weight.replace(',', '.'));
     if (!title.trim()) return setError(t('assessForm.errTitle'));
-    if (!date) return setError(t('assessForm.errDate'));
+    if (!datePart) return setError(t('assessForm.errDate'));
     if (!Number.isFinite(w) || w < 0 || w > 100) return setError(t('assessForm.errWeight'));
     setError(null);
     const opt = (v: string) => v.trim() || undefined;
@@ -48,7 +53,7 @@ export default function AssessmentFormModal({ course, assessment, onClose }: Pro
       courseId: course.id,
       kind,
       title: title.trim(),
-      date: fromDatetimeLocal(date),
+      date: fromDatetimeLocal(`${datePart}T${timePart || '09:00'}`),
       weight: w,
       grade: assessment?.grade,
       topicIds,
@@ -86,15 +91,22 @@ export default function AssessmentFormModal({ course, assessment, onClose }: Pro
           <Field label={t('assessForm.weight')}>
             <Input inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} />
           </Field>
-          <Field label={t('assessForm.titleLabel')}>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('assessForm.titlePh')} />
+          <div className="sm:col-span-2">
+            <Field label={t('assessForm.titleLabel')}>
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('assessForm.titlePh')} />
+            </Field>
+          </div>
+          <Field label={t('assessForm.dateOnly')}>
+            <DateField aria-label={t('assessForm.dateAria')} value={datePart} onChange={setDatePart} />
           </Field>
-          <Field label={t('assessForm.dateTime')}>
-            <DateTimeField aria-label={t('assessForm.dateTimeAria')} value={date} onChange={setDate} />
+          <Field label={t('assessForm.time')}>
+            <TimeField aria-label={t('assessForm.timeAria')} value={timePart} onChange={setTimePart} />
           </Field>
-          <Field label={t('assessForm.location')}>
-            <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder={t('assessForm.locationPh')} />
-          </Field>
+          <div className="sm:col-span-2">
+            <Field label={t('assessForm.location')}>
+              <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder={t('assessForm.locationPh')} />
+            </Field>
+          </div>
         </div>
 
         <Field label={t('assessForm.notes')}>

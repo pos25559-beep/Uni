@@ -1,5 +1,5 @@
 import { format, parseISO } from 'date-fns';
-import { CalendarDays, ChevronLeft, ChevronRight, Clock, Flame, GraduationCap, Plus } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, Clock, Flame, GraduationCap, Pencil, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { courseColors } from '../../lib/colors';
 import { resolveDateFnsLocale } from '../../lib/grading';
@@ -34,6 +34,7 @@ interface DayDetailModalProps {
   onAdd: (dateKey: string) => void;
   onToggleLock: (session: StudySession) => void;
   onQuickMove: (session: StudySession, targetDate: string) => void;
+  onEditAssessment?: (assessment: Assessment) => void;
 }
 
 /**
@@ -64,6 +65,7 @@ export default function DayDetailModal({
   onAdd,
   onToggleLock,
   onQuickMove,
+  onEditAssessment,
 }: DayDetailModalProps) {
   const { t, i18n } = useTranslation('plan');
   const dfLocale = resolveDateFnsLocale(i18n.language);
@@ -170,18 +172,35 @@ export default function DayDetailModal({
               {t('dayModal.schedule')}
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {dayExams.map((a) => (
-                <span
-                  key={a.id}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-coral/35 bg-pastel-blush/80 px-2.5 py-1 text-xs font-semibold text-[#141312] dark:border-coral/40 dark:bg-[#3A2218] dark:text-[#FAF6EC]"
-                >
-                  <Flame size={12} className="shrink-0 text-coral" aria-hidden="true" />
-                  <span>
-                    {t('dayModal.examLabel')} · {a.date.slice(11, 16) || '—'} ·{' '}
-                    {courseById.get(a.courseId)?.shortName ?? ''} — {a.title}
+              {dayExams.map((a) =>
+                onEditAssessment ? (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() => onEditAssessment(a)}
+                    title={t('courses:assess.edit')}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-coral/35 bg-pastel-blush/80 px-2.5 py-1 text-xs font-semibold text-[#141312] transition hover:border-coral hover:bg-pastel-blush dark:border-coral/40 dark:bg-[#3A2218] dark:text-[#FAF6EC]"
+                  >
+                    <Flame size={12} className="shrink-0 text-coral" aria-hidden="true" />
+                    <span>
+                      {t('dayModal.examLabel')} · {a.date.slice(11, 16) || '—'} ·{' '}
+                      {courseById.get(a.courseId)?.shortName ?? ''} — {a.title}
+                    </span>
+                    <Pencil size={11} className="shrink-0 opacity-70" aria-hidden="true" />
+                  </button>
+                ) : (
+                  <span
+                    key={a.id}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-coral/35 bg-pastel-blush/80 px-2.5 py-1 text-xs font-semibold text-[#141312] dark:border-coral/40 dark:bg-[#3A2218] dark:text-[#FAF6EC]"
+                  >
+                    <Flame size={12} className="shrink-0 text-coral" aria-hidden="true" />
+                    <span>
+                      {t('dayModal.examLabel')} · {a.date.slice(11, 16) || '—'} ·{' '}
+                      {courseById.get(a.courseId)?.shortName ?? ''} — {a.title}
+                    </span>
                   </span>
-                </span>
-              ))}
+                ),
+              )}
               {dayClasses.map((cl) => {
                 const c = courseById.get(cl.courseId);
                 const color = courseColors[c?.color ?? 'emerald'];

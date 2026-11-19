@@ -7,10 +7,11 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useHubUiStore } from '../../store/useHubUiStore';
 import { useStore } from '../../store/useStore';
-import type { CalendarEvent, ClassSlot, Course, StudySession } from '../../types';
+import type { Assessment, CalendarEvent, ClassSlot, Course, StudySession } from '../../types';
 import { Badge, Button, Card, CourseChip, EmptyState } from '../ui';
 import { cx } from '../../lib/uiHelpers';
 import { capitalizeFirst } from '../../lib/selectors';
+import AssessmentFormModal from '../courses/AssessmentFormModal';
 import ClassFormModal from '../courses/ClassFormModal';
 import { ConfirmModal } from '../courses/ConfirmModal';
 import NewEventModal from './NewEventModal';
@@ -30,6 +31,7 @@ export default function DayPanel({ date, items, courseById, onNewEvent }: Props)
   const { t } = useTranslation('plan');
   const courses = useStore((s) => s.courses);
   const classes = useStore((s) => s.classes);
+  const assessments = useStore((s) => s.assessments);
   const sessions = useStore((s) => s.sessions);
   const events = useStore((s) => s.events);
   const remove = useStore((s) => s.remove);
@@ -38,6 +40,7 @@ export default function DayPanel({ date, items, courseById, onNewEvent }: Props)
   const heading = format(parseISO(date), longDatePattern(), { locale: pt });
   const [toDelete, setToDelete] = useState<{ storeKey: 'events' | 'classes'; refId: string; title: string } | null>(null);
   const [editingClass, setEditingClass] = useState<{ slot: ClassSlot; course: Course } | null>(null);
+  const [editingAssessment, setEditingAssessment] = useState<{ assessment: Assessment; course: Course } | null>(null);
   const [editingSession, setEditingSession] = useState<StudySession | null>(null);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
 
@@ -207,16 +210,35 @@ export default function DayPanel({ date, items, courseById, onNewEvent }: Props)
                   </button>
                 )}
 
-                {it.kind === 'avaliacao' && it.courseId && (
-                  <Link
-                    to={`/cadeiras/${it.courseId}`}
-                    aria-label={t('cal.openCourseAria')}
-                    title={t('cal.openCourseAria')}
-                    className="inline-flex min-h-11 shrink-0 items-center gap-0.5 rounded-lg border border-line bg-surface px-3 text-xs font-medium text-fg transition hover:border-muted/50"
-                  >
-                    {t('cal.openShort')} <ChevronRight size={14} />
-                  </Link>
-                )}
+                {it.kind === 'avaliacao' && it.courseId && (() => {
+                  const assessmentObj = assessments.find((a) => a.id === it.refId);
+                  const assessmentCourse = courseById.get(it.courseId);
+                  return (
+                    <div className="flex shrink-0 items-center gap-1">
+                      {assessmentObj && assessmentCourse && (
+                        <button
+                          type="button"
+                          aria-label={t('courses:assess.edit')}
+                          title={t('courses:assess.edit')}
+                          onClick={() =>
+                            setEditingAssessment({ assessment: assessmentObj, course: assessmentCourse })
+                          }
+                          className="grid size-11 place-items-center rounded-lg text-muted transition hover:bg-surface hover:text-fg"
+                        >
+                          <Pencil size={15} />
+                        </button>
+                      )}
+                      <Link
+                        to={`/cadeiras/${it.courseId}`}
+                        aria-label={t('cal.openCourseAria')}
+                        title={t('cal.openCourseAria')}
+                        className="inline-flex min-h-11 shrink-0 items-center gap-0.5 rounded-lg border border-line bg-surface px-3 text-xs font-medium text-fg transition hover:border-muted/50"
+                      >
+                        {t('cal.openShort')} <ChevronRight size={14} />
+                      </Link>
+                    </div>
+                  );
+                })()}
               </li>
             );
           })}
@@ -228,6 +250,13 @@ export default function DayPanel({ date, items, courseById, onNewEvent }: Props)
         course={editingClass.course}
         initialSlot={editingClass.slot}
         onClose={() => setEditingClass(null)}
+      />
+    )}
+    {editingAssessment && (
+      <AssessmentFormModal
+        course={editingAssessment.course}
+        assessment={editingAssessment.assessment}
+        onClose={() => setEditingAssessment(null)}
       />
     )}
     {editingEvent && (
