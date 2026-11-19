@@ -56,6 +56,7 @@ export function ReadinessChart({ assessments, courses }: Props) {
 
   return (
     <ChartCard
+      tone="mint"
       title={t('charts.readiness.title')}
       isEmpty={points.length === 0}
       emptyTitle={t('charts.readiness.emptyTitle')}

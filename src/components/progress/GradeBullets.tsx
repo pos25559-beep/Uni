@@ -43,6 +43,7 @@ export function GradeBullets({ courses, assessments }: Props) {
 
   return (
     <ChartCard
+      tone="sky"
       title={t('charts.gradeBullets.title')}
       isEmpty={courses.length === 0}
       emptyTitle={t('charts.gradeBullets.emptyTitle')}

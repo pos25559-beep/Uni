@@ -24,6 +24,7 @@ export function PlannedDoneChart({ sessions, range }: Props) {
 
   return (
     <ChartCard
+      tone="butter"
       title={t('charts.plannedDone.title')}
       isEmpty={isEmpty}
       emptyTitle={t('charts.plannedDone.emptyTitle')}

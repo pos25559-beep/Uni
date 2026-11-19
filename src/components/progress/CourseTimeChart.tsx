@@ -23,6 +23,7 @@ export function CourseTimeChart({ courses, sessions, range }: Props) {
 
   return (
     <ChartCard
+      tone="sky"
       title={t('charts.courseTime.title')}
       isEmpty={rows.length === 0}
       emptyTitle={t('charts.courseTime.emptyTitle')}

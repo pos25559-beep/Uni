@@ -320,6 +320,7 @@ export default function ProgressPage() {
 
         return (
           <Card
+            className="!border-[#EDBE9A]/70 !bg-pastel-peach/40 dark:!border-line dark:!bg-surface"
             title={t('logs.title')}
             action={
               <Button

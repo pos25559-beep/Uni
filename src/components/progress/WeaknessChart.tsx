@@ -29,6 +29,7 @@ export function WeaknessChart({ courses }: Props) {
 
   return (
     <ChartCard
+      tone="blush"
       title={t('charts.weakness.title')}
       isEmpty={rows.length === 0}
       emptyTitle={t('charts.weakness.emptyTitle')}

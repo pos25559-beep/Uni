@@ -36,6 +36,7 @@ export function StudyByDayChart({ courses, sessions, settings, range }: Props) {
 
   return (
     <ChartCard
+      tone="mint"
       title={t('charts.studyByDay.title')}
       isEmpty={total === 0}
       emptyTitle={t('charts.studyByDay.emptyTitle')}

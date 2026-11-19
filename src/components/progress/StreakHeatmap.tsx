@@ -41,6 +41,7 @@ export function StreakHeatmap({ sessions, now }: Props) {
 
   return (
     <ChartCard
+      tone="butter"
       title={t('progress:charts.streakHeatmap.title')}
       isEmpty={map.activeDays === 0}
       emptyTitle={t('progress:charts.streakHeatmap.emptyTitle')}

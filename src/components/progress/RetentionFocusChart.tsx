@@ -54,6 +54,7 @@ export function RetentionFocusChart({ courses, sessions, dayKey, onPracticeTopic
 
   return (
     <ChartCard
+      tone="sage"
       title={t('retention.title')}
       isEmpty={isEmpty}
       emptyTitle={t('retention.emptyTitle')}
