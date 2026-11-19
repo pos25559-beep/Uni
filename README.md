@@ -41,9 +41,9 @@ npm run android:sync # Build web + npx cap sync android
 Site público da Unipedia, separado da app mas no mesmo repositório e no mesmo projeto Firebase (2.º site do Hosting, `unipedia-site`, em https://unipedia-site.web.app).
 
 - **Stack**: React 19 + Vite (`vite.site.config.ts`, raiz `site/`), Tailwind v4 com os mesmos tokens da app (`src/styles/tokens.css`) e Motion.
-- **Páginas**: início + uma página por área (Plano, Foco, Prática, Progresso, Uni), com endereço traduzido (`/foco`, `/en/focus`, `/es/practica`…); rotas em `site/src/routes.ts`.
+- **Páginas**: início + Começar (onboarding), Plano, Materiais, Progresso e Os Unis, com endereço traduzido (`/comecar`, `/en/get-started`, `/es/materiales`…); rotas em `site/src/routes.ts`.
 - **Línguas**: pt-PT (`/`), pt-BR (`/br`), es (`/es`) e en (`/en`); textos em `site/src/locales/*.json` (paridade verificada por `scripts/site-i18n-check.mjs`). Os textos dos ecrãs simulados (`app.*`) vêm dos textos reais da app.
-- **Demonstração**: telemóvel em HTML (`site/src/screens.tsx`) que percorre Hoje → Plano → Foco → Prática → Progresso → Uni, com separadores e pausa; para com movimento reduzido e fora do ecrã.
+- **Ecrãs reais**: todas as imagens da app no site são capturas da app verdadeira com a demonstração (`?demo=1`), em 4 línguas e claro/escuro (`site/public/screens/`). Quando a interface mudar: `npm run site:screens` (`scripts/site-screens.py`). A demonstração do hero percorre Hoje → Plano → Cadeiras → Materiais → Tutor → Unis.
 - **Tema**: claro/escuro pelo botão da barra (guardado no navegador); por omissão segue o sistema.
 - **Pré-render**: `scripts/site-prerender.mjs` gera as 24 páginas (6 × 4 línguas) com `<title>`, descrição, `canonical` e `hreflang`.
 

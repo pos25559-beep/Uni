@@ -19,7 +19,8 @@
     "site:dev": "vite --config vite.site.config.ts",
     "site:build": "node scripts/site-i18n-check.mjs && vite build --config vite.site.config.ts && vite build --config vite.site.config.ts --ssr src/entry-server.tsx --outDir ../dist-site-ssr && node scripts/site-prerender.mjs",
     "site:preview": "vite preview --config vite.site.config.ts",
-    "site:record": "npm run build && python3 scripts/record-demo.py"
+    "site:record": "npm run build && python3 scripts/record-demo.py",
+    "site:screens": "npm run build && python3 scripts/site-screens.py"
   },
   "dependencies": {
     "@capacitor/android": "^8.6.2",

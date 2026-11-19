@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* O site de apresentação (site/) tem o seu próprio CSS; não entra no da app. */
+@source not "../site";
 @import "driver.js/dist/driver.css";
 
 @import "./styles/tokens.css";

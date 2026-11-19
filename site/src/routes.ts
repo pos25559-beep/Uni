@@ -1,18 +1,18 @@
 import { createContext, useContext } from 'react';
 import { LANGS, type Lang, type LangCode } from './i18n';
 
-/** Páginas do site. «home» é a página inicial; as outras explicam uma área da app. */
-export const PAGES = ['home', 'plano', 'foco', 'pratica', 'progresso', 'uni'] as const;
+/** Páginas do site. «home» é a página inicial; as outras explicam uma área da app (Começar = onboarding). */
+export const PAGES = ['home', 'comecar', 'plano', 'materiais', 'progresso', 'uni'] as const;
 export type PageId = (typeof PAGES)[number];
 export type FeatureId = Exclude<PageId, 'home'>;
-export const FEATURES: FeatureId[] = ['plano', 'foco', 'pratica', 'progresso', 'uni'];
+export const FEATURES: FeatureId[] = ['comecar', 'plano', 'materiais', 'progresso', 'uni'];
 
 /** Endereço traduzido de cada página (o mesmo conteúdo, com o slug na língua). */
 const SLUGS: Record<LangCode, Record<FeatureId, string>> = {
-  'pt-PT': { plano: 'plano', foco: 'foco', pratica: 'pratica', progresso: 'progresso', uni: 'uni' },
-  'pt-BR': { plano: 'plano', foco: 'foco', pratica: 'pratica', progresso: 'progresso', uni: 'uni' },
-  es: { plano: 'plan', foco: 'foco', pratica: 'practica', progresso: 'progreso', uni: 'uni' },
-  en: { plano: 'plan', foco: 'focus', pratica: 'practice', progresso: 'progress', uni: 'uni' },
+  'pt-PT': { comecar: 'comecar', plano: 'plano', materiais: 'materiais', progresso: 'progresso', uni: 'unis' },
+  'pt-BR': { comecar: 'comecar', plano: 'plano', materiais: 'materiais', progresso: 'progresso', uni: 'unis' },
+  es: { comecar: 'empezar', plano: 'plan', materiais: 'materiales', progresso: 'progreso', uni: 'unis' },
+  en: { comecar: 'get-started', plano: 'plan', materiais: 'materials', progresso: 'progress', uni: 'unis' },
 };
 
 /** Caminho público de uma página numa língua (sem barra final; a raiz de pt-PT é «/»). */

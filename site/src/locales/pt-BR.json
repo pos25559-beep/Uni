@@ -9,11 +9,11 @@
     "menu": "Menu",
     "home": "Unipedia, início",
     "features": {
+      "comecar": "Começar",
       "plano": "Plano",
-      "foco": "Foco",
-      "pratica": "Prática",
+      "materiais": "Materiais",
       "progresso": "Progresso",
-      "uni": "O Uni"
+      "uni": "Os Unis"
     },
     "toLight": "Mudar para o tema claro",
     "toDark": "Mudar para o tema escuro"
@@ -43,33 +43,33 @@
   ],
   "how": {
     "kicker": "Como funciona",
-    "title": "Um ciclo simples,",
-    "titleEm": "todo dia.",
-    "sub": "Planejar, focar, praticar, medir. O app cuida da parte chata para você cuidar do estudo.",
+    "title": "Da grade horária à prova,",
+    "titleEm": "num só caderno.",
+    "sub": "Uma foto para começar, um plano que se organiza sozinho, seus materiais num lugar e um Uni que acompanha cada matéria.",
     "steps": {
+      "start": {
+        "label": "Começar",
+        "title": "Uma foto da grade e as matérias aparecem",
+        "body": "Você tira um print da grade horária e o Uni reconhece matérias, aulas e avaliações. Outra foto das datas das provas e o semestre fica montado.",
+        "detail": "Também pelo Google Agenda, arquivo .ics ou texto do portal."
+      },
       "plan": {
-        "label": "Planejar",
+        "label": "Plano",
         "title": "Um plano que conhece as suas provas",
-        "body": "Informe as datas das avaliações e o tempo que você tem. O plano distribui a matéria pela semana, começa mais cedo o que pesa mais e avisa quando não cabe tudo.",
-        "detail": "Cabe tudo com 2 h por dia. Comecei Cálculo uma semana antes."
+        "body": "Os blocos se distribuem pela semana conforme as datas e o peso de cada avaliação. Se um dia não der, o que ficou para trás volta a caber.",
+        "detail": "Plano atualizado · Desfazer"
       },
-      "focus": {
-        "label": "Focar",
-        "title": "Um bloco de cada vez, sem distrações",
-        "body": "Você toca em «Iniciar» e o resto do mundo espera. Escudo anti-distração opcional, som ambiente e um anel que mostra quanto falta. Se sair, você volta sem perder nada.",
-        "detail": "Foco limpo · 0 saídas da tela"
-      },
-      "practice": {
-        "label": "Praticar",
-        "title": "Perguntas tiradas das suas anotações",
-        "body": "No fim do bloco, o app pergunta a matéria a partir dos seus PDFs e slides. Você diz como foi e ele volta a perguntar no dia certo.",
-        "detail": "Pergunto isso de novo na quinta."
+      "materials": {
+        "label": "Materiais",
+        "title": "Seus PDFs, Drives e pastas num lugar",
+        "body": "Conecte o Google Drive, pastas compartilhadas do curso ou pastas do computador. O app organiza tudo por matéria e o Uni usa isso para responder.",
+        "detail": "Provas antigas, apostilas, slides e listas, por matéria."
       },
       "measure": {
-        "label": "Medir",
-        "title": "Você vê o que ficou, não só o tempo que passou",
-        "body": "Retenção estimada por tópico e por matéria, revisões pendentes e os tópicos frágeis que valem a pena agora. Estimativas mostradas como estimativas.",
-        "detail": "3 tópicos frágeis antes da prova de Física"
+        "label": "Progresso",
+        "title": "Você vê o que ficou, não só o tempo",
+        "body": "Retenção estimada por matéria, revisões pendentes, constância e a maestria real de cada Uni. Estimativas mostradas como estimativas.",
+        "detail": "Até 3 prioridades por semana, não 30."
       }
     }
   },
@@ -98,52 +98,6 @@
         "title": "O tempo que tem, bem usado",
         "body": "Não dá para um bloco, dá para as revisões pendentes. Seis cartões, incluindo o que você errou ontem."
       }
-    ]
-  },
-  "mock": {
-    "greeting": "Boa tarde,",
-    "name": "Ana",
-    "today": "Hoje",
-    "week": "Esta semana",
-    "focusToday": "Foco de hoje",
-    "openPlan": "Abrir plano",
-    "haveNow": "Tenho agora:",
-    "course1": "Cálculo I",
-    "course2": "Física",
-    "course3": "Programação",
-    "topic1": "Derivadas e Regras de Derivação",
-    "topic2": "Leis de Newton e Atrito",
-    "topic3": "Funções e Recursão",
-    "why": "A prova vale 40 % e é daqui a 6 dias.",
-    "start": "Começar",
-    "question": "Qual é a derivada de x² · sen x?",
-    "answerHint": "Regra do produto",
-    "source": "p. 14 dos slides da aula 6",
-    "again": "Revisar já",
-    "effort": "Com esforço",
-    "mastered": "Dominei",
-    "toast": "Ontem ficaram 100 min por fazer. Coloquei 50 hoje e 50 no sábado; a prova de Cálculo continua coberta.",
-    "undo": "Desfazer",
-    "due": "Revisões pendentes",
-    "cards": "6 cartões · 8 min",
-    "review": "Revisar agora",
-    "retention": "Retenção",
-    "estimate": "estimativa",
-    "days": [
-      "SEG",
-      "TER",
-      "QUA",
-      "QUI",
-      "SEX",
-      "SÁB",
-      "DOM"
-    ],
-    "dock": [
-      "Matérias",
-      "Plano",
-      "Hoje",
-      "Tutor",
-      "Mais"
     ]
   },
   "principles": {
@@ -178,10 +132,7 @@
       "Explica a matéria a partir dos seus PDFs, slides e fotos.",
       "Monta um plano até a próxima prova numa conversa.",
       "Diz «isso não está nos seus materiais» quando for o caso."
-    ],
-    "chatQ": "O que eu devo estudar hoje?",
-    "chatA": "Eu começaria por Derivadas (25 min): a prova de Cálculo I vale 40 % e é semana que vem. Depois, 10 min com os cartões de Limites que você errou ontem.",
-    "chatNote": "Com base no seu plano e nos seus materiais"
+    ]
   },
   "privacy": {
     "kicker": "Seus dados",
@@ -255,28 +206,107 @@
     "back": "Voltar ao início"
   },
   "demo": {
-    "label": "Demonstração do app Unipedia",
-    "tabsLabel": "Escolher tela da demonstração",
+    "label": "Telas reais do app Unipedia",
+    "tabsLabel": "Escolher tela",
     "pause": "Pausar demonstração",
     "play": "Continuar demonstração",
     "tabs": {
       "hoje": "Hoje",
       "plano": "Plano",
-      "foco": "Foco",
-      "pratica": "Prática",
-      "progresso": "Progresso",
-      "uni": "Uni"
+      "cadeiras": "Matérias",
+      "materiais": "Materiais",
+      "tutor": "Tutor",
+      "unis": "Unis"
     },
     "captions": {
-      "hoje": "Você abre e tem uma coisa esperando: o bloco certo, com o porquê.",
+      "hoje": "Você abre e tem uma coisa esperando: o foco de hoje, com os blocos certos.",
       "plano": "A semana se organiza em torno das suas provas, e o que ficou para trás volta a caber.",
-      "foco": "Um bloco de cada vez, com escudo anti-distração e som ambiente.",
-      "pratica": "No fim do bloco, perguntas da sua matéria. Você diz como foi.",
-      "progresso": "Você vê o que ficou: retenção por matéria e o que revisar em seguida.",
-      "uni": "O Uni conhece o seu semestre e responde com os seus materiais."
+      "cadeiras": "Cada matéria é uma pasta: conteúdo, materiais, horário, tarefas e o seu Uni.",
+      "materiais": "PDFs, Drives e pastas do computador, organizados por matéria.",
+      "tutor": "O Uni conhece o seu semestre e responde com os seus materiais.",
+      "unis": "Um Uni por matéria, com forma, cor e personalidade, que evolui com o seu domínio real."
     }
   },
   "pages": {
+    "comecar": {
+      "meta": {
+        "title": "Começar — Unipedia",
+        "description": "Uma foto da grade horária e outra das datas das provas bastam para montar o semestre: matérias, aulas, avaliações e um primeiro plano, em minutos."
+      },
+      "kicker": "Começar",
+      "title": "O semestre montado",
+      "titleEm": "numa foto.",
+      "sub": "Você não precisa digitar matéria por matéria. Tira um print da grade horária e o Uni reconhece as matérias e as aulas; manda outro das datas das provas e o plano começa sozinho.",
+      "sections": [
+        {
+          "title": "O seu curso, sem formulários longos",
+          "body": "Você escolhe a faculdade ou escola, o curso, o ano e o semestre. O app calcula o ponto de partida e os créditos para você.",
+          "points": [
+            "Ensino Superior e Ensino Médio",
+            "Graduação, mestrado ou misto",
+            "Dá para ajustar tudo depois"
+          ]
+        },
+        {
+          "title": "Um print da grade horária",
+          "body": "Em «Ler print do horário», o app lê a imagem e devolve as matérias e as aulas reconhecidas, prontas para confirmar.",
+          "points": [
+            "Também colando o texto do portal",
+            "Ou pelo Google Agenda e arquivo .ics",
+            "A leitura usa o Uni (Gemini); dá para desligar nas Configurações"
+          ]
+        },
+        {
+          "title": "As datas das provas, também por foto",
+          "body": "No Hub de estudo você envia um print do calendário de avaliações ao Uni, ou adiciona à mão. Ainda não tem datas? O plano começa leve e se reorganiza quando elas chegarem.",
+          "points": [
+            "Nome, data, hora e peso de cada avaliação",
+            "Google Agenda conectado, se quiser",
+            "Modo Arranque para as primeiras semanas"
+          ]
+        },
+        {
+          "title": "O Hub junta o resto",
+          "body": "Conecte só o que você já tem: Drives compartilhados do curso, PDFs do computador, o portal da matéria ou um caderno externo. Depois, «Gerar meu Plano agora».",
+          "points": [
+            "Escolha o momento: calouro ou veterano, início ou meio",
+            "Mostra o que já está conectado e o que falta",
+            "Continuar depois, sem perder nada"
+          ]
+        }
+      ],
+      "steps": {
+        "title": "Em três passos",
+        "items": [
+          {
+            "title": "Curso e semestre",
+            "body": "Faculdade, curso, ano e semestre atual."
+          },
+          {
+            "title": "Matérias pela grade",
+            "body": "Um print da grade horária, ou o texto do portal."
+          },
+          {
+            "title": "Provas e materiais",
+            "body": "Print das datas, Drive e PDFs, no Hub."
+          }
+        ]
+      },
+      "faq": [
+        {
+          "q": "Preciso de conta para começar?",
+          "a": "Não. Dá para usar tudo no aparelho. A conta só serve para salvar e sincronizar entre aparelhos."
+        },
+        {
+          "q": "O que acontece com a foto da grade?",
+          "a": "Ela é enviada ao Uni (Gemini, do Google) só para ler as matérias, aulas e datas. Você pode desligar a leitura automática nas Configurações e digitar à mão."
+        },
+        {
+          "q": "E se o horário mudar no meio do semestre?",
+          "a": "Você importa de novo ou edita a matéria. O plano se recalcula e mostra «Desfazer»."
+        }
+      ]
+    },
     "plano": {
       "meta": {
         "title": "Plano de estudo — Unipedia",
@@ -285,42 +315,42 @@
       "kicker": "Plano",
       "title": "A semana se organiza",
       "titleEm": "sozinha.",
-      "sub": "Você informa as matérias, quando são as provas e quanto tempo tem por dia. O plano distribui o conteúdo, começa antes o que pesa mais e reorganiza tudo quando um dia não sai como o previsto.",
+      "sub": "Com as matérias e as provas no app, o plano distribui o conteúdo pelos dias que você escolheu, começa antes o que pesa mais e reorganiza tudo quando um dia não sai como o previsto.",
       "sections": [
         {
           "title": "Feito em torno das suas provas",
-          "body": "Os blocos aparecem na semana conforme as datas e o peso de cada avaliação. Você escolhe os dias e a meta diária; o app faz as contas.",
+          "body": "Você escolhe os dias e as horas por dia; o plano cuida do resto. Cada dia mostra a hora, a matéria, o tópico e os minutos de cada bloco.",
           "points": [
-            "Faixa semanal de segunda a domingo, com visão de dia e de semana",
+            "Visão de dia e de semana",
             "Ritmo do seu jeito, por exemplo segunda a sábado, 2 h por dia",
-            "Cada bloco mostra a matéria, o tópico e os minutos"
+            "«Atualizar» refaz o plano quando você quiser"
           ]
         },
         {
           "title": "O que ficou para trás volta a caber",
-          "body": "Um bloco que você não fez não fica em vermelho para sempre. Ele aparece em «Ficou para trás» e você escolhe: encaixar em outro dia, mover para hoje ou descartar.",
+          "body": "Um bloco que você não fez aparece em «Ficou para trás». Você escolhe: encaixar em outro dia, mover para hoje ou descartar.",
           "points": [
             "Sem contadores de atraso nem castigos",
             "O plano novo já conta com o que ficou por fazer",
-            "Sempre com «Desfazer» quando o plano muda"
+            "«Plano atualizado · Desfazer» sempre que muda"
           ]
         },
         {
-          "title": "Automático ou manual",
-          "body": "No modo automático o plano se recalcula quando algo muda. No modo manual seus blocos ficam como você deixou e o app só sugere.",
+          "title": "No Hoje, só o que importa agora",
+          "body": "A tela Hoje mostra o foco do dia. Se você só tem um tempinho, «Tenho agora 10, 25 ou 50 min» dá o bloco que cabe.",
           "points": [
-            "Troque de modo quando quiser",
-            "«Tenho agora 10, 25 ou 50 min» na tela Hoje",
-            "Os blocos podem ser editados à mão"
+            "Blocos marcados como feitos com um toque",
+            "Notas e tarefas na mesma tela",
+            "Agenda do dia e próximas provas"
           ]
         },
         {
-          "title": "Conversas curtas que ajustam o plano",
-          "body": "Depois da aula, no fim do dia, no domingo ou antes de uma prova, você conta ao Uni como foi, do seu jeito. Ele alinha os tópicos e os próximos blocos.",
+          "title": "Foco com escudo, quando quiser",
+          "body": "Cada bloco abre um timer com escudo anti-distração opcional e som ambiente. Se terminar antes, ficam os minutos reais e o resto volta para o plano.",
           "points": [
-            "«Cai até o slide 8 e já revisei T01–T03»",
-            "Se disser que está cansado, os blocos de amanhã ficam mais curtos",
-            "Rascunhos salvos automaticamente"
+            "Tela cheia e tela sempre ligada",
+            "Silêncio, chuva ou ruído branco",
+            "No fim, prática do conteúdo do bloco"
           ]
         }
       ],
@@ -328,16 +358,16 @@
         "title": "Como usar",
         "items": [
           {
-            "title": "Adicione as matérias",
-            "body": "Escolha o curso e as matérias, ou tire uma foto da grade horária."
+            "title": "Junte matérias e provas",
+            "body": "Pela foto da grade e das datas, em «Começar»."
           },
           {
-            "title": "Marque as provas",
-            "body": "Datas e conteúdo de cada avaliação. Dá para adicionar depois."
+            "title": "Escolha o seu ritmo",
+            "body": "Os dias e as horas por dia, em Automático ou Manual."
           },
           {
-            "title": "Deixe o plano trabalhar",
-            "body": "Abra o Hoje e comece pelo primeiro bloco."
+            "title": "Abra o Hoje",
+            "body": "E comece pelo primeiro bloco."
           }
         ]
       },
@@ -356,50 +386,50 @@
         }
       ]
     },
-    "foco": {
+    "materiais": {
       "meta": {
-        "title": "Modo foco — Unipedia",
-        "description": "Um timer calmo para um bloco de cada vez, com escudo anti-distração opcional, som ambiente e registro honesto das saídas da tela."
+        "title": "Materiais — Unipedia",
+        "description": "Google Drive, pastas compartilhadas do curso, PDFs do computador e cadernos externos, organizados por matéria e usados pelo Uni para responder com as suas fontes."
       },
-      "kicker": "Foco",
-      "title": "Um bloco de cada vez,",
-      "titleEm": "sem barulho.",
-      "sub": "Você toca em «Iniciar» e o resto espera. O anel mostra quanto falta, o som ajuda a entrar no ritmo e, se sair da tela, você volta sem perder nada.",
+      "kicker": "Materiais",
+      "title": "Tudo o que você estuda,",
+      "titleEm": "num só lugar.",
+      "sub": "Apostilas no Drive, provas antigas numa pasta compartilhada, slides no portal, PDFs no computador. A Unipedia junta tudo, organiza por matéria e o Uni usa isso quando você pergunta.",
       "sections": [
         {
-          "title": "Um anel, um bloco, uma decisão",
-          "body": "A tela de foco mostra só o que importa: a matéria, o tópico e o tempo. Precisa de mais? «+ 5 min». Terminou? «Concluir».",
+          "title": "Conecte o Google Drive",
+          "body": "«Conectar e buscar no Drive» encontra PDFs e apostilas nas suas pastas. Associe a pasta principal do semestre e o app vai direto às pastas de cada matéria.",
           "points": [
-            "Blocos do plano ou rápidos de 10, 25 e 50 min",
-            "Pausar e retomar quando precisar",
-            "Se a tela recarregar, o bloco volta de onde parou"
+            "Pastas compartilhadas de colegas e do curso",
+            "Busque de novo quando quiser",
+            "Só lê as pastas que você associar"
           ]
         },
         {
-          "title": "Escudo anti-distração, se quiser",
-          "body": "O escudo é opcional. Coloca o app em tela cheia, mantém a tela ligada e silencia os lembretes do app durante o bloco.",
+          "title": "Pastas do computador ou do disco",
+          "body": "Importe arquivos e pastas inteiras do aparelho: provas, apostilas e o que você baixou do portal. Organize em subpastas com o nome ou a sigla da matéria.",
           "points": [
-            "Tela cheia e tela sempre ligada",
-            "No Android: modo Não Perturbe e fixar o app",
-            "Sem penalizar o seu progresso"
+            "Funciona sem conta",
+            "No celular, você escolhe os arquivos por matéria",
+            "Salvo neste aparelho"
           ]
         },
         {
-          "title": "Som ambiente para entrar no ritmo",
-          "body": "Silêncio, chuva ou ruído branco, gerados no próprio aparelho. Você liga e desliga sem sair do bloco.",
+          "title": "Organizado por matéria e por tipo",
+          "body": "Filtre por matéria e por origem, busque pelo título e fixe o que usa mais. Cada material tem tipo: prova antiga, exame, lista, apostila, slides ou relatório.",
           "points": [
-            "Funciona sem internet",
-            "Você escolhe no painel do escudo",
-            "Desliga quando quiser"
+            "«Fixados» no topo da biblioteca",
+            "Marque provas com resolução",
+            "Também na aba Materiais de cada matéria"
           ]
         },
         {
-          "title": "Honesto, não punitivo",
-          "body": "Se você sair da tela, o app registra a saída e diz «Bem-vindo de volta». Se terminar antes, ficam os minutos reais e o resto volta para o plano.",
+          "title": "O Uni lê as suas fontes",
+          "body": "No Tutor você escolhe as fontes: uma matéria, todas, ou só as anotações que anexar. As respostas e as perguntas de prática partem daí.",
           "points": [
-            "«Foco limpo · 0 saídas da tela» quando deu certo",
-            "Terminar antes: salvar os minutos reais ou descartar",
-            "No fim, segue direto para a prática"
+            "Anexe fotos e PDFs na conversa",
+            "Links do NotebookLM e do portal da matéria",
+            "Avisa quando algo não está nos seus materiais"
           ]
         }
       ],
@@ -407,126 +437,47 @@
         "title": "Como usar",
         "items": [
           {
-            "title": "Escolha o bloco",
-            "body": "O próximo do plano, ou «Tenho agora 25 min» no Hoje."
+            "title": "Abra Materiais",
+            "body": "No menu «Mais», ou na aba de cada matéria."
           },
           {
-            "title": "Toque em «Iniciar»",
-            "body": "Ligue o escudo e o som, se quiser."
+            "title": "Conecte uma origem",
+            "body": "Google Drive, uma pasta do aparelho ou um link."
           },
           {
-            "title": "Feche com prática",
-            "body": "No fim, três perguntas do conteúdo que você acabou de estudar."
+            "title": "Pergunte ao Uni",
+            "body": "Escolha a matéria como fonte e pergunte."
           }
         ]
       },
       "faq": [
         {
-          "q": "O escudo bloqueia outros apps?",
-          "a": "No navegador ele coloca a Unipedia em tela cheia e mantém a tela ligada. No app Android também pode ativar o Não Perturbe e fixar o app, com a sua autorização."
+          "q": "O app guarda cópias dos meus arquivos do Drive?",
+          "a": "Ele guarda a referência de cada arquivo e lê o conteúdo quando você precisa, com a sua autorização do Google Drive. Os arquivos do aparelho ficam no armazenamento local do navegador."
         },
         {
-          "q": "Perco o bloco se o celular bloquear?",
-          "a": "Não. O bloco volta de onde parou e você pode tocar em «Retomar»."
+          "q": "Posso usar o Drive compartilhado do meu curso?",
+          "a": "Sim. Você cola o link da pasta compartilhada e ela passa a fazer parte da biblioteca."
         },
         {
-          "q": "Sair da tela conta contra mim?",
-          "a": "Não. As saídas ficam registradas para você saber, mas o seu progresso continua intacto."
-        }
-      ]
-    },
-    "pratica": {
-      "meta": {
-        "title": "Prática e revisão — Unipedia",
-        "description": "Perguntas tiradas das suas anotações no fim de cada bloco, cartões feitos por você e revisões espaçadas no dia certo."
-      },
-      "kicker": "Prática",
-      "title": "Lembrar é o que",
-      "titleEm": "conta.",
-      "sub": "Reler não basta. No fim de cada bloco o app pergunta a matéria, a partir dos seus PDFs, slides e anotações. Você diz como foi e ele pergunta de novo no dia certo.",
-      "sections": [
-        {
-          "title": "Perguntas do seu conteúdo",
-          "body": "A prática usa os materiais que você enviou e as suas anotações recentes para criar cartões do tópico que acabou de estudar.",
-          "points": [
-            "3 a 5 cartões no fim de cada bloco",
-            "A partir de PDFs, slides, provas antigas e anotações",
-            "Também pelo botão «Praticar» em cada tópico"
-          ]
-        },
-        {
-          "title": "Explique com as suas palavras",
-          "body": "Antes de virar o cartão, tente explicar a ideia sem olhar as anotações. Depois revele a resposta e compare.",
-          "points": [
-            "Revelar com um toque",
-            "Dicas antes da resposta",
-            "Funciona até sem IA: você escreve e se avalia"
-          ]
-        },
-        {
-          "title": "Três botões, sem drama",
-          "body": "«Revisar já», «Com esforço» ou «Dominei». A sua resposta decide quando o cartão volta.",
-          "points": [
-            "Revisar já: volta amanhã",
-            "Com esforço: consolida em breve",
-            "Dominei: avança no ciclo de revisão espaçada"
-          ]
-        },
-        {
-          "title": "Cartões seus, offline",
-          "body": "Escreva um cartão à mão em segundos, mesmo sem internet. As revisões pendentes formam uma fila curta que cabe numa viagem de ônibus.",
-          "points": [
-            "«+ Novo cartão» em qualquer tópico",
-            "«Revisão rápida» no Plano",
-            "Revisões pendentes também no Progresso"
-          ]
-        }
-      ],
-      "steps": {
-        "title": "Como usar",
-        "items": [
-          {
-            "title": "Envie os materiais",
-            "body": "PDFs, slides ou provas antigas de cada matéria."
-          },
-          {
-            "title": "Estude um bloco",
-            "body": "No fim, a prática aparece sozinha."
-          },
-          {
-            "title": "Avalie com honestidade",
-            "body": "O app cuida de quando perguntar de novo."
-          }
-        ]
-      },
-      "faq": [
-        {
-          "q": "Preciso de IA para praticar?",
-          "a": "Não. Você pode escrever cartões à mão e se avaliar sozinho. A IA só ajuda a gerar perguntas a partir dos materiais."
-        },
-        {
-          "q": "De onde vêm as perguntas?",
-          "a": "Dos materiais que você enviou para a matéria e das anotações recentes do seu Diário do Uni."
-        },
-        {
-          "q": "Quando volta um cartão que errei?",
-          "a": "Com «Revisar já», volta no dia seguinte. Com «Dominei», o intervalo vai aumentando."
+          "q": "Preciso organizar as pastas de algum jeito?",
+          "a": "Ajuda ter uma pasta por matéria, com o nome ou a sigla. O guia de pastas na própria página explica como."
         }
       ]
     },
     "progresso": {
       "meta": {
         "title": "Progresso e retenção — Unipedia",
-        "description": "Retenção estimada por tópico e por matéria, revisões pendentes, tempo de estudo e as prioridades que fazem diferença antes da prova."
+        "description": "Retenção estimada por tópico e por matéria, revisões pendentes, constância e a estante dos seus Unis."
       },
       "kicker": "Progresso",
       "title": "Você vê o que ficou,",
       "titleEm": "não só as horas.",
-      "sub": "Tempo de estudo é só metade da história. O Progresso estima o que ficou na memória, tópico por tópico, e aponta o que vale a pena revisar agora.",
+      "sub": "Tempo de estudo é só metade da história. O Progresso estima o que ficou, matéria por matéria, e aponta o que vale a pena revisar agora.",
       "sections": [
         {
           "title": "O semestre num relance",
-          "body": "Progresso geral, tópicos concluídos ou revisados, média, tempo estudado, sequência e revisões pendentes, no mesmo cartão.",
+          "body": "Progresso geral, tópicos concluídos ou revisados, média, tempo estudado, sequência, retenção e revisões pendentes, no mesmo cartão.",
           "points": [
             "Visões de 7 dias, 30 dias e semestre",
             "Revisões pendentes a um toque",
@@ -534,8 +485,8 @@
           ]
         },
         {
-          "title": "Retenção estimada, e dita como estimativa",
-          "body": "A retenção junta o tempo desde a última revisão, os acertos reais na prática e a sequência de recall. É uma estimativa e o app mostra assim.",
+          "title": "Retenção estimada, dita como estimativa",
+          "body": "A retenção junta o tempo desde a última revisão, os acertos reais na prática e a sequência de recall. O app mostra como estimativa.",
           "points": [
             "Por tópico e por matéria",
             "Tópicos frágeis em destaque",
@@ -543,8 +494,8 @@
           ]
         },
         {
-          "title": "Quanto você estudou, sem culpa",
-          "body": "Um gráfico simples do tempo por dia diante da sua meta. Serve para ajustar o ritmo, não para punir.",
+          "title": "Constância, sem culpa",
+          "body": "Um mapa simples dos dias em que você estudou nas últimas semanas. Serve para ajustar o ritmo, não para punir.",
           "points": [
             "Tempo real dos blocos de foco",
             "Meta diária definida por você",
@@ -552,12 +503,12 @@
           ]
         },
         {
-          "title": "Até 3 prioridades, não 30",
-          "body": "Retenção e Qualidade de Foco termina com no máximo três ações concretas: o tópico a revisar, a matéria a reforçar, o hábito a ajustar.",
+          "title": "A estante dos seus Unis",
+          "body": "Cada Uni mostra a maestria real da sua matéria. Quando você a domina, ele ganha um diploma na Estante.",
           "points": [
-            "Cada prioridade abre a ação certa",
-            "Pensado para a semana antes da prova",
-            "Coleção dos seus Unis na Estante"
+            "Estágio e maestria por matéria",
+            "Diplomas com os tópicos dominados",
+            "Aparências e micropets desbloqueados"
           ]
         }
       ],
@@ -566,11 +517,11 @@
         "items": [
           {
             "title": "Estude e pratique",
-            "body": "Cada bloco e cada cartão alimentam o Progresso."
+            "body": "Cada bloco e cada revisão alimentam o Progresso."
           },
           {
             "title": "Abra o Progresso",
-            "body": "No menu «Mais», quando quiser ver o quadro geral."
+            "body": "No menu «Mais», quando quiser o quadro geral."
           },
           {
             "title": "Siga as prioridades",
@@ -589,54 +540,54 @@
         },
         {
           "q": "O que é a Estante?",
-          "a": "A coleção dos Unis que você desbloqueia enquanto estuda. É um extra; o essencial são as prioridades."
+          "a": "Onde ficam os seus Unis, os diplomas das matérias que você dominou e as aparências que desbloqueou."
         }
       ]
     },
     "uni": {
       "meta": {
-        "title": "O Uni, o tutor da Unipedia",
-        "description": "O Uni conhece o seu semestre: explica a matéria a partir dos seus materiais, propõe sessões e cartões com a sua confirmação e transforma anotações em guias, quizzes e podcasts."
+        "title": "Os Unis — Unipedia",
+        "description": "Um Uni por matéria: você escolhe a forma, a cor e a personalidade, e ele evolui de Ovo a Mestre com o seu domínio real. E um tutor que lê os seus materiais e cria cadernos, quizzes e podcasts."
       },
-      "kicker": "O Uni",
-      "title": "Um tutor que conhece",
-      "titleEm": "o seu semestre.",
-      "sub": "O Uni sabe as suas matérias, as datas das provas e o que você errou na prática. Por isso responde ao que você precisa agora, com os seus materiais, e avisa quando algo não está lá.",
+      "kicker": "Os Unis",
+      "title": "Um companheiro",
+      "titleEm": "por matéria.",
+      "sub": "O Uni é a cara da Unipedia: um companheiro de estudo que você adota em cada matéria e que cresce com você. E também é o tutor que conhece o seu semestre e responde com os seus materiais.",
       "sections": [
         {
-          "title": "Pergunte como a um colega",
-          "body": "Escreva, anexe uma foto do quadro ou um PDF, ou comece por uma sugestão. O Uni responde no seu ritmo, numa conversa que fica salva.",
+          "title": "Adote um Uni em cada matéria",
+          "body": "Você escolhe a forma (Nuvem, Gota, Estrela, Cristal ou Folha), a cor, o nome, a personalidade de ensino e até o idioma em que ele fala com você nessa matéria.",
           "points": [
-            "«O que eu devo estudar hoje?»",
-            "«Onde estou mais fraco?» e «Resumo da minha semana»",
-            "Quiz rápido e explicações com exemplo e erro comum"
+            "Personalidades como Curioso ou Treinador",
+            "Exemplos primeiro, teoria ou exercícios",
+            "Uma voz para cada Uni, se quiser"
           ]
         },
         {
-          "title": "Ele propõe, você decide",
-          "body": "Quando faz sentido, o Uni propõe uma ação: uma sessão de estudo, cartões de prática ou uma dúvida para levar à aula. Nada é salvo sem você tocar em «Confirmar e salvar».",
+          "title": "Cresce com o seu domínio real",
+          "body": "Cada Uni passa de Ovo a Aprendiz, Explorador, Especialista e Mestre, só com a maestria real da matéria: revisões, prática e provas. Não se compra, não se finge.",
           "points": [
-            "Sessões de estudo com dia e minutos",
-            "Cartões de prática ligados ao tópico",
-            "Dúvidas salvas para a aula"
+            "Maestria de 0 a 100 por matéria",
+            "Próximo estágio e próxima prova à vista",
+            "Quando termina, ensina o método ao próximo Uni"
           ]
         },
         {
-          "title": "Caderno do Uni",
-          "body": "Cole anotações, junte PDFs, fotos ou uma gravação da aula e escolha o que quer: um guia de estudo, um quiz com citações, um resumo rápido ou um podcast a duas vozes.",
+          "title": "A estante, os pets e o carinho",
+          "body": "Os Unis vivem na Estante, com os diplomas das matérias que você dominou. Você ganha cores e micropets estudando, e há a energia do dia para encher com sessões e tarefas.",
           "points": [
-            "Citações com a fonte de cada resposta",
-            "Exporta em PDF ou Markdown",
-            "Anotações de voz transcritas"
+            "Unis & Diplomas",
+            "Aparências & Micropets",
+            "Um carinho no Uni também conta"
           ]
         },
         {
-          "title": "Diário do Uni",
-          "body": "Conversas curtas depois da aula, no fim do dia, no domingo ou antes de uma prova. O que você contar alinha os tópicos e o plano.",
+          "title": "E um tutor de verdade",
+          "body": "No Tutor, o Uni explica a matéria a partir dos seus materiais, faz quizzes, cria planos até a próxima prova e propõe sessões ou cartões que só são salvos se você confirmar. O Caderno do Uni transforma anotações, PDFs e gravações em guias, quizzes com citações, resumos e podcasts.",
           "points": [
-            "Respostas rápidas para quando falta paciência",
-            "«Cai até o slide 8» vira o conteúdo da prova",
-            "Tudo fica no seu histórico do Progresso"
+            "Fotos e PDFs na conversa",
+            "Anotações de voz transcritas e exportação em PDF",
+            "Até 15 mensagens por dia incluídas"
           ]
         }
       ],
@@ -644,109 +595,59 @@
         "title": "Como usar",
         "items": [
           {
-            "title": "Ative o Uni",
-            "body": "Um toque, e você fica sabendo que dados vão para o Google (Gemini)."
+            "title": "Abra uma matéria",
+            "body": "E toque em «Adotar Uni»."
           },
           {
-            "title": "Escolha as fontes",
-            "body": "Uma matéria, todas, ou só as anotações que você anexar."
+            "title": "Dê forma a ele",
+            "body": "Forma, cor, nome, personalidade e idioma."
           },
           {
-            "title": "Pergunte",
-            "body": "Ou comece por uma das sugestões."
+            "title": "Estude",
+            "body": "Ele evolui com o seu domínio real."
           }
         ]
       },
       "faq": [
         {
-          "q": "O Uni é gratuito?",
+          "q": "Os Unis são só decoração?",
+          "a": "Não. Cada Uni guarda o estilo de ensino da matéria e mostra a sua maestria real. O lado lúdico existe para estudar ficar mais leve, não para prender você na tela."
+        },
+        {
+          "q": "O tutor é gratuito?",
           "a": "Inclui até 15 mensagens por dia. Se quiser mais, você pode usar uma chave pessoal gratuita do Google, explicada no app."
         },
         {
           "q": "O Uni pode errar?",
-          "a": "Pode. Por isso cada resposta tem «Isto está errado» para marcar, e o Uni avisa quando algo não está nos seus materiais."
-        },
-        {
-          "q": "O Uni faz os trabalhos por mim?",
-          "a": "O objetivo é você entender a matéria: ele explica, dá dicas e mostra o método. O app inteiro funciona sem o Uni ativado."
+          "a": "Pode. Cada resposta tem «Isto está errado» para marcar, e o Uni avisa quando algo não está nos seus materiais."
         }
       ]
     }
   },
   "app": {
-    "plan": {
-      "title": "Plano de",
-      "auto": "Automático",
-      "manual": "Manual",
-      "behind": "Ficou para trás",
-      "fit": "Encaixar",
-      "moveToday": "Mover para hoje",
-      "discard": "Descartar",
-      "update": "Atualizar",
-      "day": "Dia",
-      "week": "Semana",
-      "replanned": "Plano atualizado",
-      "undo": "Desfazer",
-      "titleEm": "estudo"
-    },
-    "focus": {
-      "start": "Iniciar",
-      "finish": "Concluir",
-      "shield": "Escudo antidistração",
-      "optional": "Opcional",
-      "fullscreen": "Tela cheia",
-      "awake": "Tela ligada",
-      "sound": "Som ambiente",
-      "silence": "Silêncio",
-      "rain": "Chuva",
-      "white": "Branco",
-      "done": "Sessão concluída",
-      "clean": "Foco limpo · 0 saídas da tela",
-      "early": "Terminar sessão mais cedo?",
-      "keep": "Continuar estudando",
-      "pause": "Pausar"
-    },
-    "practice": {
-      "reveal": "Revelar resposta",
-      "newCard": "Novo cartão",
-      "againHint": "Errei pontos-chave — volta amanhã (1d)",
-      "effortHint": "Lembrei parte — consolida em breve",
-      "masteredHint": "Expliquei sem cola — avança no ciclo SRS",
-      "quickReview": "Revisão rápida"
-    },
     "uni": {
-      "starter2": "Crie um plano até a próxima prova",
-      "starter3": "Faça um quiz rápido comigo",
-      "weekL": "Resumo da minha semana",
-      "weakL": "Onde estou mais fraco?",
-      "proposal": "Ação proposta pelo Uni",
-      "createSession": "Nova sessão de estudo",
-      "createFlashcards": "Novos flashcards de prática",
-      "markDoubt": "Registrar dúvida para a aula",
-      "confirm": "Confirmar e salvar",
-      "cancel": "Recusar",
-      "askUni": "Pergunte ao Uni…",
-      "wrong": "Isso está errado",
+      "notebook": "Caderno do Uni",
       "guide": "Guia de Estudo",
       "quiz": "Quiz com Citações",
       "summary": "Resumo Rápido",
-      "podcast": "Podcast",
-      "notebook": "Caderno do Uni",
-      "tabClass": "Aula",
-      "tabDay": "Dia",
-      "tabWeek": "Semana",
-      "tabExam": "Prova",
-      "photoPdf": "Foto / PDF"
-    },
-    "progress": {
-      "sevenDays": "7 dias",
-      "thirtyDays": "30 dias",
-      "semester": "Semestre",
-      "overall": "Progresso geral do semestre",
-      "retention": "Retenção",
-      "streak": "Sequência",
-      "reviews": "Revisões",
-      "perDay": "Quanto estudei por dia?"
+      "podcast": "Podcast"
     }
+  },
+  "shots": {
+    "hoje": "Tela Hoje da Unipedia, com o foco de hoje e os blocos de estudo",
+    "plano": "Tela Plano de estudo, com o que ficou para trás e os modos automático e manual",
+    "cadeiras": "Tela Suas matérias, com as pastas das matérias",
+    "calendario": "Calendário acadêmico com aulas, avaliações e estudo",
+    "materiais": "Biblioteca de materiais com busca no Google Drive e pastas do aparelho",
+    "progresso": "Tela de progresso com o progresso geral do semestre",
+    "foco": "Timer de foco com escudo anti-distração e som ambiente",
+    "tutor": "Tutor Uni com sugestões de perguntas",
+    "uni-adotar": "Adotar um Uni para uma matéria, com formas e cores",
+    "cadeira": "Página de uma matéria com o Uni especialista e a maestria real",
+    "estante": "Estante dos Unis com diplomas e aparências",
+    "onboarding": "Configuração inicial: curso e semestre",
+    "onboarding-cadeiras": "Configuração inicial: importar a grade horária a partir de um print",
+    "hub": "Hub de estudo: em que momento do semestre você está",
+    "hub-passos": "Hub de estudo: horários, datas das provas, Drives e portais"
   }
 }

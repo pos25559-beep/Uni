@@ -1,6 +1,5 @@
 import { motion, useReducedMotion } from 'motion/react';
 import type { ReactNode } from 'react';
-import { useCopy } from './i18n';
 
 export const SPRING = { type: 'spring', stiffness: 380, damping: 24, mass: 0.85 } as const;
 
@@ -84,106 +83,5 @@ export function UniFace({ size = 120, mood = 'happy', className }: { size?: numb
       <path d="M27.4 38.4C29.1 41.7 34.9 41.7 36.6 38.4" stroke="#141312" strokeWidth="2.2" strokeLinecap="round" />
       <circle cx="51" cy="13.5" r="4" fill="#FCE99F" stroke="#141312" strokeWidth="1.5" />
     </motion.svg>
-  );
-}
-
-/* ------------------------------------------------------------------ recortes da app */
-
-export function Chip({ children, tone = 'sky' }: { children: ReactNode; tone?: 'sky' | 'mint' | 'butter' | 'peach' }) {
-  const bg = { sky: 'bg-pastel-sky', mint: 'bg-pastel-mint', butter: 'bg-pastel-butter', peach: 'bg-pastel-peach' }[tone];
-  const dot = { sky: 'bg-[#1D63D8]', mint: 'bg-accent', butter: 'bg-[#C77700]', peach: 'bg-coral' }[tone];
-  return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full ${bg} px-2.5 py-0.5 text-xs font-semibold text-fg`}>
-      <span className={`size-1.5 rounded-full ${dot}`} />
-      {children}
-    </span>
-  );
-}
-
-export function PlanWeek() {
-  const m = useCopy().mock;
-  const load = [2, 3, 2, 3, 1, 1, 0];
-  const tones = ['bg-pastel-sky', 'bg-pastel-mint', 'bg-pastel-butter', 'bg-pastel-peach'];
-  return (
-    <div className="grid grid-cols-7 gap-1.5">
-      {m.days.map((d, i) => (
-        <div key={d} className="flex flex-col items-center gap-1.5">
-          <span className={`font-mono text-xs ${i === 3 ? 'font-bold text-fg' : 'text-muted'}`}>{d}</span>
-          <div className="flex h-24 w-full flex-col justify-end gap-1 rounded-xl bg-surface/70 p-1">
-            {Array.from({ length: load[i] }).map((_, j) => (
-              <motion.span
-                key={j}
-                initial={{ scaleY: 0 }}
-                whileInView={{ scaleY: 1 }}
-                viewport={{ once: true }}
-                transition={{ ...SPRING, delay: 0.05 * (i + j) }}
-                style={{ transformOrigin: 'bottom' }}
-                className={`block h-5 rounded-md ${tones[(i + j) % tones.length]} ring-1 ring-fg/10`}
-              />
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-export function FocusRing({ progress = 0.68, label = '08:00' }: { progress?: number; label?: string }) {
-  const r = 52;
-  const c = 2 * Math.PI * r;
-  return (
-    <div className="relative mx-auto grid size-44 place-items-center">
-      <svg viewBox="0 0 120 120" className="absolute inset-0 -rotate-90" aria-hidden="true">
-        <circle cx="60" cy="60" r={r} stroke="var(--surface-2)" strokeWidth="7" fill="none" />
-        <motion.circle
-          cx="60"
-          cy="60"
-          r={r}
-          stroke="var(--accent)"
-          strokeWidth="7"
-          strokeLinecap="round"
-          fill="none"
-          strokeDasharray={c}
-          initial={{ strokeDashoffset: c }}
-          whileInView={{ strokeDashoffset: c * (1 - progress) }}
-          viewport={{ once: true }}
-          transition={{ duration: 1.8, ease: [0.22, 0.8, 0.26, 1] }}
-        />
-      </svg>
-      <span className="font-mono text-4xl font-semibold tabular">{label}</span>
-    </div>
-  );
-}
-
-export function RetentionBars() {
-  const m = useCopy().mock;
-  const rows = [
-    { name: m.course1, v: 0.78, tone: 'bg-accent' },
-    { name: m.course2, v: 0.46, tone: 'bg-coral' },
-    { name: m.course3, v: 0.64, tone: 'bg-accent' },
-  ];
-  return (
-    <div className="space-y-3">
-      {rows.map((r, i) => (
-        <div key={r.name}>
-          <div className="flex justify-between text-sm">
-            <span className="font-medium">{r.name}</span>
-            <span className="font-mono tabular text-muted">≈ {Math.round(r.v * 100)} %</span>
-          </div>
-          <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-surface/80">
-            <motion.div
-              className={`h-full rounded-full ${r.tone}`}
-              initial={{ width: 0 }}
-              whileInView={{ width: `${r.v * 100}%` }}
-              viewport={{ once: true }}
-              transition={{ duration: 1.1, delay: 0.15 * i, ease: [0.22, 0.8, 0.26, 1] }}
-            />
-          </div>
-        </div>
-      ))}
-      <p className="text-xs text-muted">
-        {m.retention} · {m.estimate}
-      </p>
-    </div>
   );
 }

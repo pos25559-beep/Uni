@@ -1,7 +1,7 @@
-import { motion, useReducedMotion } from 'motion/react';
 import { useCopy } from '../i18n';
 import { pagePath, useRoute } from '../routes';
-import { Reveal, SectionHead, UniFace } from '../ui';
+import { Reveal, SectionHead } from '../ui';
+import { Pair } from '../visuals';
 
 export function Principles() {
   const { principles } = useCopy();
@@ -29,7 +29,6 @@ export function Principles() {
 export function Uni() {
   const { uni, common, nav } = useCopy();
   const { lang } = useRoute();
-  const reduce = useReducedMotion();
   return (
     <section id="uni" aria-labelledby="uni-title" className="px-4 sm:px-6">
       <div className="mx-auto grid max-w-6xl items-center gap-10 overflow-hidden rounded-[32px] bg-pastel-butter px-5 py-14 sm:px-10 md:grid-cols-2 md:py-16 lg:px-14">
@@ -51,36 +50,7 @@ export function Uni() {
           </Reveal>
         </div>
         <Reveal delay={0.15} className="relative">
-          <div className="mx-auto max-w-sm rounded-[24px] bg-surface p-4 shadow-float sm:p-5">
-            <div className="flex items-center gap-3 border-b border-line pb-3">
-              <div className="grid size-12 place-items-center rounded-full bg-pastel-sage">
-                <UniFace size={40} />
-              </div>
-              <p className="font-display text-lg font-bold">Uni</p>
-            </div>
-            <div className="space-y-3 pt-4">
-              <motion.p
-                initial={reduce ? false : { opacity: 0, x: 16 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5 }}
-                className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md bg-ink-cta px-4 py-2.5 text-sm text-ink-cta-fg"
-              >
-                {uni.chatQ}
-              </motion.p>
-              <motion.div
-                initial={reduce ? false : { opacity: 0, x: -16 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: 0.5 }}
-                className="max-w-[92%] rounded-2xl rounded-bl-md bg-surface-2 px-4 py-3 text-sm leading-relaxed"
-              >
-                {uni.chatA}
-                <p className="mt-2 font-mono text-xs text-muted">↳ {uni.chatNote}</p>
-              </motion.div>
-            </div>
-          </div>
-          <UniFace size={92} mood="calm" className="absolute -bottom-6 -right-2 hidden sm:block" />
+          <Pair a="uni-adotar" b="tutor" />
         </Reveal>
       </div>
     </section>

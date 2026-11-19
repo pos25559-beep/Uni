@@ -1,25 +1,33 @@
 import { motion } from 'motion/react';
 import { APP_URL, useCopy } from '../i18n';
 import { FEATURES, pagePath, useRoute, type FeatureId } from '../routes';
-import { PhoneFrame, SCREEN_COMPONENTS, TiltPhone } from '../screens';
+import { PhoneShot, TiltPhone, type ShotId } from '../screens';
 import { FinalCta } from '../sections/Closing';
 import { Reveal, SectionHead, SPRING } from '../ui';
 import { SectionVisual } from '../visuals';
 
 /** Cor de cada área (blocos pastel, sem paredes de cartões). */
 const TONE: Record<FeatureId, { band: string; soft: string }> = {
+  comecar: { band: 'bg-pastel-sage', soft: 'bg-pastel-sage/45' },
   plano: { band: 'bg-pastel-sky', soft: 'bg-pastel-sky/45' },
-  foco: { band: 'bg-pastel-sage', soft: 'bg-pastel-sage/45' },
-  pratica: { band: 'bg-pastel-peach', soft: 'bg-pastel-peach/45' },
+  materiais: { band: 'bg-pastel-peach', soft: 'bg-pastel-peach/45' },
   progresso: { band: 'bg-pastel-mint', soft: 'bg-pastel-mint/45' },
   uni: { band: 'bg-pastel-butter', soft: 'bg-pastel-butter/45' },
+};
+
+/** Ecrã real da abertura de cada página. */
+const HERO_SHOT: Record<FeatureId, ShotId> = {
+  comecar: 'onboarding-cadeiras',
+  plano: 'plano',
+  materiais: 'materiais',
+  progresso: 'progresso',
+  uni: 'uni-adotar',
 };
 
 function FeatureHero({ id }: { id: FeatureId }) {
   const copy = useCopy();
   const { lang } = useRoute();
   const p = copy.pages[id];
-  const Screen = SCREEN_COMPONENTS[id];
   return (
     <section aria-labelledby="feature-title" className="paper-margin relative overflow-hidden pt-[72px]">
       <div className="paper-lines pointer-events-none absolute inset-0 opacity-60 [mask-image:linear-gradient(to_bottom,black,transparent_85%)]" />
@@ -59,11 +67,7 @@ function FeatureHero({ id }: { id: FeatureId }) {
         <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.1 }} className="relative flex justify-center py-4">
           <div aria-hidden="true" className={`absolute inset-x-6 bottom-6 top-16 -rotate-3 rounded-[40px] ${TONE[id].band}`} />
           <TiltPhone>
-            <PhoneFrame>
-              <div role="img" aria-label={`${copy.demo.label}: ${copy.demo.tabs[id]}. ${copy.demo.captions[id]}`} className="h-full w-full">
-                <Screen active />
-              </div>
-            </PhoneFrame>
+            <PhoneShot id={HERO_SHOT[id]} eager />
           </TiltPhone>
         </motion.div>
       </div>
