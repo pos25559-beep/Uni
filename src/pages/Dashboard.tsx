@@ -7,7 +7,6 @@ import { formatAppDate, normalizeAppLanguage } from '../lib/grading';
 import {
   AlertTriangle,
   ArrowRight,
-  Bell,
   BookMarked,
   CalendarClock,
   CalendarDays,
@@ -85,13 +84,6 @@ export default function Dashboard() {
   const [draft, setDraft] = useState('');
   const [uniBubbleOpen, setUniBubbleOpen] = useState(false);
   const [undoSession, setUndoSession] = useState<StudySession | null>(null);
-  const [dismissedNudgeKey, setDismissedNudgeKey] = useState<string | null>(() => {
-    try {
-      return sessionStorage.getItem('unipedia_dismissed_inapp_nudge');
-    } catch {
-      return null;
-    }
-  });
   const openHubModal = useHubUiStore((s) => s.openModal);
   const openFocus = useHubUiStore((s) => s.openFocus);
 
@@ -194,11 +186,9 @@ export default function Dashboard() {
     return formatSessionDisplay(s, topic, appLang).title;
   };
 
-  const visibleNudge = inAppNudge && inAppNudge.key !== dismissedNudgeKey ? inAppNudge : null;
-
-  const handleOpenNudgeRoute = (route: string) => {
-    if (route.startsWith('/?uniLog=')) {
-      const qs = new URLSearchParams(route.slice(2));
+  const handleOpenHeaderCheckIn = () => {
+    if (inAppNudge?.route.startsWith('/?uniLog=')) {
+      const qs = new URLSearchParams(inAppNudge.route.slice(2));
       const logKind = qs.get('uniLog');
       openUniCheckIn({
         kind: (logKind === 'class' || logKind === 'day' || logKind === 'week' || logKind === 'exam_prep'
@@ -210,7 +200,7 @@ export default function Dashboard() {
       });
       return;
     }
-    navigate(route);
+    openUniCheckIn({ kind: 'day' });
   };
 
   const applySessionToggle = (s: StudySession, becomingDone: boolean) => {
@@ -368,11 +358,18 @@ export default function Dashboard() {
             <Button
               variant="secondary"
               iconOnly
-              onClick={() => openUniCheckIn({ kind: 'day' })}
+              onClick={handleOpenHeaderCheckIn}
               aria-label={t('openCheckInAria')}
-              title={t('openCheckInTitle')}
+              title={inAppNudge?.title ?? t('openCheckInTitle')}
+              className="relative"
             >
               <MessageSquare size={18} />
+              {inAppNudge && (
+                <span
+                  aria-hidden="true"
+                  className="absolute right-2 top-2 size-2 rounded-full bg-coral ring-2 ring-surface"
+                />
+              )}
             </Button>
             <Button
               variant="secondary"
@@ -392,73 +389,6 @@ export default function Dashboard() {
       </header>
 
       <TabGuideBanner tabKey="dashboard" />
-
-      {visibleNudge && (
-        <section
-          aria-label={t('nudgeAria')}
-          className={cx(
-            'flex flex-col gap-3 border px-4 py-3 shadow-card sm:flex-row sm:items-center sm:justify-between',
-            isMinimal
-              ? 'rounded-2xl border-line bg-surface text-fg'
-              : 'rounded-3xl border-honey/45 bg-pastel-honey/45 text-fg dark:border-honey/30 dark:bg-surface',
-          )}
-        >
-          <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-honey/20 text-honey-ink dark:text-honey">
-              <Bell size={17} />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-fg">{visibleNudge.title}</p>
-              <p className="text-xs text-muted line-clamp-2">{visibleNudge.body}</p>
-            </div>
-          </div>
-          <div className="flex items-center justify-end gap-2">
-            <Button size="sm" variant="primary" onClick={() => handleOpenNudgeRoute(visibleNudge.route)}>
-              {visibleNudge.ctaLabel}
-            </Button>
-            <button
-              type="button"
-              onClick={() => {
-                setDismissedNudgeKey(visibleNudge.key);
-                try {
-                  sessionStorage.setItem('unipedia_dismissed_inapp_nudge', visibleNudge.key);
-                } catch {
-                  // noop
-                }
-              }}
-              className="-mr-2 grid size-11 place-items-center rounded-full text-muted hover:bg-surface-2 hover:text-fg"
-              aria-label={t('dismissNudgeAria')}
-            >
-              <X size={16} />
-            </button>
-          </div>
-        </section>
-      )}
-
-      {/* Tira Modo Teste em 1 linha compacta logo no topo — leva direto à sessão de hoje / plano */}
-      {testMode.mode !== 'normal' && visibleNudge?.kind !== 'exam_prep' && (
-        <Link
-          to={
-            todaySessions.find((s) => !s.done)
-              ? `/plano?focus=${encodeURIComponent(todaySessions.find((s) => !s.done)!.id)}`
-              : '/plano'
-          }
-          className="flex min-h-11 items-center justify-between gap-2 rounded-2xl bg-pastel-peach/80 px-3.5 py-2 text-xs text-[#141312] transition hover:opacity-95 dark:bg-surface-2 dark:text-[#FAF6EC]"
-        >
-          <div className="flex min-w-0 items-center gap-2">
-            <Sparkles size={14} className="shrink-0 text-coral" />
-            <span className="truncate font-medium">
-              <strong className="font-semibold">
-                {testMode.mode === 'single_test' ? t('testModeSingle') : t('testModeMulti')}:
-              </strong>{' '}
-              {testMode.urgentAssessments
-                .map((u) => `${u.course.shortName} (${u.daysLeft === 0 ? t('testModeToday') : `${u.daysLeft}d`})`)
-                .join(' · ')}
-            </span>
-          </div>
-          <ArrowRight size={14} className="shrink-0" />
-        </Link>
-      )}
 
       {/* Balão interativo do Uni ("Clippy" da Unipedia) */}
       <AnimatePresence>

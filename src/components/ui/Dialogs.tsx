@@ -27,6 +27,7 @@ export function Modal({
   maxWidthClass?: string;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const wasOpenRef = useRef(false);
   const titleId = useId();
@@ -47,6 +48,8 @@ export function Modal({
     }
     if (open && dialog && !dialog.open) {
       dialog.showModal();
+      // Move focus to the non-editable modal title so mobile sheets don't auto-focus text inputs and pop up the keyboard.
+      titleRef.current?.focus({ preventScroll: true });
     } else if (!open && dialog && dialog.open) {
       dialog.close();
     }
@@ -107,7 +110,7 @@ export function Modal({
       <div data-sheet-handle="" className="touch-none sm:touch-auto">
         <div className="mx-auto mt-2.5 h-1.5 w-11 rounded-full bg-line sm:hidden" aria-hidden="true" />
         <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
-          <h2 id={titleId} className="font-display text-base font-bold">{title}</h2>
+          <h2 id={titleId} ref={titleRef} tabIndex={-1} className="font-display text-base font-bold focus:outline-none">{title}</h2>
           <button
             type="button"
             onClick={onClose}

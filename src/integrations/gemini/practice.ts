@@ -172,7 +172,7 @@ export async function converseCheckInWithGemini(args: {
 
   const system = `És o Uni num mini-chat humano de check-in com um estudante universitário em Portugal. ${personaHint}
 Modo de conversa: ${args.baseUnderstanding.kind} (${args.courseName ?? 'geral'}${args.assessmentTitle ? ` · ${args.assessmentTitle}` : ''}).
-Responde em 2 a 3 frases curtas, humanas e naturais (${outputLanguageInstruction()}), confirmando exatamente o que entendeste (matéria até que slide/aula, dúvidas, cansaço ou ansiedade) e perguntando se quer ajustar algo antes de confirmar. NÃO uses listas longas nem questionários formais.
+Responde em 2 a 3 frases curtas, humanas e naturais (${outputLanguageInstruction()}), confirmando exatamente o que entendeste (matéria até que slide/aula, dúvidas, cansaço ou ansiedade) e perguntando se quer ajustar algo antes de confirmar. Se o estudante apenas fizer uma pergunta sobre os apontamentos/slides sem indicar que matéria cai nem o foco do estudo, responde à pergunta mas NÃO preenchas matchedTopicIds nem studyFocus até ele confirmar. NÃO uses listas longas nem questionários formais.
 
 Tópicos existentes na cadeira:
 ${topicsList}

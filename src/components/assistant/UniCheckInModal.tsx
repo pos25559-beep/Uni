@@ -3,13 +3,9 @@ import { tr } from '../../i18n/tr';
 import { format, parseISO, startOfWeek } from 'date-fns';
 import {
   ArrowUp,
-  BookOpenCheck,
   Check,
-  Flame,
-  Moon,
   RotateCcw,
   Sparkles,
-  Sun,
   X,
 } from 'lucide-react';
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -18,7 +14,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { converseCheckInWithGemini } from '../../integrations/gemini';
 import { daysUntil, fmtMinutes, sessionMinutes, todayStr, upcomingAssessments } from '../../lib/selectors';
-import { cx, showToast } from '../../lib/uiHelpers';
+import { showToast } from '../../lib/uiHelpers';
 import { resolveUniAccessory } from '../../lib/uniAccessories';
 import {
   buildCheckInContextKey,
@@ -48,7 +44,7 @@ import type {
   WeeklyCheckIn,
 } from '../../types';
 import { UniBuddy } from '../brand/UnipediaMarks';
-import { Badge, Button } from '../ui';
+import { Badge, Button, PillSelect } from '../ui';
 
 export interface UniCheckInModalProps {
   open: boolean;
@@ -74,13 +70,11 @@ interface QuickChip {
 const CHECKIN_TABS: ReadonlyArray<{
   id: StudyLogKind;
   label: string;
-  shortLabel: string;
-  icon: typeof BookOpenCheck;
 }> = [
-  { id: 'class', label: 'tabs.class', shortLabel: 'tabs.classShort', icon: BookOpenCheck },
-  { id: 'day', label: 'tabs.day', shortLabel: 'tabs.dayShort', icon: Moon },
-  { id: 'week', label: 'tabs.week', shortLabel: 'tabs.weekShort', icon: Sun },
-  { id: 'exam_prep', label: 'tabs.exam', shortLabel: 'tabs.examShort', icon: Flame },
+  { id: 'class', label: 'tabs.class' },
+  { id: 'day', label: 'tabs.day' },
+  { id: 'week', label: 'tabs.week' },
+  { id: 'exam_prep', label: 'tabs.exam' },
 ];
 
 /** Atalho de tradução para o check-in (namespace `assistant`, grupo `checkin`). */
@@ -195,6 +189,7 @@ function UniCheckInModalInner({
   const navigate = useNavigate();
   const titleId = useId();
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
   const pressedOutsideRef = useRef(false);
 
   const courses = useStore((s) => s.courses);
@@ -225,6 +220,7 @@ function UniCheckInModalInner({
     if (!dialog) return;
     if (open && !dialog.open) {
       dialog.showModal();
+      titleRef.current?.focus({ preventScroll: true });
     } else if (!open && dialog.open) {
       dialog.close();
     }
@@ -666,6 +662,7 @@ function UniCheckInModalInner({
       ...(cleanedMessages.length > 0 ? { messages: cleanedMessages } : {}),
     };
 
+    const plannerMode = settings.plannerPrefs?.plannerMode ?? 'auto';
     const wasAlreadySaved = Boolean(savedEntryForContext);
     addStudyLog(entry);
     clearCheckInDraft(activeContextKey);
@@ -697,14 +694,33 @@ function UniCheckInModalInner({
       const { prefs } = applyPlanIntent(prevPrefs, planRuleItems);
       updateSettings({ plannerPrefs: prefs }, { replan: false });
     }
-    replan('checkin', { force: true, ...(planRuleItems.length > 0 ? { prevPrefs } : {}) });
+    const replanned = replan('checkin', {
+      force: true,
+      ...(planRuleItems.length > 0 ? { prevPrefs } : {}),
+    });
 
-    showToast(
-      wasAlreadySaved
-        ? t('checkin.updated')
-        : t('checkin.saved'),
-      'ok',
-    );
+    if (!replanned) {
+      if (plannerMode === 'manual') {
+        showToast(t('checkin.savedManual'), {
+          tone: 'ok',
+          action: {
+            label: t('checkin.applyBlocksAction'),
+            onPress: () => {
+              replan('checkin', {
+                force: true,
+                allowInManualMode: true,
+                ...(planRuleItems.length > 0 ? { prevPrefs } : {}),
+              });
+            },
+          },
+        });
+      } else {
+        showToast(
+          wasAlreadySaved ? t('checkin.updated') : t('checkin.alignedSamePlan'),
+          'ok',
+        );
+      }
+    }
     onClose();
 
     if (openTutorAfter) {
@@ -737,10 +753,21 @@ function UniCheckInModalInner({
     );
   };
 
+  const plannerMode = settings.plannerPrefs?.plannerMode ?? 'auto';
+  const isLockedContext = Boolean(
+    initialAssessmentId || initialClassSlotId || initialKind === 'week',
+  );
+  const hasResettableHistory =
+    conversationSource === 'saved' ||
+    turns.some((t) => t.role === 'user') ||
+    inputText.trim().length > 0;
   const quickChips = getQuickChips(kind, effectiveCourse);
   const perceivedCount =
     (understanding?.matchedTopicIds.length ?? 0) + (understanding?.newTopicsToAdd.length ?? 0);
   const hasDraftOrResult = Boolean(understanding || inputText.trim());
+  const showAlignmentCard = Boolean(
+    understanding && (conversationSource === 'saved' || turns.some((t) => t.role === 'user')),
+  );
 
   if (typeof document === 'undefined') return null;
 
@@ -771,12 +798,12 @@ function UniCheckInModalInner({
       {...({ closedby: 'any' } as Record<string, unknown>)}
       className="rise m-auto mb-0 h-[92dvh] max-h-[92dvh] w-full max-w-none open:flex flex-col overscroll-contain rounded-t-[28px] border border-line bg-bg p-0 text-fg shadow-float backdrop:bg-black/45 backdrop:backdrop-blur-[2px] sm:mb-auto sm:h-[min(86dvh,740px)] sm:max-w-2xl sm:rounded-[26px]"
     >
-      {/* Cabeçalho estilo Uni Tutor + Puxador swipe-down */}
+      {/* Cabeçalho limpo e focado + Puxador swipe-down */}
       <header className="shrink-0 border-b border-line/70 bg-surface px-4 pb-2.5 pt-2">
         <div data-sheet-handle="" className="-mx-4 -mt-2 px-4 pt-2.5 pb-1 touch-none sm:touch-auto">
           <div className="mx-auto mb-2.5 h-1.5 w-11 rounded-full bg-line sm:hidden" aria-hidden="true" />
           <div className="flex items-center justify-between gap-2">
-            <div className="flex min-w-0 items-center gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2.5">
               <div className="grid size-8 shrink-0 place-items-center rounded-full bg-pastel-butter/80 dark:bg-surface-2">
                 <UniBuddy
                   size={24}
@@ -786,104 +813,112 @@ function UniCheckInModalInner({
                   interactive={false}
                 />
               </div>
-              <div className="min-w-0">
-                <h2 id={titleId} className="truncate font-display text-base font-bold leading-tight text-fg">
-                  {t('checkin.journalOf')}{' '}
-                  <span className="font-serif font-medium italic text-accent-ink dark:text-accent">Uni</span>
-                </h2>
-              </div>
-              <Badge tone="accent" className="shrink-0 text-xs">
-                +4 ⚡
-              </Badge>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label={t('checkin.close')}
-              className="hidden size-11 -mr-1.5 items-center justify-center rounded-full text-muted transition hover:bg-surface-2 hover:text-fg sm:flex"
-            >
-              <X size={18} aria-hidden="true" />
-            </button>
-          </div>
-        </div>
-
-        {/* Faixa compacta de modos em 1 linha (estilo chips do Tutor) */}
-        <div
-          role="tablist"
-          aria-label={t('checkin.kindAria')}
-          className="mt-1.5 flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar"
-        >
-          {CHECKIN_TABS.map((item) => {
-            const Icon = item.icon;
-            const active = kind === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                onClick={() => handleKindChange(item.id)}
-                className={cx(
-                  'inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition',
-                  active
-                    ? 'border-[#141312] bg-ink-cta text-ink-cta-fg dark:border-white/20'
-                    : 'border-line bg-bg text-muted hover:text-fg',
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <h2
+                    id={titleId}
+                    ref={titleRef}
+                    tabIndex={-1}
+                    className="truncate font-display text-base font-bold leading-tight text-fg focus:outline-none"
+                  >
+                    {initialAssessmentId && selectedAssessment ? (
+                      t('checkin.alignTitle', {
+                        target: effectiveCourse?.shortName || effectiveCourse?.name || t('checkin.course'),
+                      })
+                    ) : initialClassSlotId ? (
+                      t('checkin.classTitle', {
+                        course: effectiveCourse?.shortName || effectiveCourse?.name || t('checkin.course'),
+                      })
+                    ) : initialKind === 'week' ? (
+                      t('checkin.weekTitle')
+                    ) : (
+                      <>
+                        {t('checkin.journalOf')}{' '}
+                        <span className="font-serif font-medium italic text-accent-ink dark:text-accent">
+                          Uni
+                        </span>
+                      </>
+                    )}
+                  </h2>
+                  <Badge tone="accent" className="shrink-0 text-xs">
+                    +4 ⚡
+                  </Badge>
+                </div>
+                {initialAssessmentId && selectedAssessment && (
+                  <p className="truncate text-xs text-muted">
+                    {selectedAssessment.title} · {Math.max(0, daysUntil(selectedAssessment.date))}d
+                  </p>
                 )}
+              </div>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-1">
+              {hasResettableHistory && (
+                <button
+                  type="button"
+                  onClick={handleStartFresh}
+                  aria-label={conversationSource === 'saved' ? t('checkin.newConv') : t('checkin.clear')}
+                  title={conversationSource === 'saved' ? t('checkin.newConv') : t('checkin.clear')}
+                  className="grid size-11 items-center justify-center rounded-full text-muted transition hover:bg-surface-2 hover:text-fg"
+                >
+                  <RotateCcw size={16} aria-hidden="true" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label={t('checkin.close')}
+                className="hidden size-11 -mr-1.5 items-center justify-center rounded-full text-muted transition hover:bg-surface-2 hover:text-fg sm:flex"
               >
-                <Icon size={13} />
-                <span className="sm:hidden">{t(`checkin.${item.shortLabel}`)}</span>
-                <span className="hidden sm:inline">{t(`checkin.${item.label}`)}</span>
+                <X size={18} aria-hidden="true" />
               </button>
-            );
-          })}
+            </div>
+          </div>
         </div>
 
-        {/* Faixa contextual (Cadeira em Pós-Aula / Teste em Modo Teste) */}
-        {kind === 'class' && courses.length > 0 && (
-          <div className="mt-1.5 flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
-            {courses.map((c) => {
-              const selected = (effectiveCourse?.id ?? '') === c.id;
-              return (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => handleCourseSelect(c.id)}
-                  className={cx(
-                    'min-h-11 shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition',
-                    selected
-                      ? 'border-accent bg-accent-soft font-semibold text-accent-ink'
-                      : 'border-line bg-surface-2/60 text-muted hover:text-fg',
-                  )}
-                >
-                  {c.shortName || c.name}
-                </button>
-              );
-            })}
-          </div>
-        )}
+        {/* Seletor compacto apenas quando aberto de forma genérica (não mistura as 4 abas quando focado num teste/semana) */}
+        {!isLockedContext && (
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <PillSelect
+              ariaLabel={t('checkin.kindAria')}
+              placement="down"
+              value={kind}
+              onChange={(val) => handleKindChange(val as StudyLogKind)}
+              options={CHECKIN_TABS.map((item) => ({
+                value: item.id,
+                label: t(`checkin.${item.label}`),
+              }))}
+            />
 
-        {kind === 'exam_prep' && futureAssessments.length > 0 && (
-          <div className="mt-1.5 flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
-            {futureAssessments.map((a) => {
-              const c = courses.find((x) => x.id === a.courseId);
-              const selected = (selectedAssessment?.id ?? '') === a.id;
-              const days = Math.max(0, daysUntil(a.date));
-              return (
-                <button
-                  key={a.id}
-                  type="button"
-                  onClick={() => handleAssessmentSelect(a.id)}
-                  className={cx(
-                    'min-h-11 shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition',
-                    selected
-                      ? 'border-accent bg-accent-soft font-semibold text-accent-ink'
-                      : 'border-line bg-surface-2/60 text-muted hover:text-fg',
-                  )}
-                >
-                  {c?.shortName ?? t('checkin.course')} · {a.title} ({days}d)
-                </button>
-              );
-            })}
+            {kind === 'class' && courses.length > 0 && (
+              <PillSelect
+                ariaLabel={t('checkin.course')}
+                placement="down"
+                value={effectiveCourse?.id ?? ''}
+                onChange={handleCourseSelect}
+                options={courses.map((c) => ({
+                  value: c.id,
+                  label: c.shortName || c.name,
+                }))}
+              />
+            )}
+
+            {kind === 'exam_prep' && futureAssessments.length > 0 && (
+              <PillSelect
+                ariaLabel={t('checkin.tabs.exam')}
+                placement="down"
+                value={selectedAssessment?.id ?? ''}
+                onChange={handleAssessmentSelect}
+                options={futureAssessments.map((a) => {
+                  const c = courses.find((x) => x.id === a.courseId);
+                  const days = Math.max(0, daysUntil(a.date));
+                  return {
+                    value: a.id,
+                    label: `${c?.shortName ?? t('checkin.course')} · ${a.title} (${days}d)`,
+                  };
+                })}
+              />
+            )}
           </div>
         )}
       </header>
@@ -893,24 +928,6 @@ function UniCheckInModalInner({
         ref={scrollRef}
         className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 py-4"
       >
-        {(conversationSource === 'saved' ||
-          (conversationSource === 'draft' &&
-            (turns.some((t) => t.role === 'user') || inputText.trim().length > 0))) && (
-          <div className="flex items-center justify-between gap-2 rounded-2xl border border-line/75 bg-surface px-3 py-2 text-xs">
-            <span className="min-w-0 truncate text-muted">
-              {conversationSource === 'saved'
-                ? t('checkin.savedConv', { date: savedEntryForContext?.date ? ` · ${savedEntryForContext.date}` : '' })
-                : t('checkin.draftSaved')}
-            </span>
-            <button
-              type="button"
-              onClick={handleStartFresh}
-              className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full border border-line bg-bg px-3 py-1 text-xs font-semibold text-fg transition hover:border-accent"
-            >
-              <RotateCcw size={12} /> {conversationSource === 'saved' ? t('checkin.newConv') : t('checkin.clear')}
-            </button>
-          </div>
-        )}
 
         {turns.map((turn) =>
           turn.role === 'user' ? (
@@ -957,30 +974,20 @@ function UniCheckInModalInner({
         )}
       </div>
 
-      {/* Rodapé fixo estilo Gemini: Cartão de Alinhamento (quando pronto) + Sugestões + Cápsula Compositor */}
+      {/* Rodapé fixo limpo: Cartão de Alinhamento (quando pronto) + Sugestões + Cápsula Compositor */}
       <footer className="shrink-0 space-y-2 border-t border-line/70 bg-surface px-3.5 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-        {understanding && (
+        {showAlignmentCard && understanding && (
           <div className="rounded-2xl border border-accent/35 bg-accent-soft/55 px-3 py-2.5 text-xs">
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="font-bold text-accent-ink dark:text-accent">{t('checkin.ready')}</span>
               <Badge tone="accent">{understanding.feelingLabel}</Badge>
               {understanding.studyFocus && <Badge tone="ok">{understanding.studyFocus}</Badge>}
               {understanding.scopeLabel && <Badge tone="neutral">{understanding.scopeLabel}</Badge>}
-              {understanding.topicTitle && <Badge tone="neutral">{understanding.topicTitle}</Badge>}
               {perceivedCount > 0 && <Badge tone="neutral">{t('checkin.topicsN', { count: perceivedCount })}</Badge>}
             </div>
-            {(understanding.newTopicsToAdd.length > 0 || understanding.matchedTopicIds.length > 0) &&
-              effectiveCourse && (
-                <p className="mt-1 line-clamp-1 text-muted">
-                  {t('checkin.topicsPrefix')}{' '}
-                  {[
-                    ...effectiveCourse.topics
-                      .filter((t) => understanding.matchedTopicIds.includes(t.id))
-                      .map((t) => t.title),
-                    ...understanding.newTopicsToAdd,
-                  ].join(', ')}
-                </p>
-              )}
+            <p className="mt-1 text-muted">
+              {plannerMode === 'manual' ? t('checkin.modeManualHint') : t('checkin.modeAutoHint')}
+            </p>
             <div className="mt-2 flex items-center gap-2">
               <Button
                 size="sm"
@@ -1006,7 +1013,7 @@ function UniCheckInModalInner({
         )}
 
         {/* Sugestões rápidas antes da primeira resposta (sem cortes horizontais) */}
-        {!understanding && (
+        {!showAlignmentCard && (
           <div className="flex flex-wrap items-center gap-1.5">
             {quickChips.map((chip) => (
               <button

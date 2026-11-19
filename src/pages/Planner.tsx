@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   Brain,
   CalendarDays,
+  Check,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -39,7 +40,7 @@ import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/Tab
 import { openUniCheckIn } from '../lib/uniCheckInBus';
 import { ActionSheet, Badge, Button, Card, CourseChip, EmptyState, Modal, PageHeader, SegmentedControl } from '../components/ui';
 import { cx, showToast } from '../lib/uiHelpers';
-import { weekdayShort } from '../lib/colors';
+import { courseColors, weekdayShort } from '../lib/colors';
 import { hapticTap } from '../lib/nativeBridge';
 import { computeExtraActivityPenaltyByWeekday } from '../lib/academicCredits';
 import {
@@ -819,13 +820,15 @@ export default function Planner() {
               </div>
             </div>
 
-            <WeekDayPills
-              days={pillDays}
-              selectedKey={activeDayKey}
-              onSelect={(key) => setSelectedDayKey(key)}
-            />
+            <div className={viewMode === 'week' ? 'hidden lg:block' : undefined}>
+              <WeekDayPills
+                days={pillDays}
+                selectedKey={activeDayKey}
+                onSelect={(key) => setSelectedDayKey(key)}
+              />
+            </div>
 
-            {/* Mobile: por defeito apenas o dia selecionado; opcionalmente semana completa */}
+            {/* Mobile: vista de Dia selecionado */}
             <div className={viewMode === 'day' ? 'lg:hidden' : 'hidden'}>
               {(() => {
                 const profile = resolveDayPlanProfile({
@@ -873,13 +876,161 @@ export default function Planner() {
               })()}
             </div>
 
-            <div
-              className={
-                viewMode === 'week'
-                  ? 'grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
-                  : 'hidden lg:grid lg:grid-cols-3 lg:gap-3 xl:grid-cols-4'
-              }
-            >
+            {/* Mobile: vista compacta da Semana inteira (sem cartões altos empilhados) */}
+            <div className={viewMode === 'week' ? 'space-y-2 lg:hidden' : 'hidden'}>
+              {weekDays.map((d, i) => {
+                const key = weekKeys[i];
+                const daySessions = byDay.get(key) ?? [];
+                const isToday = key === today;
+                const isPast = key < today;
+                const profile = resolveDayPlanProfile({
+                  dateKey: key,
+                  weekday: d.getDay(),
+                  settings,
+                  assessments,
+                  pausedCourseIds: plannerPrefs?.pausedCourseIds,
+                  weekdaySchedule: plannerPrefs?.weekdaySchedule,
+                  preferredPeriod: plannerPrefs?.preferredPeriod,
+                  preExamMarathon: plannerPrefs?.preExamMarathon,
+                  dateOverrides: plannerPrefs?.dateOverrides,
+                });
+                const dayBudget = computeDayBudget({
+                  dateKey: key,
+                  weekday: d.getDay(),
+                  dayProfile: profile,
+                  classes,
+                  events,
+                  extraPenaltyMinutes: extraPenaltyByWeekday.get(d.getDay()) ?? 0,
+                  latestCheckInMood: weeklyCheckIns[0]?.mood,
+                });
+                const planned = daySessions.reduce(
+                  (sum, s) => sum + (s.done ? sessionMinutes(s) : s.minutes),
+                  0,
+                );
+                const doneMinutes = daySessions.reduce((sum, s) => sum + sessionMinutes(s), 0);
+                const leftMinutes = daySessions
+                  .filter((s) => !s.done)
+                  .reduce((sum, s) => sum + s.minutes, 0);
+
+                return (
+                  <div
+                    key={key}
+                    className={cx(
+                      'rounded-2xl border p-3',
+                      isPast
+                        ? 'border-line/70 bg-surface-2/45 opacity-90'
+                        : profile.isMarathonDay
+                          ? 'border-warn/50 bg-pastel-butter/35 dark:bg-surface'
+                          : profile.enabled
+                            ? 'border-line bg-surface'
+                            : 'border-line bg-surface-2/60',
+                      isToday && 'border-accent ring-1 ring-accent',
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedDayKey(key);
+                          setViewMode('day');
+                        }}
+                        className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 text-left"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+                              {weekdayShort[d.getDay()]}
+                            </span>
+                            <span className="text-sm font-bold text-fg tabular">
+                              {format(d, 'd MMM', { locale: dfLocale })}
+                            </span>
+                            {isToday && <Badge tone="accent">{t('ui.today')}</Badge>}
+                            {!isPast && profile.isMarathonDay && (
+                              <Badge tone="warn">
+                                <Flame size={11} aria-hidden="true" /> {t('dayCol.marathon')}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted tabular">
+                            {isPast
+                              ? t('dayCol.pastSummary', {
+                                  done: fmtMinutes(doneMinutes),
+                                  left: fmtMinutes(leftMinutes),
+                                })
+                              : t('dayCol.plannedOfBudget', {
+                                  planned: fmtMinutes(planned),
+                                  budget: dayBudget.budget > 0 ? fmtMinutes(dayBudget.budget) : fmtMinutes(0),
+                                })}
+                          </p>
+                        </div>
+                      </button>
+                      {!isPast && (
+                        <button
+                          type="button"
+                          onClick={() => openNewSession(key)}
+                          aria-label={t('dayCol.addAria', { date: format(d, 'd MMM', { locale: dfLocale }) })}
+                          className="-mr-1 grid size-11 shrink-0 place-items-center rounded-full text-muted hover:bg-surface-2 hover:text-fg"
+                        >
+                          <Plus size={16} />
+                        </button>
+                      )}
+                    </div>
+
+                    {!isPast && (
+                      daySessions.length > 0 ? (
+                        <div className="mt-2 space-y-1.5">
+                          {daySessions.map((s) => {
+                            const c = courseById.get(s.courseId);
+                            const topic = s.topicId ? topicById.get(s.topicId) : undefined;
+                            const color = courseColors[c?.color ?? 'emerald'];
+                            const disp = formatSessionDisplay(s, topic, i18n.language);
+                            return (
+                              <button
+                                key={s.id}
+                                type="button"
+                                onClick={() => setModal({ session: s, date: s.date })}
+                                className={cx(
+                                  'flex min-h-11 w-full items-center gap-2 rounded-xl border border-line/70 bg-bg/75 px-2.5 py-2 text-left text-xs transition hover:border-accent',
+                                  s.done && 'opacity-65',
+                                )}
+                              >
+                                <span
+                                  className={cx('size-2 shrink-0 rounded-full', color.dot)}
+                                  aria-hidden="true"
+                                />
+                                {s.start && (
+                                  <span className="shrink-0 font-mono text-xs text-muted tabular">
+                                    {s.start}
+                                  </span>
+                                )}
+                                <span className="shrink-0 font-semibold text-fg">
+                                  {c?.shortName ?? ''}
+                                </span>
+                                <span className={cx('min-w-0 flex-1 truncate text-muted', s.done && 'line-through')}>
+                                  {disp.title}
+                                </span>
+                                <span className="shrink-0 font-mono text-xs text-muted tabular">
+                                  {fmtMinutes(s.minutes)}
+                                </span>
+                                {s.done && (
+                                  <Check size={14} className="shrink-0 text-ok" aria-hidden="true" />
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="mt-1.5 text-xs text-muted">
+                          {profile.enabled ? t('dayCol.noSessions') : t('dayCol.offDay')}
+                        </p>
+                      )
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="hidden lg:grid lg:grid-cols-3 lg:gap-3 xl:grid-cols-4">
               {weekDays.map((d, i) => {
                 const key = weekKeys[i];
                 const profile = resolveDayPlanProfile({
