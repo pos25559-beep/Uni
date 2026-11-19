@@ -26,3 +26,15 @@ npm run check
 npx firebase-tools login
 npx firebase-tools deploy --only hosting,firestore:rules --project campus-erp-84964
 ```
+
+## 4. Site de apresentação (2.º site do Hosting)
+
+O `firebase.json` tem dois *targets* de Hosting: `app` (a app, `dist/`, site `campus-erp-84964`) e `site` (o site de apresentação, `dist-site/`, site `unipedia-site`), ligados em `.firebaserc`.
+
+1. Criar o site uma vez: `npx firebase-tools hosting:sites:create unipedia-site --project campus-erp-84964` (ou na consola: Hosting → Adicionar outro site).
+2. No GitHub, criar a variável de repositório `SITE_DEPLOY=true` (Settings → Secrets and variables → Actions → Variables).
+3. A partir daí, cada push em `main` publica a app (`hosting:app`) e, num passo à parte que nunca bloqueia a app, o site (`hosting:site`).
+4. Domínio próprio: Hosting → `unipedia-site` → Adicionar domínio personalizado. Depois, definir `VITE_SITE_URL` no build para o `canonical`/`hreflang` usarem o domínio.
+
+Deploy manual só do site: `npm run site:build && npx firebase-tools deploy --only hosting:site --project campus-erp-84964`.
+

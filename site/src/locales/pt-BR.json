@@ -1,0 +1,184 @@
+{
+  "meta": {
+    "title": "Unipedia — Você sabe o que estudar agora",
+    "description": "A Unipedia conhece o seu semestre: planeja o estudo em torno das suas provas, protege o seu foco, pergunta a matéria das suas anotações e mostra o que ficou. Para o Ensino Médio e a faculdade."
+  },
+  "nav": {
+    "how": "Como funciona",
+    "uni": "O Uni",
+    "privacy": "Seus dados",
+    "faq": "Perguntas",
+    "open": "Abrir a Unipedia",
+    "language": "Idioma",
+    "menu": "Menu",
+    "home": "Unipedia, início"
+  },
+  "hero": {
+    "kicker": "Companheiro de estudo · Ensino Médio e faculdade",
+    "titleA": "Você sabe o que estudar",
+    "titleEm": "agora.",
+    "sub": "A Unipedia conhece suas matérias, suas provas e suas anotações. Você abre o app e tem uma coisa esperando: o bloco certo, com o porquê. Fecha o bloco e sabe o que ficou.",
+    "ctaOpen": "Abrir a Unipedia",
+    "ctaHow": "Ver como funciona",
+    "note": "Sem conta obrigatória · funciona sem internet",
+    "sceneLabel": "Celular com a tela «Hoje» da Unipedia"
+  },
+  "promise": [
+    { "lead": "Você abre o app", "text": "e sabe o que estudar agora." },
+    { "lead": "Fecha o bloco", "text": "e sabe o que ficou." },
+    { "lead": "Chega na prova", "text": "sem surpresas." }
+  ],
+  "how": {
+    "kicker": "Como funciona",
+    "title": "Um ciclo simples,",
+    "titleEm": "todo dia.",
+    "sub": "Planejar, focar, praticar, medir. O app cuida da parte chata para você cuidar do estudo.",
+    "steps": {
+      "plan": {
+        "label": "Planejar",
+        "title": "Um plano que conhece as suas provas",
+        "body": "Informe as datas das avaliações e o tempo que você tem. O plano distribui a matéria pela semana, começa mais cedo o que pesa mais e avisa quando não cabe tudo.",
+        "detail": "Cabe tudo com 2 h por dia. Comecei Cálculo uma semana antes."
+      },
+      "focus": {
+        "label": "Focar",
+        "title": "Um bloco de cada vez, sem distrações",
+        "body": "Você toca em «Iniciar» e o resto do mundo espera. Escudo anti-distração opcional, som ambiente e um anel que mostra quanto falta. Se sair, você volta sem perder nada.",
+        "detail": "Foco limpo · 0 saídas da tela"
+      },
+      "practice": {
+        "label": "Praticar",
+        "title": "Perguntas tiradas das suas anotações",
+        "body": "No fim do bloco, o app pergunta a matéria a partir dos seus PDFs e slides. Você diz como foi e ele volta a perguntar no dia certo.",
+        "detail": "Pergunto isso de novo na quinta."
+      },
+      "measure": {
+        "label": "Medir",
+        "title": "Você vê o que ficou, não só o tempo que passou",
+        "body": "Retenção estimada por tópico e por matéria, revisões pendentes e os tópicos frágeis que valem a pena agora. Estimativas mostradas como estimativas.",
+        "detail": "3 tópicos frágeis antes da prova de Física"
+      }
+    }
+  },
+  "moments": {
+    "kicker": "Feito para dias reais",
+    "title": "O app trabalha,",
+    "titleEm": "você estuda.",
+    "items": [
+      {
+        "when": "Depois da aula",
+        "title": "Uma decisão, não doze",
+        "body": "Às 18h, cansado, você não quer escolher entre doze cartões. Abre e tem um bloco, com o motivo embaixo."
+      },
+      {
+        "when": "No fim do bloco",
+        "title": "Três perguntas, com a página certa",
+        "body": "Se errar uma, o app mostra a resposta e de onde ela vem nos seus materiais. E pergunta de novo."
+      },
+      {
+        "when": "Num dia que não deu",
+        "title": "Não acontece nada",
+        "body": "Festa da turma, gripe, cansaço. No dia seguinte, o plano redistribui em silêncio e conta o que mudou. Dá para desfazer."
+      },
+      {
+        "when": "Doze minutos no ônibus",
+        "title": "O tempo que tem, bem usado",
+        "body": "Não dá para um bloco, dá para as revisões pendentes. Seis cartões, incluindo o que você errou ontem."
+      }
+    ]
+  },
+  "mock": {
+    "greeting": "Boa tarde,",
+    "name": "Ana",
+    "today": "Hoje",
+    "week": "Esta semana",
+    "focusToday": "Foco de hoje",
+    "openPlan": "Abrir plano",
+    "haveNow": "Tenho agora:",
+    "course1": "Cálculo I",
+    "course2": "Física",
+    "course3": "Programação",
+    "topic1": "Derivadas e Regras de Derivação",
+    "topic2": "Leis de Newton e Atrito",
+    "topic3": "Funções e Recursão",
+    "why": "A prova vale 40 % e é daqui a 6 dias.",
+    "start": "Começar",
+    "question": "Qual é a derivada de x² · sen x?",
+    "answerHint": "Regra do produto",
+    "source": "p. 14 dos slides da aula 6",
+    "again": "Revisar já",
+    "effort": "Com esforço",
+    "mastered": "Dominei",
+    "toast": "Ontem ficaram 100 min por fazer. Coloquei 50 hoje e 50 no sábado; a prova de Cálculo continua coberta.",
+    "undo": "Desfazer",
+    "due": "Revisões pendentes",
+    "cards": "6 cartões · 8 min",
+    "review": "Revisar agora",
+    "retention": "Retenção",
+    "estimate": "estimativa",
+    "days": ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"],
+    "dock": ["Matérias", "Plano", "Hoje", "Tutor", "Mais"]
+  },
+  "principles": {
+    "kicker": "O que prometemos",
+    "title": "Princípios que",
+    "titleEm": "não mudam.",
+    "items": [
+      { "title": "Uma decisão por tela", "body": "Cada tela tem uma ação principal óbvia. O resto está a um toque, não à vista." },
+      { "title": "Sem castigo", "body": "Perder um dia é normal. Não há contadores em vermelho nem sequências que se perdem por causa de uma gripe." },
+      { "title": "Honestidade antes de conforto", "body": "Se a matéria não cabe até a prova, o app avisa e sugere o que cortar. O Uni diz quando algo não está nos seus materiais." },
+      { "title": "Os dados são seus", "body": "Funciona sem conta e sem internet. O que sai do celular é o mínimo, e você sabe o quê e para onde." }
+    ]
+  },
+  "uni": {
+    "kicker": "O Uni",
+    "title": "Um tutor que sabe",
+    "titleEm": "o que cai na sua prova.",
+    "body": "O Uni é o tutor da Unipedia. Diferente de um chat qualquer, ele conhece o seu semestre: suas matérias, as datas das avaliações e os materiais que você enviou.",
+    "bullets": [
+      "Explica a matéria a partir dos seus PDFs, slides e fotos.",
+      "Monta um plano até a próxima prova numa conversa.",
+      "Diz «isso não está nos seus materiais» quando for o caso."
+    ],
+    "chatQ": "O que eu devo estudar hoje?",
+    "chatA": "Eu começaria por Derivadas (25 min): a prova de Cálculo I vale 40 % e é semana que vem. Depois, 10 min com os cartões de Limites que você errou ontem.",
+    "chatNote": "Com base no seu plano e nos seus materiais"
+  },
+  "privacy": {
+    "kicker": "Seus dados",
+    "title": "O seu caderno",
+    "titleEm": "é seu.",
+    "body": "Você pode usar a Unipedia sem criar conta: tudo fica no seu aparelho. Se quiser sincronizar entre celular e computador, cria uma conta, e quem decide é você.",
+    "items": [
+      { "title": "Sem conta", "body": "Modo local no aparelho, desde o primeiro minuto." },
+      { "title": "Sem internet", "body": "Plano, foco e cartões funcionam offline." },
+      { "title": "Você sabe o que sai", "body": "A IA só é usada quando você ativa o Uni, e é dito para onde vão os dados." }
+    ]
+  },
+  "faq": {
+    "kicker": "Perguntas",
+    "title": "Perguntas frequentes",
+    "items": [
+      { "q": "Para quem é a Unipedia?", "a": "Para estudantes do Ensino Médio e da faculdade, e para quem estuda em português, espanhol ou inglês." },
+      { "q": "Preciso criar conta?", "a": "Não. Dá para usar tudo no seu aparelho. A conta serve para guardar e sincronizar o caderno entre aparelhos." },
+      { "q": "Funciona no celular e no computador?", "a": "Sim. Abre no navegador de qualquer um dos dois e se adapta à tela." },
+      { "q": "De onde vêm as perguntas de prática?", "a": "Dos materiais que você envia (PDFs, slides, provas antigas) e das suas anotações. Você também pode criar cartões à mão." },
+      { "q": "E se eu perder um dia?", "a": "Tudo bem. O plano redistribui o que ficou para trás, conta o que mudou e dá para desfazer." },
+      { "q": "O Uni usa inteligência artificial?", "a": "Sim, o Uni usa IA do Google (Gemini) e só funciona depois que você o ativa. O resto do app não precisa dela." }
+    ]
+  },
+  "cta": {
+    "title": "A próxima prova",
+    "titleEm": "pode ser tranquila.",
+    "body": "Abra a Unipedia, junte suas matérias e deixe o plano trabalhar.",
+    "button": "Abrir a Unipedia"
+  },
+  "footer": {
+    "tagline": "Estude com calma, avance com clareza.",
+    "made": "Feito em Portugal, para quem estuda.",
+    "privacy": "Privacidade",
+    "terms": "Termos de uso",
+    "delete": "Excluir conta",
+    "rights": "© 2026 Unipedia"
+  }
+}

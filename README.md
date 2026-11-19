@@ -36,6 +36,23 @@ npm run android:sync # Build web + npx cap sync android
 
 ---
 
+## Site de apresentação (`site/`)
+
+Página pública da Unipedia («Sabes o que estudar agora»), separada da app mas no mesmo repositório e no mesmo projeto Firebase (2.º site do Hosting, `unipedia-site`).
+
+- **Stack**: React 19 + Vite (`vite.site.config.ts`, raiz `site/`), Tailwind v4 com os mesmos tokens da app (`src/styles/tokens.css`), Motion e Three.js (`@react-three/fiber`) só no hero.
+- **Línguas**: pt-PT (`/`), pt-BR (`/br`), es (`/es`) e en (`/en`); textos em `site/src/locales/*.json` (paridade verificada por `scripts/site-i18n-check.mjs`).
+- **Pré-render**: `scripts/site-prerender.mjs` gera o HTML de cada língua com `<title>`, descrição, `canonical` e `hreflang`.
+- **3D**: telemóvel com o ecrã «Hoje» desenhado em canvas, folhas pautadas e post-its. Só liga em ecrãs ≥ 768 px com WebGL, sem movimento reduzido e sem poupança de dados; caso contrário mostra o telemóvel em CSS. O chunk 3D carrega à parte (não pesa na primeira visita).
+
+```bash
+npm run site:dev      # http://localhost:5174
+npm run site:build    # dist-site/ (as 4 línguas pré-renderizadas)
+npm run site:preview  # http://localhost:4174
+```
+
+O filme «captura de ecrã» (`scripts/record-demo.py`) está em pausa: grava a app real com `?demo=1`, mas ainda não está ligado ao site.
+
 ## Ecrãs principais
 
 | Ecrã | Para quê |

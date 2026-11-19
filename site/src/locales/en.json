@@ -1,0 +1,184 @@
+{
+  "meta": {
+    "title": "Unipedia — Know what to study now",
+    "description": "Unipedia knows your semester: it plans your study around your tests, protects your focus, quizzes you on your own notes and shows what actually stuck. For secondary school and university."
+  },
+  "nav": {
+    "how": "How it works",
+    "uni": "Meet Uni",
+    "privacy": "Your data",
+    "faq": "Questions",
+    "open": "Open Unipedia",
+    "language": "Language",
+    "menu": "Menu",
+    "home": "Unipedia, home"
+  },
+  "hero": {
+    "kicker": "Study companion · Secondary school and university",
+    "titleA": "Know what to study",
+    "titleEm": "right now.",
+    "sub": "Unipedia knows your courses, your tests and your notes. Open the app and one thing is waiting: the right block, with the reason why. Finish the block and you know what stuck.",
+    "ctaOpen": "Open Unipedia",
+    "ctaHow": "See how it works",
+    "note": "No account needed · works offline",
+    "sceneLabel": "Phone showing Unipedia's Today screen"
+  },
+  "promise": [
+    { "lead": "Open the app", "text": "and know what to study now." },
+    { "lead": "Finish the block", "text": "and know what stuck." },
+    { "lead": "Walk into the test", "text": "with no surprises." }
+  ],
+  "how": {
+    "kicker": "How it works",
+    "title": "One simple loop,",
+    "titleEm": "every day.",
+    "sub": "Plan, focus, practise, measure. The app handles the boring part so you can handle the studying.",
+    "steps": {
+      "plan": {
+        "label": "Plan",
+        "title": "A plan that knows your tests",
+        "body": "Add your exam dates and the time you have. The plan spreads the material across the week, starts the heaviest topics early and tells you when it won't all fit.",
+        "detail": "It all fits with 2 h a day. I started Calculus a week early."
+      },
+      "focus": {
+        "label": "Focus",
+        "title": "One block at a time, no distractions",
+        "body": "Tap «Start» and the rest of the world waits. Optional distraction shield, ambient sound and a ring that shows what's left. If you leave, you come back without losing anything.",
+        "detail": "Clean focus · 0 screen exits"
+      },
+      "practice": {
+        "label": "Practise",
+        "title": "Questions drawn from your own notes",
+        "body": "At the end of the block, the app quizzes you using your PDFs and slides. You say how it went and it asks again on the right day.",
+        "detail": "I'll ask you this again on Thursday."
+      },
+      "measure": {
+        "label": "Measure",
+        "title": "See what stuck, not just the time spent",
+        "body": "Estimated retention per topic and course, reviews due and the weak spots worth your time now. Estimates are shown as estimates.",
+        "detail": "3 weak topics before the Physics test"
+      }
+    }
+  },
+  "moments": {
+    "kicker": "Made for real days",
+    "title": "The app does the work,",
+    "titleEm": "you do the studying.",
+    "items": [
+      {
+        "when": "After class",
+        "title": "One decision, not twelve",
+        "body": "At 6 pm, tired, you don't want to choose between twelve cards. You open the app and there's one block, with the reason underneath."
+      },
+      {
+        "when": "End of the block",
+        "title": "Three questions, with the right page",
+        "body": "Miss one and the app shows the answer and where it comes from in your materials. Then it asks again."
+      },
+      {
+        "when": "On a day that didn't happen",
+        "title": "Nothing bad happens",
+        "body": "A class dinner, the flu, just tired. The next day the plan quietly reshuffles and tells you what changed. You can undo it."
+      },
+      {
+        "when": "Twelve minutes on the bus",
+        "title": "The time you have, well used",
+        "body": "Not enough for a block, enough for your due reviews. Six cards, including the one you missed yesterday."
+      }
+    ]
+  },
+  "mock": {
+    "greeting": "Good afternoon,",
+    "name": "Sam",
+    "today": "Today",
+    "week": "This week",
+    "focusToday": "Today's focus",
+    "openPlan": "Open plan",
+    "haveNow": "I have:",
+    "course1": "Calculus I",
+    "course2": "Physics",
+    "course3": "Programming",
+    "topic1": "Derivatives and Differentiation Rules",
+    "topic2": "Newton's Laws and Friction",
+    "topic3": "Functions and Recursion",
+    "why": "The test is worth 40% and it's in 6 days.",
+    "start": "Start",
+    "question": "What is the derivative of x² · sin x?",
+    "answerHint": "Product rule",
+    "source": "p. 14 of the lecture 6 slides",
+    "again": "Again",
+    "effort": "Hard",
+    "mastered": "Got it",
+    "toast": "100 min were left yesterday. I put 50 today and 50 on Saturday; the Calculus test is still covered.",
+    "undo": "Undo",
+    "due": "Reviews due",
+    "cards": "6 cards · 8 min",
+    "review": "Review now",
+    "retention": "Retention",
+    "estimate": "estimate",
+    "days": ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"],
+    "dock": ["Courses", "Plan", "Today", "Tutor", "More"]
+  },
+  "principles": {
+    "kicker": "What we promise",
+    "title": "Principles that",
+    "titleEm": "don't change.",
+    "items": [
+      { "title": "One decision per screen", "body": "Every screen has one obvious main action. Everything else is a tap away, not in your face." },
+      { "title": "No punishment", "body": "Missing a day is normal. No red overdue counters, no streaks lost to the flu." },
+      { "title": "Honesty over comfort", "body": "If the material won't fit before the test, the app says so and suggests what to cut. Uni tells you when something isn't in your materials." },
+      { "title": "Your data is yours", "body": "Works without an account and offline. The minimum leaves your phone, and you know what and where." }
+    ]
+  },
+  "uni": {
+    "kicker": "Meet Uni",
+    "title": "A tutor that knows",
+    "titleEm": "what's on your test.",
+    "body": "Uni is Unipedia's tutor. Unlike any old chatbot, it knows your semester: your courses, your exam dates and the materials you've added.",
+    "bullets": [
+      "Explains topics from your PDFs, slides and photos.",
+      "Builds a plan up to your next test in one conversation.",
+      "Says «this isn't in your materials» when that's the case."
+    ],
+    "chatQ": "What should I study today?",
+    "chatA": "I'd start with Derivatives (25 min): the Calculus I test is worth 40% and it's next week. Then 10 min on the Limits cards you missed yesterday.",
+    "chatNote": "Based on your plan and your materials"
+  },
+  "privacy": {
+    "kicker": "Your data",
+    "title": "Your notebook",
+    "titleEm": "is yours.",
+    "body": "You can use Unipedia without an account: everything stays on your device. If you want to sync between phone and computer, you create an account, and you decide.",
+    "items": [
+      { "title": "No account", "body": "Local mode on your device, from minute one." },
+      { "title": "Offline", "body": "Plan, focus and cards work without a connection." },
+      { "title": "You know what leaves", "body": "AI is only used when you turn Uni on, and you're told where the data goes." }
+    ]
+  },
+  "faq": {
+    "kicker": "Questions",
+    "title": "Frequently asked questions",
+    "items": [
+      { "q": "Who is Unipedia for?", "a": "For secondary school and university students, studying in English, Portuguese or Spanish." },
+      { "q": "Do I need an account?", "a": "No. You can use everything on your device. An account lets you back up and sync your notebook across devices." },
+      { "q": "Does it work on phone and computer?", "a": "Yes. It opens in the browser on either one and adapts to the screen." },
+      { "q": "Where do the practice questions come from?", "a": "From the materials you add (PDFs, slides, past papers) and your notes. You can also write cards by hand." },
+      { "q": "What if I miss a day?", "a": "That's fine. The plan redistributes what was left, tells you what changed and you can undo it." },
+      { "q": "Does Uni use artificial intelligence?", "a": "Yes, Uni uses Google AI (Gemini) and only works once you turn it on. The rest of the app doesn't need it." }
+    ]
+  },
+  "cta": {
+    "title": "Your next test",
+    "titleEm": "can be calm.",
+    "body": "Open Unipedia, add your courses and let the plan do the work.",
+    "button": "Open Unipedia"
+  },
+  "footer": {
+    "tagline": "Study calmly, move forward clearly.",
+    "made": "Made in Portugal, for anyone who studies.",
+    "privacy": "Privacy",
+    "terms": "Terms of use",
+    "delete": "Delete account",
+    "rights": "© 2026 Unipedia"
+  }
+}

@@ -1,5 +1,17 @@
 {
   "projects": {
     "default": "campus-erp-84964"
+  },
+  "targets": {
+    "campus-erp-84964": {
+      "hosting": {
+        "app": [
+          "campus-erp-84964"
+        ],
+        "site": [
+          "unipedia-site"
+        ]
+      }
+    }
   }
 }

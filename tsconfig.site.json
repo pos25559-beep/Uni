@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.site.tsbuildinfo",
+    "paths": { "@app/*": ["./src/*"] },
+    "resolveJsonModule": true
+  },
+  "include": ["site/src", "src/components/brand/UnipediaLogo.tsx"]
+}

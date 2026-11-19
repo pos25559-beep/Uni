@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 
-const SRC_DIR = path.resolve(process.cwd(), 'src');
+const SRC_DIRS = [path.resolve(process.cwd(), 'src'), path.resolve(process.cwd(), 'site/src')];
 const STRICT = process.argv.includes('--strict');
 
 /** Percorre recursivamente todos os ficheiros .ts/.tsx em src/ (excluindo testes). */
@@ -47,7 +47,7 @@ const RULES = [
   },
 ];
 
-const files = collectSourceFiles(SRC_DIR);
+const files = SRC_DIRS.flatMap((dir) => collectSourceFiles(dir));
 const failures = [];
 const advisories = [];
 

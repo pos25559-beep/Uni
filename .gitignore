@@ -37,3 +37,5 @@ android/app/google-services.json
 # Gestor de pacotes único: npm (package-lock.json). O bun.lock não entra no repositório.
 bun.lock
 bun.lockb
+dist-site
+dist-site-ssr

@@ -1,0 +1,76 @@
+@import "tailwindcss" source("../");
+@import "../../src/styles/tokens.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 88px;
+  -webkit-text-size-adjust: 100%;
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--fg);
+}
+
+:focus-visible {
+  outline: 2.5px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 10px;
+}
+
+/* Papel de caderno: linhas horizontais suaves + margem coral. */
+.paper-lines {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 31px,
+    color-mix(in srgb, var(--line) 75%, transparent) 31px,
+    color-mix(in srgb, var(--line) 75%, transparent) 32px
+  );
+}
+.paper-margin {
+  position: relative;
+}
+.paper-margin::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 clamp(16px, 6vw, 72px);
+  width: 1.5px;
+  background: color-mix(in srgb, var(--coral) 35%, transparent);
+  pointer-events: none;
+}
+
+.font-display { letter-spacing: -0.025em; }
+
+/* Sublinhado de marcador nas palavras em itálico. */
+.marker {
+  background-image: linear-gradient(transparent 62%, color-mix(in srgb, var(--pastel-butter) 90%, transparent) 62%, color-mix(in srgb, var(--pastel-butter) 90%, transparent) 92%, transparent 92%);
+  padding-inline: 0.06em;
+}
+.dark .marker {
+  background-image: linear-gradient(transparent 62%, color-mix(in srgb, var(--accent) 28%, transparent) 62%, color-mix(in srgb, var(--accent) 28%, transparent) 92%, transparent 92%);
+}
+
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* FAQ: seta do <details>. */
+details > summary { list-style: none; cursor: pointer; }
+details > summary::-webkit-details-marker { display: none; }
+details[open] .faq-chevron { transform: rotate(45deg); }
+
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
