@@ -9,7 +9,7 @@ import { UniBuddy } from '../brand/UnipediaMarks';
 import { Button } from '../ui';
 import { cx } from '../../lib/uiHelpers';
 
-const useTabGuideOverlay = create<{
+export const useTabGuideOverlay = create<{
   openTab: AppTabKey | null;
   toggleTab: (tab: AppTabKey) => void;
   closeTab: () => void;

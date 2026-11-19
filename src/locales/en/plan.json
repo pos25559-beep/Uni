@@ -295,7 +295,9 @@
     "quickReviewN": "Quick review ({{count}})",
     "quickReview": "Quick review",
     "testModeExpandAria": "Exam Mode ({{count}} upcoming test(s))",
-    "testModeCollapseAria": "Collapse Exam Mode notice"
+    "testModeCollapseAria": "Collapse Exam Mode notice",
+    "updateShort": "Update",
+    "generateShort": "Create"
   },
   "dayCol": {
     "addAria": "Add session on {{date}}",

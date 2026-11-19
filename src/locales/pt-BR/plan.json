@@ -295,7 +295,9 @@
     "quickReviewN": "Revisão rápida ({{count}})",
     "quickReview": "Revisão rápida",
     "testModeExpandAria": "Modo Prova ({{count}} prova(s) próxima(s))",
-    "testModeCollapseAria": "Recolher aviso do Modo Prova"
+    "testModeCollapseAria": "Recolher aviso do Modo Prova",
+    "updateShort": "Atualizar",
+    "generateShort": "Gerar"
   },
   "dayCol": {
     "addAria": "Adicionar sessão em {{date}}",

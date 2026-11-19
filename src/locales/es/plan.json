@@ -295,7 +295,9 @@
     "quickReviewN": "Repaso rápido ({{count}})",
     "quickReview": "Repaso rápido",
     "testModeExpandAria": "Modo Examen ({{count}} examen/exámenes cercano(s))",
-    "testModeCollapseAria": "Ocultar aviso de Modo Examen"
+    "testModeCollapseAria": "Ocultar aviso de Modo Examen",
+    "updateShort": "Actualizar",
+    "generateShort": "Generar"
   },
   "dayCol": {
     "addAria": "Añadir sesión el {{date}}",

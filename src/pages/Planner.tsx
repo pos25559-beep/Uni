@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Clock,
   Flame,
+  HelpCircle,
   MessageSquare,
   MessageSquareText,
   MoreHorizontal,
@@ -36,7 +37,7 @@ import { resolveUniAccessory } from '../lib/uniAccessories';
 const ActiveReviewModal = lazy(() => import('../components/practice/ActiveReviewModal'));
 const PlanPreferencesSheet = lazy(() => import('../components/planner/PlanPreferencesSheet'));
 const SessionModal = lazy(() => import('../components/planner/SessionModal'));
-import { TabGuideBanner, TabGuideHelpButton } from '../components/onboarding/TabGuideBanner';
+import { TabGuideBanner, TabGuideHelpButton, useTabGuideOverlay } from '../components/onboarding/TabGuideBanner';
 import { openUniCheckIn } from '../lib/uniCheckInBus';
 import { ActionSheet, Badge, Button, Card, CourseChip, EmptyState, Modal, PageHeader, SegmentedControl } from '../components/ui';
 import { cx, showToast } from '../lib/uiHelpers';
@@ -112,6 +113,7 @@ export default function Planner() {
   const academicProfile = useStore((s) => s.academicProfile);
   const weeklyCheckIns = useStore((s) => s.weeklyCheckIns);
   const replan = useStore((s) => s.replan);
+  const toggleTabGuide = useTabGuideOverlay((st) => st.toggleTab);
   const updateSettings = useStore((s) => s.updateSettings);
   const upsertMany = useStore((s) => s.upsertMany);
   const patch = useStore((s) => s.patch);
@@ -545,8 +547,11 @@ export default function Planner() {
         accentTitle={t('plannerAccent')}
         subtitle={availabilitySummary}
         actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <TabGuideHelpButton tabKey="plano" />
+          <div className="flex flex-wrap items-center gap-1.5">
+            {/* No telemóvel o guia passa para o menu ⋯, para tudo caber numa linha. */}
+            <span className="hidden sm:contents">
+              <TabGuideHelpButton tabKey="plano" />
+            </span>
             {plannerMode === 'manual' ? (
               <Button
                 variant="primary"
@@ -561,27 +566,13 @@ export default function Planner() {
                 onClick={onGenerate}
                 disabled={noPlanInputs}
               >
-                <Sparkles size={16} /> {sessions.length > 0 ? t('updatePlan') : t('generatePlan')}
+                <Sparkles size={16} />
+                <span className="sm:hidden">{sessions.length > 0 ? t('ui.updateShort') : t('ui.generateShort')}</span>
+                <span className="hidden sm:inline">{sessions.length > 0 ? t('updatePlan') : t('generatePlan')}</span>
               </Button>
             )}
-            <Button
-              variant="secondary"
-              iconOnly
-              onClick={() => setActionsOpen(true)}
-              aria-label={t('ui.moreActionsAria')}
-              title={t('ui.moreActions')}
-            >
-              <MoreHorizontal size={18} />
-            </Button>
-          </div>
-        }
-      />
-
-      <TabGuideBanner tabKey="plano" />
-
-      {!noPlanInputs && (
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-1.5">
+            {!noPlanInputs && (
+              <>
             {testMode.mode !== 'normal' && (
               <button
                 type="button"
@@ -593,7 +584,7 @@ export default function Planner() {
                 aria-label={t('ui.testModeExpandAria', { count: testMode.urgentAssessments.length })}
                 title={t('ui.testModeExpandAria', { count: testMode.urgentAssessments.length })}
                 className={cx(
-                  'relative inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border border-coral/35 bg-pastel-blush/85 px-3 text-xs font-semibold text-[#141312] transition hover:border-coral dark:bg-[#381E21] dark:text-[#FAF6EC]',
+                  'relative inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-xl border border-coral/35 bg-pastel-blush/85 px-2.5 text-xs font-semibold text-[#141312] transition hover:border-coral dark:bg-[#381E21] dark:text-[#FAF6EC]',
                   activeSheet === 'testMode' && 'border-coral ring-2 ring-coral/30',
                 )}
               >
@@ -639,7 +630,7 @@ export default function Planner() {
                 aria-label={t('conscience.compactAria')}
                 title={t('conscience.compactAria')}
                 className={cx(
-                  'inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border px-2.5 text-xs font-medium text-[#141312] transition hover:border-accent dark:text-[#FAF6EC]',
+                  'inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-xl border px-2 text-xs font-medium text-[#141312] transition hover:border-accent dark:text-[#FAF6EC]',
                   visibleConscienceCount > 0
                     ? 'border-warn/35 bg-pastel-butter/85 dark:bg-[#352D14]'
                     : 'border-accent/20 bg-pastel-sage/65 dark:bg-[#23311B]',
@@ -660,8 +651,25 @@ export default function Planner() {
                 )}
               </button>
             )}
+              </>
+            )}
+            <Button
+              variant="secondary"
+              iconOnly
+              onClick={() => setActionsOpen(true)}
+              aria-label={t('ui.moreActionsAria')}
+              title={t('ui.moreActions')}
+            >
+              <MoreHorizontal size={18} />
+            </Button>
           </div>
+        }
+      />
 
+      <TabGuideBanner tabKey="plano" />
+
+      {!noPlanInputs && (
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <SegmentedControl
             layoutId="planner-control-mode"
             value={plannerMode}
@@ -1205,6 +1213,13 @@ export default function Planner() {
                 },
               ]
             : []),
+          {
+            id: 'guide',
+            label: t('common:guide.button'),
+            hint: t('common:guide.openTitle'),
+            icon: <HelpCircle size={16} />,
+            onSelect: () => toggleTabGuide('plano'),
+          },
           {
             id: 'prefs',
             label: t('ui.preferences'),
