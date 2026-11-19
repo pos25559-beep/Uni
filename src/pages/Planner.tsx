@@ -453,7 +453,7 @@ export default function Planner() {
     // Os blocos gerados de hoje cedem o lugar: o plano recalcula à volta da sessão fixada.
     const moved = placeToday(
       session,
-      sessions.filter((x) => x.date === today && !isReplaceable(x, today)),
+      sessions.filter((x) => x.date === today && (plannerMode === 'manual' || !isReplaceable(x, today))),
     );
     if (!moved) {
       showToast(t('ui.noRoom'), 'neutral');
@@ -470,7 +470,10 @@ export default function Planner() {
     const { updated, unscheduledCount } = rescheduleOverdueSessions({
       overdue: targets,
       // Blocos gerados cedem o lugar às sessões do estudante; o plano recalcula a seguir.
-      existing: sessions.filter((s) => s.date >= today && !isReplaceable(s, today)),
+      // No modo Manual o plano não recalcula: aí nada cede o lugar (evita sobreposições).
+      existing: sessions.filter(
+        (s) => s.date >= today && (plannerMode === 'manual' || !isReplaceable(s, today)),
+      ),
       classes,
       events,
       assessments,
