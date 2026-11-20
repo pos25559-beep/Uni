@@ -1,7 +1,8 @@
 import { UnipediaLogoMark } from '@app/components/brand/UnipediaLogo';
 import { APP_URL, LANGS, useCopy } from '../i18n';
 import { pagePath, useRoute } from '../routes';
-import { Reveal, SectionHead, UniFace } from '../ui';
+import { Reveal, SectionHead } from '../ui';
+import { UNI_FILLS, UniLive } from '../uni';
 
 export function Faq() {
   const { faq } = useCopy();
@@ -32,7 +33,7 @@ export function FinalCta() {
   return (
     <section aria-labelledby="cta-title" className="px-4 py-20 sm:px-6 sm:py-24">
       <Reveal className="relative mx-auto max-w-6xl overflow-hidden rounded-[32px] bg-ink-cta px-6 py-16 text-center text-ink-cta-fg sm:px-12 sm:py-20">
-        <UniFace size={84} className="mx-auto" />
+        <UniLive shape="nuvem" fill={UNI_FILLS.nuvem} size={96} className="mx-auto" />
         <h2 id="cta-title" className="font-display mx-auto mt-6 max-w-3xl text-[clamp(2.2rem,6vw,4rem)] font-extrabold leading-[1]">
           {cta.title} <em className="font-serif font-normal italic text-pastel-butter dark:text-accent">{cta.titleEm}</em>
         </h2>
@@ -53,16 +54,16 @@ export function Footer() {
   const { lang, page } = useRoute();
   return (
     <footer className="border-t border-line">
-      <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-10 sm:px-6 md:flex-row md:items-start md:justify-between">
+      <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:grid-cols-[1.4fr_1fr_1fr] sm:px-6">
         <div>
           <div className="flex items-center gap-2.5">
             <UnipediaLogoMark size={30} />
             <span className="font-display text-lg font-bold">Unipedia</span>
           </div>
-          <p className="mt-3 font-serif text-lg italic text-muted">{footer.tagline}</p>
+          <p className="mt-3 max-w-xs font-serif text-lg italic text-muted">{footer.tagline}</p>
           <p className="mt-1 text-sm text-muted">{footer.made}</p>
         </div>
-        <nav aria-label="Unipedia" className="flex flex-wrap gap-x-2 gap-y-1 text-sm">
+        <nav aria-label="Unipedia" className="flex flex-col text-sm">
           {[
             { href: `${APP_URL}/privacidade`, label: footer.privacy },
             { href: `${APP_URL}/termos`, label: footer.terms },
@@ -73,7 +74,7 @@ export function Footer() {
             </a>
           ))}
         </nav>
-        <ul className="flex flex-wrap gap-1 text-sm">
+        <ul className="flex flex-col text-sm">
           {LANGS.map((l) => (
             <li key={l.code}>
               <a

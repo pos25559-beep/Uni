@@ -2,6 +2,7 @@ import { AnimatePresence, motion, useMotionValue, useReducedMotion, useSpring, u
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useCopy } from './i18n';
 import { useRoute } from './routes';
+import { UNI_FILLS, UniLive } from './uni';
 
 /**
  * Ecrãs reais da app: capturas feitas por scripts/site-screens.py com a demonstração da app,
@@ -16,6 +17,8 @@ export type ShotId =
   | 'materiais'
   | 'progresso'
   | 'foco'
+  | 'pratica'
+  | 'materiais-origens'
   | 'tutor'
   | 'uni-adotar'
   | 'cadeira'
@@ -137,6 +140,10 @@ export function AppDemo() {
         <span aria-hidden="true" className="absolute -right-8 top-8 size-16 rotate-[12deg] rounded-md bg-pastel-mint shadow-card ring-1 ring-fg/5 sm:-right-14 sm:size-20" />
         <span aria-hidden="true" className="absolute -right-10 bottom-24 size-20 rotate-[-6deg] rounded-md bg-pastel-peach shadow-card ring-1 ring-fg/5 sm:-right-16" />
         <span aria-hidden="true" className="absolute -left-8 bottom-12 size-14 rotate-[8deg] rounded-md bg-pastel-sky shadow-card ring-1 ring-fg/5 sm:-left-12 sm:size-16" />
+        {/* O Uni sentado ao lado do telemóvel: a mascote no primeiro ecrã. */}
+        <div aria-hidden="true" className="absolute -bottom-3 -left-14 z-20 sm:-left-24">
+          <UniLive shape="nuvem" fill={UNI_FILLS.nuvem} size={112} />
+        </div>
         <TiltPhone>
           <PhoneFrame>
             {/* Todas as capturas ficam montadas (carregam uma vez) e cruzam-se por opacidade. */}
@@ -157,7 +164,7 @@ export function AppDemo() {
       </div>
 
       <div className="mt-7 flex w-full max-w-md items-center gap-2">
-        <div role="tablist" aria-label={demo.tabsLabel} className="no-scrollbar flex flex-1 gap-1 overflow-x-auto rounded-full bg-surface-2 p-1">
+        <div role="tablist" aria-label={demo.tabsLabel} className="no-scrollbar flex min-w-0 flex-1 gap-1 overflow-x-auto rounded-full bg-surface-2 p-1">
           {DEMO.map((d, i) => (
             <button
               key={d.tab}

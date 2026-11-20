@@ -1,14 +1,20 @@
 import type { ReactNode } from 'react';
 import { useCopy } from './i18n';
 import type { FeatureId } from './routes';
-import { PhoneShot, type ShotId } from './screens';
+import { PhoneShot, ShotCrop, type ShotId } from './screens';
 
-/** Ecrãs reais usados nas secções de cada página (um por secção, pela ordem do texto). */
-const SECTION_SHOTS: Record<FeatureId, (ShotId | ShotId[])[]> = {
-  comecar: ['onboarding', 'onboarding-cadeiras', 'hub-passos', 'hub'],
-  plano: ['calendario', 'plano', 'hoje', 'foco'],
-  materiais: ['materiais', 'hub-passos', 'cadeira', 'tutor'],
-  progresso: ['progresso', 'cadeira', 'estante', ['estante', 'uni-adotar']],
+type Crop = { crop: ShotId; top: number };
+type Entry = ShotId | ShotId[] | Crop;
+
+/**
+ * Ecrãs reais usados nas secções de cada página (um por secção, pela ordem do texto).
+ * Onde o ecrã da abertura se repetiria, usa-se um recorte ampliado (`crop`), que também deixa ler a interface.
+ */
+const SECTION_SHOTS: Record<FeatureId, Entry[]> = {
+  comecar: ['onboarding', { crop: 'onboarding-cadeiras', top: 0.08 }, 'hub-passos', 'hub'],
+  plano: ['calendario', { crop: 'plano', top: 0.25 }, 'hoje', ['foco', 'pratica']],
+  materiais: ['materiais-origens', 'hub-passos', { crop: 'materiais', top: 0.42 }, 'tutor'],
+  progresso: [{ crop: 'progresso', top: 0.33 }, 'cadeira', 'estante', ['estante', 'uni-adotar']],
   uni: ['uni-adotar', 'cadeira', 'estante', 'tutor'],
 };
 
@@ -60,6 +66,8 @@ export function SectionVisual({ page, index }: { page: FeatureId; index: number 
     );
   } else if (Array.isArray(entry)) {
     content = <Pair a={entry[0]} b={entry[1]} />;
+  } else if (typeof entry === 'object') {
+    content = <ShotCrop id={entry.crop} top={entry.top} className="mx-auto max-w-md" />;
   } else {
     content = (
       <div className="flex justify-center">

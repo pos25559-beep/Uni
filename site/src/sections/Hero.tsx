@@ -9,8 +9,8 @@ export default function Hero() {
   return (
     <section aria-labelledby="hero-title" className="paper-margin relative overflow-hidden pt-[72px]">
       <div className="paper-lines pointer-events-none absolute inset-0 opacity-60 [mask-image:linear-gradient(to_bottom,black,transparent_85%)]" />
-      <div className="relative mx-auto grid max-w-6xl items-center gap-6 px-4 pb-10 pt-8 sm:px-6 lg:min-h-[calc(100svh-72px)] lg:grid-cols-[1.05fr_1fr] lg:pb-16">
-        <div className="relative z-10 pl-[clamp(8px,4vw,40px)]">
+      <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-6 px-4 pb-10 pt-8 sm:px-6 lg:min-h-[calc(100svh-72px)] lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:pb-16">
+        <div className="relative z-10 min-w-0 pl-[clamp(8px,4vw,40px)]">
           <motion.p
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -25,7 +25,7 @@ export default function Hero() {
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.05, ease: [0.22, 0.8, 0.26, 1] }}
-            className="font-display mt-5 text-[clamp(2.7rem,8.4vw,5.6rem)] font-extrabold leading-[0.95] text-fg"
+            className="font-display mt-5 text-[clamp(2.7rem,8.4vw,5.6rem)] font-extrabold lg:text-[clamp(3.6rem,5.4vw,5.6rem)] leading-[0.95] text-fg"
           >
             {hero.titleA}{' '}
             <em className="marker font-serif font-normal italic text-accent-ink">{hero.titleEm}</em>
@@ -65,7 +65,7 @@ export default function Hero() {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.1, ease: [0.22, 0.8, 0.26, 1] }}
-          className="relative py-4"
+          className="relative min-w-0 py-4"
         >
           <AppDemo />
         </motion.div>

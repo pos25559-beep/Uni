@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { useCopy } from '../i18n';
 import { pagePath, useRoute } from '../routes';
-import { PhoneShot } from '../screens';
+import { ShotCrop } from '../screens';
 import { Reveal, SectionHead } from '../ui';
 
 export function PromiseStrip() {
@@ -24,15 +24,14 @@ export function PromiseStrip() {
   );
 }
 
+/** Cartão compacto: recorte ampliado do ecrã real, número, título, texto e ligação. */
 function Step({
   index,
   label,
   title,
   body,
-  detail,
   tone,
   visual,
-  flip,
   href,
   more,
 }: {
@@ -40,32 +39,26 @@ function Step({
   label: string;
   title: string;
   body: string;
-  detail: string;
   tone: string;
   visual: ReactNode;
-  flip?: boolean;
   href: string;
   more: string;
 }) {
   return (
-    <Reveal>
-      <article className={`grid items-center gap-6 overflow-hidden rounded-[28px] ${tone} p-5 sm:p-8 md:grid-cols-2 md:gap-10 md:p-10`}>
-        <div className={flip ? 'md:order-2' : undefined}>
-          <p className="flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-[0.16em] text-fg/70">
+    <Reveal delay={index * 0.05} className="h-full">
+      <article className={`flex h-full flex-col overflow-hidden rounded-[28px] ${tone} p-3 sm:p-4`}>
+        {visual}
+        <div className="flex flex-1 flex-col px-2 pb-2 pt-5 sm:px-3">
+          <p className="flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-[0.16em] text-fg/75">
             <span className="grid size-7 place-items-center rounded-full bg-fg text-xs text-bg">{index}</span>
             {label}
           </p>
-          <h3 className="font-display mt-4 text-[clamp(1.6rem,3.6vw,2.3rem)] font-bold leading-[1.05]">{title}</h3>
-          <p className="mt-3 text-base leading-relaxed text-fg/80 sm:text-lg">{body}</p>
-          <p className="mt-5 inline-flex items-start gap-2 rounded-2xl bg-surface/70 px-3.5 py-2.5 text-sm font-medium text-fg">
-            <span aria-hidden="true">✦</span>
-            {detail}
-          </p>
-          <a href={href} className="mt-5 flex min-h-11 w-fit items-center gap-1.5 rounded-full text-sm font-semibold text-fg underline decoration-fg/30 underline-offset-4 hover:decoration-fg">
+          <h3 className="font-display mt-3 text-[clamp(1.35rem,2.4vw,1.75rem)] font-bold leading-[1.1]">{title}</h3>
+          <p className="mt-2 flex-1 text-base leading-relaxed text-fg/80">{body}</p>
+          <a href={href} className="mt-4 flex min-h-11 w-fit items-center gap-1.5 rounded-full text-sm font-semibold text-fg underline decoration-fg/30 underline-offset-4 hover:decoration-fg">
             {more} <span aria-hidden="true">→</span>
           </a>
         </div>
-        <div className={flip ? 'md:order-1' : undefined}>{visual}</div>
       </article>
     </Reveal>
   );
@@ -76,32 +69,28 @@ export default function How() {
   const { lang } = useRoute();
   const s = how.steps;
   const rows = [
-    { key: 'start', page: 'comecar', shot: 'onboarding-cadeiras', tone: 'bg-pastel-sage' },
-    { key: 'plan', page: 'plano', shot: 'plano', tone: 'bg-pastel-sky' },
-    { key: 'materials', page: 'materiais', shot: 'materiais', tone: 'bg-pastel-peach' },
-    { key: 'measure', page: 'progresso', shot: 'progresso', tone: 'bg-pastel-mint' },
+    { key: 'start', page: 'comecar', shot: 'onboarding-cadeiras', top: 0.08, tone: 'bg-pastel-sage' },
+    { key: 'plan', page: 'plano', shot: 'plano', top: 0.25, tone: 'bg-pastel-sky' },
+    { key: 'materials', page: 'materiais', shot: 'materiais', top: 0.2, tone: 'bg-pastel-peach' },
+    { key: 'measure', page: 'progresso', shot: 'progresso', top: 0.33, tone: 'bg-pastel-mint' },
   ] as const;
   return (
-    <section id="como-funciona" aria-labelledby="how-title" className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
+    <section id="como-funciona" aria-labelledby="how-title" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
       <SectionHead id="how-title" kicker={how.kicker} title={how.title} em={how.titleEm} sub={how.sub} />
-      <div className="mt-12 space-y-5 sm:space-y-6">
+      <ol className="mt-10 grid gap-4 sm:grid-cols-2 sm:gap-5">
         {rows.map((r, i) => (
-          <Step
-            key={r.key}
-            index={i + 1}
-            tone={r.tone}
-            flip={i % 2 === 1}
-            {...s[r.key]}
-            href={pagePath(lang, r.page)}
-            more={`${common.learnMore}: ${s[r.key].label}`}
-            visual={
-              <div className="flex justify-center">
-                <PhoneShot id={r.shot} size="sm" />
-              </div>
-            }
-          />
+          <li key={r.key}>
+            <Step
+              index={i + 1}
+              tone={r.tone}
+              {...s[r.key]}
+              href={pagePath(lang, r.page)}
+              more={`${common.learnMore}: ${s[r.key].label}`}
+              visual={<ShotCrop id={r.shot} top={r.top} />}
+            />
+          </li>
         ))}
-      </div>
+      </ol>
     </section>
   );
 }

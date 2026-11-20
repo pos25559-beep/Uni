@@ -77,6 +77,15 @@ MATERIALS = {
 }
 
 
+# Nome e semestre credíveis nas capturas (a demonstração da app diz «Visitante» e «Semestre de Exemplo»).
+PROFILE = {
+    'pt-PT': ('Inês', '1.º Semestre · 2026/27'),
+    'pt-BR': ('Ana', '1º Semestre · 2026'),
+    'es': ('Lucía', '1.er cuatrimestre · 2026/27'),
+    'en': ('Sam', 'Semester 1 · 2026/27'),
+}
+
+
 def demo_materials(lang: str) -> list[dict]:
     t = MATERIALS[lang]
     now = time.strftime('%Y-%m-%dT%H:%M:%S.000Z', time.gmtime())
@@ -139,9 +148,11 @@ def capture(base: str, lang: str, theme: str):
         sh.go(base, '/?demo=1', 1500)
         # Hub de estudo (fotos do horário e dos testes, Drive, PDFs do disco), antes dos materiais.
         page.evaluate(
-            """() => { const k = 'uni-erp-v5'; const s = JSON.parse(localStorage.getItem(k));
+            """([name, semester]) => { const k = 'uni-erp-v5'; const s = JSON.parse(localStorage.getItem(k));
                 s.state.settings.hubSetupCompleted = true; s.state.settings.hubSetupDismissed = false;
-                localStorage.setItem(k, JSON.stringify(s)); }"""
+                s.state.settings.userName = name; s.state.settings.semesterName = semester;
+                localStorage.setItem(k, JSON.stringify(s)); }""",
+            list(PROFILE[lang]),
         )
         sh.go(base, '/', 4500)
         first = page.get_by_label(s.key('today', 'firstSteps.ariaLabel'))
@@ -176,21 +187,52 @@ def capture(base: str, lang: str, theme: str):
         sh.shot('calendario')
         sh.go(base, '/materiais')
         sh.shot('materiais')
+        # Origens: pasta do dispositivo, Google Drive e pasta raiz do semestre.
+        expand = page.get_by_role('button', name=s.key('courses', 'materialsPage.expand'))
+        if expand.count():
+            expand.first.click()
+            page.wait_for_timeout(1000)
+            sh.shot('materiais-origens')
+        else:
+            print('  ! sem «Expandir» em Materiais: origens não capturadas', file=sys.stderr)
         sh.go(base, '/progresso')
         sh.shot('progresso')
 
-        # Foco: «Tenho agora 25 min» no Hoje.
-        sh.go(base, '/', 2000)
-        page.get_by_role('button', name='25 min').first.click()
-        page.wait_for_timeout(1500)
-        sh.shot('foco')
+        # Foco e prática num separador à parte, com relógio controlado (acaba o bloco de 25 min em segundos).
+        # O resto da captura usa o relógio real, porque as animações da app dependem dele.
+        # Contexto próprio: a sessão de foco adiantada 25 min ficava guardada e deixava outros ecrãs em branco.
+        focus_ctx = browser.new_context(
+            locale=lang, color_scheme=theme, viewport={'width': 390, 'height': 844},
+            device_scale_factor=2, is_mobile=True, reduced_motion='reduce',
+        )
+        focus_page = focus_ctx.new_page()
+        focus_page.clock.install()
+        fsh = Shooter(focus_page, lang, theme)
+        fsh.go(base, '/?demo=1', 1500)
+        focus_page.evaluate(
+            """([name, semester]) => { const k = 'uni-erp-v5'; const s = JSON.parse(localStorage.getItem(k));
+                s.state.settings.userName = name; s.state.settings.semesterName = semester;
+                s.state.settings.hubSetupDismissed = true; localStorage.setItem(k, JSON.stringify(s)); }""",
+            list(PROFILE[lang]),
+        )
+        fsh.go(base, '/', 2500)
+        focus_page.get_by_role('button', name='25 min').first.click()
+        focus_page.wait_for_timeout(1500)
+        fsh.shot('foco')
+        focus_page.get_by_role('button', name=s.key('plan', 'focus.ui.startBtn'), exact=True).first.click()
+        focus_page.wait_for_timeout(1200)
+        focus_page.clock.fast_forward('25:05')
+        focus_page.wait_for_timeout(2500)
+        fsh.shot('pratica')
+        focus_ctx.close()
+        sh.done += fsh.done
 
         # Tutor e Caderno do Uni (o consentimento só fica guardado neste navegador de captura; nada é enviado).
         page.evaluate(
             """() => { const k = 'uni-erp-v5'; const s = JSON.parse(localStorage.getItem(k));
                 s.state.settings.aiConsent = true; localStorage.setItem(k, JSON.stringify(s)); }"""
         )
-        sh.go(base, '/assistente', 2200)
+        sh.go(base, '/assistente', 4000)
         sh.shot('tutor')
         nb = page.get_by_role('button', name=s.key('assistant', 'notebookBtn'), exact=True)
         if nb.count():
@@ -206,10 +248,6 @@ def capture(base: str, lang: str, theme: str):
         sh.shot('uni-adotar')
         page.get_by_role('button', name=s('uni', 'Adotar nesta cadeira')).first.click()
         page.wait_for_timeout(4500)  # deixa sair o aviso da adoção
-        card = page.get_by_text(s.key('uni', 'stages.1'), exact=False).first
-        if card.count():
-            card.scroll_into_view_if_needed()
-            page.mouse.wheel(0, 120)
         sh.shot('cadeira', 800)
 
         sh.go(base, '/progresso', 1500)
@@ -220,13 +258,23 @@ def capture(base: str, lang: str, theme: str):
         page.wait_for_timeout(1000)
         sh.shot('estante')
 
-        # Onboarding: passo das cadeiras (ler print do horário) e o Hub.
-        sh.go(base, '/configurar', 1800)
-        sh.shot('onboarding')
-        nxt = s('onboarding', 'Continuar')
-        page.get_by_role('button', name=nxt).last.click()
-        page.wait_for_timeout(1500)
-        sh.shot('onboarding-cadeiras')
+        # Onboarding num contexto novo, só com a demonstração: com o estado que a captura vai juntando
+        # (materiais, consentimento do Uni, Uni adotado) o passo 2 ficava em branco.
+        onb_ctx = browser.new_context(
+            locale=lang, color_scheme=theme, viewport={'width': 390, 'height': 844},
+            device_scale_factor=2, is_mobile=True, reduced_motion='reduce',
+        )
+        onb_page = onb_ctx.new_page()
+        osh = Shooter(onb_page, lang, theme)
+        osh.go(base, '/?demo=1', 1500)
+        osh.go(base, '/configurar', 2200)
+        osh.shot('onboarding')
+        onb_page.get_by_role('button', name=s('onboarding', 'Continuar')).last.click()
+        onb_page.get_by_role('button', name=s('onboarding', 'Ler print do horário')).first.wait_for(state='visible', timeout=8000)
+        onb_page.wait_for_timeout(1500)
+        osh.shot('onboarding-cadeiras')
+        onb_ctx.close()
+        sh.done += osh.done
 
         browser.close()
     print(f'  ✓ {lang} {theme}: {", ".join(sh.done)}')

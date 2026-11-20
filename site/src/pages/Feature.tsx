@@ -43,7 +43,7 @@ function FeatureHero({ id }: { id: FeatureId }) {
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: [0.22, 0.8, 0.26, 1] }}
-            className="font-display mt-3 text-[clamp(2.5rem,7vw,4.8rem)] font-extrabold leading-[0.98] text-fg"
+            className="font-display mt-3 text-[clamp(2.5rem,7vw,4.8rem)] font-extrabold lg:text-[clamp(3.2rem,4.8vw,4.8rem)] leading-[0.98] text-fg"
           >
             {p.title} <em className="marker font-serif font-normal italic text-accent-ink">{p.titleEm}</em>
           </motion.h1>
@@ -83,7 +83,7 @@ function FeatureSections({ id }: { id: FeatureId }) {
         <Reveal key={s.title}>
           <article className={`grid items-center gap-8 rounded-[28px] p-5 sm:p-8 md:grid-cols-2 md:gap-12 md:p-10 ${i % 2 === 0 ? TONE[id].soft : 'bg-surface-2/70'}`}>
             <div className={i % 2 === 1 ? 'md:order-2' : undefined}>
-              <p className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-fg/60">0{i + 1}</p>
+              <p className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-fg/75">0{i + 1}</p>
               <h2 className="font-display mt-3 text-[clamp(1.6rem,3.4vw,2.3rem)] font-bold leading-[1.05]">{s.title}</h2>
               <p className="mt-3 text-base leading-relaxed text-fg/80 sm:text-lg">{s.body}</p>
               <ul className="mt-5 space-y-2.5">

@@ -23,6 +23,7 @@ function ThemeToggle() {
     const el = document.documentElement;
     el.classList.toggle('dark', next);
     el.style.colorScheme = next ? 'dark' : 'light';
+    document.querySelector('meta[name=theme-color]')?.setAttribute('content', next ? '#141311' : '#FAF8F2');
     try {
       localStorage.setItem(THEME_KEY, next ? 'dark' : 'light');
     } catch {

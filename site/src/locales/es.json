@@ -85,8 +85,8 @@
       },
       {
         "when": "Al final del bloque",
-        "title": "Tres preguntas, con la página exacta",
-        "body": "Si fallas una, la app te enseña la respuesta y de dónde sale en tus materiales. Y vuelve a preguntártela."
+        "title": "Explícalo con tus palabras",
+        "body": "Cuando acaba el bloque, la app te pide que expliques la idea central sin mirar los apuntes. Dices cómo te ha ido y vuelve a preguntártelo el día adecuado."
       },
       {
         "when": "Un día que no pudo ser",
@@ -124,35 +124,17 @@
     ]
   },
   "uni": {
-    "kicker": "Uni",
-    "title": "Un tutor que sabe",
-    "titleEm": "lo que entra en tu examen.",
-    "body": "Uni es el tutor de Unipedia. A diferencia de un chat cualquiera, conoce tu semestre: tus asignaturas, las fechas de las evaluaciones y los materiales que has subido.",
+    "kicker": "Los Unis",
+    "title": "Un compañero",
+    "titleEm": "por asignatura.",
+    "body": "Adoptas un Uni en cada asignatura: eliges la forma, el color y la personalidad. Crece de Huevo a Maestro solo con tu dominio real del temario, y también es el tutor que conoce tu semestre.",
     "bullets": [
-      "Explica el temario a partir de tus PDF, diapositivas y fotos.",
-      "Monta un plan hasta el próximo examen en una conversación.",
-      "Dice «esto no está en tus materiales» cuando es así."
-    ]
-  },
-  "privacy": {
-    "kicker": "Tus datos",
-    "title": "Tu cuaderno",
-    "titleEm": "es tuyo.",
-    "body": "Puedes usar Unipedia sin crear una cuenta: todo se queda en tu dispositivo. Si quieres sincronizar entre el móvil y el ordenador, creas una cuenta, y decides tú.",
-    "items": [
-      {
-        "title": "Sin cuenta",
-        "body": "Modo local en el dispositivo, desde el primer minuto."
-      },
-      {
-        "title": "Sin conexión",
-        "body": "Plan, foco y tarjetas funcionan sin internet."
-      },
-      {
-        "title": "Sabes qué sale",
-        "body": "La IA solo se usa cuando activas a Uni, y se explica adónde van los datos."
-      }
-    ]
+      "Cinco formas, colores y personalidades de enseñanza",
+      "Evoluciona con repasos, práctica y exámenes, no con clics",
+      "Explica con tus materiales y avisa cuando algo no está en ellos"
+    ],
+    "formsLabel": "Las cinco formas de Uni",
+    "stagesLabel": "De huevo a maestro"
   },
   "faq": {
     "kicker": "Preguntas",
@@ -630,7 +612,21 @@
       "guide": "Guía de estudio",
       "quiz": "Quiz con citas",
       "summary": "Resumen rápido",
-      "podcast": "Pódcast"
+      "podcast": "Pódcast",
+      "forms": {
+        "nuvem": "Nube",
+        "gota": "Gota",
+        "estrela": "Estrella",
+        "cristal": "Cristal",
+        "folha": "Hoja"
+      },
+      "stages": [
+        "Huevo",
+        "Aprendiz",
+        "Explorador",
+        "Especialista",
+        "Maestro"
+      ]
     }
   },
   "shots": {
@@ -648,6 +644,8 @@
     "onboarding": "Configuración inicial: carrera y semestre",
     "onboarding-cadeiras": "Configuración inicial: importar el horario desde una captura",
     "hub": "Hub de estudio: en qué momento del semestre estás",
-    "hub-passos": "Hub de estudio: horarios, fechas de exámenes, Drives y portales"
+    "hub-passos": "Hub de estudio: horarios, fechas de exámenes, Drives y portales",
+    "pratica": "Final del bloque de foco: práctica activa con «Repasar ya», «Con esfuerzo» y «Dominado»",
+    "materiais-origens": "Materiales: buscar en una carpeta del dispositivo o en Google Drive"
   }
 }
